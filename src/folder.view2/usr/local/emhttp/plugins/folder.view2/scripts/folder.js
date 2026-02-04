@@ -15,6 +15,7 @@ const rgbToHex = (rgb) => {
 }
 
 $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));
+$('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));
 
 (async () => {
     // if editing a vm hide docker related settings
@@ -70,6 +71,7 @@ $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('c
         form.context_graph_time.value = currFolder.settings.context_graph_time?.toString() || '60';
         form.preview_border.checked = currFolder.settings.preview_border || false;
         form.preview_border_color.value = currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
+        form.preview_vertical_bars_color.value = currFolder.settings.preview_vertical_bars_color || currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
         form.update_column.checked = currFolder.settings.update_column || false;
         form.default_action.checked = currFolder.settings.default_action || false;
         form.expand_tab.checked = currFolder.settings.expand_tab;
@@ -173,10 +175,13 @@ const updateForm = () => {
     $(`[constraint*="preview-${form.preview.value}"]`).show();
     $('[constraint*="context-"]').hide();
     $(`[constraint*="context-${form.context.value}"]`).show();
-    if(!form.preview_border.checked && !form.preview_vertical_bars.checked) {
-        $('[constraint*="color"]').hide();
-    } else {
-        $('[constraint*="color"]').show();
+    $('[constraint*="border-color"]').hide();
+    $('[constraint*="bars-color"]').hide();
+    if(form.preview_border.checked) {
+        $('[constraint*="border-color"]').show();
+    }
+    if(form.preview_vertical_bars.checked) {
+        $('[constraint*="bars-color"]').show();
     }
 
     if (type !== 'docker') {
@@ -265,6 +270,7 @@ const submitForm = async (e) => {
             context_graph_time: parseInt(e.context_graph_time.value.toString()),
             preview_border: e.preview_border.checked,
             preview_border_color: e.preview_border_color.value.toString(),
+            preview_vertical_bars_color: e.preview_vertical_bars_color.value.toString(),
             update_column: e.update_column.checked,
             default_action: e.default_action.checked,
             expand_tab: e.expand_tab.checked,

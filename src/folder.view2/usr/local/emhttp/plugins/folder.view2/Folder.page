@@ -211,22 +211,41 @@ Markdown="false"
                 </div>
             </li>
             <li constraint="preview-1 preview-2 preview-3 preview-4">
-                <div class="basic" constraint="color">
+                <div class="basic" constraint="border-color">
                     <dl>
-                        <dt data-i18n="border-color">Preview border and vertical bars color:</dt>
+                        <dt data-i18n="border-color">Preview border color:</dt>
                         <dd>
                             <input type="color" name="preview_border_color">
-                            <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));" style="padding:6px;min-width:0;margin:0;margin-left: 1em; position: relative;
-                            top: -0.54em;">
+                            <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));" style="padding:4px 6px;min-width:0;margin:0;margin-left:0.5em;vertical-align:middle;">
                                 <i class="fa fa-repeat" aria-hidden="true"></i>
                             </button>
                         </dd>
                     </dl>
                     <blockquote class="inline_help">
                         <p data-i18n="[html]border-color-tooltip">
-                            Will make the preview border and vertical bars a specific color.
+                            Set the color of the preview border.
                             <br>
-                            The <i class="fa fa-repeat" aria-hidden="true"></i> button will set the color to the current font color.
+                            The <i class="fa fa-repeat" aria-hidden="true"></i> button will reset to the current font color.
+                        </p>
+                    </blockquote>
+                </div>
+            </li>
+            <li constraint="preview-1 preview-2 preview-3 preview-4">
+                <div class="basic" constraint="bars-color">
+                    <dl>
+                        <dt data-i18n="bars-color">Vertical bars color:</dt>
+                        <dd>
+                            <input type="color" name="preview_vertical_bars_color">
+                            <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));" style="padding:4px 6px;min-width:0;margin:0;margin-left:0.5em;vertical-align:middle;">
+                                <i class="fa fa-repeat" aria-hidden="true"></i>
+                            </button>
+                        </dd>
+                    </dl>
+                    <blockquote class="inline_help">
+                        <p data-i18n="[html]bars-color-tooltip">
+                            Set the color of the vertical bars between containers.
+                            <br>
+                            The <i class="fa fa-repeat" aria-hidden="true"></i> button will reset to the current font color.
                         </p>
                     </blockquote>
                 </div>

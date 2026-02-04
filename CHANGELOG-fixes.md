@@ -13,37 +13,91 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 #### File: `Folder.page`
 
 **Reordered folder settings UI:**
-- Moved "Show preview border" toggle and "Preview border and vertical bars color" picker from below the Preview Context section to directly underneath "Preview vertical bars"
-- Both settings are now wrapped in `<li constraint="preview-1 preview-2 preview-3 preview-4">` so they show/hide with other preview options
-- The color picker retains its inner `constraint="color"` for conditional visibility based on border/vertical bars state
+- Moved "Show preview border" and color picker from below Preview Context to directly underneath "Preview vertical bars"
 
-```diff
-             </li>
-+            <li constraint="preview-1 preview-2 preview-3 preview-4">
-+                <div class="basic">
-+                    <dl>
-+                        <dt data-i18n="border">Show preview border:</dt>
-+                        ...
-+                    </dl>
-+                </div>
-+            </li>
-+            <li constraint="preview-1 preview-2 preview-3 preview-4">
-+                <div class="basic" constraint="color">
-+                    <dl>
-+                        <dt data-i18n="border-color">Preview border and vertical bars color:</dt>
-+                        ...
-+                    </dl>
-+                </div>
-+            </li>
-             <li constraint="docker preview-1 preview-2 preview-3 preview-4">
-                 <!-- Preview Context dropdown (was previously above border settings) -->
-```
+**Split color pickers:**
+- Replaced single "Preview border and vertical bars color" with two separate color pickers:
+  - "Preview border color" — shown when "Show preview border" is ON (`constraint="border-color"`)
+  - "Vertical bars color" — shown when "Preview vertical bars" is ON (`constraint="bars-color"`)
+- Each has its own reset button (fa-repeat icon)
+
+**Fixed reset button styling:**
+- Changed from `padding:6px; position:relative; top:-0.54em` to `padding:4px 6px; vertical-align:middle`
+- Button now aligns inline with the color input instead of being oversized
 
 **New settings order:**
 1. Preview vertical bars
 2. Show preview border *(moved up)*
-3. Preview border and vertical bars color *(moved up)*
-4. Preview Context
+3. Preview border color *(only shown when border ON)*
+4. Vertical bars color *(only shown when vertical bars ON)*
+5. Preview Context
+
+---
+
+#### File: `scripts/folder.js`
+
+**Default initialization (line 18):**
+```diff
+ $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));
++$('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));
+```
+
+**Edit load (line 73) — with backwards compatibility:**
+```diff
+ form.preview_border_color.value = currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
++form.preview_vertical_bars_color.value = currFolder.settings.preview_vertical_bars_color || currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
+```
+
+Existing folders that only have `preview_border_color` saved will inherit that value for vertical bars.
+
+**Visibility logic in `updateForm()` (lines 177-183):**
+```diff
+-    if(!form.preview_border.checked && !form.preview_vertical_bars.checked) {
+-        $('[constraint*="color"]').hide();
+-    } else {
+-        $('[constraint*="color"]').show();
+-    }
++    $('[constraint*="border-color"]').hide();
++    $('[constraint*="bars-color"]').hide();
++    if(form.preview_border.checked) {
++        $('[constraint*="border-color"]').show();
++    }
++    if(form.preview_vertical_bars.checked) {
++        $('[constraint*="bars-color"]').show();
++    }
+```
+
+**Form submit (line 269):**
+```diff
+ preview_border_color: e.preview_border_color.value.toString(),
++preview_vertical_bars_color: e.preview_vertical_bars_color.value.toString(),
+```
+
+---
+
+#### File: `scripts/docker.js`
+
+**Divider color (line 957):**
+```diff
+-        $(`...`).after(`<div class="folder-preview-divider" style="border-color: ${folder.settings.preview_border_color};"></div>`);
++        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
++        $(`...`).after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
+```
+
+Border color (`preview_border_color`) still used for the preview box border and folder element bottom border (unchanged).
+
+---
+
+#### File: `scripts/vm.js`
+
+**Divider color (line 305):**
+```diff
+-        $(`...`).after(`<div class="folder-preview-divider" style="border-color: ${folder.settings.preview_border_color};"></div>`);
++        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
++        $(`...`).after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
+```
+
+Same pattern as docker.js — border color unchanged, vertical bars use new setting with fallback.
 
 ---
 

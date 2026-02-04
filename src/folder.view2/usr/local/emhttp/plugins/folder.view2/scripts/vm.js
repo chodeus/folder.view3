@@ -302,7 +302,8 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     $(`tr.folder-id-${id} div.folder-preview > span`).wrap('<div class="folder-preview-wrapper"></div>');
 
     if(folder.settings.preview_vertical_bars) {
-        $(`tr.folder-id-${id} div.folder-preview > div`).not(':last').after(`<div class="folder-preview-divider" style="border-color: ${folder.settings.preview_border_color};"></div>`);
+        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
+        $(`tr.folder-id-${id} div.folder-preview > div`).not(':last').after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
     }
 
     //set tehe status of a folder
