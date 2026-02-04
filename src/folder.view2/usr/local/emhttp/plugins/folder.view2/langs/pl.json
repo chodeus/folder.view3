@@ -95,6 +95,8 @@
     "context-graph-time-tooltip": "Przedział czasowy dla wykresu w sekundach.",
     "border": "Pokaż ramkę w podglądzie:",
     "border-tooltip": "Pokaże ramkę wokół pola podglądu.",
-    "border-color": "Kolor ramki i pasków w podglądzie:",
-    "border-color-tooltip": "Ustawi kolor ramki i pionowych pasków w podglądzie.<br>Przycisk <i class=\"fa fa-repeat\" aria-hidden=\"true\"></i> ustawi kolor na obecny kolor czcionki."
+    "border-color": "Kolor ramki podglądu:",
+    "border-color-tooltip": "Ustawi kolor ramki podglądu.<br>Przycisk <i class=\"fa fa-repeat\" aria-hidden=\"true\"></i> zresetuje kolor do obecnego koloru czcionki.",
+    "bars-color": "Kolor pionowych pasków:",
+    "bars-color-tooltip": "Ustawi kolor pionowych pasków między kontenerami.<br>Przycisk <i class=\"fa fa-repeat\" aria-hidden=\"true\"></i> zresetuje kolor do obecnego koloru czcionki."
 }
