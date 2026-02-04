@@ -22,15 +22,15 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 - Each has its own reset button (fa-repeat icon)
 
 **Fixed reset button styling:**
-- Changed from `padding:6px; position:relative; top:-0.54em` to `padding:4px 6px; vertical-align:middle`
-- Button now aligns inline with the color input instead of being oversized
+- Changed from `padding:6px; min-width:0; margin-left:1em; position:relative; top:-0.54em` to `width:44px; height:28px; min-width:0; padding:0; margin:0; margin-left:0.5em; vertical-align:middle`
+- Button now matches the color swatch dimensions (44×28px) and aligns inline instead of being oversized
 
-**New settings order:**
-1. Preview vertical bars
-2. Show preview border *(moved up)*
-3. Preview border color *(only shown when border ON)*
-4. Vertical bars color *(only shown when vertical bars ON)*
-5. Preview Context
+**New settings structure (nested parent-child):**
+1. Preview vertical bars *(toggle)*
+   - Vertical bars color *(nested `<ul>`, only shown when vertical bars ON)*
+2. Show preview border *(toggle, moved up from below Preview Context)*
+   - Border color *(nested `<ul>`, only shown when border ON)*
+3. Preview Context
 
 ---
 
@@ -77,27 +77,102 @@ Existing folders that only have `preview_border_color` saved will inherit that v
 
 #### File: `scripts/docker.js`
 
-**Divider color (line 957):**
+**Fix: Expanded folder bottom border no longer uses user's border color (line 945):**
+```diff
+-    $(`.folder-${id}-element:last`).css('border-bottom', `1px solid ${folder.settings.preview_border_color}`);
++    $(`.folder-${id}-element:last`).css('border-bottom', '1px solid rgba(128, 128, 128, 0.3)');
+```
+
+- **Problem:** The last container in an expanded folder had its bottom border set to `preview_border_color`. If the user chose a bright color (e.g. red), an unwanted colored line appeared under the last container.
+- **Fix:** Changed to a neutral semi-transparent gray that matches the theme styling.
+
+**Divider color — separate vertical bars color (line 957):**
 ```diff
 -        $(`...`).after(`<div class="folder-preview-divider" style="border-color: ${folder.settings.preview_border_color};"></div>`);
 +        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
 +        $(`...`).after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
 ```
 
-Border color (`preview_border_color`) still used for the preview box border and folder element bottom border (unchanged).
+Vertical bars now use the new `preview_vertical_bars_color` setting with fallback to `preview_border_color` for backwards compatibility.
 
 ---
 
 #### File: `scripts/vm.js`
 
-**Divider color (line 305):**
+**Fix: Expanded folder bottom border (line 296):**
+```diff
+-    $(`.folder-${id}-element:last`).css('border-bottom', `1px solid ${folder.settings.preview_border_color}`);
++    $(`.folder-${id}-element:last`).css('border-bottom', '1px solid rgba(128, 128, 128, 0.3)');
+```
+
+Same fix as docker.js — neutral gray instead of user's border color.
+
+**Divider color — separate vertical bars color (line 305):**
 ```diff
 -        $(`...`).after(`<div class="folder-preview-divider" style="border-color: ${folder.settings.preview_border_color};"></div>`);
 +        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
 +        $(`...`).after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
 ```
 
-Same pattern as docker.js — border color unchanged, vertical bars use new setting with fallback.
+Same pattern as docker.js — vertical bars use new setting with fallback.
+
+---
+
+#### File: Language files (`langs/en.json`, `de.json`, `es.json`, `fr.json`, `it.json`, `pl.json`, `zh.json`)
+
+**Split and renamed color labels across all 7 language files:**
+
+```diff
+-    "border-color": "Preview border and vertical bars color:",
+-    "border-color-tooltip": "Will make the preview border and vertical bars a specific color.<br>The ... button will set the color to the current font color.",
++    "border-color": "Border color:",
++    "border-color-tooltip": "Set the color of the preview border.<br>The ... button will reset to the current font color.",
++    "bars-color": "Vertical bars color:",
++    "bars-color-tooltip": "Set the color of the vertical bars between containers.<br>The ... button will reset to the current font color.",
+```
+
+*(Above shows en.json — same structural change applied to all 7 files in their respective languages.)*
+
+- `border-color` key: shortened from combined label to just "Border color:" (or equivalent translation)
+- `border-color-tooltip`: updated to only reference the preview border
+- Added new `bars-color` key: "Vertical bars color:" (or equivalent translation)
+- Added new `bars-color-tooltip` key: describes vertical bars between containers
+
+---
+
+#### File: `folder.view2.plg` (Plugin Manifest)
+
+**Version bump and new changelog entry:**
+
+```diff
+-<!ENTITY version "2026.02.03">
+-<!ENTITY md5 "12b42502ee0bbffe95d0a49513c33716">
++<!ENTITY version "2026.02.04">
++<!ENTITY md5 "e084279c40291d0a4d2ddffbfda81315">
+```
+
+```diff
+     <CHANGES>
+
++###2026.02.04
++- UI: Moved preview border and color settings underneath preview vertical bars in folder settings
++- UI: Split border and vertical bars into separate color pickers
++- UI: Each color picker nested directly under its associated toggle
++- UI: Border color only shows when border is enabled, bars color only shows when vertical bars is enabled
++- UI: Reset button now matches color swatch dimensions and alignment
++- UI: Updated all language files (en, de, es, fr, it, pl, zh) with split color labels
++- UI: Shortened border color label to "Border color:" to align with "Vertical bars color:"
++- Backwards compatible: existing folders inherit vertical bars color from border color
++- Fix: Expanded folder bottom border no longer uses preview border color
+
+ ###2026.02.03
+```
+
+---
+
+#### File: `archive/folder.view2-2026.02.04.txz` (New)
+
+New binary archive package for the `2026.02.04` release. Contains the split color pickers, border-bottom fix, reset button fix, nested settings structure, and all language file updates.
 
 ---
 
@@ -822,6 +897,20 @@ New binary archive package for the `2026.02.03` release. Contains compiled plugi
 ---
 
 ## Quick Reference: All Fixes
+
+### Version 2026.02.04
+
+| # | Fix | File(s) | Impact |
+|---|-----|---------|--------|
+| 1 | Split color pickers for border and vertical bars | `Folder.page`, `folder.js` | Independent color control per feature |
+| 2 | Nested color pickers under parent toggles | `Folder.page`, `folder.js` | Color picker only shows when its toggle is ON |
+| 3 | Reset button oversized and misaligned | `Folder.page` | Button matches color swatch dimensions (44×28px) |
+| 4 | Expanded folder bottom border uses user color | `docker.js:945`, `vm.js:296` | Changed from `preview_border_color` to `rgba(128,128,128,0.3)` |
+| 5 | Vertical bars use separate color setting | `docker.js:957`, `vm.js:305` | New `preview_vertical_bars_color` with fallback |
+| 6 | Language files had combined border/bars label | All 7 `langs/*.json` | Split into "Border color:" + "Vertical bars color:" |
+| 7 | Backwards compatibility for existing folders | `folder.js:73` | Vertical bars inherit border color if no separate value saved |
+
+### Version 2026.02.03
 
 | # | Fix | File(s) | Impact |
 |---|-----|---------|--------|
