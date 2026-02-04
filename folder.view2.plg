@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.03">
-<!ENTITY md5 "12b42502ee0bbffe95d0a49513c33716">
+<!ENTITY version "2026.03.02a">
+<!ENTITY md5 "2d2df81ddbc60e7bc56866f259d16d9b">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
+
+###2026.03.02a
+- UI: Moved preview border and color settings underneath preview vertical bars in folder settings
 
 ###2026.02.03
 - Fix: Folder CPU and Memory stats not updating in advanced view

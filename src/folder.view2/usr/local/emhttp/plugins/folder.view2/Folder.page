@@ -195,6 +195,42 @@ Markdown="false"
                     </blockquote>
                 </div>
             </li>
+            <li constraint="preview-1 preview-2 preview-3 preview-4">
+                <div class="basic">
+                    <dl>
+                        <dt data-i18n="border">Show preview border:</dt>
+                        <dd>
+                            <input class="basic-switch" checked name="preview_border" type="checkbox" style="display: none;" onchange="updateForm()" />
+                        </dd>
+                    </dl>
+                    <blockquote class="inline_help">
+                        <p data-i18n="[html]border-tooltip">
+                            Will Show a border on the preview box.
+                        </p>
+                    </blockquote>
+                </div>
+            </li>
+            <li constraint="preview-1 preview-2 preview-3 preview-4">
+                <div class="basic" constraint="color">
+                    <dl>
+                        <dt data-i18n="border-color">Preview border and vertical bars color:</dt>
+                        <dd>
+                            <input type="color" name="preview_border_color">
+                            <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));" style="padding:6px;min-width:0;margin:0;margin-left: 1em; position: relative;
+                            top: -0.54em;">
+                                <i class="fa fa-repeat" aria-hidden="true"></i>
+                            </button>
+                        </dd>
+                    </dl>
+                    <blockquote class="inline_help">
+                        <p data-i18n="[html]border-color-tooltip">
+                            Will make the preview border and vertical bars a specific color.
+                            <br>
+                            The <i class="fa fa-repeat" aria-hidden="true"></i> button will set the color to the current font color.
+                        </p>
+                    </blockquote>
+                </div>
+            </li>
             <li constraint="docker preview-1 preview-2 preview-3 preview-4">
                 <div class="basic">
                     <dl>
@@ -275,39 +311,7 @@ Markdown="false"
                 </ul>
             </li>
         </ul>
-        
-        <div class="basic">
-            <dl>
-                <dt data-i18n="border">Show preview border:</dt>
-                <dd>
-                    <input class="basic-switch" checked name="preview_border" type="checkbox" style="display: none;" onchange="updateForm()" />
-                </dd>
-            </dl>
-            <blockquote class="inline_help">
-                <p data-i18n="[html]border-tooltip">
-                    Will Show a border on the preview box.
-                </p>
-            </blockquote>
-        </div>
-        <div class="basic" constraint="color">
-            <dl>
-                <dt data-i18n="border-color">Preview border and vertical bars color:</dt>
-                <dd>
-                    <input type="color" name="preview_border_color">
-                    <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));" style="padding:6px;min-width:0;margin:0;margin-left: 1em; position: relative;
-                    top: -0.54em;">
-                        <i class="fa fa-repeat" aria-hidden="true"></i>
-                    </button>
-                </dd>
-            </dl>
-            <blockquote class="inline_help">
-                <p data-i18n="[html]border-color-tooltip">
-                    Will make the preview border and vertical bars a specific color.
-                    <br>
-                    The <i class="fa fa-repeat" aria-hidden="true"></i> button will set the color to the current font color.
-                </p>
-            </blockquote>
-        </div>
+
         <div class="basic" constraint="docker">
             <dl>
                 <dt data-i18n="update-column">Hide update column:</dt>

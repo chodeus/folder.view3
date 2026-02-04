@@ -6,6 +6,47 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.03.02a
+
+### Changes
+
+#### File: `Folder.page`
+
+**Reordered folder settings UI:**
+- Moved "Show preview border" toggle and "Preview border and vertical bars color" picker from below the Preview Context section to directly underneath "Preview vertical bars"
+- Both settings are now wrapped in `<li constraint="preview-1 preview-2 preview-3 preview-4">` so they show/hide with other preview options
+- The color picker retains its inner `constraint="color"` for conditional visibility based on border/vertical bars state
+
+```diff
+             </li>
++            <li constraint="preview-1 preview-2 preview-3 preview-4">
++                <div class="basic">
++                    <dl>
++                        <dt data-i18n="border">Show preview border:</dt>
++                        ...
++                    </dl>
++                </div>
++            </li>
++            <li constraint="preview-1 preview-2 preview-3 preview-4">
++                <div class="basic" constraint="color">
++                    <dl>
++                        <dt data-i18n="border-color">Preview border and vertical bars color:</dt>
++                        ...
++                    </dl>
++                </div>
++            </li>
+             <li constraint="docker preview-1 preview-2 preview-3 preview-4">
+                 <!-- Preview Context dropdown (was previously above border settings) -->
+```
+
+**New settings order:**
+1. Preview vertical bars
+2. Show preview border *(moved up)*
+3. Preview border and vertical bars color *(moved up)*
+4. Preview Context
+
+---
+
 ## Version 2026.02.03
 
 ### All Changes from upstream (VladoPortos/folder.view2)
