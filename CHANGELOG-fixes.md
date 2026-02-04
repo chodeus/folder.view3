@@ -6,7 +6,7 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-## Version 2026.03.02d
+## Version 2026.02.04
 
 ### Changes
 

@@ -6,14 +6,14 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.02d">
-<!ENTITY md5 "a5040d049236f351fa88ae37165a1a79">
+<!ENTITY version "2026.02.04">
+<!ENTITY md5 "e084279c40291d0a4d2ddffbfda81315">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
 
-###2026.03.02d
+###2026.02.04
 - UI: Moved preview border and color settings underneath preview vertical bars in folder settings
 - UI: Split border and vertical bars into separate color pickers
 - UI: Each color picker nested directly under its associated toggle
