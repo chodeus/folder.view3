@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.04">
-<!ENTITY md5 "e084279c40291d0a4d2ddffbfda81315">
+<!ENTITY version "2026.02.05">
+<!ENTITY md5 "e552fd958f40d5a40ef26719a0458659">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
+
+###2026.02.05
+- Fix: Corrected archive packaging structure (removed erroneous build/ prefix that prevented plugin from installing)
 
 ###2026.02.04
 - UI: Moved preview border and color settings underneath preview vertical bars in folder settings
