@@ -6,15 +6,23 @@ version=$(date +"%Y.%m.%d")
 plgfile="$CWD/folder.view2.plg"
 
 # Parse flags
+# Usage: pkg_build.sh [--beta [N]]
+#   --beta     → YYYY.MM.DD-beta (develop branch)
+#   --beta 2   → YYYY.MM.DD-beta2 (develop branch)
+#   (no flag)  → YYYY.MM.DD (main branch, stable)
 BETA=false
+BETA_NUM=""
 if [ "$1" = "--beta" ]; then
     BETA=true
+    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then
+        BETA_NUM="$2"
+    fi
 fi
 
 # Set branch based on build type
 if [ "$BETA" = true ]; then
     branch="develop"
-    version="${version}-beta"
+    version="${version}-beta${BETA_NUM}"
 else
     branch="main"
 fi
