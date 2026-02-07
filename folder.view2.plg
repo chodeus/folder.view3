@@ -6,14 +6,14 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.07.2">
-<!ENTITY md5 "e4f9071094545818bc73734f2f0df750">
+<!ENTITY version "2026.02.07">
+<!ENTITY md5 "8d26b83498a0ccf070fe56c69931b3b1">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
 
-###2026.02.07.2
+###2026.02.07
 - Fix: VM folder assignment bug — VMs appearing in wrong folders due to positional index matching
 - Fix: CPU/Memory text wrapping in advanced view (white-space nowrap)
 - Fix: Translation completeness for de, es, it, zh (untranslated strings) and pl (62 missing keys)
