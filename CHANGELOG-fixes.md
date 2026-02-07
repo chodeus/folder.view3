@@ -6,7 +6,7 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-## Version 2026.02.07-beta
+## Version 2026.02.07-beta2
 
 ### Changes
 
@@ -32,13 +32,14 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 **Fix: CPU/memory text wrapping in advanced view (line 77):**
 
 ```diff
-+.folder-advanced {
++.folder-cpu,
++.folder-mem {
 +    white-space: nowrap;
 +}
 ```
 
 - **Problem:** The CPU & Memory Load column text (e.g. "439.00 MiB / 125.60 GiB") would wrap "GiB" to its own line when the column was narrow.
-- **Fix:** Added `white-space: nowrap` to prevent line breaking in the advanced stats cell.
+- **Fix:** Applied `white-space: nowrap` to `.folder-cpu` and `.folder-mem` spans directly. The parent `.folder-advanced` `<td>` nowrap was insufficient because the text lives inside child `<span>` elements.
 
 ---
 
@@ -54,12 +55,12 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-### Quick Reference: All Fixes (Version 2026.02.07-beta)
+### Quick Reference: All Fixes (Version 2026.02.07-beta2)
 
 | # | Fix | File(s) | Impact |
 |---|-----|---------|--------|
 | 1 | VM folder assignment bug — wrong VMs in wrong folders | `vm.js:237` | Name-based lookup instead of positional index |
-| 2 | CPU/memory text wrapping "GiB" on own line | `docker.css` | Added `white-space: nowrap` to `.folder-advanced` |
+| 2 | CPU/memory text wrapping "GiB" on own line | `docker.css` | `white-space: nowrap` on `.folder-cpu`/`.folder-mem` spans |
 | 3 | German translation incomplete | `de.json` | 3 English strings translated |
 | 4 | Spanish translation incomplete | `es.json` | 3 English strings translated |
 | 5 | Italian translation incomplete | `it.json` | 3 keys translated |
