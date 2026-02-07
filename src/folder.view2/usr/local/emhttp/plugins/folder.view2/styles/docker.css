@@ -16,17 +16,27 @@
 .folder-name {
     width: 220px;
     padding: 8px;
-    white-space: nowrap;
+}
+
+.folder-name-sub {
+    display: flex;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+.folder-outer {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .folder-dropdown {
     padding: 6px;
     min-width: 0;
     margin: 0;
-    margin-left: 1em;
-    float: right;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 .folder-update-text {
