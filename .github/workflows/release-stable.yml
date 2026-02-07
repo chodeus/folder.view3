@@ -2,11 +2,6 @@ name: Release Stable
 
 on:
   workflow_dispatch:
-    inputs:
-      version_override:
-        description: 'Optional version override (default: YYYY.MM.DD)'
-        required: false
-        type: string
 
 jobs:
   release:
