@@ -74,6 +74,11 @@ div.folder-preview img.img {
     margin-right: 4px;
 }
 
+.folder-cpu,
+.folder-mem {
+    white-space: nowrap;
+}
+
 .folder-element .ct-name {
     padding-left: 30px !important;
 }
