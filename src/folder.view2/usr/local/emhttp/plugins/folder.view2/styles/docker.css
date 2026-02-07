@@ -22,6 +22,7 @@
     display: flex;
     align-items: flex-start;
     overflow: hidden;
+    gap: 4px;
 }
 
 .folder-outer {
