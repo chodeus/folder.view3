@@ -15,7 +15,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repo (all branches)
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
           ref: main
@@ -26,16 +26,20 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      # Use -X theirs so develop wins on conflicts (plg, archive, changelog)
+      # since we rebuild plg/archive and fix changelog headers afterward anyway
       - name: Merge develop into main
         run: |
-          git merge origin/develop -m "Merge develop into main for stable release"
+          git merge origin/develop -X theirs -m "Merge develop into main for stable release"
 
-      - name: Build stable package (on main)
+      # pkg_build.sh with no flags: stable YYYY.MM.DD version, URLs → main
+      # This overwrites whatever beta version/URLs the merge brought in
+      - name: Build stable package
         run: |
           chmod +x pkg_build.sh
           bash pkg_build.sh
 
-      - name: Extract version from plg
+      - name: Extract stable version
         id: version
         run: |
           VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view2.plg)
@@ -44,24 +48,30 @@ jobs:
           echo "filename=$FILENAME" >> $GITHUB_OUTPUT
           echo "Stable version: $VERSION"
 
-      - name: Update changelog — rename beta headers to stable
+      # Rename beta version headers to stable in both changelog files
+      # e.g. "## Version 2026.02.07-beta2" → "## Version 2026.02.07"
+      - name: Update changelog — beta headers to stable
         run: |
           STABLE="${{ steps.version.outputs.version }}"
-          # Replace beta version headers in CHANGELOG-fixes.md
+
+          # CHANGELOG-fixes.md: section headers and quick reference table
           sed -i "s/## Version [0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}-beta[0-9]*/## Version ${STABLE}/" CHANGELOG-fixes.md
           sed -i "s/(Version [0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}-beta[0-9]*)/(Version ${STABLE})/" CHANGELOG-fixes.md
-          # Replace beta version in plg CHANGES section
-          sed -i "s/###[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}-beta[0-9]*/###${STABLE}/" folder.view2.plg
-          echo "Updated changelog headers to $STABLE"
 
-      - name: Remove old beta packages from archive
+          # folder.view2.plg: CHANGES section entries
+          sed -i "s/###[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}-beta[0-9]*/###${STABLE}/" folder.view2.plg
+
+          echo "Updated version headers to $STABLE"
+
+      # Clean up beta .txz files — main should only have stable packages
+      - name: Remove beta packages from archive
         run: |
           rm -f archive/folder.view2-*-beta*.txz
           echo "Cleaned up beta packages"
 
       - name: Commit stable release to main
         run: |
-          git add archive/ folder.view2.plg CHANGELOG-fixes.md
+          git add -A
           git commit -m "Release stable version ${{ steps.version.outputs.version }}"
 
       - name: Push main
