@@ -28,11 +28,11 @@ root@PlexServer:/boot/config/plugins/folder.view#
 
 ### Easy Manual installation
 
-Use link: https://raw.githubusercontent.com/VladoPortos/folder.view2/refs/heads/main/folder.view2.plg
+Original repo - latest stable version from VladoPortos use link: https://raw.githubusercontent.com/VladoPortos/folder.view2/refs/heads/main/folder.view2.plg
 
-For Chodeus's vibe coded beta (stable) use link: https://raw.githubusercontent.com/chodeus/folder.view2/main/folder.view2.plg
+For Chodeus's vibe coded stable use link: https://raw.githubusercontent.com/chodeus/folder.view2/main/folder.view2.plg
 
-For Chodeus's vibe coded beta (develop/testing) use link: https://raw.githubusercontent.com/chodeus/folder.view2/develop/folder.view2.plg
+For Chodeus's develop/testing use link: https://raw.githubusercontent.com/chodeus/folder.view2/develop/folder.view2.plg
 
 You can find the changelog in the repository.
 
