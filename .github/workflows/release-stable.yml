@@ -1,0 +1,69 @@
+name: Release Stable
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_override:
+        description: 'Optional version override (default: YYYY.MM.DD)'
+        required: false
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Build stable package
+        run: |
+          chmod +x pkg_build.sh
+          bash pkg_build.sh
+
+      - name: Extract version from plg
+        id: version
+        run: |
+          VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view2.plg)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          FILENAME="folder.view2-${VERSION}.txz"
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+
+      - name: Commit stable build to develop
+        run: |
+          git add archive/ folder.view2.plg
+          git commit -m "Release stable version ${{ steps.version.outputs.version }}"
+
+      - name: Push develop
+        run: git push origin develop
+
+      - name: Merge develop into main
+        run: |
+          git checkout main
+          git merge develop -m "Merge develop into main for release ${{ steps.version.outputs.version }}"
+          git push origin main
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: |
+            ## FolderView2 v${{ steps.version.outputs.version }}
+
+            Install URL: `https://raw.githubusercontent.com/chodeus/folder.view2/main/folder.view2.plg`
+
+            See [CHANGELOG-fixes.md](CHANGELOG-fixes.md) for detailed changes.
+          files: archive/${{ steps.version.outputs.filename }}
+          draft: false
+          prerelease: false

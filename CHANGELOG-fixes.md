@@ -6,6 +6,68 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.07-beta
+
+### Changes
+
+#### File: `scripts/vm.js`
+
+**Fix: VM folder assignment bug — containers matched by positional index instead of name (line 237):**
+
+```diff
+-    $(`tr.folder-id-${id} div.folder-storage`).append($('#kvm_list > tr.sortable').eq(index).addClass(`folder-${id}-element`).addClass(`folder-element`).removeClass('sortable'));
++    let $vmTR = $('#kvm_list > tr.sortable').filter(function() {
++        return $(this).find('td.vm-name span.outer span.inner a').first().text().trim() === container;
++    }).first();
++    $(`tr.folder-id-${id} div.folder-storage`).append($vmTR.addClass(`folder-${id}-element`).addClass(`folder-element`).removeClass('sortable'));
+```
+
+- **Problem:** VMs were grabbed by positional DOM index (`$('#kvm_list > tr.sortable').eq(index)`). When Folder A processed and removed VMs from the DOM, remaining row indices shifted, causing Folder B to grab wrong VMs.
+- **Fix:** Changed to name-based lookup using `.filter()` to match VM name text. This matches the approach already used in `docker.js` (lines 403-409).
+
+---
+
+#### File: `styles/docker.css`
+
+**Fix: CPU/memory text wrapping in advanced view (line 77):**
+
+```diff
++.folder-advanced {
++    white-space: nowrap;
++}
+```
+
+- **Problem:** The CPU & Memory Load column text (e.g. "439.00 MiB / 125.60 GiB") would wrap "GiB" to its own line when the column was narrow.
+- **Fix:** Added `white-space: nowrap` to prevent line breaking in the advanced stats cell.
+
+---
+
+#### File: Language files (`langs/de.json`, `es.json`, `it.json`, `pl.json`, `zh.json`)
+
+**Translation completeness fixes:**
+
+- **de.json**: Translated 3 remaining English strings in `custom-actions-folder-tooltip` (Arguments, Sync, Icon)
+- **es.json**: Translated 3 remaining English strings in `custom-actions-folder-tooltip` (Argumentos, Sincronizar, Icono)
+- **it.json**: Translated 3 keys left in English (`customizations` → "Personalizzazioni", `on` → "Sì", `off` → "No")
+- **zh.json**: Translated `override-default-actions`, its tooltip, `custom-actions-arguments`, and 2 English strings in `custom-actions-folder-tooltip`
+- **pl.json**: Added 62 missing keys (everything from `update-column` through `custom-actions-arguments`) to achieve full parity with en.json
+
+---
+
+### Quick Reference: All Fixes (Version 2026.02.07-beta)
+
+| # | Fix | File(s) | Impact |
+|---|-----|---------|--------|
+| 1 | VM folder assignment bug — wrong VMs in wrong folders | `vm.js:237` | Name-based lookup instead of positional index |
+| 2 | CPU/memory text wrapping "GiB" on own line | `docker.css` | Added `white-space: nowrap` to `.folder-advanced` |
+| 3 | German translation incomplete | `de.json` | 3 English strings translated |
+| 4 | Spanish translation incomplete | `es.json` | 3 English strings translated |
+| 5 | Italian translation incomplete | `it.json` | 3 keys translated |
+| 6 | Chinese translation incomplete | `zh.json` | 4+ keys translated |
+| 7 | Polish translation missing 62 keys | `pl.json` | 62 keys added for full parity |
+
+---
+
 ## Version 2026.02.04
 
 ### Changes
