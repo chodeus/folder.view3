@@ -7,7 +7,7 @@
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
 <!ENTITY version "2026.02.07">
-<!ENTITY md5 "8d26b83498a0ccf070fe56c69931b3b1">
+<!ENTITY md5 "71a16c20a1460aa9f0ade6d0a01a1476">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
