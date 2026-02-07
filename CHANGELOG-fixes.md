@@ -6,7 +6,7 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-## Version 2026.02.07.2
+## Version 2026.02.07
 
 ### Changes
 
@@ -55,7 +55,7 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-### Quick Reference: All Fixes (Version 2026.02.07.2)
+### Quick Reference: All Fixes (Version 2026.02.07)
 
 | # | Fix | File(s) | Impact |
 |---|-----|---------|--------|
