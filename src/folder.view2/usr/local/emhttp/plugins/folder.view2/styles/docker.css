@@ -16,6 +16,9 @@
 .folder-name {
     width: 220px;
     padding: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .folder-dropdown {
