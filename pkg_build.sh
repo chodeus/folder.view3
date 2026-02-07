@@ -37,10 +37,12 @@ then
 fi
 
 mkdir -p $tmpdir
-chmod 0755 -R .
 
 cd "$CWD/src/folder.view2"
 cp --parents -f $(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json"  \) ) $tmpdir/
+
+# Set permissions for Unraid (only in temp dir, not the repo)
+chmod -R 0755 $tmpdir
 
 cd $tmpdir
 tar -cJf $filename *
@@ -57,7 +59,6 @@ sed -i 's|&github;/[a-zA-Z]*/&name;.plg|\&github;/'"$branch"'/\&name;.plg|' $plg
 sed -i 's|&github;/[a-zA-Z]*/archive/|\&github;/'"$branch"'/archive/|' $plgfile
 
 rm -R $CWD/tmp
-chmod 0755 -R .
 
 echo "Package created: $filename"
 echo "Version: $version"
