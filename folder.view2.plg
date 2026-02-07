@@ -13,7 +13,7 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
 
-###2026.02.07-beta
+###2026.02.07-beta2
 - Fix: VM folder assignment bug — VMs appearing in wrong folders due to positional index matching
 - Fix: CPU/Memory text wrapping in advanced view (white-space nowrap)
 - Fix: Translation completeness for de, es, it, zh (untranslated strings) and pl (62 missing keys)
