@@ -124,7 +124,7 @@
     "file-manager": "打开文件管理器",
     "custom-actions": "自定义操作",
     "custom-actions-folder": "自定义操作：",
-    "custom-actions-folder-tooltip": "<b>名称：</b>操作名称。<br><b>类型：</b>操作类型。<br><ul><li><b>标准</b> - Docker容器的普通操作（启动、停止……）。</li><li><b>自定义</b> - 执行用户脚本（依赖User Scripts插件）。</li></ul><b>操作：</b>要执行的操作。<br><ul><li><b>循环切换</b> - 循环切换两个状态。</li><li><b>设置为</b> - 设置为一个状态。</li><li><b>重新启动</b> - 简单的重新启动。</li></ul><b>容器：</b>英文逗号（,）分割的容器列表。<br><b>脚本：</b>脚本名称（<b>名称区分大小写</b>）。<br><b>Arguments:</b> Arguments passed to the script.<br><b>同步执行：</b>是否要将脚本放在后台执行。<br><b>Icon:</b> Icon of the action, leave empty for default.",
+    "custom-actions-folder-tooltip": "<b>名称：</b>操作名称。<br><b>类型：</b>操作类型。<br><ul><li><b>标准</b> - Docker容器的普通操作（启动、停止……）。</li><li><b>自定义</b> - 执行用户脚本（依赖User Scripts插件）。</li></ul><b>操作：</b>要执行的操作。<br><ul><li><b>循环切换</b> - 循环切换两个状态。</li><li><b>设置为</b> - 设置为一个状态。</li><li><b>重新启动</b> - 简单的重新启动。</li></ul><b>容器：</b>英文逗号（,）分割的容器列表。<br><b>脚本：</b>脚本名称（<b>名称区分大小写</b>）。<br><b>参数：</b>传递给脚本的参数。<br><b>同步执行：</b>是否要将脚本放在后台执行。<br><b>图标：</b>操作的图标，留空使用默认图标。",
     "custom-action": "<i class=\"fa fa-plus\" aria-hidden=\"true\"></i> 添加自定义操作",
     "custom-action-tooltip": "让您对文件夹执行自定义操作。",
     "custom-actions-type": "类型：",
@@ -158,7 +158,7 @@
     "custom-actions-script-sync": "同步执行：",
     "preview-text-width": "文本宽度：",
     "preview-text-width-tooltip": "将在预览中限制容器名称文本的宽度。 <br>例如<b>12px</b>、<b>1rem</b>（更多写法详见<a href=\"https://developer.mozilla.org/zh-CN/docs/Web/CSS/length\">这篇</a>文档)。 <br>留空将不限制宽度。",
-    "override-default-actions": "Override default actions:",
-    "override-default-actions-tooltip": "Will remove the default menu and replace it with the custom actions set below.",
-    "custom-actions-arguments": "Arguments:"
+    "override-default-actions": "覆盖默认操作：",
+    "override-default-actions-tooltip": "将移除默认菜单，替换为下方设置的自定义操作。",
+    "custom-actions-arguments": "参数："
 }

@@ -233,8 +233,11 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             newFolder[container].id = ct.uuid;
             newFolder[container].state = ct.state;
 
-            // grab the container and put it onto the storage
-            $(`tr.folder-id-${id} div.folder-storage`).append($('#kvm_list > tr.sortable').eq(index).addClass(`folder-${id}-element`).addClass(`folder-element`).removeClass('sortable'));
+            // grab the container by name and put it onto the storage
+            let $vmTR = $('#kvm_list > tr.sortable').filter(function() {
+                return $(this).find('td.vm-name span.outer span.inner a').first().text().trim() === container;
+            }).first();
+            $(`tr.folder-id-${id} div.folder-storage`).append($vmTR.addClass(`folder-${id}-element`).addClass(`folder-element`).removeClass('sortable'));
 
             if(folderDebugMode) {
                 console.log(`${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
