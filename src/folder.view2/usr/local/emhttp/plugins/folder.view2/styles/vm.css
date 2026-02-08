@@ -9,6 +9,7 @@
 .folder-name {
     width: 220px;
     padding: 8px;
+    vertical-align: middle;
 }
 
 .folder-name-sub {
