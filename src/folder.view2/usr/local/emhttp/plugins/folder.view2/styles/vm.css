@@ -6,18 +6,16 @@
     visibility: hidden;
 }
 
-td.ct-name.folder-name {
+.folder-name {
     width: 220px;
-    padding: 0 8px;
-    height: 1px;
+    padding: 8px;
 }
 
 .folder-name-sub {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     overflow: hidden;
     gap: 4px;
-    height: 100%;
 }
 
 .folder-outer {
