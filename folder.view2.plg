@@ -7,11 +7,16 @@
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/develop/&name;.plg">
 <!ENTITY version "2026.02.08-beta4">
-<!ENTITY md5 "25d8904e262190d86da1093c7da7daf9">
+<!ENTITY md5 "1c8db3e47f1c39e487b11b89cf70573b">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
+
+###2026.02.08-beta4
+- Fix: Folder name wrapping in basic view — flexbox layout for Docker and VM tabs
+- Fix: Backward-compatible Docker Manager theme CSS for Unraid 6 support
+- New: Beta build workflow for GitHub Actions
 
 ###2026.02.07-beta2
 - Fix: VM folder assignment bug — VMs appearing in wrong folders due to positional index matching
