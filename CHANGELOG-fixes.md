@@ -6,36 +6,7 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-## Version 2026.02.08-beta5
-
-### Changes
-
-#### Files: `styles/docker.css`, `styles/vm.css`
-
-**Fix: Vertically center folder name, icon, and dropdown in folder row:**
-
-```diff
- .folder-name {
-     width: 220px;
-     padding: 8px;
-+    vertical-align: middle;
- }
-
- .folder-name-sub {
-     display: flex;
--    align-items: flex-start;
-+    align-items: center;
-     overflow: hidden;
-     gap: 4px;
- }
-```
-
-- **Problem:** The folder icon, name/status text, and dropdown button were aligned to the top of the row, causing them to sit higher than the centered content in other columns (version, network, etc.).
-- **Fix:** Added `vertical-align: middle` to `.folder-name` `<td>` to vertically center the cell contents within the table row. Changed `align-items` from `flex-start` to `center` on `.folder-name-sub` to vertically center the dropdown button relative to the icon/name block. Applied to both `docker.css` and `vm.css`.
-
----
-
-## Version 2026.02.08-beta3
+## Version 2026.02.08
 
 ### Changes
 
@@ -1029,17 +1000,15 @@ New binary archive package for the `2026.02.03` release. Contains compiled plugi
 
 ## Quick Reference: All Fixes
 
-### Version 2026.02.08-beta5
-
-| # | Fix | File(s) | Impact |
-|---|-----|---------|--------|
-| 1 | Vertically center folder row contents | `docker.css`, `vm.css` | `vertical-align: middle` on `.folder-name` td + `align-items: center` on `.folder-name-sub` |
-
-### Version 2026.02.08-beta3
+### Version 2026.02.08
 
 | # | Fix | File(s) | Impact |
 |---|-----|---------|--------|
 | 1 | Folder name wrapping in basic view | `docker.css`, `vm.css` | Flexbox layout on `.folder-name-sub`, ellipsis on `.folder-outer`, dropdown pinned right |
+| 2 | VM folder assignment bug | `vm.js` | Name-based lookup instead of positional index |
+| 3 | CPU/memory text wrapping | `docker.css` | `white-space: nowrap` on `.folder-cpu`/`.folder-mem` |
+| 4 | Translation completeness | `de.json`, `es.json`, `it.json`, `zh.json`, `pl.json` | All languages at full parity with en.json |
+| 5 | Backward-compatible Docker Manager CSS | `Folder.page` | Conditional include for Unraid 6 support |
 
 ### Version 2026.02.04
 
