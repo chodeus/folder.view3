@@ -16,6 +16,8 @@
 ###2026.02.08
 - Fix folder name wrapping in basic view
 - Backward-compatible Docker Manager theme CSS for Unraid 6
+
+###2026.02.07
 - Fix VM folder assignment bug
 - Fix CPU/Memory text wrapping in advanced view
 - Translation updates for de, es, it, pl, zh
