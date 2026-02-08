@@ -20,7 +20,7 @@
 
 .folder-name-sub {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     overflow: hidden;
     gap: 4px;
 }
