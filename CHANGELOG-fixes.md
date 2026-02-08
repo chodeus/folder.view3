@@ -6,6 +6,29 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.08-beta5
+
+### Changes
+
+#### Files: `styles/docker.css`, `styles/vm.css`
+
+**Fix: Vertically center folder name, icon, and dropdown in folder row:**
+
+```diff
+ .folder-name-sub {
+     display: flex;
+-    align-items: flex-start;
++    align-items: center;
+     overflow: hidden;
+     gap: 4px;
+ }
+```
+
+- **Problem:** The folder icon, name/status text, and dropdown button were aligned to the top of the row (`flex-start`), causing them to sit higher than the centered content in other columns (version, network, etc.).
+- **Fix:** Changed `align-items` from `flex-start` to `center` on `.folder-name-sub` in both `docker.css` and `vm.css`. This vertically centers all folder row contents to align with the rest of the table row.
+
+---
+
 ## Version 2026.02.08-beta3
 
 ### Changes
@@ -999,6 +1022,12 @@ New binary archive package for the `2026.02.03` release. Contains compiled plugi
 ---
 
 ## Quick Reference: All Fixes
+
+### Version 2026.02.08-beta5
+
+| # | Fix | File(s) | Impact |
+|---|-----|---------|--------|
+| 1 | Vertically center folder row contents | `docker.css`, `vm.css` | `align-items: center` on `.folder-name-sub` aligns icon, name, dropdown with other columns |
 
 ### Version 2026.02.08-beta3
 
