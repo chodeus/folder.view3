@@ -6,14 +6,16 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.07">
-<!ENTITY md5 "71a16c20a1460aa9f0ade6d0a01a1476">
+<!ENTITY version "2026.02.08">
+<!ENTITY md5 "fe0c63ea5b26d9a66060bb2cfef59d47">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
 
-###2026.02.07
+###2026.02.08
+- Fix: Folder name wrapping in basic view — flexbox layout for Docker and VM tabs
+- Fix: Backward-compatible Docker Manager theme CSS for Unraid 6 support
 - Fix: VM folder assignment bug — VMs appearing in wrong folders due to positional index matching
 - Fix: CPU/Memory text wrapping in advanced view (white-space nowrap)
 - Fix: Translation completeness for de, es, it, zh (untranslated strings) and pl (62 missing keys)

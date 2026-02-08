@@ -6,7 +6,46 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-## Version 2026.02.07
+## Version 2026.02.08
+
+### Changes
+
+#### Files: `styles/docker.css`, `styles/vm.css`
+
+**Fix: Folder name wrapping in basic view:**
+
+```diff
++.folder-name-sub {
++    display: flex;
++    align-items: flex-start;
++    overflow: hidden;
++    gap: 4px;
++}
++
++.folder-outer {
++    overflow: hidden;
++    text-overflow: ellipsis;
++    white-space: nowrap;
++    min-width: 0;
++}
++
+ .folder-dropdown {
+     padding: 6px;
+     min-width: 0;
+     margin: 0;
+-    margin-left: 1em;
+-    float: right;
++    margin-left: auto;
++    flex-shrink: 0;
+ }
+```
+
+- **Problem:** In basic view, folder names (e.g. "Media Automation", "File Management") would wrap to extra lines, causing rows to be taller than expected. The dropdown arrow button also floated incorrectly.
+- **Fix:** Changed `.folder-name-sub` to flexbox layout with `gap: 4px` for consistent spacing. Applied `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` to `.folder-outer` so long names truncate with ellipsis. Replaced `float: right` on `.folder-dropdown` with `margin-left: auto; flex-shrink: 0` to keep the button pinned right without wrapping issues. Same fix applied to both Docker and VM tabs.
+
+---
+
+## Version 2026.02.07-beta2
 
 ### Changes
 
@@ -55,7 +94,7 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-### Quick Reference: All Fixes (Version 2026.02.07)
+### Quick Reference: All Fixes (Version 2026.02.07-beta2)
 
 | # | Fix | File(s) | Impact |
 |---|-----|---------|--------|
@@ -960,6 +999,16 @@ New binary archive package for the `2026.02.03` release. Contains compiled plugi
 ---
 
 ## Quick Reference: All Fixes
+
+### Version 2026.02.08
+
+| # | Fix | File(s) | Impact |
+|---|-----|---------|--------|
+| 1 | Folder name wrapping in basic view | `docker.css`, `vm.css` | Flexbox layout on `.folder-name-sub`, ellipsis on `.folder-outer`, dropdown pinned right |
+| 2 | VM folder assignment bug | `vm.js` | Name-based lookup instead of positional index |
+| 3 | CPU/memory text wrapping | `docker.css` | `white-space: nowrap` on `.folder-cpu`/`.folder-mem` |
+| 4 | Translation completeness | `de.json`, `es.json`, `it.json`, `zh.json`, `pl.json` | All languages at full parity with en.json |
+| 5 | Backward-compatible Docker Manager CSS | `Folder.page` | Conditional include for Unraid 6 support |
 
 ### Version 2026.02.04
 
