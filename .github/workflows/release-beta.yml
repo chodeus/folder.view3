@@ -1,0 +1,80 @@
+name: Release Beta
+
+on:
+  workflow_dispatch:
+
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine next beta number
+        id: beta
+        run: |
+          TODAY=$(date +"%Y.%m.%d")
+
+          # Count existing beta packages for today
+          EXISTING=$(ls archive/folder.view2-${TODAY}-beta*.txz 2>/dev/null | wc -l)
+
+          if [ "$EXISTING" -eq 0 ]; then
+            BETA_NUM=""
+            VERSION="${TODAY}-beta"
+          else
+            # Next number: if 1 exists (beta), next is beta2; if 2 exist (beta, beta2), next is beta3, etc.
+            NEXT=$((EXISTING + 1))
+            BETA_NUM="$NEXT"
+            VERSION="${TODAY}-beta${NEXT}"
+          fi
+
+          echo "beta_num=$BETA_NUM" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Next beta version: $VERSION"
+
+      - name: Build beta package
+        run: |
+          chmod +x pkg_build.sh
+          if [ -n "${{ steps.beta.outputs.beta_num }}" ]; then
+            bash pkg_build.sh --beta ${{ steps.beta.outputs.beta_num }}
+          else
+            bash pkg_build.sh --beta
+          fi
+
+      - name: Verify build
+        run: |
+          VERSION="${{ steps.beta.outputs.version }}"
+          FILENAME="archive/folder.view2-${VERSION}.txz"
+
+          if [ ! -f "$FILENAME" ]; then
+            echo "ERROR: Expected $FILENAME not found"
+            ls -la archive/
+            exit 1
+          fi
+
+          # Verify plg was updated
+          PLG_VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view2.plg)
+          echo "Package: $FILENAME"
+          echo "PLG version: $PLG_VERSION"
+
+          if [ "$PLG_VERSION" != "$VERSION" ]; then
+            echo "ERROR: PLG version ($PLG_VERSION) doesn't match expected ($VERSION)"
+            exit 1
+          fi
+
+      - name: Commit and push to develop
+        run: |
+          git add archive/ folder.view2.plg
+          git commit -m "Build beta ${{ steps.beta.outputs.version }}"
+          git push origin develop
