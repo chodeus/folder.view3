@@ -14,32 +14,26 @@
     <CHANGES>
 
 ###2026.02.08
-- Fix: Folder name wrapping in basic view — flexbox layout for Docker and VM tabs
-- Fix: Backward-compatible Docker Manager theme CSS for Unraid 6 support
-- Fix: VM folder assignment bug — VMs appearing in wrong folders due to positional index matching
-- Fix: CPU/Memory text wrapping in advanced view (white-space nowrap)
-- Fix: Translation completeness for de, es, it, zh (untranslated strings) and pl (62 missing keys)
+- Fix folder name wrapping in basic view
+- Backward-compatible Docker Manager theme CSS for Unraid 6
+- Fix VM folder assignment bug
+- Fix CPU/Memory text wrapping in advanced view
+- Translation updates for de, es, it, pl, zh
 
 ###2026.02.05
-- Fix: Corrected archive packaging structure (removed erroneous build/ prefix that prevented plugin from installing)
+- Fix archive packaging structure
 
 ###2026.02.04
-- UI: Moved preview border and color settings underneath preview vertical bars in folder settings
-- UI: Split border and vertical bars into separate color pickers
-- UI: Each color picker nested directly under its associated toggle
-- UI: Border color only shows when border is enabled, bars color only shows when vertical bars is enabled
-- UI: Reset button now matches color swatch dimensions and alignment
-- UI: Updated all language files (en, de, es, fr, it, pl, zh) with split color labels
-- UI: Shortened border color label to "Border color:" to align with "Vertical bars color:"
-- Backwards compatible: existing folders inherit vertical bars color from border color
-- Fix: Expanded folder bottom border no longer uses preview border color
+- Split border and vertical bars into separate color pickers
+- Border/bars color settings now nested under their toggles
+- Fix expanded folder bottom border color
 
 ###2026.02.03
-- Fix: Folder CPU and Memory stats not updating in advanced view
-- Fix: Docker Compose containers not being grouped into folders
-- Fix: Advanced Preview tooltip now works with all Unraid themes
-- Fix: Folder settings page layout issues on widescreen and mobile
-- Fix: Removed missing Docker Manager CSS reference causing nginx 404 errors
+- Fix folder CPU and Memory stats not updating in advanced view
+- Fix Docker Compose containers not grouping into folders
+- Fix Advanced Preview tooltip for all Unraid themes
+- Fix folder settings page layout
+- Remove missing Docker Manager CSS reference
 
 ###2025.04.13
 - Fix: Ongoing effort to get new verson to CA, renamed folder.view to folder.view2
