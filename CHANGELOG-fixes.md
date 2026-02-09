@@ -6,6 +6,40 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.09.1
+
+### Changes
+
+#### File: `scripts/dashboard.js`
+
+**Fix: Dashboard showing wrong containers in folders:**
+
+Docker container matching (line ~311):
+```diff
+-            element.append($('tbody#docker_view > tr.updated > td').children().eq(index).addClass(...));
++            const $containerEl = $('tbody#docker_view > tr.updated > td').children('span.outer').not('.folder-docker').filter(function() {
++                const innerText = $(this).find('span.inner').contents().first().text().trim();
++                return innerText === container;
++            }).first();
++            element.append($containerEl.addClass(`folder-${id}-element`).addClass(`folder-element-docker`).addClass(`${!(ct.info.State.Autostart === false) ? 'autostart' : ''}`));
+```
+
+VM matching (line ~506):
+```diff
+-            $(`tbody#vm_view span#folder-id-${id}`).siblings('div.folder-storage').append($('tbody#vm_view > tr.updated > td').children().eq(index).addClass(...));
++            const $vmEl = $('tbody#vm_view > tr.updated > td').children('span.outer').not('.folder-vm').filter(function() {
++                const innerText = $(this).find('span.inner').contents().first().text().trim();
++                return innerText === container;
++            }).first();
++            $(`tbody#vm_view span#folder-id-${id}`).siblings('div.folder-storage').append($vmEl.addClass(`folder-${id}-element`).addClass(`folder-element-vm`).addClass(`${ct.autostart ? 'autostart' : ''}`));
+```
+
+- **Problem:** Dashboard used positional index matching (`.children().eq(index)`) to assign containers to folders. As each container was moved into a folder, the remaining DOM indices shifted, causing subsequent lookups to grab the wrong container. This was especially visible for users who migrated from the upstream fork where the order array diverged from the actual DOM order.
+- **Fix:** Switched to name-based matching — filters `span.outer` elements by comparing the text content of `span.inner` against the container name from the folder config. Uses `.not('.folder-docker')` / `.not('.folder-vm')` to exclude folder elements from the search. This matches the approach already used in `docker.js` and `vm.js`.
+- **Why positional matching failed:** Each time a container was moved into a folder via `.append()`, it was removed from the main DOM flow. The next `.children().eq(index)` lookup used an index calculated from the original order, but the DOM had already shifted — container at position N was no longer the expected one.
+
+---
+
 ## Version 2026.02.09
 
 ### Changes
