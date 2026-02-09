@@ -141,8 +141,9 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         $('#kvm_list > tr.sortable').eq(position - 1).next().after($(fld));
     }
 
-    // create the *cool* unraid button for the autostart
-    $(`#folder-${id}-auto`).switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on'), checked: false });
+    // NOTE: switchButton initialization is deferred until after autostart state is known (see below).
+    // This avoids the bug where initializing with checked:false then clicking ON could
+    // fire a change event that resets VM autostart settings.
 
     // Set the border if enabled and set the color
     if(folder.settings.preview_border) {
@@ -316,9 +317,11 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
     }
 
-    if (autostart) {
-        $(`#folder-${id}-auto`).next().click();
-    }
+    // Initialize switchButton with the correct checked state directly — no click() needed.
+    // This prevents the bug where checked:false + click() could fire a change event
+    // that propagates to folderAutostart and resets VM autostart settings.
+    const folderHasAutostart = autostart > 0;
+    $(`#folder-${id}-auto`).switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on'), checked: folderHasAutostart });
 
     if(autostart === 0) {
         $(`tr.folder-id-${id}`).addClass('no-autostart');
@@ -337,8 +340,8 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     folder.status.autostartStarted = autostartStarted;
     folder.status.expanded = false;
 
-    // add the function to handle the change on the autostart checkbox, this is here because of the if before, i don't want to handle the change i triggered before
-    $(`#folder-${id}-auto`).on("change", folderAutostart);
+    // Attach handler AFTER switchButton is fully initialized with correct state
+    $(`#folder-${id}-auto`).off("change", folderAutostart).on("change", folderAutostart);
 
     folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-creation', {detail: {
         folder: folder,
