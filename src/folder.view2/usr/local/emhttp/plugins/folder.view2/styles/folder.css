@@ -69,9 +69,13 @@ table.sortable td:last-child {
     margin-left: 1em;
 }
 
-/* Keep color picker and reset button on same line */
+/* Keep color picker and reset button on same line.
+   Unraid 7 sets dd { flex-direction: column } on wide screens,
+   which stacks them vertically. Override to row. */
 .canvas form dd:has(> input[type="color"]) {
-    white-space: nowrap;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5em;
 }
 
 /* Order section - display label above full-width table */
