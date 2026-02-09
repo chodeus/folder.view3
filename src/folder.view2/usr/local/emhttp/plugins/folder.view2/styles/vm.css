@@ -8,9 +8,8 @@
 
 td.vm-name.folder-name {
     width: 220px;
-    padding: 0 8px;
-    display: flex;
-    align-items: center;
+    padding: 8px;
+    vertical-align: middle;
 }
 
 .folder-name-sub {
@@ -18,7 +17,6 @@ td.vm-name.folder-name {
     align-items: center;
     overflow: hidden;
     gap: 4px;
-    width: 100%;
 }
 
 .folder-outer {
