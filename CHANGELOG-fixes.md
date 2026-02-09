@@ -6,6 +6,96 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.09
+
+### Changes
+
+#### Files: `scripts/docker.js`, `scripts/vm.js`
+
+**Fix: Folder autostart toggles showing OFF after plugin update:**
+
+```diff
+-    $(`#folder-${id}-auto`).switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on'), checked: false });
++    // Deferred: switchButton initialization moved to after autostart state is calculated
+```
+
+```diff
+-    if (autostart) {
+-        $(`#folder-${id}-auto`).next().click();
+-    }
++    const folderHasAutostart = autostart > 0;
++    $(`#folder-${id}-auto`).switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on'), checked: folderHasAutostart });
+```
+
+```diff
+-    $(`#folder-${id}-auto`).on("change", folderAutostart);
++    $(`#folder-${id}-auto`).off("change", folderAutostart).on("change", folderAutostart);
+```
+
+- **Problem:** Autostart toggles initialized with `checked: false` then programmatically clicked ON via `.next().click()`. This fired a change event that could propagate to `folderAutostart()` and reset container autostart settings. After a plugin update, all folder autostart toggles appeared OFF even though containers were correctly set to autostart.
+- **Fix:** Deferred switchButton initialization until the autostart state is fully calculated, then initialized with the correct `checked` value directly. Added `.off()` before `.on()` to prevent duplicate event handler attachment. Same fix applied to both Docker and VM tabs.
+
+---
+
+#### File: `Folder.page`
+
+**Change: New folder defaults to all toggles OFF:**
+
+```diff
+-<input class="basic-switch" name="preview_update" type="checkbox" style="display: none;" checked />
++<input class="basic-switch" name="preview_update" type="checkbox" style="display: none;" />
+```
+
+- **Change:** Removed `checked` attribute from 5 checkboxes: `preview_update`, `preview_webui`, `preview_logs`, `preview_console`, `preview_border`. New folders now default to all preview toggles OFF instead of ON.
+
+---
+
+#### File: `styles/folder.css`
+
+**Fix: Color reset button appearing below color swatch:**
+
+```diff
++.canvas form dd:has(> input[type="color"]) {
++    flex-direction: row;
++    align-items: center;
++    gap: 0.5em;
++}
+```
+
+- **Problem:** Unraid 7 sets `dd { flex-direction: column }` on wide screens via media query, which stacked the color swatch and reset button vertically. On narrow screens the button appeared correctly beside the swatch.
+- **Fix:** Override `flex-direction: row` on `<dd>` elements containing color inputs using the `:has()` selector.
+
+---
+
+#### Files: `styles/docker.css`, `styles/vm.css`
+
+**Change: Folder name sub alignment:**
+
+```diff
+ .folder-name-sub {
+     display: flex;
+-    align-items: flex-start;
++    align-items: center;
+     overflow: hidden;
+     gap: 4px;
+ }
+```
+
+- **Change:** Changed from `flex-start` to `center` to vertically center the folder icon, name text, and dropdown arrow relative to each other within the flex container.
+
+---
+
+### Quick Reference: All Fixes (Version 2026.02.09)
+
+| # | Fix | File(s) | Impact |
+|---|-----|---------|--------|
+| 1 | Autostart toggles showing OFF after plugin update | `docker.js`, `vm.js` | Initialize switchButton with correct state, no click() hack |
+| 2 | New folder defaults all toggles ON | `Folder.page` | Removed `checked` from 5 checkboxes |
+| 3 | Color reset button below swatch on widescreen | `folder.css` | Override Unraid 7 `flex-direction: column` on dd |
+| 4 | Folder name sub alignment | `docker.css`, `vm.css` | `align-items: center` on `.folder-name-sub` |
+
+---
+
 ## Version 2026.02.08
 
 ### Changes
