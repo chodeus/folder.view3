@@ -285,8 +285,10 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
         }
     }
 
-    $(`#folder-${id}-auto`).switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on'), checked: false });
-    if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): Initialized autostart switchButton.`);
+    // NOTE: switchButton initialization is deferred until after autostart state is known (see below).
+    // This avoids the bug where initializing with checked:false then clicking ON could
+    // fire a change event that resets container autostart settings.
+    if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): switchButton init deferred until autostart state is calculated.`);
 
     if(folder.settings.preview_border) {
         if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): Setting preview border color to ${folder.settings.preview_border_color}.`);
@@ -979,10 +981,12 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
         $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
         if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): Set 'started' status. Count: ${started}/${Object.entries(folder.containers).length}.`);
     }
-    if (autostart) {
-        $(`#folder-${id}-auto`).next().click();
-        if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): At least one container has autostart. Clicked folder autostart switch ON. Autostart count: ${autostart}`);
-    }
+    // Initialize switchButton with the correct checked state directly — no click() needed.
+    // This prevents the bug where checked:false + click() could fire a change event
+    // that propagates to folderAutostart and resets container autostart settings.
+    const folderHasAutostart = autostart > 0;
+    $(`#folder-${id}-auto`).switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on'), checked: folderHasAutostart });
+    if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): Initialized autostart switchButton with checked=${folderHasAutostart}. Autostart count: ${autostart}`);
 
     if(autostart === 0) { $(`tr.folder-id-${id}`).addClass('no-autostart'); }
     else if (autostart > 0 && autostartStarted === 0) { $(`tr.folder-id-${id}`).addClass('autostart-off'); }
@@ -998,7 +1002,8 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     folder.status = { upToDate, started, autostart, autostartStarted, managed, expanded: false };
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): Set final folder.status object:`, JSON.parse(JSON.stringify(folder.status)));
 
-    $(`#folder-${id}-auto`).on("change", folderAutostart);
+    // Attach handler AFTER switchButton is fully initialized with correct state
+    $(`#folder-${id}-auto`).off("change", folderAutostart).on("change", folderAutostart);
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): Attached 'change' event to folder autostart switch.`);
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] createFolder (id: ${id}): Dispatching docker-post-folder-creation event.`);
     folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-creation', {detail: {
