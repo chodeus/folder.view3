@@ -288,6 +288,10 @@ const submitForm = async (e) => {
         await $.post('/plugins/folder.view2/server/create.php', { type: type, content: JSON.stringify(folder) });
     }
 
+    if (type === 'docker') {
+        await $.post('/plugins/folder.view2/server/sync_order.php', { type: type });
+    }
+
     // return to the right tab
     let loc = location.pathname.split('/');
     loc.pop();
