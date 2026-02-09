@@ -6,10 +6,9 @@
     visibility: hidden;
 }
 
-td.vm-name.folder-name {
+.folder-name {
     width: 220px;
     padding: 8px;
-    vertical-align: middle !important;
 }
 
 .folder-name-sub {
