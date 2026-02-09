@@ -6,16 +6,17 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.02.09-beta3">
-<!ENTITY md5 "6f711dd0728c6b12e913819a2255b008">
+<!ENTITY version "2026.02.09-beta4">
+<!ENTITY md5 "d6d426216fd2b879420f6b9566cbba65">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
 
-###2026.02.09-beta3
+###2026.02.09-beta4
 - Fix folder autostart toggles showing OFF incorrectly after plugin update
-- Revert vertical-align CSS to avoid conflicts with custom.css
+- Change new folder defaults to all toggles OFF
+- Fix color reset button position next to color swatch
 
 ###2026.02.08
 - Fix folder name wrapping in basic view

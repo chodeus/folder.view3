@@ -98,7 +98,7 @@ Markdown="false"
                     <dl>
                         <dt data-i18n="preview-update">Orange text on update:</dt>
                         <dd>
-                            <input class="basic-switch" name="preview_update" type="checkbox" style="display: none;" checked />
+                            <input class="basic-switch" name="preview_update" type="checkbox" style="display: none;" />
                         </dd>
                     </dl>
                     <blockquote class="inline_help">
@@ -143,7 +143,7 @@ Markdown="false"
                     <dl>
                         <dt data-i18n="preview-webui">Add preview open WebUI:</dt>
                         <dd>
-                            <input class="basic-switch" name="preview_webui" type="checkbox" style="display: none;" checked />
+                            <input class="basic-switch" name="preview_webui" type="checkbox" style="display: none;" />
                         </dd>
                     </dl>
                     <blockquote class="inline_help">
@@ -158,7 +158,7 @@ Markdown="false"
                     <dl>
                         <dt data-i18n="preview-logs">Add preview open logs:</dt>
                         <dd>
-                            <input class="basic-switch" name="preview_logs" type="checkbox" style="display: none;" checked />
+                            <input class="basic-switch" name="preview_logs" type="checkbox" style="display: none;" />
                         </dd>
                     </dl>
                     <blockquote class="inline_help">
@@ -173,7 +173,7 @@ Markdown="false"
                     <dl>
                         <dt data-i18n="preview-console">Add preview open console:</dt>
                         <dd>
-                            <input class="basic-switch" name="preview_console" type="checkbox" style="display: none;" checked />
+                            <input class="basic-switch" name="preview_console" type="checkbox" style="display: none;" />
                         </dd>
                     </dl>
                     <blockquote class="inline_help">
@@ -225,7 +225,7 @@ Markdown="false"
                     <dl>
                         <dt data-i18n="border">Show preview border:</dt>
                         <dd>
-                            <input class="basic-switch" checked name="preview_border" type="checkbox" style="display: none;" onchange="updateForm()" />
+                            <input class="basic-switch" name="preview_border" type="checkbox" style="display: none;" onchange="updateForm()" />
                         </dd>
                     </dl>
                     <blockquote class="inline_help">
