@@ -307,8 +307,12 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
             // grab the storage folder
             const element = $(`tbody#docker_view span#folder-id-${id}`).siblings('div.folder-storage');
-            // grab the container and put it onto the storage
-            element.append($('tbody#docker_view > tr.updated > td').children().eq(index).addClass(`folder-${id}-element`).addClass(`folder-element-docker`).addClass(`${!(ct.info.State.Autostart === false) ? 'autostart' : ''}`));
+            // grab the container by name match (not positional index, which drifts as folders remove elements)
+            const $containerEl = $('tbody#docker_view > tr.updated > td').children('span.outer').not('.folder-docker').filter(function() {
+                const innerText = $(this).find('span.inner').contents().first().text().trim();
+                return innerText === container;
+            }).first();
+            element.append($containerEl.addClass(`folder-${id}-element`).addClass(`folder-element-docker`).addClass(`${!(ct.info.State.Autostart === false) ? 'autostart' : ''}`));
             
 
             newFolder[container] = {};
@@ -498,8 +502,12 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
             newFolder[container].id = ct.uuid;
             newFolder[container].state = ct.state;
 
-            // grab the container and put it onto the storage
-            $(`tbody#vm_view span#folder-id-${id}`).siblings('div.folder-storage').append($('tbody#vm_view > tr.updated > td').children().eq(index).addClass(`folder-${id}-element`).addClass(`folder-element-vm`).addClass(`${ct.autostart ? 'autostart' : ''}`));
+            // grab the container by name match (not positional index, which drifts as folders remove elements)
+            const $vmEl = $('tbody#vm_view > tr.updated > td').children('span.outer').not('.folder-vm').filter(function() {
+                const innerText = $(this).find('span.inner').contents().first().text().trim();
+                return innerText === container;
+            }).first();
+            $(`tbody#vm_view span#folder-id-${id}`).siblings('div.folder-storage').append($vmEl.addClass(`folder-${id}-element`).addClass(`folder-element-vm`).addClass(`${ct.autostart ? 'autostart' : ''}`));
 
             if(folderDebugMode) {
                 console.log(`VM ${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
