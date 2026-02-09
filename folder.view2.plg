@@ -5,18 +5,18 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.02.09-beta5">
-<!ENTITY md5 "5bf9c78b7057a1b32a067835a947c976">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+<!ENTITY version "2026.02.09">
+<!ENTITY md5 "730b9bfc6ad9c7a3eb3fac9195431e16">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
 
-###2026.02.09-beta5
-- Fix folder autostart toggles showing OFF incorrectly after plugin update
+###2026.02.09
+- Fix folder autostart toggles showing OFF after plugin update
+- Fix color reset button appearing below color swatch
 - Change new folder defaults to all toggles OFF
-- Fix color reset button position next to color swatch
 
 ###2026.02.08
 - Fix folder name wrapping in basic view
@@ -316,7 +316,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
