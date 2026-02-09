@@ -16,7 +16,7 @@
 td.ct-name.folder-name {
     width: 220px;
     padding: 8px;
-    vertical-align: middle;
+    vertical-align: middle !important;
 }
 
 .folder-name-sub {
