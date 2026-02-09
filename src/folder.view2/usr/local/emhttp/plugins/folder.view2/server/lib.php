@@ -86,7 +86,84 @@
         $parsedIni = @parse_ini_file($prefsFilePath);
         return json_encode($parsedIni ?: []);
     }
-    
+
+    function syncContainerOrder(string $type): void {
+        global $configDir;
+        fv2_debug_log("syncContainerOrder called for type: $type");
+
+        if ($type !== 'docker') { return; }
+
+        $prefsFile = "/boot/config/plugins/dockerMan/userprefs.cfg";
+        if (!file_exists($prefsFile)) { return; }
+
+        $currentPrefs = @parse_ini_file($prefsFile);
+        $currentOrder = $currentPrefs ? array_values($currentPrefs) : [];
+
+        $foldersFile = "$configDir/docker.json";
+        $folders = file_exists($foldersFile) ? (json_decode(file_get_contents($foldersFile), true) ?: []) : [];
+
+        $dockerClient = new DockerClient();
+        $allContainerNames = array_column($dockerClient->getDockerContainers(), 'Name');
+
+        $folderContainers = [];
+        $assignedContainers = [];
+        foreach ($folders as $folderId => $folder) {
+            $members = $folder['containers'] ?? [];
+            if (!empty($folder['regex'])) {
+                $regex = '/' . str_replace('/', '\/', $folder['regex']) . '/';
+                foreach ($allContainerNames as $name) {
+                    if (@preg_match($regex, $name) && !in_array($name, $members)) {
+                        $members[] = $name;
+                    }
+                }
+            }
+            $members = array_values(array_filter($members, function($m) use ($allContainerNames, $assignedContainers) {
+                return in_array($m, $allContainerNames) && !in_array($m, $assignedContainers);
+            }));
+            $folderContainers["folder-$folderId"] = $members;
+            $assignedContainers = array_merge($assignedContainers, $members);
+        }
+
+        $newOrder = [];
+        $seen = [];
+        foreach ($currentOrder as $item) {
+            if (isset($folderContainers[$item])) {
+                foreach ($folderContainers[$item] as $ct) {
+                    if (!in_array($ct, $seen)) { $newOrder[] = $ct; $seen[] = $ct; }
+                }
+                $newOrder[] = $item;
+                $seen[] = $item;
+            } elseif (in_array($item, $assignedContainers)) {
+                continue;
+            } elseif (in_array($item, $allContainerNames) && !in_array($item, $seen)) {
+                $newOrder[] = $item;
+                $seen[] = $item;
+            }
+        }
+
+        foreach ($allContainerNames as $name) {
+            if (!in_array($name, $seen) && !in_array($name, $assignedContainers)) {
+                $newOrder[] = $name;
+            }
+        }
+        foreach (array_keys($folderContainers) as $placeholder) {
+            if (!in_array($placeholder, $seen)) {
+                foreach ($folderContainers[$placeholder] as $ct) {
+                    if (!in_array($ct, $seen)) { $newOrder[] = $ct; $seen[] = $ct; }
+                }
+                $newOrder[] = $placeholder;
+                $seen[] = $placeholder;
+            }
+        }
+
+        $ini = "";
+        foreach ($newOrder as $i => $name) {
+            $ini .= ($i + 1) . '="' . $name . '"' . "\n";
+        }
+        file_put_contents($prefsFile, $ini);
+        fv2_debug_log("syncContainerOrder: wrote userprefs.cfg with " . count($newOrder) . " entries");
+    }
+
     function updateFolder(string $type, string $content, string $id = '') : void {
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); if (empty($id)) $id = generateId(); }
