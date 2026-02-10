@@ -6,6 +6,27 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.10-beta2
+
+### Changes
+
+#### File: `server/lib.php`
+
+**Fix: readUserPrefs() returning JSON object instead of array, crashing Docker/VM/Dashboard tabs:**
+
+Function `readUserPrefs()` (line ~87):
+```diff
+-        return json_encode($parsedIni ?: []);
++        return json_encode(array_values($parsedIni ?: []));
+```
+
+- **Problem:** `parse_ini_file()` on `userprefs.cfg` returns an associative array with 1-based numeric keys (`{1: "name", 2: "name", ...}`). `json_encode()` serializes 1-based arrays as JSON **objects**, not arrays. When `docker.js` called `JSON.parse()` on this, `unraidOrder` became a plain object, causing `unraidOrder.includes()` to crash with `TypeError: unraidOrder.includes is not a function`.
+- **Trigger:** This only manifested after `syncContainerOrder()` (added in beta1) rewrote `userprefs.cfg` with 1-based numeric keys (`1="name"`). Before that rewrite, Unraid's own format used string keys that happened to serialize correctly.
+- **Fix:** Wrapped `$parsedIni` in `array_values()` to force a 0-indexed sequential array, which `json_encode()` always serializes as a JSON array.
+- **Scope:** Affects all three tabs — Docker, VMs, and Dashboard — since they all consume `read_order.php` → `readUserPrefs()`.
+
+---
+
 ## Version 2026.02.10-beta1
 
 ### Changes

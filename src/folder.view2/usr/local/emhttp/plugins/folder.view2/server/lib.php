@@ -84,7 +84,7 @@
         else { return '[]'; }
         if(!file_exists($prefsFilePath)) { return '[]'; }
         $parsedIni = @parse_ini_file($prefsFilePath);
-        return json_encode($parsedIni ?: []);
+        return json_encode(array_values($parsedIni ?: []));
     }
 
     function syncContainerOrder(string $type): void {
