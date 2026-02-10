@@ -6,12 +6,18 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.09.1">
-<!ENTITY md5 "f21edcf8db13da1adc390c144ea5f5a0">
+<!ENTITY version "2026.02.10">
+<!ENTITY md5 "219a3c30a6a3cd81cb623745e74fd5ee">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
+
+###2026.02.10
+- Fix autostart toggle race condition when toggling folder-level autostart
+- Sync container autostart order to match folder settings layout
+- Fix folders not loading after reordering containers
+- Remove commented-out debug code and stale files
 
 ###2026.02.09.1
 - Fix dashboard showing wrong containers in folders

@@ -6,6 +6,165 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.10-beta3
+
+### Changes
+
+#### File: `server/lib.php`
+
+**Feature: Sync autostart order when saving folder container order:**
+
+Function `syncContainerOrder()` — new block after `userprefs.cfg` write (line ~166):
+
+- **Change:** After rewriting `userprefs.cfg`, now also reorders `/var/lib/docker/unraid-autostart` to match the new container sequence.
+- **Behavior:** Reads the existing autostart file, builds a name→line map (preserving any `name=delay` format), then rewrites entries in the same order as `$newOrder` (the merged container+folder order from `userprefs.cfg`).
+- **Safety:** Only reorders containers that already have autostart enabled — never adds or removes autostart status. Any autostart entries not found in `$newOrder` are appended at the end as a safety net.
+- **Config path:** Reads `autostart-file` from `/boot/config/plugins/dockerMan/dockerMan.cfg`, falling back to `/var/lib/docker/unraid-autostart`.
+- **Effect:** When a user reorders containers in the folder settings page, the autostart order now reflects that order — containers higher in the folder start first.
+
+---
+
+## Version 2026.02.10-beta2
+
+### Changes
+
+#### File: `server/lib.php`
+
+**Fix: readUserPrefs() returning JSON object instead of array, crashing Docker/VM/Dashboard tabs:**
+
+Function `readUserPrefs()` (line ~87):
+```diff
+-        return json_encode($parsedIni ?: []);
++        return json_encode(array_values($parsedIni ?: []));
+```
+
+- **Problem:** `parse_ini_file()` on `userprefs.cfg` returns an associative array with 1-based numeric keys (`{1: "name", 2: "name", ...}`). `json_encode()` serializes 1-based arrays as JSON **objects**, not arrays. When `docker.js` called `JSON.parse()` on this, `unraidOrder` became a plain object, causing `unraidOrder.includes()` to crash with `TypeError: unraidOrder.includes is not a function`.
+- **Trigger:** This only manifested after `syncContainerOrder()` (added in beta1) rewrote `userprefs.cfg` with 1-based numeric keys (`1="name"`). Before that rewrite, Unraid's own format used string keys that happened to serialize correctly.
+- **Fix:** Wrapped `$parsedIni` in `array_values()` to force a 0-indexed sequential array, which `json_encode()` always serializes as a JSON array.
+- **Scope:** Affects all three tabs — Docker, VMs, and Dashboard — since they all consume `read_order.php` → `readUserPrefs()`.
+
+---
+
+## Version 2026.02.10-beta1
+
+### Changes
+
+#### File: `scripts/docker.js`
+
+**Fix: Autostart toggle race condition when changing folder-level autostart:**
+
+Function `folderAutostart()` (line ~1053):
+```diff
+-const folderAutostart = (el) => {
++const folderAutostart = async (el) => {
+     // ... existing code ...
+     for (const container of containers) {
+         const switchTd = $(container).children('td.advanced').next();
+         const containerAutostartCheckbox = $(switchTd).find('input.autostart')[0];
+         if (containerAutostartCheckbox) {
+             const cstatus = containerAutostartCheckbox.checked;
+-            if ((status && !cstatus) || (!status && cstatus)) {
++            if (status !== cstatus) {
+                 $(switchTd).children('.switch-button-background').click();
++                await new Promise(resolve => {
++                    const timeout = setTimeout(resolve, 3000);
++                    $(document).one('ajaxComplete', () => { clearTimeout(timeout); resolve(); });
++                });
+             }
+         }
+     }
+```
+
+- **Problem:** When toggling folder-level autostart ON/OFF, the plugin would click each container's autostart switch in rapid succession. This created overlapping AJAX requests that raced against each other, causing some containers to fail to update or update out of order.
+- **Fix:** Made `folderAutostart()` async and added a wait mechanism after each container's autostart click. The function now waits for the AJAX call to complete (via `ajaxComplete` event) before proceeding to the next container, with a 3-second timeout fallback. This ensures sequential processing and prevents race conditions.
+- **Additional improvement:** Simplified boolean condition from `if ((status && !cstatus) || (!status && cstatus))` to clearer `if (status !== cstatus)`.
+
+---
+
+#### File: `scripts/folder.js`
+
+**Fix: Container order sync when saving Docker folders:**
+
+Function `submitForm()` (line ~291):
+```diff
+     await $.post('/plugins/folder.view2/server/create.php', { type: type, content: JSON.stringify(folder) });
+ }
+
++if (type === 'docker') {
++    await $.post('/plugins/folder.view2/server/sync_order.php', { type: type });
++}
++
+ // return to the right tab
+```
+
+- **Change:** After creating or updating a Docker folder, now calls the new `sync_order.php` endpoint to synchronize the container order in Unraid's `userprefs.cfg` file with the folder configuration.
+- **Why needed:** Ensures folder members appear in the correct position relative to their folder placeholder in the Docker tab order, preventing drift between folder configuration and visual display order.
+
+---
+
+#### File: `server/lib.php`
+
+**New: Container order synchronization logic:**
+
+New function `syncContainerOrder(string $type): void` (79 lines):
+
+```php
+function syncContainerOrder(string $type): void {
+    // 1. Read current container order from /boot/config/plugins/dockerMan/userprefs.cfg
+    // 2. Load all folder definitions from docker.json
+    // 3. Expand folder members (including regex pattern matching)
+    // 4. Rebuild order array with logic:
+    //    - For each folder placeholder: insert all members BEFORE the placeholder
+    //    - Skip containers that are already placed with their folder
+    //    - Preserve relative position of unassigned containers
+    //    - Add any new containers/folders not in the old order
+    // 5. Write new order back to userprefs.cfg
+}
+```
+
+**Algorithm details:**
+- **Folder member expansion:** If a folder has a regex pattern, it's applied to all container names to dynamically include matching containers (same logic as the frontend).
+- **Deduplication:** Containers can't appear in multiple folders — first folder wins, subsequent folders skip already-assigned containers.
+- **Order preservation:** Maintains the relative order of existing items while inserting folder members before their placeholders.
+- **Completeness:** All containers are accounted for — no duplicates, no missing entries.
+
+**Example transformation:**
+```
+Before: [container-a, folder-1, container-b, container-c]
+Folder-1 contains: [container-b, container-c]
+
+After:  [container-a, container-b, container-c, folder-1]
+```
+
+---
+
+#### File: `server/sync_order.php` (NEW)
+
+**New endpoint for triggering order synchronization:**
+
+```php
+<?php
+    require_once("/usr/local/emhttp/plugins/folder.view2/server/lib.php");
+    syncContainerOrder($_POST['type']);
+?>
+```
+
+- **Purpose:** Simple POST endpoint called by `folder.js` after folder save operations.
+- **Behavior:** Receives type (`docker` or `vm`) and delegates to `syncContainerOrder()` in `lib.php`.
+
+---
+
+### Quick Reference: All Fixes (Version 2026.02.10-beta1)
+
+| # | Fix | File(s) | Impact |
+|---|-----|---------|--------|
+| 1 | Autostart toggle race condition | `docker.js:1053` | Sequential AJAX processing prevents overlapping requests |
+| 2 | Container order sync on folder save | `folder.js:291` | Calls new `sync_order.php` endpoint after folder updates |
+| 3 | Container order synchronization logic | `lib.php` (new function) | Keeps `userprefs.cfg` aligned with folder member lists |
+| 4 | Order sync endpoint | `sync_order.php` (new file) | POST endpoint for triggering order sync |
+
+---
+
 ## Version 2026.02.09.1
 
 ### Changes

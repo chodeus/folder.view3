@@ -84,9 +84,113 @@
         else { return '[]'; }
         if(!file_exists($prefsFilePath)) { return '[]'; }
         $parsedIni = @parse_ini_file($prefsFilePath);
-        return json_encode($parsedIni ?: []);
+        return json_encode(array_values($parsedIni ?: []));
     }
-    
+
+    function syncContainerOrder(string $type): void {
+        global $configDir;
+        fv2_debug_log("syncContainerOrder called for type: $type");
+
+        if ($type !== 'docker') { return; }
+
+        $prefsFile = "/boot/config/plugins/dockerMan/userprefs.cfg";
+        if (!file_exists($prefsFile)) { return; }
+
+        $currentPrefs = @parse_ini_file($prefsFile);
+        $currentOrder = $currentPrefs ? array_values($currentPrefs) : [];
+
+        $foldersFile = "$configDir/docker.json";
+        $folders = file_exists($foldersFile) ? (json_decode(file_get_contents($foldersFile), true) ?: []) : [];
+
+        $dockerClient = new DockerClient();
+        $allContainerNames = array_column($dockerClient->getDockerContainers(), 'Name');
+
+        $folderContainers = [];
+        $assignedContainers = [];
+        foreach ($folders as $folderId => $folder) {
+            $members = $folder['containers'] ?? [];
+            if (!empty($folder['regex'])) {
+                $regex = '/' . str_replace('/', '\/', $folder['regex']) . '/';
+                foreach ($allContainerNames as $name) {
+                    if (@preg_match($regex, $name) && !in_array($name, $members)) {
+                        $members[] = $name;
+                    }
+                }
+            }
+            $members = array_values(array_filter($members, function($m) use ($allContainerNames, $assignedContainers) {
+                return in_array($m, $allContainerNames) && !in_array($m, $assignedContainers);
+            }));
+            $folderContainers["folder-$folderId"] = $members;
+            $assignedContainers = array_merge($assignedContainers, $members);
+        }
+
+        $newOrder = [];
+        $seen = [];
+        foreach ($currentOrder as $item) {
+            if (isset($folderContainers[$item])) {
+                foreach ($folderContainers[$item] as $ct) {
+                    if (!in_array($ct, $seen)) { $newOrder[] = $ct; $seen[] = $ct; }
+                }
+                $newOrder[] = $item;
+                $seen[] = $item;
+            } elseif (in_array($item, $assignedContainers)) {
+                continue;
+            } elseif (in_array($item, $allContainerNames) && !in_array($item, $seen)) {
+                $newOrder[] = $item;
+                $seen[] = $item;
+            }
+        }
+
+        foreach ($allContainerNames as $name) {
+            if (!in_array($name, $seen) && !in_array($name, $assignedContainers)) {
+                $newOrder[] = $name;
+            }
+        }
+        foreach (array_keys($folderContainers) as $placeholder) {
+            if (!in_array($placeholder, $seen)) {
+                foreach ($folderContainers[$placeholder] as $ct) {
+                    if (!in_array($ct, $seen)) { $newOrder[] = $ct; $seen[] = $ct; }
+                }
+                $newOrder[] = $placeholder;
+                $seen[] = $placeholder;
+            }
+        }
+
+        $ini = "";
+        foreach ($newOrder as $i => $name) {
+            $ini .= ($i + 1) . '="' . $name . '"' . "\n";
+        }
+        file_put_contents($prefsFile, $ini);
+        fv2_debug_log("syncContainerOrder: wrote userprefs.cfg with " . count($newOrder) . " entries");
+
+        // Reorder autostart file to match new container order
+        $dockerManPaths = @parse_ini_file('/boot/config/plugins/dockerMan/dockerMan.cfg') ?: [];
+        $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
+        if (file_exists($autoStartFile)) {
+            $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            // Build name→line map to preserve delay values (format: "name" or "name=delay")
+            $autoStartMap = [];
+            foreach ($autoStartLines as $line) {
+                $parts = explode('=', $line, 2);
+                $autoStartMap[$parts[0]] = $line;
+            }
+            // Rebuild autostart file in $newOrder sequence, only for containers already in autostart
+            $newAutoStart = [];
+            foreach ($newOrder as $name) {
+                if (isset($autoStartMap[$name])) {
+                    $newAutoStart[] = $autoStartMap[$name];
+                    unset($autoStartMap[$name]);
+                }
+            }
+            // Append any autostart containers not in $newOrder (shouldn't happen, but safety net)
+            foreach ($autoStartMap as $line) {
+                $newAutoStart[] = $line;
+            }
+            file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n");
+            fv2_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
+        }
+    }
+
     function updateFolder(string $type, string $content, string $id = '') : void {
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); if (empty($id)) $id = generateId(); }
@@ -157,7 +261,6 @@
                 }
             }
             unset($doc);
-            // fv2_debug_log("Pre-parsed " . count($allXmlTemplates) . " XML templates.");
 
             foreach ($cts as $key => &$ct) {
                 $ct['info'] = $dockerClient->getContainerDetails($ct['Id']);
