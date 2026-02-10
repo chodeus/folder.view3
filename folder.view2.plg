@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.02.10-beta2">
-<!ENTITY md5 "8a71e5ef8d44950b1c11f3053c724795">
+<!ENTITY version "2026.02.10-beta3">
+<!ENTITY md5 "1ca0a66aeaa5b19d31cda3aaee515260">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
+
+###2026.02.10-beta3
+- Sync autostart order when saving folder container order
 
 ###2026.02.10-beta2
 - Fix folders not loading after saving folder order (unraidOrder.includes crash)

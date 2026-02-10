@@ -162,6 +162,33 @@
         }
         file_put_contents($prefsFile, $ini);
         fv2_debug_log("syncContainerOrder: wrote userprefs.cfg with " . count($newOrder) . " entries");
+
+        // Reorder autostart file to match new container order
+        $dockerManPaths = @parse_ini_file('/boot/config/plugins/dockerMan/dockerMan.cfg') ?: [];
+        $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
+        if (file_exists($autoStartFile)) {
+            $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            // Build name→line map to preserve delay values (format: "name" or "name=delay")
+            $autoStartMap = [];
+            foreach ($autoStartLines as $line) {
+                $parts = explode('=', $line, 2);
+                $autoStartMap[$parts[0]] = $line;
+            }
+            // Rebuild autostart file in $newOrder sequence, only for containers already in autostart
+            $newAutoStart = [];
+            foreach ($newOrder as $name) {
+                if (isset($autoStartMap[$name])) {
+                    $newAutoStart[] = $autoStartMap[$name];
+                    unset($autoStartMap[$name]);
+                }
+            }
+            // Append any autostart containers not in $newOrder (shouldn't happen, but safety net)
+            foreach ($autoStartMap as $line) {
+                $newAutoStart[] = $line;
+            }
+            file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n");
+            fv2_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
+        }
     }
 
     function updateFolder(string $type, string $content, string $id = '') : void {

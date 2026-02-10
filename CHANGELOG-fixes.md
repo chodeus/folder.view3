@@ -6,6 +6,24 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.10-beta3
+
+### Changes
+
+#### File: `server/lib.php`
+
+**Feature: Sync autostart order when saving folder container order:**
+
+Function `syncContainerOrder()` — new block after `userprefs.cfg` write (line ~166):
+
+- **Change:** After rewriting `userprefs.cfg`, now also reorders `/var/lib/docker/unraid-autostart` to match the new container sequence.
+- **Behavior:** Reads the existing autostart file, builds a name→line map (preserving any `name=delay` format), then rewrites entries in the same order as `$newOrder` (the merged container+folder order from `userprefs.cfg`).
+- **Safety:** Only reorders containers that already have autostart enabled — never adds or removes autostart status. Any autostart entries not found in `$newOrder` are appended at the end as a safety net.
+- **Config path:** Reads `autostart-file` from `/boot/config/plugins/dockerMan/dockerMan.cfg`, falling back to `/var/lib/docker/unraid-autostart`.
+- **Effect:** When a user reorders containers in the folder settings page, the autostart order now reflects that order — containers higher in the folder start first.
+
+---
+
 ## Version 2026.02.10-beta2
 
 ### Changes
