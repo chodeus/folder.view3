@@ -1050,25 +1050,26 @@ const advancedAutostart = (el) => {
  * Hanled the click of the autostart button and changes the container to reflect the status of the folder
  * @param {*} el element passed by the event caller
  */
-const folderAutostart = (el) => {
+const folderAutostart = async (el) => {
     if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV2_DEBUG] folderAutostart: Entry. Event target:', el.target);
     const status = el.target.checked;
-    // The id is needded to get the containers, the checkbox has a id folder-${id}-auto, so split and take the second element
     const id = el.target.id.split('-')[1];
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] folderAutostart: Folder ID: ${id}, New Status: ${status}`);
     const containers = $(`.folder-${id}-element`);
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] folderAutostart: Found ${containers.length} containers in folder ${id}.`);
     for (const container of containers) {
-        // Select the td with the switch inside
-        const switchTd = $(container).children('td.advanced').next(); // This should be the autostart TD
+        const switchTd = $(container).children('td.advanced').next();
         const containerAutostartCheckbox = $(switchTd).find('input.autostart')[0];
-
         if (containerAutostartCheckbox) {
             const cstatus = containerAutostartCheckbox.checked;
             if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] folderAutostart: Container ${$(container).find('.appname a').text().trim() || 'N/A'}: current autostart=${cstatus}. Folder target status=${status}`);
-            if ((status && !cstatus) || (!status && cstatus)) {
-                 if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] folderAutostart: Clicking autostart switch for container.`);
+            if (status !== cstatus) {
+                if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] folderAutostart: Clicking autostart switch for container.`);
                 $(switchTd).children('.switch-button-background').click();
+                await new Promise(resolve => {
+                    const timeout = setTimeout(resolve, 3000);
+                    $(document).one('ajaxComplete', () => { clearTimeout(timeout); resolve(); });
+                });
             }
         } else {
             if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV2_DEBUG] folderAutostart: Could not find autostart checkbox for a container in folder ${id}. TD element:`, switchTd[0]);
@@ -1604,10 +1605,6 @@ $.get('/plugins/folder.view2/server/cpu.php').promise().then((data) => {
             for (const [cid_name, cvalue] of Object.entries(value.containers)) { // cid_name is container name, cvalue is {id, state, ...}
                 const containerShortId = cvalue.id;
                 const curLoad = load[containerShortId] || { cpu: '0.00%', mem: ['0B', '0B'] };
-                if (FOLDER_VIEW_DEBUG_MODE && !load[containerShortId]) {
-                    // console.log(`[FV2_DEBUG] dockerload SSE (folder ${id}): No direct load data for ${containerShortId} (name: ${cid_name}), using default.`);
-                }
-
                 loadCpu += parseFloat(curLoad.cpu.replace('%', '')) / cpus; // Already per core from SSE
                 loadMemB += memToB(curLoad.mem[0]);
                 let tempTotalMem = memToB(curLoad.mem[1]);
@@ -1661,7 +1658,6 @@ const memToB = (mem) => {
             break;
     }
     const result = numPart * multiplier;
-    // if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] memToB: Converted '${mem}' (num: ${numPart}, unit: ${unit}) to ${result} Bytes.`);
     return result;
 };
 
@@ -1686,7 +1682,6 @@ const bToMem = (b) => {
         i++;
     }
     const result = `${value.toFixed(2)} ${units[i]}`;
-    // if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] bToMem: Converted ${b} Bytes to ${result}.`);
     return result;
 };
 
