@@ -5,15 +5,30 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.09.1">
-<!ENTITY md5 "f21edcf8db13da1adc390c144ea5f5a0">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.02.10-beta4">
+<!ENTITY md5 "c1b883990a3b1295a92e2d0e5c11652b">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
 
-###2026.02.09.1
+###2026.02.10-beta4
+- Remove commented-out debug code and stale files
+- Prune old archive packages
+
+###2026.02.10-beta3
+- Sync autostart order when saving folder container order
+
+###2026.02.10-beta2
+- Fix folders not loading after saving folder order (unraidOrder.includes crash)
+
+###2026.02.10-beta1
+- Fix autostart toggle race condition when toggling folder-level autostart
+- Fix container order synchronization when saving folders
+- Add automatic userprefs.cfg sync to keep folder members in correct position
+
+###2026.02.09-beta6
 - Fix dashboard showing wrong containers in folders
 
 ###2026.02.09
@@ -319,7 +334,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
