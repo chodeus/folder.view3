@@ -6,46 +6,7 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
-## Version 2026.02.10-beta3
-
-### Changes
-
-#### File: `server/lib.php`
-
-**Feature: Sync autostart order when saving folder container order:**
-
-Function `syncContainerOrder()` — new block after `userprefs.cfg` write (line ~166):
-
-- **Change:** After rewriting `userprefs.cfg`, now also reorders `/var/lib/docker/unraid-autostart` to match the new container sequence.
-- **Behavior:** Reads the existing autostart file, builds a name→line map (preserving any `name=delay` format), then rewrites entries in the same order as `$newOrder` (the merged container+folder order from `userprefs.cfg`).
-- **Safety:** Only reorders containers that already have autostart enabled — never adds or removes autostart status. Any autostart entries not found in `$newOrder` are appended at the end as a safety net.
-- **Config path:** Reads `autostart-file` from `/boot/config/plugins/dockerMan/dockerMan.cfg`, falling back to `/var/lib/docker/unraid-autostart`.
-- **Effect:** When a user reorders containers in the folder settings page, the autostart order now reflects that order — containers higher in the folder start first.
-
----
-
-## Version 2026.02.10-beta2
-
-### Changes
-
-#### File: `server/lib.php`
-
-**Fix: readUserPrefs() returning JSON object instead of array, crashing Docker/VM/Dashboard tabs:**
-
-Function `readUserPrefs()` (line ~87):
-```diff
--        return json_encode($parsedIni ?: []);
-+        return json_encode(array_values($parsedIni ?: []));
-```
-
-- **Problem:** `parse_ini_file()` on `userprefs.cfg` returns an associative array with 1-based numeric keys (`{1: "name", 2: "name", ...}`). `json_encode()` serializes 1-based arrays as JSON **objects**, not arrays. When `docker.js` called `JSON.parse()` on this, `unraidOrder` became a plain object, causing `unraidOrder.includes()` to crash with `TypeError: unraidOrder.includes is not a function`.
-- **Trigger:** This only manifested after `syncContainerOrder()` (added in beta1) rewrote `userprefs.cfg` with 1-based numeric keys (`1="name"`). Before that rewrite, Unraid's own format used string keys that happened to serialize correctly.
-- **Fix:** Wrapped `$parsedIni` in `array_values()` to force a 0-indexed sequential array, which `json_encode()` always serializes as a JSON array.
-- **Scope:** Affects all three tabs — Docker, VMs, and Dashboard — since they all consume `read_order.php` → `readUserPrefs()`.
-
----
-
-## Version 2026.02.10-beta1
+## Version 2026.02.10
 
 ### Changes
 
@@ -83,7 +44,7 @@ Function `folderAutostart()` (line ~1053):
 
 #### File: `scripts/folder.js`
 
-**Fix: Container order sync when saving Docker folders:**
+**Feature: Container order sync when saving Docker folders:**
 
 Function `submitForm()` (line ~291):
 ```diff
@@ -138,6 +99,37 @@ After:  [container-a, container-b, container-c, folder-1]
 
 ---
 
+#### File: `server/lib.php`
+
+**Feature: Sync autostart order when saving folder container order:**
+
+Function `syncContainerOrder()` — new block after `userprefs.cfg` write (line ~166):
+
+- **Change:** After rewriting `userprefs.cfg`, now also reorders `/var/lib/docker/unraid-autostart` to match the new container sequence.
+- **Behavior:** Reads the existing autostart file, builds a name→line map (preserving any `name=delay` format), then rewrites entries in the same order as `$newOrder` (the merged container+folder order from `userprefs.cfg`).
+- **Safety:** Only reorders containers that already have autostart enabled — never adds or removes autostart status. Any autostart entries not found in `$newOrder` are appended at the end as a safety net.
+- **Config path:** Reads `autostart-file` from `/boot/config/plugins/dockerMan/dockerMan.cfg`, falling back to `/var/lib/docker/unraid-autostart`.
+- **Effect:** When a user reorders containers in the folder settings page, the autostart order now reflects that order — containers higher in the folder start first.
+
+---
+
+#### File: `server/lib.php`
+
+**Fix: readUserPrefs() returning JSON object instead of array, crashing Docker/VM/Dashboard tabs:**
+
+Function `readUserPrefs()` (line ~87):
+```diff
+-        return json_encode($parsedIni ?: []);
++        return json_encode(array_values($parsedIni ?: []));
+```
+
+- **Problem:** `parse_ini_file()` on `userprefs.cfg` returns an associative array with 1-based numeric keys (`{1: "name", 2: "name", ...}`). `json_encode()` serializes 1-based arrays as JSON **objects**, not arrays. When `docker.js` called `JSON.parse()` on this, `unraidOrder` became a plain object, causing `unraidOrder.includes()` to crash with `TypeError: unraidOrder.includes is not a function`.
+- **Trigger:** This manifested after `syncContainerOrder()` rewrote `userprefs.cfg` with 1-based numeric keys (`1="name"`). Before that rewrite, Unraid's own format used string keys that happened to serialize correctly.
+- **Fix:** Wrapped `$parsedIni` in `array_values()` to force a 0-indexed sequential array, which `json_encode()` always serializes as a JSON array.
+- **Scope:** Affects all three tabs — Docker, VMs, and Dashboard — since they all consume `read_order.php` → `readUserPrefs()`.
+
+---
+
 #### File: `server/sync_order.php` (NEW)
 
 **New endpoint for triggering order synchronization:**
@@ -154,14 +146,25 @@ After:  [container-a, container-b, container-c, folder-1]
 
 ---
 
-### Quick Reference: All Fixes (Version 2026.02.10-beta1)
+#### Cleanup
+
+- Removed commented-out debug code from `docker.js` and `lib.php`
+- Removed stale files (`orig_folder.js`, `nul`)
+- Pruned old archive packages
+
+---
+
+### Quick Reference: All Fixes (Version 2026.02.10)
 
 | # | Fix | File(s) | Impact |
 |---|-----|---------|--------|
 | 1 | Autostart toggle race condition | `docker.js:1053` | Sequential AJAX processing prevents overlapping requests |
 | 2 | Container order sync on folder save | `folder.js:291` | Calls new `sync_order.php` endpoint after folder updates |
 | 3 | Container order synchronization logic | `lib.php` (new function) | Keeps `userprefs.cfg` aligned with folder member lists |
-| 4 | Order sync endpoint | `sync_order.php` (new file) | POST endpoint for triggering order sync |
+| 4 | Autostart order synced with folder settings | `lib.php` (syncContainerOrder) | Reorders `/var/lib/docker/unraid-autostart` to match folder layout |
+| 5 | readUserPrefs() JSON serialization fix | `lib.php:87` | `array_values()` forces JSON array output |
+| 6 | Order sync endpoint | `sync_order.php` (new file) | POST endpoint for triggering order sync |
+| 7 | Code cleanup | `docker.js`, `lib.php` | Removed commented-out debug code and stale files |
 
 ---
 
