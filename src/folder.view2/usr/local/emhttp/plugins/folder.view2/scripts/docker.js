@@ -1605,10 +1605,6 @@ $.get('/plugins/folder.view2/server/cpu.php').promise().then((data) => {
             for (const [cid_name, cvalue] of Object.entries(value.containers)) { // cid_name is container name, cvalue is {id, state, ...}
                 const containerShortId = cvalue.id;
                 const curLoad = load[containerShortId] || { cpu: '0.00%', mem: ['0B', '0B'] };
-                if (FOLDER_VIEW_DEBUG_MODE && !load[containerShortId]) {
-                    // console.log(`[FV2_DEBUG] dockerload SSE (folder ${id}): No direct load data for ${containerShortId} (name: ${cid_name}), using default.`);
-                }
-
                 loadCpu += parseFloat(curLoad.cpu.replace('%', '')) / cpus; // Already per core from SSE
                 loadMemB += memToB(curLoad.mem[0]);
                 let tempTotalMem = memToB(curLoad.mem[1]);
@@ -1662,7 +1658,6 @@ const memToB = (mem) => {
             break;
     }
     const result = numPart * multiplier;
-    // if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] memToB: Converted '${mem}' (num: ${numPart}, unit: ${unit}) to ${result} Bytes.`);
     return result;
 };
 
@@ -1687,7 +1682,6 @@ const bToMem = (b) => {
         i++;
     }
     const result = `${value.toFixed(2)} ${units[i]}`;
-    // if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] bToMem: Converted ${b} Bytes to ${result}.`);
     return result;
 };
 

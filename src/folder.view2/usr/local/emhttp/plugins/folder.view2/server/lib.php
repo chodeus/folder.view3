@@ -261,7 +261,6 @@
                 }
             }
             unset($doc);
-            // fv2_debug_log("Pre-parsed " . count($allXmlTemplates) . " XML templates.");
 
             foreach ($cts as $key => &$ct) {
                 $ct['info'] = $dockerClient->getContainerDetails($ct['Id']);

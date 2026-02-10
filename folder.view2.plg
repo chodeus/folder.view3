@@ -6,12 +6,16 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.02.10-beta3">
-<!ENTITY md5 "1ca0a66aeaa5b19d31cda3aaee515260">
+<!ENTITY version "2026.02.10-beta4">
+<!ENTITY md5 "c1b883990a3b1295a92e2d0e5c11652b">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
+
+###2026.02.10-beta4
+- Remove commented-out debug code and stale files
+- Prune old archive packages
 
 ###2026.02.10-beta3
 - Sync autostart order when saving folder container order
