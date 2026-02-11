@@ -160,5 +160,9 @@
     "preview-text-width-tooltip": "Begrenzt die Breite des Containernamens in der Vorschau. <br>Zum Beispiel <b>12px</b>, <b>1rem</b> (<a href=\"https://developer.mozilla.org/en-US/docs/Web/CSS/length\">Hier</a> findest du mehr Einheiten). <br>Lass das Feld leer und es gibt keine Begrenzung.",
     "override-default-actions": "Standard-Aktionen überschreiben:",
     "override-default-actions-tooltip": "Entfernt das Standard-Menü und ersetzt es durch die unten eingestellten benutzerdefinierten Aktionen.",
-    "custom-actions-arguments": "Argumente:"
+    "custom-actions-arguments": "Argumente:",
+    "folder-webui": "Folder WebUI:",
+    "folder-webui-tooltip": "Default folder WebUI URL.",
+    "folder-webui-url": "WebUI URL:",
+    "folder-webui-url-tooltip": "The URL to open when clicking the WebUI button in the folder context menu."
 }

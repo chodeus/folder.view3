@@ -809,6 +809,15 @@ const addDockerFolderContext = (id) => {
         divider: true
     });
 
+    if (globalFolders.docker[id].settings.folder_webui && globalFolders.docker[id].settings.folder_webui_url) {
+        opts.push({
+            text: $.i18n('webui'),
+            icon: 'fa-globe',
+            action: (e) => { e.preventDefault(); window.open(globalFolders.docker[id].settings.folder_webui_url, '_blank'); }
+        });
+        opts.push({ divider: true });
+    }
+
     if(globalFolders.docker[id].settings.override_default_actions && globalFolders.docker[id].actions && globalFolders.docker[id].actions.length) {
         opts.push(
             ...globalFolders.docker[id].actions.map((e, i) => {

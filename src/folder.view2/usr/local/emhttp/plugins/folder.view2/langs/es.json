@@ -160,5 +160,9 @@
     "preview-text-width-tooltip": "Limitará el ancho del nombre del contenedor en la vista previa. <br>Por ejemplo <b>12px</b>, <b>1rem</b> (Mira <a href=\"https://developer.mozilla.org/en-US/docs/Web/CSS/length\">esto</a> para más unidades). <br>Déjalo en blanco y no habrá límite.",
     "override-default-actions": "Anular acciones predeterminadas:",
     "override-default-actions-tooltip": "Eliminará el menú predeterminado y lo reemplazará con las acciones personalizadas que se establecen a continuación.",
-    "custom-actions-arguments": "Argumentos:"
+    "custom-actions-arguments": "Argumentos:",
+    "folder-webui": "Folder WebUI:",
+    "folder-webui-tooltip": "Default folder WebUI URL.",
+    "folder-webui-url": "WebUI URL:",
+    "folder-webui-url-tooltip": "The URL to open when clicking the WebUI button in the folder context menu."
 }
