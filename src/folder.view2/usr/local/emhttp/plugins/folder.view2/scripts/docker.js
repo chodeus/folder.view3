@@ -1417,6 +1417,15 @@ const addDockerFolderContext = (id) => {
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] addDockerFolderContext (id: ${id}): Folder data:`, {...folderData});
 
 
+    if (folderData.settings.folder_webui && folderData.settings.folder_webui_url) {
+        opts.push({
+            text: $.i18n('webui'),
+            icon: 'fa-globe',
+            action: (evt) => { evt.preventDefault(); window.open(folderData.settings.folder_webui_url, '_blank'); }
+        });
+        opts.push({ divider: true });
+    }
+
     if(folderData.settings.override_default_actions && folderData.actions && folderData.actions.length) {
         if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV2_DEBUG] addDockerFolderContext (id: ${id}): Overriding default actions with ${folderData.actions.length} custom actions.`);
         opts.push(

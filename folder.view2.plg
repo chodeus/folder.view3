@@ -6,29 +6,24 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.02.10-beta4">
-<!ENTITY md5 "c1b883990a3b1295a92e2d0e5c11652b">
+<!ENTITY version "2026.02.11-beta2">
+<!ENTITY md5 "4f5ca5c57d927c05e528e7fe619869a2">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
 
-###2026.02.10-beta4
-- Remove commented-out debug code and stale files
-- Prune old archive packages
+###2026.02.11-beta
+- Add folder WebUI setting with context menu button
+- Clean stale containers from autostart on page load and folder save
 
-###2026.02.10-beta3
-- Sync autostart order when saving folder container order
-
-###2026.02.10-beta2
-- Fix folders not loading after saving folder order (unraidOrder.includes crash)
-
-###2026.02.10-beta1
+###2026.02.10
 - Fix autostart toggle race condition when toggling folder-level autostart
-- Fix container order synchronization when saving folders
-- Add automatic userprefs.cfg sync to keep folder members in correct position
+- Sync container autostart order to match folder settings layout
+- Fix folders not loading after reordering containers
+- Remove commented-out debug code and stale files
 
-###2026.02.09-beta6
+###2026.02.09.1
 - Fix dashboard showing wrong containers in folders
 
 ###2026.02.09

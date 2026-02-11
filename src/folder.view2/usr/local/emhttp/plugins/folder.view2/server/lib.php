@@ -245,6 +245,18 @@
             $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES) ?: [];
             $autoStart = array_map('var_split', $autoStartLines);
 
+            // Remove stale entries from autostart file (containers that no longer exist)
+            $allCtNames = array_map(function($c) { return ltrim($c['Names'][0] ?? '', '/'); }, $cts);
+            $cleanedLines = array_filter($autoStartLines, function($line) use ($allCtNames) {
+                $parts = explode('=', $line, 2);
+                return in_array($parts[0], $allCtNames);
+            });
+            if (count($cleanedLines) < count($autoStartLines)) {
+                file_put_contents($autoStartFile, implode("\n", $cleanedLines) . "\n");
+                fv2_debug_log("readInfo: removed " . (count($autoStartLines) - count($cleanedLines)) . " stale autostart entries");
+                $autoStart = array_map('var_split', $cleanedLines);
+            }
+
             $allXmlTemplates = [];
             foreach ($dockerTemplates->getTemplates('all') as $templateFile) {
                 $doc = new DOMDocument();

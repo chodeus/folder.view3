@@ -160,5 +160,9 @@
     "preview-text-width-tooltip": "Limita la lunghezza del testo nella preview. <br>Esempio: <b>12px</b>, <b>1rem</b> (<a href=\"https://developer.mozilla.org/en-US/docs/Web/CSS/length\">Qui</a> trovi più informazioni). <br>Lasciare vuoto per non impostare un limite.",
     "override-default-actions": "Sovrascrivi azioni di base:",
     "override-default-actions-tooltip": "Riumuove il menu di base e lo rimpiazza con le azioni personalizzate.",
-    "custom-actions-arguments": "Argomenti:"
+    "custom-actions-arguments": "Argomenti:",
+    "folder-webui": "Folder WebUI:",
+    "folder-webui-tooltip": "Default folder WebUI URL.",
+    "folder-webui-url": "WebUI URL:",
+    "folder-webui-url-tooltip": "The URL to open when clicking the WebUI button in the folder context menu."
 }
