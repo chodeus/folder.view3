@@ -5,13 +5,17 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.10">
-<!ENTITY md5 "219a3c30a6a3cd81cb623745e74fd5ee">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.02.11-beta">
+<!ENTITY md5 "911fbccff541b3cf936789561d1ad4f0">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
+
+###2026.02.11-beta
+- Add folder WebUI setting with context menu button
+- Remove stale containers from autostart file during sync
 
 ###2026.02.10
 - Fix autostart toggle race condition when toggling folder-level autostart
@@ -325,7 +329,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
