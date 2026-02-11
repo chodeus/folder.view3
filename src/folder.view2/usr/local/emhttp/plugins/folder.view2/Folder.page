@@ -59,6 +59,34 @@ Markdown="false"
         </div>
         <div class="basic">
             <dl>
+                <dt data-i18n="folder-webui">Folder WebUI:</dt>
+                <dd>
+                    <img class="img" style="visibility: hidden;">
+                    <input class="basic-switch" name="folder_webui" type="checkbox" style="display: none;" onchange="updateForm()" />
+                </dd>
+            </dl>
+            <blockquote class="inline_help">
+                <p data-i18n="[html]folder-webui-tooltip">Default folder WebUI URL.</p>
+            </blockquote>
+        </div>
+        <ul constraint="folder-webui" style="display: none;">
+            <li>
+                <div class="basic">
+                    <dl>
+                        <dt data-i18n="folder-webui-url">WebUI URL:</dt>
+                        <dd>
+                            <img class="img" style="visibility: hidden;">
+                            <input type="text" name="folder_webui_url" value="" placeholder="http://...">
+                        </dd>
+                    </dl>
+                    <blockquote class="inline_help">
+                        <p data-i18n="[html]folder-webui-url-tooltip">The URL to open when clicking the WebUI button in the folder context menu.</p>
+                    </blockquote>
+                </div>
+            </li>
+        </ul>
+        <div class="basic">
+            <dl>
                 <dt data-i18n="preview">Preview:</dt>
                 <dd>
                     <img class="img" style="visibility: hidden;">
