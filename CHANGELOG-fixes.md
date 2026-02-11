@@ -522,6 +522,22 @@ VM matching (line ~506):
 
 ---
 
+#### File: `Folder.page`
+
+**Fix: Backward-compatible Docker Manager theme CSS for Unraid 6:**
+
+```diff
+ <link type="text/css" rel="stylesheet" href="<?autov('/plugins/folder.view2/styles/folder.css')?>">
++<?php if (file_exists("/usr/local/emhttp/plugins/dynamix.docker.manager/styles/style-{$display['theme']}.css")): ?>
+ <link type="text/css" rel="stylesheet" href="<?autov("/plugins/dynamix.docker.manager/styles/style-{$display['theme']}.css")?>">
++<?php endif; ?>
+```
+
+- **Context:** Version 2026.02.03 removed the Docker Manager theme CSS `<link>` entirely because it caused nginx 404 errors on Unraid 7 (the file doesn't exist in Unraid 7).
+- **Fix:** Wrapped the `<link>` in a PHP `file_exists()` check so Unraid 6 users still get the theme CSS if it exists, while Unraid 7 users avoid the 404.
+
+---
+
 ## Version 2026.02.07-beta2
 
 ### Changes
@@ -1469,9 +1485,70 @@ New file added to the repository for Git line-ending configuration. Not present 
 
 ---
 
-### 8. File: `archive/folder.view2-2026.02.03.txz` (New)
+### 8. File: `pkg_build.sh`
 
-New binary archive package for the `2026.02.03` release. Contains compiled plugin files for Unraid installation.
+#### 8a. Full rewrite of build script
+
+The upstream build script was a minimal single-version builder. The fork substantially rewrites it:
+
+```diff
++# Parse flags
++# Usage: pkg_build.sh [--beta [N]]
++#   --beta     → YYYY.MM.DD-beta (beta branch)
++#   --beta 2   → YYYY.MM.DD-beta2 (beta branch)
++#   (no flag)  → YYYY.MM.DD (main branch, stable)
++BETA=false
++BETA_NUM=""
++if [ "$1" = "--beta" ]; then
++    BETA=true
++    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then
++        BETA_NUM="$2"
++    fi
++fi
++
++# Set branch based on build type
++if [ "$BETA" = true ]; then
++    branch="beta"
++    version="${version}-beta${BETA_NUM}"
++else
++    branch="main"
++fi
+```
+
+**New features:**
+- **`--beta` flag:** Appends `-beta` (or `-betaN`) suffix to version string and points plg URLs to the `beta` branch
+- **Branch-aware plg URL updating:** `sed` commands now dynamically update both `pluginURL` and archive `<URL>` in the plg file to point to the correct branch (`main` or `beta`)
+- **Permission fix:** `chmod -R 0755` now runs on the temp directory only, not the git repo (upstream ran it on the entire repo, which was unnecessary and could mess up git metadata)
+- **Collision detection:** If a `.txz` with the same version already exists, appends a `.N` suffix to avoid overwriting
+
+---
+
+### 9. Repository infrastructure (New files)
+
+**Files added that don't exist in upstream:**
+
+| File | Purpose |
+|------|---------|
+| `.gitattributes` | Git line-ending configuration |
+| `.gitignore` | Ignore build artifacts, temp files |
+| `.github/workflows/release-beta.yml` | GitHub Actions: manual trigger to build dev on develop branch, auto-increments dev number per date |
+| `.github/workflows/release-stable.yml` | GitHub Actions: manual trigger to merge develop→main, build stable, create GitHub release |
+| `CHANGELOG-fixes.md` | This file — detailed changelog of all changes vs upstream |
+| `dev/` directory (empty) | Placeholder for development resources (dashboard/docker/vms events + tab HTML) |
+| `screenshots/` directory | Screenshots for documentation: Advanced Preview, Docker Folder, With/Without Borders, Release notes |
+| `server/sync_order.php` | New PHP endpoint for container order synchronization (documented in version 2026.02.10) |
+
+**Files deleted from upstream:**
+
+| File | Reason |
+|------|--------|
+| `orig_folder.js` | Stale copy of original folder.js — no longer needed |
+| `archive/folder.view-2025.02.22.txz` | Old upstream archive (pre-rename from `folder.view` to `folder.view2`) |
+| `archive/folder.view-2025.02.24.txz` | Old upstream archive |
+| `archive/folder.view-2025.02.26.txz` | Old upstream archive |
+| `archive/folder.view2-2025.04.13.txz` | Old upstream archive |
+| `archive/folder.view2-2025.05.16.txz` | Old upstream archive |
+| `archive/folder.view2-2025.05.26.txz` | Old upstream archive |
 
 ---
 
@@ -1516,3 +1593,6 @@ New binary archive package for the `2026.02.03` release. Contains compiled plugi
 | 11 | Order label/table layout broken | `folder.css`, `Folder.page` | Flexbox column layout, removed `115em` inline width |
 | 12 | Plugin download URL broken | `folder.view2.plg` | `raw.githubusercontent.com` + `main` branch |
 | 13 | Port/volume link color unreadable on dark themes | `docker.css` `.info-ports a` | `#486dba` → `#6a9fd4` |
+| 14 | Build script rewrite | `pkg_build.sh` | `--beta` flag, branch-aware URLs, permission fix, collision detection |
+| 15 | Repository infrastructure | New files | CI workflows, .gitignore, .gitattributes, screenshots, CHANGELOG |
+| 16 | Stale files cleanup | Deleted | `orig_folder.js` + 6 old upstream archives removed |
