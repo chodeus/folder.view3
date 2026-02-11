@@ -56,6 +56,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         const form = $('div.canvas > form')[0];
         form.name.value = currFolder.name;
         form.icon.value = currFolder.icon;
+        form.folder_webui.checked = currFolder.settings.folder_webui || false;
+        form.folder_webui_url.value = currFolder.settings.folder_webui_url || '';
         form.preview.value = currFolder.settings.preview.toString();
         form.preview_hover.checked = currFolder.settings.preview_hover;
         form.preview_update.checked = currFolder.settings.preview_update;
@@ -183,6 +185,10 @@ const updateForm = () => {
     if(form.preview_vertical_bars.checked) {
         $('[constraint*="bars-color"]').show();
     }
+    $('[constraint*="folder-webui"]').hide();
+    if(form.folder_webui.checked) {
+        $('[constraint*="folder-webui"]').show();
+    }
 
     if (type !== 'docker') {
         $('[constraint*="docker"]').hide();
@@ -255,6 +261,8 @@ const submitForm = async (e) => {
         name: e.name.value.toString(),
         icon: e.icon.value.toString(),
         settings: {
+            folder_webui: e.folder_webui.checked,
+            folder_webui_url: e.folder_webui_url.value.toString(),
             preview: parseInt(e.preview.value.toString()),
             preview_hover: e.preview_hover.checked,
             preview_update: e.preview_update.checked,
