@@ -174,6 +174,14 @@
                 $parts = explode('=', $line, 2);
                 $autoStartMap[$parts[0]] = $line;
             }
+            // Remove stale entries (containers that no longer exist)
+            foreach ($autoStartMap as $name => $line) {
+                if (!in_array($name, $allContainerNames)) {
+                    fv2_debug_log("syncContainerOrder: removing stale autostart entry '$name' (container no longer exists)");
+                    unset($autoStartMap[$name]);
+                }
+            }
+
             // Rebuild autostart file in $newOrder sequence, only for containers already in autostart
             $newAutoStart = [];
             foreach ($newOrder as $name) {
