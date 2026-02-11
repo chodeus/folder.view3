@@ -7,8 +7,8 @@ plgfile="$CWD/folder.view2.plg"
 
 # Parse flags
 # Usage: pkg_build.sh [--beta [N]]
-#   --beta     → YYYY.MM.DD-beta (develop branch)
-#   --beta 2   → YYYY.MM.DD-beta2 (develop branch)
+#   --beta     → YYYY.MM.DD-beta (beta branch)
+#   --beta 2   → YYYY.MM.DD-beta2 (beta branch)
 #   (no flag)  → YYYY.MM.DD (main branch, stable)
 BETA=false
 BETA_NUM=""
@@ -21,7 +21,7 @@ fi
 
 # Set branch based on build type
 if [ "$BETA" = true ]; then
-    branch="develop"
+    branch="beta"
     version="${version}-beta${BETA_NUM}"
 else
     branch="main"
