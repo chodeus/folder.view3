@@ -6,6 +6,197 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.11
+
+### Changes
+
+#### File: `Folder.page`
+
+**Feature: Folder WebUI setting — toggle and URL input in folder editor:**
+
+New form section added below the Icon field:
+```html
+<div class="basic">
+    <dl>
+        <dt data-i18n="folder-webui">Folder WebUI:</dt>
+        <dd><input class="basic-switch" name="folder_webui" type="checkbox" /></dd>
+    </dl>
+</div>
+<ul constraint="folder-webui" style="display: none;">
+    <li>
+        <div class="basic">
+            <dl>
+                <dt data-i18n="folder-webui-url">WebUI URL:</dt>
+                <dd><input type="text" name="folder_webui_url" value="" placeholder="http://..."></dd>
+            </dl>
+        </div>
+    </li>
+</ul>
+```
+
+- **Feature:** Adds a new "Folder WebUI" toggle to the folder create/edit form. When enabled, reveals a URL input field for specifying a custom WebUI link for the folder.
+- **Constraint system:** Uses the existing `constraint="folder-webui"` pattern — the `<ul>` is hidden by default and shown/hidden by `updateForm()` based on the checkbox state.
+- **Placement:** Positioned after the Icon field and before the Preview settings, following the same `<div class="basic">` / `<dl>` / `<blockquote class="inline_help">` pattern as existing form fields.
+
+---
+
+#### File: `scripts/folder.js`
+
+**Feature: Folder WebUI form handling — load, visibility, and submit:**
+
+Edit load (line ~58):
+```diff
+ form.name.value = currFolder.name;
+ form.icon.value = currFolder.icon;
++form.folder_webui.checked = currFolder.settings.folder_webui || false;
++form.folder_webui_url.value = currFolder.settings.folder_webui_url || '';
+ form.preview.value = currFolder.settings.preview.toString();
+```
+
+Visibility in `updateForm()` (line ~188):
+```diff
++$('[constraint*="folder-webui"]').hide();
++if(form.folder_webui.checked) {
++    $('[constraint*="folder-webui"]').show();
++}
+```
+
+Form submit (line ~263):
+```diff
+ settings: {
++    folder_webui: e.folder_webui.checked,
++    folder_webui_url: e.folder_webui_url.value.toString(),
+     preview: parseInt(e.preview.value.toString()),
+```
+
+- **Load:** When editing an existing folder, populates the checkbox and URL from the saved folder config. Defaults to `false` / empty string for folders created before this feature.
+- **Visibility:** Hides/shows the URL input based on checkbox state, matching the constraint pattern used by other nested settings (e.g., border color under border toggle).
+- **Submit:** Saves `folder_webui` (boolean) and `folder_webui_url` (string) into the folder's `settings` object in the JSON config file.
+
+---
+
+#### File: `scripts/docker.js`
+
+**Feature: WebUI button in Docker tab folder context menu:**
+
+Function `addDockerFolderContext()` (line ~1420):
+```diff
++if (folderData.settings.folder_webui && folderData.settings.folder_webui_url) {
++    opts.push({
++        text: $.i18n('webui'),
++        icon: 'fa-globe',
++        action: (evt) => { evt.preventDefault(); window.open(folderData.settings.folder_webui_url, '_blank'); }
++    });
++    opts.push({ divider: true });
++}
+```
+
+- **Feature:** When a folder has WebUI enabled and a URL configured, a "WebUI" button with a globe icon (`fa-globe`) appears in the folder's right-click context menu on the Docker tab.
+- **Behavior:** Opens the configured URL in a new browser tab via `window.open()`.
+- **Placement:** Inserted after the existing Start/Stop/Restart divider and before the custom actions section, separated by its own divider for visual clarity.
+- **Conditional:** Only appears when both `folder_webui` is true and `folder_webui_url` is non-empty — folders without the setting configured show no change.
+
+---
+
+#### File: `scripts/dashboard.js`
+
+**Feature: WebUI button in Dashboard folder context menu:**
+
+Function `addDockerFolderContext()` (line ~812):
+```diff
++if (globalFolders.docker[id].settings.folder_webui && globalFolders.docker[id].settings.folder_webui_url) {
++    opts.push({
++        text: $.i18n('webui'),
++        icon: 'fa-globe',
++        action: (e) => { e.preventDefault(); window.open(globalFolders.docker[id].settings.folder_webui_url, '_blank'); }
++    });
++    opts.push({ divider: true });
++}
+```
+
+- **Feature:** Same WebUI context menu button as the Docker tab, but for folder entries on the Dashboard.
+- **Behavior:** Identical to `docker.js` — opens configured URL in new tab, conditional on both settings being present.
+
+---
+
+#### File: `server/lib.php`
+
+**Feature: Clean stale containers from autostart file during readInfo():**
+
+Function `readInfo()` — new block after autostart file read (line ~248):
+```php
+// Remove stale entries from autostart file (containers that no longer exist)
+$allCtNames = array_map(function($c) { return ltrim($c['Names'][0] ?? '', '/'); }, $cts);
+$cleanedLines = array_filter($autoStartLines, function($line) use ($allCtNames) {
+    $parts = explode('=', $line, 2);
+    return in_array($parts[0], $allCtNames);
+});
+if (count($cleanedLines) < count($autoStartLines)) {
+    file_put_contents($autoStartFile, implode("\n", $cleanedLines) . "\n");
+    fv2_debug_log("readInfo: removed " . (count($autoStartLines) - count($cleanedLines)) . " stale autostart entries");
+    $autoStart = array_map('var_split', $cleanedLines);
+}
+```
+
+- **Problem:** When Docker containers are uninstalled or removed, their entries remained in `/var/lib/docker/unraid-autostart`. The `syncContainerOrder()` function (added in 2026.02.10) cleaned stale entries during folder save, but if no folder was edited, stale entries persisted indefinitely.
+- **Fix:** Added cleanup logic to `readInfo()`, which runs on every Docker tab page load. Builds a list of all currently-existing container names from the Docker API response, then filters the autostart file to remove any entries whose container name doesn't match an existing container.
+- **Safety:** Only removes entries — never adds or modifies autostart status. Uses `file_put_contents()` to atomically rewrite the file. Logs the count of removed entries via `fv2_debug_log()` for troubleshooting.
+- **Scope:** Complements the existing cleanup in `syncContainerOrder()` — now stale entries are cleaned both on page load (passive) and on folder save (active).
+
+---
+
+#### File: Language files (`langs/en.json`, `de.json`, `es.json`, `fr.json`, `it.json`, `pl.json`, `zh.json`)
+
+**New i18n keys for Folder WebUI feature:**
+
+```diff
++"folder-webui": "Folder WebUI:",
++"folder-webui-tooltip": "Default folder WebUI URL.",
++"folder-webui-url": "WebUI URL:",
++"folder-webui-url-tooltip": "The URL to open when clicking the WebUI button in the folder context menu."
+```
+
+- Added 4 new keys to all 7 language files.
+- English strings used as placeholders in non-English files (de, es, fr, it, pl, zh) pending translation.
+- The existing `webui` key (already present in all language files) is reused for the context menu button label via `$.i18n('webui')`.
+
+---
+
+#### File: `pkg_build.sh`
+
+**Change: Beta builds now target `beta` branch instead of `develop`:**
+
+```diff
+-#   --beta     → YYYY.MM.DD-beta (develop branch)
+-#   --beta 2   → YYYY.MM.DD-beta2 (develop branch)
++#   --beta     → YYYY.MM.DD-beta (beta branch)
++#   --beta 2   → YYYY.MM.DD-beta2 (beta branch)
+```
+
+```diff
+ if [ "$BETA" = true ]; then
+-    branch="develop"
++    branch="beta"
+```
+
+- **Change:** The `--beta` flag now sets plg URLs to the `beta` branch instead of `develop`, allowing a dedicated beta testing channel separate from active development.
+
+---
+
+### Quick Reference: All Changes (Version 2026.02.11)
+
+| # | Change | File(s) | Impact |
+|---|--------|---------|--------|
+| 1 | Folder WebUI toggle + URL input in editor | `Folder.page` | New form fields with constraint-based visibility |
+| 2 | WebUI form load/save/visibility logic | `folder.js` | Reads/writes `folder_webui` and `folder_webui_url` settings |
+| 3 | WebUI button in Docker tab context menu | `docker.js` | Globe icon opens configured URL in new tab |
+| 4 | WebUI button in Dashboard context menu | `dashboard.js` | Same feature mirrored for Dashboard view |
+| 5 | Stale autostart cleanup on page load | `lib.php` (readInfo) | Removes uninstalled containers from autostart file |
+| 6 | New i18n keys for WebUI feature | All 7 `langs/*.json` | 4 new keys per language file |
+| 7 | Beta branch target changed | `pkg_build.sh` | `--beta` flag points to `beta` branch |
+
+---
+
 ## Version 2026.02.10
 
 ### Changes
