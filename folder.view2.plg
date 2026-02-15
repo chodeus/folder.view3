@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView2">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.11">
-<!ENTITY md5 "ea68fb6ff115394e65455a915ae2337c">
+<!ENTITY version "2026.02.15">
+<!ENTITY md5 "400ba4fe96f5ee3614fea9f821b03989">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/189167-plugin-folderview2" min="7.0.0">
     <CHANGES>
+
+###2026.02.15
+- Fix VM folder image and name missing CSS classes on Dashboard
 
 ###2026.02.11
 - Add folder WebUI setting with context menu button
