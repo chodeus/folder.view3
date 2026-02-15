@@ -6,6 +6,40 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.15
+
+### Changes
+
+#### File: `scripts/dashboard.js`
+
+**Fix: VM folder image and name missing CSS classes on Dashboard (line 449):**
+
+```diff
+-<img src="${folder.icon}" class="img" onerror='...'>
++<img src="${folder.icon}" class="img folder-img-vm" onerror='...'>
+```
+
+```diff
+-<span class="inner folder-inner-vm">${folder.name}<br>
++<span class="inner folder-inner-vm"><span class="folder-appname-vm">${folder.name}</span><br>
+```
+
+- **Problem:** The VM folder template on the Dashboard was missing the `folder-img-vm` class on the icon image and had no wrapper `<span>` around the folder name. The Docker folder template correctly had `class="img folder-img-docker"` and `<span class="folder-appname-docker">`, but the VM folder only had `class="img"` and bare text. This meant CSS selectors targeting `img.folder-img-vm` or `.folder-appname-vm` had no effect, breaking custom CSS themes that style VM folder icons and names on the Dashboard.
+- **Fix:** Added `folder-img-vm` class to the image element and wrapped the folder name in `<span class="folder-appname-vm">` to match the Docker folder pattern.
+- **Scope:** Only affects Dashboard VM folders. Docker tab, VM tab, and Dashboard Docker folders already had correct classes.
+- **Note:** This bug existed in both upstream forks (VladoPortos and scolcipitato original).
+
+---
+
+### Quick Reference: All Changes (Version 2026.02.15)
+
+| # | Change | File(s) | Impact |
+|---|--------|---------|--------|
+| 1 | VM folder image missing `folder-img-vm` class on Dashboard | `dashboard.js:449` | CSS selectors for VM folder icons now work |
+| 2 | VM folder name missing `folder-appname-vm` wrapper on Dashboard | `dashboard.js:449` | CSS selectors for VM folder names now work |
+
+---
+
 ## Version 2026.02.11
 
 ### Changes
