@@ -27,7 +27,7 @@ jobs:
           TODAY=$(date +"%Y.%m.%d")
 
           # Count existing beta packages for today
-          EXISTING=$(ls archive/folder.view2-${TODAY}-beta*.txz 2>/dev/null | wc -l)
+          EXISTING=$(ls archive/folder.view3-${TODAY}-beta*.txz 2>/dev/null | wc -l)
 
           if [ "$EXISTING" -eq 0 ]; then
             BETA_NUM=""
@@ -55,7 +55,7 @@ jobs:
       - name: Verify build
         run: |
           VERSION="${{ steps.beta.outputs.version }}"
-          FILENAME="archive/folder.view2-${VERSION}.txz"
+          FILENAME="archive/folder.view3-${VERSION}.txz"
 
           if [ ! -f "$FILENAME" ]; then
             echo "ERROR: Expected $FILENAME not found"
@@ -64,7 +64,7 @@ jobs:
           fi
 
           # Verify plg was updated
-          PLG_VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view2.plg)
+          PLG_VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view3.plg)
           echo "Package: $FILENAME"
           echo "PLG version: $PLG_VERSION"
 
@@ -75,6 +75,6 @@ jobs:
 
       - name: Commit and push to develop
         run: |
-          git add archive/ folder.view2.plg
+          git add archive/ folder.view3.plg
           git commit -m "Build beta ${{ steps.beta.outputs.version }}"
           git push origin develop

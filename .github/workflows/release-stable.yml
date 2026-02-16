@@ -31,7 +31,7 @@ jobs:
       # collision detection in pkg_build.sh, appending .N to the version
       - name: Remove beta packages from archive
         run: |
-          rm -f archive/folder.view2-*-beta*.txz
+          rm -f archive/folder.view3-*-beta*.txz
           echo "Cleaned up beta packages before build"
 
       # pkg_build.sh with no flags: stable YYYY.MM.DD version, URLs → main
@@ -44,9 +44,9 @@ jobs:
       - name: Extract stable version
         id: version
         run: |
-          VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view2.plg)
+          VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view3.plg)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          FILENAME="folder.view2-${VERSION}.txz"
+          FILENAME="folder.view3-${VERSION}.txz"
           echo "filename=$FILENAME" >> $GITHUB_OUTPUT
           echo "Stable version: $VERSION"
 
@@ -60,8 +60,8 @@ jobs:
           sed -i "s/## Version [0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}-beta[0-9]*/## Version ${STABLE}/" CHANGELOG-fixes.md
           sed -i "s/(Version [0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}-beta[0-9]*)/(Version ${STABLE})/" CHANGELOG-fixes.md
 
-          # folder.view2.plg: CHANGES section entries
-          sed -i "s/###[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}-beta[0-9]*/###${STABLE}/" folder.view2.plg
+          # folder.view3.plg: CHANGES section entries
+          sed -i "s/###[0-9]\{4\}\.[0-9]\{2\}\.[0-9]\{2\}-beta[0-9]*/###${STABLE}/" folder.view3.plg
 
           echo "Updated version headers to $STABLE"
 
@@ -79,9 +79,9 @@ jobs:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
           body: |
-            ## FolderView2 v${{ steps.version.outputs.version }}
+            ## FolderView3 v${{ steps.version.outputs.version }}
 
-            Install URL: `https://raw.githubusercontent.com/chodeus/folder.view2/main/folder.view2.plg`
+            Install URL: `https://raw.githubusercontent.com/chodeus/folder.view3/main/folder.view3.plg`
 
             See [CHANGELOG-fixes.md](CHANGELOG-fixes.md) for detailed changes.
           files: archive/${{ steps.version.outputs.filename }}

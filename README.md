@@ -1,71 +1,104 @@
-# FolderView2 For Unraid 7
+# <img src="img/folder-icon.png" width="32" height="32" alt="FolderView3"> FolderView3 for Unraid 7+
 
-## What is FolderView2?
+Organize your Docker containers and VMs into collapsible folders on the Docker, VM, and Dashboard tabs.
 
-Original creator: [**scolcipitato**](https://github.com/scolcipitato/folder.view)
+## Features
 
-FolderView2 lets you create folders for grouping Dockers and VMs together to help with organization. Especially useful if you're using docker-compose.
-Getting Started: A new button named "Add Folder" will appear at the bottom of the docker/VM tab next to "Add Container/VM".
+- **Collapsible folders** on Docker, VM, and Dashboard tabs
+- **Docker label assignment** — add `folder.view3: "FolderName"` to any container or Compose service to auto-assign it to a folder
+- **Per-folder colors** — customize border and vertical bar colors per folder
+- **Real-time stats** — live CPU/memory graphs in Advanced Preview
+- **Bulk actions** — start, stop, or restart all containers in a folder at once
+- **Autostart sync** — container autostart order stays aligned with your folder layout automatically
+- **Custom CSS/JS extensions** — drop files into the plugin's `styles/` or `scripts/` directory
+- **7 languages** — English, German, Spanish, French, Italian, Polish, Chinese
+
+## Project History
+
+FolderView3 was originally created by [scolcipitato](https://github.com/scolcipitato/folder.view), then ported to Unraid 7 and maintained by [VladoPortos](https://github.com/VladoPortos/folder.view2). This fork is actively maintained by [chodeus](https://github.com/chodeus/folder.view3) with additional bug fixes and new features.
 
 ## Installation
 
-Manual for now, need to figure out how to submit to Unraid app store.
+Paste this URL into the Unraid Plugins page (**Plugins → Install Plugin**):
 
-### Backup
-If you already have this plugins older version setup go to Plugins -> FolderView and "Export All" your current settings!
-
-However if you arelady can't access FolderView go to Settings via UI, go to:
-
-`config\plugins\folder.view\` and backup: `docker.json` and `vm.json` 
-
-```bash
-root@PlexServer:/boot/config/plugins/folder.view# pwd
-/boot/config/plugins/folder.view
-root@PlexServer:/boot/config/plugins/folder.view# ls
-docker.json  folder.view2-2025.02.26.txz  scripts/  styles/  version  vm.json
-root@PlexServer:/boot/config/plugins/folder.view# 
+```
+https://raw.githubusercontent.com/chodeus/folder.view3/main/folder.view3.plg
 ```
 
-### Easy Manual installation
+![Install FolderView3](img/plugin_install.png)
 
-Original repo - latest stable version from VladoPortos use link: ```https://raw.githubusercontent.com/VladoPortos/folder.view2/refs/heads/main/folder.view2.plg```
+### Migrating from folder.view or VladoPortos's fork
 
-For Chodeus's vibe coded stable use link: ```https://raw.githubusercontent.com/chodeus/folder.view2/main/folder.view2.plg```
+1. In your old plugin, go to **Plugins → FolderView3** and click **Export All** for both Docker and VM folders
+2. Backup your custom CSS if you're using them in the styles folder **config\plugins\folder.view3\styles\**
+3. Uninstall the old plugin
+4. Install this fork using the URL above
+5. Go to **Plugins → FolderView3** and **Import** your exported files
+6. Copy your custom CSS files back into the styles folder
 
-You can find the changelog in the repository.
+## Getting Started
 
-That link can be posted directly into the plugin install without needing to copy it to the filesystem beforehand.
+After installation, an **Add Folder** button appears at the bottom of the Docker and VM tabs, next to "Add Container" / "Add VM".
 
-[![Install FolderView2](img/plugin_install.png)]
+### Assigning containers to folders
 
+There are two ways to assign containers to a folder:
 
-### Manual installation
-1. Copy the `folder.view2.plg` file to `/boot/config/plugins/` folder.
-2. Copy the latest 'folder.view2-<date>.txz' from archive folder to `/boot/config/plugins/folder.view2/` folder.
-3. In Unraid webui go to Plugins -> Install Plugin tab, click on the folder `config` -> `plugins` -> `folder.view2.plg` and press install button.
+1. **Manual selection** — pick containers from the list when creating/editing a folder
+2. **Docker label** — add the label `folder.view3` with the folder name as the value to any container or Docker Compose service:
+   ```yaml
+   services:
+     myapp:
+       labels:
+         - folder.view3: "MyFolder"
+   ```
 
-## Support & Feedback
-If you have any questions or issues, please file an issue on [GitHub](https://github.com/VladoPortos/folder.view2/issues).
+## What's Different in This Fork
 
-## Contributors
-- [TurboStreetCar](https://github.com/TurboStreetCar) - Contributed improved folder.js implementation for compatibility with Unraid 7 and older versions
+This fork includes changes beyond the upstream VladoPortos version:
 
----
+- **Active autostart sync** — container autostart order is automatically rewritten to match your folder layout whenever you save or reorder. Stale entries from removed containers are cleaned up automatically. This replaces the old passive indicator from the original plugin.
+- **Folder WebUI setting** — open a container's WebUI directly from the folder context menu
+- **Dashboard fixes** — VM folder icons and names now have correct CSS classes
 
-## ☕ Buy Me a Coffee (or a Beer!)
+See [CHANGELOG-fixes.md](CHANGELOG-fixes.md) for the full list of changes.
 
-If you like this project and want to support my caffeine-fueled coding sessions, you can buy me a coffee (or a beer, I won't judge! 🍻) on Ko-fi:
+## Custom CSS Themes
 
-[![Support me on Ko-fi](img/support_me_on_kofi_badge_red.png)](https://ko-fi.com/vladoportos)
+FolderView3 supports custom CSS and JavaScript extensions. Place files in:
 
-Every donation helps to proofe to my wife that I'm not a complete idiot :D
+- **CSS:** `/boot/config/plugins/folder.view3/styles/`
+- **JS:** `/boot/config/plugins/folder.view3/scripts/`
 
----
+Files must follow the naming pattern `name.tab.css` or `name.tab.js`, where `tab` is one of `dashboard`, `docker`, or `vm` (chain with `-` for multiple tabs, e.g., `mytheme.dashboard-docker.css`).
 
-### Libraries used in this project:
+See the [Developer Guide](dev/README.md) for full details.
+
+### Community Themes
+
+- [hernandito](https://github.com/hernandito/folder.view.custom) — Compact and Midsize layout designs
+- [Mattaton](https://github.com/Tyree/folder.view.custom.css) — urblack, urgray, urwhite themes
+- [masterwishx](https://github.com/masterwishx/folder.view.custom.css) — urblack theme with CSS variables
+
+> **Note:** These themes were originally created for folder.view / folder.view2. Check each repo for compatibility with the current version.
+
+## Support
+
+- **Unraid Forum:** [FolderView3 Support Thread](https://forums.unraid.net/topic/197223-plugin-folderview3/)
+- **GitHub Issues:** [chodeus/folder.view3](https://github.com/chodeus/folder.view3/issues)
+
+## Libraries
+
 - [Chart.js](https://www.chartjs.org/)
 - [chartjs-adapter-moment](https://github.com/chartjs/chartjs-adapter-moment)
 - [Moment.js](https://momentjs.com/)
 - [chartjs-plugin-streaming](https://github.com/nagix/chartjs-plugin-streaming)
 - [jquery.i18n](https://github.com/wikimedia/jquery.i18n)
 - [jQuery UI MultiSelect](https://github.com/ehynds/jquery-ui-multiselect-widget)
+
+## Credits
+
+- [scolcipitato](https://github.com/scolcipitato) — original creator
+- [VladoPortos](https://github.com/VladoPortos) — Unraid 7 port and maintenance
+- [bmartino1](https://github.com/bmartino1) — testing and feedback
+- [Masterwishx](https://github.com/masterwishx) — testing and feedback

@@ -1,0 +1,39 @@
+.custom-css {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    align-items: center;
+    align-content: center;
+}
+
+.custom-css > button {
+    flex: 1 1 25%;
+}
+
+.folder-table {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    align-items: center;
+    align-content: center;
+}
+
+.folder-table > button {
+    flex: 1 1 25%;
+}
+
+.folder-table > table {
+    flex: 1 1 100%;
+    table-layout: fixed;
+    width: 100%;
+    text-align: center;
+}
+
+.folder-table > table th,
+.folder-table > table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
