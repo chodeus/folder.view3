@@ -44,18 +44,6 @@ const createFolders = async () => {
     if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV2_DEBUG] createFolders: Order after inserting Unraid-ordered folders', [...order]);
 
 
-    const autostartOrder = Object.values(containersInfo).filter(el => !(el.info.State.Autostart===false)).sort((a, b) => {
-        if(a.info.State.Autostart < b.info.State.Autostart) {
-          return -1;
-        }
-          if(a.info.State.Autostart > b.info.State.Autostart) {
-          return 1;
-        }
-          return 0;
-    }).map(el => el.info.Name);
-    if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV2_DEBUG] createFolders: autostartOrder', autostartOrder);
-
-
     // debug mode, download the debug json file
     if(folderDebugMode) { // This is the existing folderDebugMode, not FOLDER_VIEW_DEBUG_MODE
         if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV2_DEBUG] createFolders: folderDebugMode (existing) is TRUE. Preparing debug JSON download.');
@@ -173,17 +161,6 @@ const createFolders = async () => {
     folderDebugMode = false; // Existing flag
     if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV2_DEBUG] createFolders: Set folderDebugMode (existing) to false.');
 
-    const autostartActual = $('.ct-name .appname').map(function() {return $(this).text()}).get().filter(x => autostartOrder.includes(x));
-    if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV2_DEBUG] createFolders: autostartActual (from DOM)', autostartActual);
-
-    if(!(autostartOrder.length === autostartActual.length && autostartOrder.every((value, index) => value === autostartActual[index]))) {
-        if (FOLDER_VIEW_DEBUG_MODE) console.warn('[FV2_DEBUG] createFolders: Autostart order is incorrect. Updating UI elements.');
-        $('.nav-item.AutostartOrder.util > a > b').removeClass('green-text').addClass('red-text');
-        $('.nav-item.AutostartOrder.util > a > span').text($.i18n('incorrect-autostart'));
-        $('.nav-item.AutostartOrder.util > a').attr('title', $.i18n('incorrect-autostart'));
-    } else {
-        if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV2_DEBUG] createFolders: Autostart order is correct.');
-    }
     if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV2_DEBUG] createFolders: Exit');
 };
 

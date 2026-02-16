@@ -148,8 +148,6 @@
     "customizations": "Personalizzazioni",
     "on": "Sì",
     "off": "No",
-    "correct-autostart": "Ordine partenza automatica corretto",
-    "incorrect-autostart": "Ordine partenza automatica incorretto",
     "folderview2-desc": "FolderView2 ti permette di creare delle cartelle per raggruppare Docker e VM insieme per facilitare l'organizzazione. Utile nel caso tu stia usando docker-compose. Come iniziare: Un nuovo bottone apparirà in fondo alla schermata Docker/VM con il nome \"Aggiungi Cartella\" affianco al bottone \"Aggiungi container/VM\".",
     "action-add": "Aggiungi azione",
     "action-edit": "Modifica azione",

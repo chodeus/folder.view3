@@ -148,8 +148,6 @@
     "customizations": "自定义",
     "on": "开",
     "off": "关",
-    "correct-autostart": "自启动排序正确",
-    "incorrect-autostart": "不正确的自启动排序",
     "folderview2-desc": "FolderView2可以让你创建文件夹，将Docker和虚拟机进行分组，帮助合理规划。在使用docker-compose的情况下尤其有用。简单说明：在Docker/虚拟机页面的底部，在“添加容器”或“添加虚拟机”的按钮后面，会增加一个“添加文件夹”的按钮。",
     "action-add": "添加操作",
     "action-edit": "修改操作",

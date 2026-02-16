@@ -148,8 +148,6 @@
     "customizations": "Benutzeranpassungen",
     "on": "Ein",
     "off": "Aus",
-    "correct-autostart": "Richtige Autostart-Reihenfolge",
-    "incorrect-autostart": "Falsche Autostart-Reihenfolge",
     "folderview2-desc": "Mit FolderView2 kannst du Ordner erstellen, um Docker-Container und VMs zu gruppieren und so die Organisation zu erleichtern. Das ist besonders nützlich, wenn du docker-compose verwendest. Der erste Schritt: Ein neuer Button mit dem Namen \"Ordner hinzufügen\" erscheint unten im Docker/VM-Reiter neben \"Container/VM hinzufügen\".",
     "action-add": "Aktion hinzufügen",
     "action-edit": "Aktion bearbeiten",

@@ -148,8 +148,6 @@
     "customizations": "Personalizaciones",
     "on": "Si",
     "off": "No",
-    "correct-autostart": "Orden de inicio automático correcto",
-    "incorrect-autostart": "Orden de inicio automático incorrecto",
     "folderview2-desc": "FolderView2 te permite crear carpetas para agrupar Dockers y VM para ayudar con la organización. Es especialmente útil si estás usando Docker-Compose. Primeros pasos: aparecerá un nuevo botón llamado \"Agregar carpeta\" en la parte inferior de la pestaña Docker/VM junto a \"Agregar contenedor/VM\".",
     "action-add": "Añadir acción",
     "action-edit": "Editar acción",

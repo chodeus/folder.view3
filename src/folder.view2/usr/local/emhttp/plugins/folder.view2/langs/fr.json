@@ -148,8 +148,6 @@
     "customizations": "Personnalisations",
     "on": "Oui",
     "off": "non",
-    "correct-autostart": "Ordre de démarrage automatique correcte",
-    "incorrect-autostart": "Ordre de démarrage automatique incorrecte",
     "folderview2-desc": "FolderView2 vous permet de créer des dossiers afin d'organiser et de regrouper les Conteneurs et VMs ensemble. C'est particulièrement utile si vous utilisez docker-compose. Pour commencer : un nouveau bouton  nommé \"Ajouter Dossier\" apparaîtra en bas de l'onglet Docker/VM à coté de \"Ajouter Conteneur/VM\".",
     "action-add": "Ajouter action",
     "action-edit": "Editer action",

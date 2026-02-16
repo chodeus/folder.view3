@@ -148,8 +148,6 @@
     "customizations": "Dostosowania",
     "on": "Wł",
     "off": "Wył",
-    "correct-autostart": "Prawidłowa kolejność autostartu",
-    "incorrect-autostart": "Nieprawidłowa kolejność autostartu",
     "folderview2-desc": "FolderView2 pozwala tworzyć foldery do grupowania kontenerów Docker i maszyn wirtualnych w celu lepszej organizacji. Szczególnie przydatne przy korzystaniu z docker-compose. Rozpoczęcie: Nowy przycisk \"Dodaj folder\" pojawi się na dole zakładki Docker/VM obok \"Dodaj kontener/VM\".",
     "action-add": "Dodaj akcję",
     "action-edit": "Edytuj akcję",

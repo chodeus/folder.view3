@@ -13,12 +13,12 @@ const populateTable = async () => {
     vmsTable.empty();
 
     for (const [id, folder] of Object.entries(dockers)) {
-        const fld = `<tr><td>${id}</td><td><img src="${folder.icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${folder.name}</td><td><button onclick="downloadDocker('${id}')"><i class="fa fa-download"></i></button><button onclick="clearDocker('${id}')"><i class="fa fa-trash"></i></button></td></tr>`;
+        const fld = `<tr><td>${id}</td><td><img src="${folder.icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${folder.name}</td><td><button title="Export" onclick="downloadDocker('${id}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker('${id}')"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
     for (const [id, folder] of Object.entries(vms)) {
-        const fld = `<tr><td>${id}</td><td><img src="${folder.icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${folder.name}</td><td><button onclick="downloadVm('${id}')"><i class="fa fa-download"></i></button><button onclick="clearVm('${id}')"><i class="fa fa-trash"></i></button></td></tr>`;
+        const fld = `<tr><td>${id}</td><td><img src="${folder.icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${folder.name}</td><td><button title="Export" onclick="downloadVm('${id}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm('${id}')"><i class="fa fa-trash"></i></button></td></tr>`;
         vmsTable.append($(fld));
     }
 };

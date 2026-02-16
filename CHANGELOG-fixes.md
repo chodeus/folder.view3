@@ -6,6 +6,52 @@ This fork (`chodeus/folder.view2`) contains fixes and improvements over upstream
 
 ---
 
+## Version 2026.02.16
+
+### Changes
+
+#### File: `styles/folderview2.css`
+
+**Fix: Settings page folder table layout staggering:**
+
+- **Problem:** The `.folder-table` flex container treated buttons and the `<table>` as equal flex siblings via `.folder-table > *` with `flex: 1 1 25%`. The generic `table` rule added `flex-grow: 10`, causing the table to fight with the buttons for row space. This produced a staggered, misaligned layout — especially visible with multiple Docker folders.
+- **Fix:** Replaced the catch-all `.folder-table > *` rule with two specific rules: `.folder-table > button` keeps `flex: 1 1 25%` (buttons side-by-side), `.folder-table > table` uses `flex: 1 1 100%` (table always on its own full-width row). Removed `flex-grow: 10` from the generic `table` selector.
+- **Scope:** Only affects the FolderView2 Settings page. No impact on Docker/VM/Dashboard tab layouts or custom CSS themes (which target different selectors).
+
+#### File: `scripts/folderview2.js`
+
+**Enhancement: Add tooltips to Settings page folder action buttons:**
+
+- **Problem:** The Export (download) and Delete (trash) buttons on each folder row only showed icons with no text or tooltip, making their purpose unclear.
+- **Fix:** Added `title="Export"` and `title="Delete"` attributes to the action buttons in both Docker and VM folder row templates.
+
+#### File: `scripts/docker.js`
+
+**Cleanup: Remove dead autostart indicator code:**
+
+- **Problem:** Two blocks of code in `createFolders()` built an autostart order array and compared it to DOM order, then toggled a green/red indicator on `.nav-item.AutostartOrder.util`. This HTML element was never added to folder.view2's page templates, so the code ran silently against non-existent DOM. Additionally, `syncContainerOrder()` in `lib.php` actively syncs the autostart file on every folder save, making a passive indicator redundant.
+- **Fix:** Removed both code blocks (autostart order construction and DOM comparison/indicator toggle). Code archived to `dev/archived/autostart-indicator.js` with re-implementation instructions.
+- **Origin:** scolcipitato's original folder.view, partially ported by VladoPortos.
+
+#### Files: `langs/*.json` (all 7 languages)
+
+**Cleanup: Remove unused autostart i18n keys:**
+
+- Removed `"correct-autostart"` and `"incorrect-autostart"` keys from en, de, es, fr, it, pl, zh — no longer referenced after autostart indicator removal.
+
+---
+
+### Quick Reference: All Changes (Version 2026.02.16)
+
+| # | Change | File(s) | Impact |
+|---|--------|---------|--------|
+| 1 | Fix Settings page folder table staggered layout | `folderview2.css` | Buttons and table properly separated into rows |
+| 2 | Add Export/Delete tooltips to folder action buttons | `folderview2.js` | Users see tooltip on hover |
+| 3 | Remove dead autostart indicator JS code | `docker.js` | ~22 lines of dead code removed |
+| 4 | Remove unused autostart i18n keys | `langs/*.json` (x7) | 2 keys removed per file |
+
+---
+
 ## Version 2026.02.15
 
 ### Changes
