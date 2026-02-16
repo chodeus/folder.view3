@@ -1,0 +1,59 @@
+name: Release Main
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Build stable package
+        run: |
+          chmod +x pkg_build.sh
+          bash pkg_build.sh
+
+      - name: Extract stable version
+        id: version
+        run: |
+          VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view3.plg)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          FILENAME="folder.view3-${VERSION}.txz"
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+          echo "Stable version: $VERSION"
+
+      - name: Commit stable release to main
+        run: |
+          git add -A
+          git commit -m "Stable release ${{ steps.version.outputs.version }}"
+
+      - name: Push main
+        run: git push origin main
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: |
+            ## FolderView3 v${{ steps.version.outputs.version }}
+
+            Install URL: `https://raw.githubusercontent.com/chodeus/folder.view3/main/folder.view3.plg`
+
+            See [CHANGELOG-fixes.md](CHANGELOG-fixes.md) for detailed changes.
+          files: archive/${{ steps.version.outputs.filename }}
+          draft: false
+          prerelease: false

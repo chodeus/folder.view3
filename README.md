@@ -50,7 +50,7 @@ There are two ways to assign containers to a folder:
    services:
      myapp:
        labels:
-         - folder.view3: "MyFolder"
+         folder.view3: "MyFolder"
    ```
 
 ## What's Different in This Fork
