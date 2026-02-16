@@ -1,0 +1,45 @@
+name: Bug Report
+description: Report a bug or unexpected behavior with FolderView3
+labels: ["bug"]
+body:
+  - type: input
+    id: unraid-version
+    attributes:
+      label: Unraid Version
+      placeholder: "e.g. 7.0.1"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: FolderView3 Plugin Version
+      placeholder: "e.g. 2026.02.16"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      placeholder: "Describe the issue and how to reproduce it."
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: "Optional — drag and drop or paste any relevant screenshots."
+    validations:
+      required: false
+
+  - type: textarea
+    id: debug-log
+    attributes:
+      label: Debug Log
+      description: |
+        Optional — to capture a debug log: open the affected page, press F12, go to the Console tab, type `FOLDER_VIEW_DEBUG_MODE = true`, reload the page, reproduce the issue, then copy/paste the console output here.
+      render: shell
+    validations:
+      required: false
