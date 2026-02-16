@@ -21,6 +21,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      # Remove today's packages to avoid collision detection in pkg_build.sh
+      - name: Clean existing packages for today
+        run: |
+          TODAY=$(date +"%Y.%m.%d")
+          rm -f archive/folder.view3-${TODAY}*.txz
+          echo "Cleaned packages for $TODAY"
+
       - name: Build stable package
         run: |
           chmod +x pkg_build.sh
