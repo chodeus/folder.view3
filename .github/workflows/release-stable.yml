@@ -21,13 +21,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # Use -X theirs so develop wins on conflicts (plg, archive, changelog)
+      # Use -X theirs so beta wins on conflicts (plg, archive, changelog)
       # since we rebuild plg/archive and fix changelog headers afterward anyway
-      - name: Merge develop into main
+      - name: Merge beta into main
         run: |
-          git merge origin/develop -X theirs -m "Merge develop into main for stable release"
+          git merge origin/beta -X theirs -m "Merge beta into main for stable release"
 
-      # MUST run before build — beta .txz files from develop trigger the
+      # MUST run before build — beta .txz files from beta trigger the
       # collision detection in pkg_build.sh, appending .N to the version
       - name: Remove beta packages from archive
         run: |
