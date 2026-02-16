@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.02.16.1
+- Fix VM folder column alignment and autostart toggle position
+
 ###2026.02.16
 - Rebrand from FolderView2 to FolderView3
 - Docker label changed from folder.view2 to folder.view3
