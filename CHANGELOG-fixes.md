@@ -52,9 +52,15 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 13 | CPU/Memory text wrapping "GiB" on own line | `docker.css` | 2026.02.07 |
 | 14 | Settings page folder table staggered layout | `folderview3.css` | 2026.02.16 |
 | 15 | VM folder column misalignment (hardcoded colspan) | `vm.js` | 2026.02.16.1 |
-| 15 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
-| 16 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
-| 17 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
+| 16 | VM folder collapse button stuck (hardcoded `td[colspan=5]` selector) | `vm.js` | 2026.02.17 |
+| 17 | VM folder crash on invalid regex in folder config | `vm.js` | 2026.02.17 |
+| 18 | VM folder crash when deleted VM still in folder config | `vm.js` | 2026.02.17 |
+| 19 | VM context menu crash if `globalFolders[id]` is undefined | `vm.js` | 2026.02.17 |
+| 20 | VM folder action errors showing `false` instead of error text | `vm.js` | 2026.02.17 |
+| 21 | VM folder action error title not translated (hardcoded English) | `vm.js` | 2026.02.17 |
+| 22 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
+| 23 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
+| 24 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
@@ -175,6 +181,21 @@ Same fix as `docker.js` — deferred `switchButton` initialization with correct 
 
 **VM folder column misalignment (2026.02.16.1):**
 Folder row used hardcoded `colspan="5"` which was one column short on Unraid versions with an IP ADDRESS column, causing the autostart toggle to be misaligned. Changed to dynamically calculate colspan from the actual `#kvm_table` header column count, matching the approach used in `docker.js`.
+
+**VM folder collapse button stuck (2026.02.17):**
+The `dropDownButton()` collapse branch used `$('tr.folder-id-${id} > td[colspan=5] > .folder-storage')` with a hardcoded `colspan=5`. If the actual colspan differed (dynamically calculated from `#kvm_table` header), the selector matched nothing and the append silently failed, leaving the folder stuck expanded. Changed to `$('tr.folder-id-${id} .folder-storage')`, matching `docker.js`.
+
+**VM folder crash on invalid regex (2026.02.17):**
+`new RegExp(folder.regex)` was called without try/catch. An invalid regex in the folder config would throw an uncaught exception and break all folder rendering. Also added: deduplication (`!folder.containers.includes(el)`) to prevent containers matching both explicit list and regex from appearing twice, existence check (`vmInfo[el]`) to skip regex matches for VMs that don't exist, and string validation before attempting regex construction.
+
+**VM folder crash on deleted VM (2026.02.17):**
+`vmInfo[container]` was accessed without a null check. If a VM was deleted but still referenced in a folder's container list, accessing `ct.uuid` / `ct.state` would throw a TypeError. Added early `continue` when `vmInfo[container]` is falsy.
+
+**VM context menu crash (2026.02.17):**
+`addVMFolderContext()` accessed `globalFolders[id].settings` without checking if `globalFolders[id]` exists. During folder rebuilds (e.g., when `loadlist()` is called), clicking the folder icon could race with the rebuild and throw. Added null guard matching `docker.js`'s `addDockerFolderContext()`.
+
+**VM folder action error handling (2026.02.17):**
+`actionFolder()` had three issues: (1) error title was hardcoded `'Execution error'` instead of `$.i18n('exec-error')`, breaking translations; (2) errors were mapped via `e.success` (boolean) instead of `e.text || JSON.stringify(e)`, showing `false` instead of actual error messages; both fixed to match `docker.js`.
 
 **Expanded folder bottom border (2026.02.04):**
 Same fix as `docker.js` — neutral gray border.

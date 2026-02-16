@@ -126,9 +126,14 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     let remBefore = 0;
 
     // If regex is present searches all containers for a match and put them inside the folder containers
-    if (folder.regex) {
-        const regex = new RegExp(folder.regex);
-        folder.containers = folder.containers.concat(order.filter(el => regex.test(el)));
+    if (folder.regex && typeof folder.regex === 'string' && folder.regex.trim() !== "") {
+        try {
+            const regex = new RegExp(folder.regex);
+            const regexMatches = order.filter(el => vmInfo[el] && regex.test(el) && !folder.containers.includes(el));
+            folder.containers = folder.containers.concat(regexMatches);
+        } catch (e) {
+            console.warn(`folder.view3: Invalid regex "${folder.regex}" in VM folder "${folder.name}"`);
+        }
     }
 
     // the HTML template for the folder
@@ -221,6 +226,11 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
         if (index > -1) {
 
+            const ct = vmInfo[container];
+            if (!ct) {
+                continue;
+            }
+
             // Keep track of removed elements before the folder to set back the for loop for creating folders, otherwise folder will be skipped
             if(offsetIndex < position) {
                 remBefore += 1;
@@ -230,8 +240,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             cutomOrder.splice(index, 1);
             order.splice(offsetIndex, 1);
 
-            // add the id to the container name 
-            const ct = vmInfo[container];
+            // add the id to the container name
             newFolder[container] = {};
             newFolder[container].id = ct.uuid;
             newFolder[container].state = ct.state;
@@ -389,7 +398,7 @@ const dropDownButton = (id) => {
     if (state) {
         element.children().removeClass('fa-chevron-up').addClass('fa-chevron-down');
         $(`tr.folder-id-${id}`).addClass('sortable');
-        $(`tr.folder-id-${id} > td[colspan=5] > .folder-storage`).append($(`.folder-${id}-element`));
+        $(`tr.folder-id-${id} .folder-storage`).append($(`.folder-${id}-element`));
         element.attr('active', 'false');
     } else {
         element.children().removeClass('fa-chevron-down').addClass('fa-chevron-up');
@@ -488,12 +497,12 @@ const actionFolder = async (id, action) => {
 
     proms = await Promise.all(proms);
     errors = proms.filter(e => e.success !== true);
-    errors = errors.map(e => e.success);
+    const errorMessages = errors.map(e => e.text || JSON.stringify(e));
 
     if(errors.length > 0) {
         swal({
-            title:'Execution error',
-            text:errors.join('<br>'),
+            title: $.i18n('exec-error'),
+            text:errorMessages.join('<br>'),
             type:'error',
             html:true,
             confirmButtonText:'Ok'
@@ -607,6 +616,9 @@ const folderCustomAction = async (id, action) => {
  * @param {string} id the id of the folder
  */
 const addVMFolderContext = (id) => {
+    if (!globalFolders[id]) {
+        return;
+    }
     let opts = [];
     context.settings({
         right: false,
