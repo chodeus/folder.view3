@@ -10,10 +10,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout develop
+      - name: Checkout beta
         uses: actions/checkout@v4
         with:
-          ref: develop
+          ref: beta
           fetch-depth: 0
 
       - name: Configure git
@@ -73,8 +73,8 @@ jobs:
             exit 1
           fi
 
-      - name: Commit and push to develop
+      - name: Commit and push to beta
         run: |
           git add archive/ folder.view3.plg
           git commit -m "Build beta ${{ steps.beta.outputs.version }}"
-          git push origin develop
+          git push origin beta
