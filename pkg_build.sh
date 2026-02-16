@@ -3,7 +3,7 @@
 CWD=`pwd`
 tmpdir="$CWD/tmp/tmp.$((RANDOM % 1000000))"
 version=$(date +"%Y.%m.%d")
-plgfile="$CWD/folder.view2.plg"
+plgfile="$CWD/folder.view3.plg"
 
 # Parse flags
 # Usage: pkg_build.sh [--beta [N]]
@@ -27,18 +27,18 @@ else
     branch="main"
 fi
 
-filename="$CWD/archive/folder.view2-$version.txz"
-dayversion=$(ls $CWD/archive/folder.view2-$version*.txz 2>/dev/null | wc -l)
+filename="$CWD/archive/folder.view3-$version.txz"
+dayversion=$(ls $CWD/archive/folder.view3-$version*.txz 2>/dev/null | wc -l)
 
 if [ $dayversion -gt 0 ]
 then
     version="$version.$dayversion"
-    filename="$CWD/archive/folder.view2-$version.txz"
+    filename="$CWD/archive/folder.view3-$version.txz"
 fi
 
 mkdir -p $tmpdir
 
-cd "$CWD/src/folder.view2"
+cd "$CWD/src/folder.view3"
 cp --parents -f $(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json"  \) ) $tmpdir/
 
 # Set permissions for Unraid (only in temp dir, not the repo)
