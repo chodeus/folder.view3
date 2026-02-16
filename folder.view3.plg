@@ -6,12 +6,20 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.16.1">
-<!ENTITY md5 "e93ddf3abebb9690a0ddce4b291404dd">
+<!ENTITY version "2026.02.17">
+<!ENTITY md5 "83b90de9c0a038d203de75d9c23a2996">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.02.17
+- Fix VM folder collapse button not working (hardcoded colspan selector)
+- Fix VM folder crash when regex is invalid
+- Fix VM folder crash when a deleted VM is still in folder config
+- Fix VM context menu crash during folder rebuild
+- Fix VM folder action error messages showing boolean instead of text
+- Use translated error title for VM folder actions
 
 ###2026.02.16.1
 - Fix VM folder column alignment and autostart toggle position
