@@ -51,6 +51,7 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 12 | Folder name wrapping in basic view | `docker.css`, `vm.css` | 2026.02.08 |
 | 13 | CPU/Memory text wrapping "GiB" on own line | `docker.css` | 2026.02.07 |
 | 14 | Settings page folder table staggered layout | `folderview3.css` | 2026.02.16 |
+| 15 | VM folder column misalignment (hardcoded colspan) | `vm.js` | 2026.02.16.1 |
 | 15 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
 | 16 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
 | 17 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
@@ -171,6 +172,9 @@ VMs were grabbed by positional DOM index. Changed to name-based lookup: `$(this)
 
 **Autostart toggles showing OFF (2026.02.09):**
 Same fix as `docker.js` — deferred `switchButton` initialization with correct `checked` value.
+
+**VM folder column misalignment (2026.02.16.1):**
+Folder row used hardcoded `colspan="5"` which was one column short on Unraid versions with an IP ADDRESS column, causing the autostart toggle to be misaligned. Changed to dynamically calculate colspan from the actual `#kvm_table` header column count, matching the approach used in `docker.js`.
 
 **Expanded folder bottom border (2026.02.04):**
 Same fix as `docker.js` — neutral gray border.
@@ -341,3 +345,4 @@ Added `*.txz binary` rule to prevent git from mangling binary archives via `text
 **GitHub Actions (2026.02.03):**
 - `release-beta.yml`: Manual trigger, builds beta on beta branch, auto-increments beta number
 - `release-stable.yml`: Manual trigger, merges beta→main, builds stable, creates GitHub release
+- `release-main.yml`: Manual trigger, builds stable directly from main (no beta merge), creates GitHub release
