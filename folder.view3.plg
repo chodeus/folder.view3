@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.02.17">
-<!ENTITY md5 "83b90de9c0a038d203de75d9c23a2996">
+<!ENTITY version "2026.02.17.1">
+<!ENTITY md5 "f9bc76c92f4f1b67455834672162fb02">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.02.17.1
+- Fix folder export triggering Unraid external link warning
 
 ###2026.02.17
 - Fix VM folder collapse button not working (hardcoded colspan selector)

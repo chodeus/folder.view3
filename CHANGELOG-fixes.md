@@ -58,9 +58,10 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 19 | VM context menu crash if `globalFolders[id]` is undefined | `vm.js` | 2026.02.17 |
 | 20 | VM folder action errors showing `false` instead of error text | `vm.js` | 2026.02.17 |
 | 21 | VM folder action error title not translated (hardcoded English) | `vm.js` | 2026.02.17 |
-| 22 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
-| 23 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
-| 24 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
+| 22 | Folder export/debug download triggers Unraid external link warning (`data:` URL) | `folderview3.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.02.17.1 |
+| 23 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
+| 24 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
+| 25 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
@@ -222,6 +223,9 @@ Added `preview_vertical_bars_color` field handling — load (with fallback to `p
 
 **Export/Delete button tooltips (2026.02.16):**
 Added `title="Export"` and `title="Delete"` to Settings page folder action buttons.
+
+**Folder export triggering Unraid external link warning (2026.02.17.1):**
+The `downloadFile()` function used a `data:text/plain;charset=utf-8,...` URL to trigger file downloads. Unraid's security interceptor treats `data:` URLs as external links and shows a warning dialog. Changed to `Blob` URL (`URL.createObjectURL(new Blob(...))`) which produces a same-origin `blob:http://...` URL. Same fix applied to debug JSON downloads in `docker.js`, `vm.js`, and `dashboard.js`.
 
 ---
 
