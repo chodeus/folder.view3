@@ -29,8 +29,7 @@ const createFolders = async () => {
 
         // debug mode, download the debug json file
         if(folderDebugMode) {
-            let element = document.createElement('a');
-            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify({
+            const debugData = JSON.stringify({
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
                 folders,
                 unraidOrder,
@@ -38,15 +37,17 @@ const createFolders = async () => {
                 newOnes,
                 order,
                 containersInfo
-            })));
-            element.setAttribute('download', 'debug-DASHBOARD-DOCKER.json');
-        
+            });
+            const blob = new Blob([debugData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const element = document.createElement('a');
+            element.href = url;
+            element.download = 'debug-DASHBOARD-DOCKER.json';
             element.style.display = 'none';
             document.body.appendChild(element);
-        
             element.click();
-        
             document.body.removeChild(element);
+            URL.revokeObjectURL(url);
             console.log('Docker Order:', [...order]);
         }
     
@@ -137,8 +138,7 @@ const createFolders = async () => {
 
         // debug mode, download the debug json file
         if(folderDebugMode) {
-            let element = document.createElement('a');
-            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify({
+            const debugData = JSON.stringify({
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
                 folders,
                 unraidOrder,
@@ -146,15 +146,17 @@ const createFolders = async () => {
                 newOnes,
                 order,
                 vmInfo
-            })));
-            element.setAttribute('download', 'debug-DASHBOARD-VM.json');
-        
+            });
+            const blob = new Blob([debugData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const element = document.createElement('a');
+            element.href = url;
+            element.download = 'debug-DASHBOARD-VM.json';
             element.style.display = 'none';
             document.body.appendChild(element);
-        
             element.click();
-        
             document.body.removeChild(element);
+            URL.revokeObjectURL(url);
             console.log('VM Order:', [...order]);
         }
     
