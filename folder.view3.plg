@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.02.19
+- Fix container autostart with wait timer being disabled on tab switch
+
 ###2026.02.17.1
 - Fix folder export triggering Unraid external link warning
 

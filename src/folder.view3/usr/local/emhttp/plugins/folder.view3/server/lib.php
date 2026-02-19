@@ -168,10 +168,10 @@
         $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
         if (file_exists($autoStartFile)) {
             $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-            // Build name→line map to preserve delay values (format: "name" or "name=delay")
+            // Build name→line map to preserve delay values (format: "name" or "name delay")
             $autoStartMap = [];
             foreach ($autoStartLines as $line) {
-                $parts = explode('=', $line, 2);
+                $parts = explode(' ', $line, 2);
                 $autoStartMap[$parts[0]] = $line;
             }
             // Remove stale entries (containers that no longer exist)
@@ -248,7 +248,7 @@
             // Remove stale entries from autostart file (containers that no longer exist)
             $allCtNames = array_map(function($c) { return ltrim($c['Names'][0] ?? '', '/'); }, $cts);
             $cleanedLines = array_filter($autoStartLines, function($line) use ($allCtNames) {
-                $parts = explode('=', $line, 2);
+                $parts = explode(' ', $line, 2);
                 return in_array($parts[0], $allCtNames);
             });
             if (count($cleanedLines) < count($autoStartLines)) {
