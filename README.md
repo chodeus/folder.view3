@@ -102,3 +102,6 @@ See the [Developer Guide](dev/README.md) for full details.
 - [VladoPortos](https://github.com/VladoPortos) — Unraid 7 port and maintenance
 - [bmartino1](https://github.com/bmartino1) — testing and feedback
 - [Masterwishx](https://github.com/masterwishx) — testing and feedback
+
+## License
+- The original codebase (scolcipitato/folder.view, VladoPortos/folder.view2) is unlicensed. This license applies to contributions made in this fork only.
