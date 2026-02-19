@@ -22,7 +22,7 @@ FolderView3 was originally created by [scolcipitato](https://github.com/scolcipi
 Paste this URL into the Unraid Plugins page (**Plugins → Install Plugin**):
 
 ```
-https://raw.githubusercontent.com/chodeus/folder.view3/main/folder.view3.plg
+https://raw.githubusercontent.com/chodeus/folder.view3/beta/folder.view3.plg
 ```
 
 ![Install FolderView3](img/plugin_install.png)
