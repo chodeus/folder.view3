@@ -59,9 +59,10 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 20 | VM folder action errors showing `false` instead of error text | `vm.js` | 2026.02.17 |
 | 21 | VM folder action error title not translated (hardcoded English) | `vm.js` | 2026.02.17 |
 | 22 | Folder export/debug download triggers Unraid external link warning (`data:` URL) | `folderview3.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.02.17.1 |
-| 23 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
-| 24 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
-| 25 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
+| 23 | Container autostart with wait timer disabled on tab switch (wrong delimiter parsing autostart file) | `lib.php` | 2026.02.19 |
+| 24 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
+| 25 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
+| 26 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
