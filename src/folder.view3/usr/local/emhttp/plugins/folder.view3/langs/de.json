@@ -11,6 +11,8 @@
     "update-ready": "Bereit zum Aktualisieren",
     "force-update": "Aktualisierung erzwingen",
     "apply-update": "Aktualisierung anwenden",
+    "compose": "Compose",
+    "third-party": "Drittanbieter",
     "are-you-sure": "Bist du sicher?",
     "remove-folder": "Ordner entfernen",
     "yes-delete": "Ja, löschen!",

@@ -11,6 +11,8 @@
     "update-ready": "aktualizacja gotowa",
     "force-update": "wymuś aktualizację",
     "apply-update": "zastosuj aktualizację",
+    "compose": "Compose",
+    "third-party": "Zewnętrzne",
     "are-you-sure": "Czy jesteś pewien?",
     "remove-folder": "Usuń folder",
     "yes-delete": "Tak, usuń!",

@@ -9,6 +9,7 @@
 .folder-name {
     width: 220px;
     padding: 8px;
+    box-sizing: border-box;
 }
 
 .folder-name-sub {
@@ -16,13 +17,15 @@
     align-items: center;
     overflow: hidden;
     gap: 4px;
+    box-sizing: border-box;
 }
 
 .folder-outer {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    min-width: 0;
+    display: block;
+    width: calc(220px - 25px);
 }
 
 .folder-appname-id {
@@ -33,7 +36,6 @@
     padding: 6px;
     min-width: 0;
     margin: 0;
-    margin-left: auto;
     flex-shrink: 0;
 }
 

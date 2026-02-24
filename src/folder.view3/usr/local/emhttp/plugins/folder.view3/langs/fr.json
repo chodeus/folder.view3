@@ -11,6 +11,8 @@
     "update-ready": "mise à jour prête",
     "force-update": "forcer la mise à jour",
     "apply-update": "appliquer la mise à jour",
+    "compose": "Compose",
+    "third-party": "Tiers",
     "are-you-sure": "Etes-vous sûr ?",
     "remove-folder": "Supprimer le dossier",
     "yes-delete": "Oui, le supprimer !",
