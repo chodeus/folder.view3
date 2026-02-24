@@ -122,6 +122,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         }
     }
 
+    choose.sort((a, b) => a.Name.localeCompare(b.Name));
+
     updateList();
 })();
 
@@ -141,6 +143,7 @@ const updateRegex = (e) => {
     choose = choose.concat(selectedRegex);
     const fldName = $('[name="name"]')[0].value;
     selectedRegex = choose.filter(el => el.Label === fldName);
+    choose = choose.filter(el => el.Label !== fldName);
     if (e.value) {
         const regex = new RegExp(e.value);
         for (let i = 0; i < choose.length; i++) {
