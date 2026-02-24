@@ -32,6 +32,12 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 7 | Split border and vertical bars into separate color pickers | `Folder.page`, `folder.js`, `docker.js`, `vm.js` | 2026.02.04 |
 | 8 | Nested color pickers under parent toggles | `Folder.page`, `folder.js` | 2026.02.04 |
 | 9 | Export/Delete tooltips on Settings page folder buttons | `folderview3.js` | 2026.02.16 |
+| 10 | Docker Compose and 3rd Party container awareness (`managerTypes` Set) | `docker.js`, `dashboard.js` | 2026.02.24 |
+| 11 | Compose/3rd Party/mixed labels in folder update column | `docker.js` | 2026.02.24 |
+| 12 | Compose/3rd Party labels in advanced preview tooltip | `docker.js` | 2026.02.24 |
+| 13 | Hide autostart toggle for non-dockerman folders | `docker.js`, `dashboard.js` | 2026.02.24 |
+| 14 | i18n keys for Compose and 3rd Party labels (all 7 languages) | `langs/*.json` | 2026.02.24 |
+| 15 | Stacked Compose + 3rd Party labels for mixed folders | `docker.js` | 2026.02.24 |
 
 ### Bug Fixes
 
@@ -60,9 +66,19 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 21 | VM folder action error title not translated (hardcoded English) | `vm.js` | 2026.02.17 |
 | 22 | Folder export/debug download triggers Unraid external link warning (`data:` URL) | `folderview3.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.02.17.1 |
 | 23 | Container autostart with wait timer disabled on tab switch (wrong delimiter parsing autostart file) | `lib.php` | 2026.02.19 |
-| 24 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
-| 25 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
-| 26 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
+| 24 | Improved folder expand button shifting when folder is toggled (table recalculates column width) | `docker.css`, `vm.css` | 2026.02.23 |
+| 25 | Dashboard folder title uses `blue-text` instead of `orange-text` when `preview_update` is enabled | `dashboard.js` | 2026.02.23 |
+| 26 | Dashboard container names in folder showcase not styled orange when updates available | `dashboard.js` | 2026.02.23 |
+| 27 | Unsorted containers on folder settings page appear in Docker creation order instead of alphabetical | `folder.js` | 2026.02.23 |
+| 28 | False orange update text on Compose/3rd Party containers (`Updated` field unreliable for non-dockerman) | `docker.js`, `dashboard.js` | 2026.02.24 |
+| 29 | Autostart count incorrectly including Compose containers (Autostart undefined passes check) | `docker.js`, `dashboard.js` | 2026.02.24 |
+| 30 | Tooltip operator precedence bug: `!Updated === false` evaluates wrong for null/undefined | `docker.js` | 2026.02.24 |
+| 31 | Compose container duplicate on folder settings page (`choose.filter` not removing label-matched items) | `folder.js` | 2026.02.24 |
+| 32 | Autostart toggle visible for non-dockerman folders (Compose/3rd Party don't support autostart) | `docker.js`, `dashboard.js` | 2026.02.24 |
+| 33 | Folder drag-and-drop not working for compose/3rd-party-only folders (jQuery UI Sortable not refreshed) | `docker.js` | 2026.02.24 |
+| 34 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
+| 35 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
+| 36 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
