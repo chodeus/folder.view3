@@ -11,6 +11,8 @@
     "update-ready": "actualización lista",
     "force-update": "forzar actualización",
     "apply-update": "iniciar actualización",
+    "compose": "Compose",
+    "third-party": "Terceros",
     "are-you-sure": "¿Estás seguro?",
     "remove-folder": "Borrar carpeta",
     "yes-delete": "Sí, bórrala",

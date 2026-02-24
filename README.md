@@ -22,7 +22,7 @@ FolderView3 was originally created by [scolcipitato](https://github.com/scolcipi
 Paste this URL into the Unraid Plugins page (**Plugins → Install Plugin**):
 
 ```
-https://raw.githubusercontent.com/chodeus/folder.view3/main/folder.view3.plg
+https://raw.githubusercontent.com/chodeus/folder.view3/beta/folder.view3.plg
 ```
 
 ![Install FolderView3](img/plugin_install.png)
@@ -102,3 +102,6 @@ See the [Developer Guide](dev/README.md) for full details.
 - [VladoPortos](https://github.com/VladoPortos) — Unraid 7 port and maintenance
 - [bmartino1](https://github.com/bmartino1) — testing and feedback
 - [Masterwishx](https://github.com/masterwishx) — testing and feedback
+
+## License
+- The original codebase (scolcipitato/folder.view, VladoPortos/folder.view2) is unlicensed. This license applies to contributions made in this fork only.

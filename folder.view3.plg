@@ -6,12 +6,26 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.02.19-beta">
-<!ENTITY md5 "4cb1995d47cd1e4ee8ede2fb6334153b">
+<!ENTITY version "2026.02.24-beta4">
+<!ENTITY md5 "97448d7f8886bd7907e9d2876adbdce9">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.02.24
+- Add Docker Compose and 3rd Party container awareness for folders
+- Fix false orange update text on Compose/3rd Party containers
+- Fix autostart counting and toggle for non-dockerman containers
+- Show stacked Compose + 3rd Party labels for mixed folders
+- Fix tooltip operator precedence bug for update status
+- Fix compose container duplicate on folder settings page
+- Fix folder drag-and-drop for compose/3rd-party-only folders
+
+###2026.02.23
+- Improved folder expand button shifting when folder is toggled
+- Dashboard folder/container names show orange text when updates available (per folder setting)
+- Sort unsorted containers alphabetically on folder settings page
 
 ###2026.02.19
 - Fix container autostart with wait timer being disabled on tab switch

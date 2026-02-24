@@ -11,6 +11,8 @@
     "update-ready": "update ready",
     "force-update": "force update",
     "apply-update": "apply update",
+    "compose": "Compose",
+    "third-party": "3rd Party",
     "are-you-sure": "Are you sure?",
     "remove-folder": "Remove folder",
     "yes-delete": "Yes, delete it!",
