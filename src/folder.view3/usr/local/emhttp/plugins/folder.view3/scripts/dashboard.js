@@ -245,6 +245,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     let autostart = 0;
     let autostartStarted = 0;
     let managed = 0;
+    let managerTypes = new Set();
     let remBefore = 0;
 
     // If regex is present searches all containers for a match and put them inside the folder containers
@@ -321,8 +322,13 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
             newFolder[container].id = ct.shortId;
             newFolder[container].pause = ct.info.State.Paused;
             newFolder[container].state = ct.info.State.Running;
-            newFolder[container].update = ct.info.State.Updated === false;
+            newFolder[container].update = ct.info.State.Updated === false && ct.info.State.manager === 'dockerman';
             newFolder[container].managed = ct.info.State.manager === 'dockerman';
+            newFolder[container].manager = ct.info.State.manager;
+
+            if (folder.settings?.preview_update && newFolder[container].update) {
+                $containerEl.find('.blue-text').addClass('orange-text');
+            }
 
             if(folderDebugMode) {
                 console.log(`Docker ${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
@@ -331,8 +337,10 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
             // set the status of the folder
             upToDate = upToDate && !newFolder[container].update;
             started += newFolder[container].state ? 1 : 0;
-            autostart += !(ct.info.State.Autostart === false) ? 1 : 0;
-            autostartStarted += ((!(ct.info.State.Autostart === false)) && newFolder[container].state) ? 1 : 0;
+            const isDockerMan = ct.info.State.manager === 'dockerman';
+            autostart += (isDockerMan && !(ct.info.State.Autostart === false)) ? 1 : 0;
+            autostartStarted += (isDockerMan && !(ct.info.State.Autostart === false) && newFolder[container].state) ? 1 : 0;
+            managerTypes.add(ct.info.State.manager);
             managed += newFolder[container].managed ? 1 : 0;
 
             folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-preview', {detail: {
@@ -363,10 +371,10 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     //temp var
     const sel = $(`tbody#docker_view span#folder-id-${id}`)
     
-    //set tehe status of a folder
+    //set the status of a folder
 
-    if (!upToDate) {
-        sel.next('span.inner').children().first().addClass('blue-text');
+    if (!upToDate && managerTypes.has('dockerman')) {
+        sel.next('span.inner').children().first().addClass(folder.settings?.preview_update ? 'orange-text' : 'blue-text');
     }
 
     if (started) {
@@ -400,6 +408,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     folder.status.autostart = autostart;
     folder.status.autostartStarted = autostartStarted;
     folder.status.managed = managed;
+    folder.status.managerTypes = Array.from(managerTypes);
     folder.status.expanded = false;
 
     folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-creation', {detail: {
