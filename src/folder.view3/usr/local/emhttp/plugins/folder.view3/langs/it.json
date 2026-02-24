@@ -11,6 +11,8 @@
     "update-ready": "aggiornamento pronto",
     "force-update": "forza aggiornamento",
     "apply-update": "applica aggiornamento",
+    "compose": "Compose",
+    "third-party": "Terze parti",
     "are-you-sure": "Sei sicuro?",
     "remove-folder": "Rimuovi cartella",
     "yes-delete": "Si, cancella!",

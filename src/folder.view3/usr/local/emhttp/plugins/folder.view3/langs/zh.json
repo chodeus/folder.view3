@@ -11,6 +11,8 @@
     "update-ready": "更新就绪",
     "force-update": "强制更新",
     "apply-update": "应用更新",
+    "compose": "Compose",
+    "third-party": "第三方",
     "are-you-sure": "是否确定？",
     "remove-folder": "删除文件夹",
     "yes-delete": "是，删除！",
