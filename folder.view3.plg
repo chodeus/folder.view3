@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.02.24-beta4">
-<!ENTITY md5 "97448d7f8886bd7907e9d2876adbdce9">
+<!ENTITY version "2026.02.26-beta">
+<!ENTITY md5 "b20e62eac4e0eee057e7229b18134cf1">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.02.26
+- Fix folder rendering crash for container names containing CSS special characters (e.g. periods, colons)
 
 ###2026.02.24
 - Add Docker Compose and 3rd Party container awareness for folders

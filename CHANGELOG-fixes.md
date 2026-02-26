@@ -1,5 +1,17 @@
 # FolderView3 Changelog
 
+## 2026-02-26
+
+### Fix: jQuery selector crash for container names with special CSS characters
+
+**Issue:** Container names containing CSS special characters (`.`, `:`, `[`, `]`, etc.) caused a jQuery `Syntax error, unrecognized expression` when FolderView3 tried to locate them via `$('#ct-ContainerName')`. This broke folder rendering — affected containers appeared outside folders.
+
+**Root cause:** `docker.js` line 386 used the container name directly in a jQuery ID selector. A name like `Dash.` became `#ct-Dash.` — invalid CSS.
+
+**Fix:** Replaced `$(\`#ct-${name}\`)` with `$(document.getElementById(\`ct-${name}\`))`. `getElementById` treats the string as a literal ID, bypassing CSS parsing entirely.
+
+**File changed:** `scripts/docker.js` line 386
+
 ## Summary
 
 This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/folder.view2` (originally `scolcipitato/folder.view`). It includes bug fixes, new features, theme compatibility, Unraid 7 support, and a full rebrand.
