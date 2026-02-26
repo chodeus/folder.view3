@@ -161,8 +161,8 @@
     "override-default-actions": "覆盖默认操作：",
     "override-default-actions-tooltip": "将移除默认菜单，替换为下方设置的自定义操作。",
     "custom-actions-arguments": "参数：",
-    "folder-webui": "Folder WebUI:",
-    "folder-webui-tooltip": "Default folder WebUI URL.",
-    "folder-webui-url": "WebUI URL:",
-    "folder-webui-url-tooltip": "The URL to open when clicking the WebUI button in the folder context menu."
+    "folder-webui": "文件夹 WebUI：",
+    "folder-webui-tooltip": "默认文件夹 WebUI 地址。",
+    "folder-webui-url": "WebUI 地址：",
+    "folder-webui-url-tooltip": "点击文件夹右键菜单中的 WebUI 按钮时打开的地址。"
 }
