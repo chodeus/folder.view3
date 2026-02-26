@@ -383,7 +383,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Original index ${originalIndexOfContainerInSnapshot} < folder position ${positionInMainOrder}. Incremented remBefore to ${remBefore}.`);
         }
 
-        let $containerTR = $(`#ct-${container_name_in_folder}`);
+        let $containerTR = $(document.getElementById(`ct-${container_name_in_folder}`));
         if (!$containerTR.length || !$containerTR.hasClass('sortable')) {
             if(FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: TR not found by ID or not sortable. Fallback search...`);
             $containerTR = $("#docker_list > tr.sortable").filter(function() {

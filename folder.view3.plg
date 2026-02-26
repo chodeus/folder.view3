@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.02.26
+- Fix folder rendering crash for container names containing CSS special characters (e.g. periods, colons)
+
 ###2026.02.24
 - Add Docker Compose and 3rd Party container awareness for folders
 - Fix false orange update text on Compose/3rd Party containers
