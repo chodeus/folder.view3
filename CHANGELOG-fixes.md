@@ -1,17 +1,5 @@
 # FolderView3 Changelog
 
-## 2026-02-26
-
-### Fix: jQuery selector crash for container names with special CSS characters
-
-**Issue:** Container names containing CSS special characters (`.`, `:`, `[`, `]`, etc.) caused a jQuery `Syntax error, unrecognized expression` when FolderView3 tried to locate them via `$('#ct-ContainerName')`. This broke folder rendering — affected containers appeared outside folders.
-
-**Root cause:** `docker.js` line 386 used the container name directly in a jQuery ID selector. A name like `Dash.` became `#ct-Dash.` — invalid CSS.
-
-**Fix:** Replaced `$(\`#ct-${name}\`)` with `$(document.getElementById(\`ct-${name}\`))`. `getElementById` treats the string as a literal ID, bypassing CSS parsing entirely.
-
-**File changed:** `scripts/docker.js` line 386
-
 ## Summary
 
 This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/folder.view2` (originally `scolcipitato/folder.view`). It includes bug fixes, new features, theme compatibility, Unraid 7 support, and a full rebrand.
@@ -35,14 +23,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 1 | Folder WebUI toggle + URL input in folder editor | `Folder.page`, `folder.js` | 2026.02.11 |
-| 2 | WebUI button in Docker tab context menu | `docker.js` | 2026.02.11 |
-| 3 | WebUI button in Dashboard context menu | `dashboard.js` | 2026.02.11 |
-| 4 | Container order sync on folder save (`syncContainerOrder`) | `lib.php`, `folder.js`, `sync_order.php` (new) | 2026.02.10 |
-| 5 | Autostart order synced with folder container layout | `lib.php` | 2026.02.10 |
-| 6 | Stale autostart cleanup on page load | `lib.php` (readInfo) | 2026.02.11 |
-| 7 | Split border and vertical bars into separate color pickers | `Folder.page`, `folder.js`, `docker.js`, `vm.js` | 2026.02.04 |
-| 8 | Nested color pickers under parent toggles | `Folder.page`, `folder.js` | 2026.02.04 |
+| 1 | Split border and vertical bars into separate color pickers | `Folder.page`, `folder.js`, `docker.js`, `vm.js` | 2026.02.04 |
+| 2 | Nested color pickers under parent toggles | `Folder.page`, `folder.js` | 2026.02.04 |
+| 3 | Container order sync on folder save (`syncContainerOrder`) | `lib.php`, `folder.js`, `sync_order.php` (new) | 2026.02.10 |
+| 4 | Autostart order synced with folder container layout | `lib.php` | 2026.02.10 |
+| 5 | Folder WebUI toggle + URL input in folder editor | `Folder.page`, `folder.js` | 2026.02.11 |
+| 6 | WebUI button in Docker tab context menu | `docker.js` | 2026.02.11 |
+| 7 | WebUI button in Dashboard context menu | `dashboard.js` | 2026.02.11 |
+| 8 | Stale autostart cleanup on page load | `lib.php` (readInfo) | 2026.02.11 |
 | 9 | Export/Delete tooltips on Settings page folder buttons | `folderview3.js` | 2026.02.16 |
 | 10 | Docker Compose and 3rd Party container awareness (`managerTypes` Set) | `docker.js`, `dashboard.js` | 2026.02.24 |
 | 11 | Compose/3rd Party/mixed labels in folder update column | `docker.js` | 2026.02.24 |
@@ -57,40 +45,41 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 |---|--------|---------|---------|
 | 1 | Docker Compose containers not grouped into folders | `docker.js` | 2026.02.03 |
 | 2 | CPU/Memory stats not updating in advanced view (SSE) | `docker.js` | 2026.02.03 |
-| 3 | Dashboard showing wrong containers in folders (index-based) | `dashboard.js` | 2026.02.09.1 |
-| 4 | VM folder assignment bug (index-based matching) | `vm.js` | 2026.02.07 |
-| 5 | Autostart toggles showing OFF after plugin update | `docker.js`, `vm.js` | 2026.02.09 |
-| 6 | Autostart toggle race condition (overlapping AJAX) | `docker.js` | 2026.02.10 |
-| 7 | `readUserPrefs()` returning JSON object instead of array | `lib.php` | 2026.02.10 |
-| 8 | VM folder image missing `folder-img-vm` class on Dashboard | `dashboard.js` | 2026.02.15 |
-| 9 | VM folder name missing `folder-appname-vm` wrapper on Dashboard | `dashboard.js` | 2026.02.15 |
-| 10 | Color reset button appearing below color swatch | `folder.css` | 2026.02.09 |
-| 11 | Expanded folder bottom border using user's border color | `docker.js`, `vm.js` | 2026.02.04 |
-| 12 | Folder name wrapping in basic view | `docker.css`, `vm.css` | 2026.02.08 |
-| 13 | CPU/Memory text wrapping "GiB" on own line | `docker.css` | 2026.02.07 |
-| 14 | Settings page folder table staggered layout | `folderview3.css` | 2026.02.16 |
-| 15 | VM folder column misalignment (hardcoded colspan) | `vm.js` | 2026.02.16.1 |
-| 16 | VM folder collapse button stuck (hardcoded `td[colspan=5]` selector) | `vm.js` | 2026.02.17 |
-| 17 | VM folder crash on invalid regex in folder config | `vm.js` | 2026.02.17 |
-| 18 | VM folder crash when deleted VM still in folder config | `vm.js` | 2026.02.17 |
-| 19 | VM context menu crash if `globalFolders[id]` is undefined | `vm.js` | 2026.02.17 |
-| 20 | VM folder action errors showing `false` instead of error text | `vm.js` | 2026.02.17 |
-| 21 | VM folder action error title not translated (hardcoded English) | `vm.js` | 2026.02.17 |
-| 22 | Folder export/debug download triggers Unraid external link warning (`data:` URL) | `folderview3.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.02.17.1 |
-| 23 | Container autostart with wait timer disabled on tab switch (wrong delimiter parsing autostart file) | `lib.php` | 2026.02.19 |
-| 24 | Improved folder expand button shifting when folder is toggled (table recalculates column width) | `docker.css`, `vm.css` | 2026.02.23 |
-| 25 | Dashboard folder title uses `blue-text` instead of `orange-text` when `preview_update` is enabled | `dashboard.js` | 2026.02.23 |
-| 26 | Dashboard container names in folder showcase not styled orange when updates available | `dashboard.js` | 2026.02.23 |
-| 27 | Unsorted containers on folder settings page appear in Docker creation order instead of alphabetical | `folder.js` | 2026.02.23 |
-| 28 | False orange update text on Compose/3rd Party containers (`Updated` field unreliable for non-dockerman) | `docker.js`, `dashboard.js` | 2026.02.24 |
-| 29 | Autostart count incorrectly including Compose containers (Autostart undefined passes check) | `docker.js`, `dashboard.js` | 2026.02.24 |
-| 30 | Tooltip operator precedence bug: `!Updated === false` evaluates wrong for null/undefined | `docker.js` | 2026.02.24 |
-| 31 | Compose container duplicate on folder settings page (`choose.filter` not removing label-matched items) | `folder.js` | 2026.02.24 |
-| 32 | Autostart toggle visible for non-dockerman folders (Compose/3rd Party don't support autostart) | `docker.js`, `dashboard.js` | 2026.02.24 |
-| 33 | Folder drag-and-drop not working for compose/3rd-party-only folders (jQuery UI Sortable not refreshed) | `docker.js` | 2026.02.24 |
-| 34 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
-| 35 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
-| 36 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
+| 3 | Plugin download URL: `raw.github.com` + `master` branch | `.plg` | 2026.02.03 |
+| 4 | nginx 404 errors from missing Docker Manager CSS | `Folder.page` | 2026.02.03 |
+| 5 | Expanded folder bottom border using user's border color | `docker.js`, `vm.js` | 2026.02.04 |
+| 6 | Archive packaging structure (build/ prefix) | `pkg_build.sh` | 2026.02.05 |
+| 7 | VM folder assignment bug (index-based matching) | `vm.js` | 2026.02.07 |
+| 8 | CPU/Memory text wrapping "GiB" on own line | `docker.css` | 2026.02.07 |
+| 9 | Folder name wrapping in basic view | `docker.css`, `vm.css` | 2026.02.08 |
+| 10 | Autostart toggles showing OFF after plugin update | `docker.js`, `vm.js` | 2026.02.09 |
+| 11 | Color reset button appearing below color swatch | `folder.css` | 2026.02.09 |
+| 12 | Dashboard showing wrong containers in folders (index-based) | `dashboard.js` | 2026.02.09.1 |
+| 13 | Autostart toggle race condition (overlapping AJAX) | `docker.js` | 2026.02.10 |
+| 14 | `readUserPrefs()` returning JSON object instead of array | `lib.php` | 2026.02.10 |
+| 15 | VM folder image missing `folder-img-vm` class on Dashboard | `dashboard.js` | 2026.02.15 |
+| 16 | VM folder name missing `folder-appname-vm` wrapper on Dashboard | `dashboard.js` | 2026.02.15 |
+| 17 | Settings page folder table staggered layout | `folderview3.css` | 2026.02.16 |
+| 18 | VM folder column misalignment (hardcoded colspan) | `vm.js` | 2026.02.16.1 |
+| 19 | VM folder collapse button stuck (hardcoded `td[colspan=5]` selector) | `vm.js` | 2026.02.17 |
+| 20 | VM folder crash on invalid regex in folder config | `vm.js` | 2026.02.17 |
+| 21 | VM folder crash when deleted VM still in folder config | `vm.js` | 2026.02.17 |
+| 22 | VM context menu crash if `globalFolders[id]` is undefined | `vm.js` | 2026.02.17 |
+| 23 | VM folder action errors showing `false` instead of error text | `vm.js` | 2026.02.17 |
+| 24 | VM folder action error title not translated (hardcoded English) | `vm.js` | 2026.02.17 |
+| 25 | Folder export/debug download triggers Unraid external link warning (`data:` URL) | `folderview3.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.02.17.1 |
+| 26 | Container autostart with wait timer disabled on tab switch (wrong delimiter parsing autostart file) | `lib.php` | 2026.02.19 |
+| 27 | Improved folder expand button shifting when folder is toggled (table recalculates column width) | `docker.css`, `vm.css` | 2026.02.23 |
+| 28 | Dashboard folder title uses `blue-text` instead of `orange-text` when `preview_update` is enabled | `dashboard.js` | 2026.02.23 |
+| 29 | Dashboard container names in folder showcase not styled orange when updates available | `dashboard.js` | 2026.02.23 |
+| 30 | Unsorted containers on folder settings page appear in Docker creation order instead of alphabetical | `folder.js` | 2026.02.23 |
+| 31 | False orange update text on Compose/3rd Party containers (`Updated` field unreliable for non-dockerman) | `docker.js`, `dashboard.js` | 2026.02.24 |
+| 32 | Autostart count incorrectly including Compose containers (Autostart undefined passes check) | `docker.js`, `dashboard.js` | 2026.02.24 |
+| 33 | Tooltip operator precedence bug: `!Updated === false` evaluates wrong for null/undefined | `docker.js` | 2026.02.24 |
+| 34 | Compose container duplicate on folder settings page (`choose.filter` not removing label-matched items) | `folder.js` | 2026.02.24 |
+| 35 | Autostart toggle visible for non-dockerman folders (Compose/3rd Party don't support autostart) | `docker.js`, `dashboard.js` | 2026.02.24 |
+| 36 | Folder drag-and-drop not working for compose/3rd-party-only folders (jQuery UI Sortable not refreshed) | `docker.js` | 2026.02.24 |
+| 37 | jQuery selector crash for container names with CSS special characters (e.g. `Dash.`) | `docker.js` | 2026.02.26 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
@@ -117,44 +106,46 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 2 | Order section: removed `115em` inline width, flexbox column | `folder.css`, `Folder.page` | 2026.02.03 |
 | 3 | Tooltip bullet points removed from settings form | `folder.css` | 2026.02.03 |
 | 4 | Reset button: oversized to matching 44x28px | `Folder.page` | 2026.02.04 |
-| 5 | Folder name sub: `align-items: flex-start` to `center` | `docker.css`, `vm.css` | 2026.02.09 |
-| 6 | New folder defaults: all toggles OFF | `Folder.page` | 2026.02.09 |
-| 7 | Backward-compatible Docker Manager CSS for Unraid 6 | `Folder.page` | 2026.02.08 |
+| 5 | Backward-compatible Docker Manager CSS for Unraid 6 | `Folder.page` | 2026.02.08 |
+| 6 | Folder name sub: `align-items: flex-start` to `center` | `docker.css`, `vm.css` | 2026.02.09 |
+| 7 | New folder defaults: all toggles OFF | `Folder.page` | 2026.02.09 |
 
 ### Translation Updates
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 1 | German (`de.json`): 3 strings translated | `de.json` | 2026.02.07 |
-| 2 | Spanish (`es.json`): 3 strings translated | `es.json` | 2026.02.07 |
-| 3 | Italian (`it.json`): 3 keys translated | `it.json` | 2026.02.07 |
-| 4 | Chinese (`zh.json`): 4+ keys translated | `zh.json` | 2026.02.07 |
-| 5 | Polish (`pl.json`): 62 missing keys added for full parity | `pl.json` | 2026.02.07 |
-| 6 | Split border/bars color labels in all 7 languages | All `langs/*.json` | 2026.02.04 |
-| 7 | WebUI feature: 4 new i18n keys in all 7 languages | All `langs/*.json` | 2026.02.11 |
+| 1 | Split border/bars color labels in all 7 languages | All `langs/*.json` | 2026.02.04 |
+| 2 | German (`de.json`): 3 strings translated | `de.json` | 2026.02.07 |
+| 3 | Spanish (`es.json`): 3 strings translated | `es.json` | 2026.02.07 |
+| 4 | Italian (`it.json`): 3 keys translated | `it.json` | 2026.02.07 |
+| 5 | Chinese (`zh.json`): 4+ keys translated | `zh.json` | 2026.02.07 |
+| 6 | Polish (`pl.json`): 62 missing keys added for full parity | `pl.json` | 2026.02.07 |
+| 7 | WebUI feature: 4 new i18n keys added to all 7 language files (English text only) | All `langs/*.json` | 2026.02.11 |
 | 8 | Removed unused autostart i18n keys (2 per file) | All `langs/*.json` | 2026.02.16 |
+| 9 | Compose/3rd Party i18n keys (`compose`, `third-party`) in all 7 languages | All `langs/*.json` | 2026.02.24 |
+| 10 | WebUI feature: 4 keys translated in 6 non-English languages (previously English-only) | `de.json`, `es.json`, `fr.json`, `it.json`, `pl.json`, `zh.json` | 2026.02.11 |
 
 ### Build System & Infrastructure
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
 | 1 | Build script rewrite: `--beta` flag, branch-aware URLs, collision detection | `pkg_build.sh` | 2026.02.03 |
-| 2 | Beta branch target: `develop` to `beta` | `pkg_build.sh` | 2026.02.11 |
-| 3 | `.gitattributes`: line endings + binary file handling | `.gitattributes` | 2026.02.03, 2026.02.16 |
-| 4 | GitHub Actions: `release-beta.yml` workflow | New file | 2026.02.03 |
-| 5 | GitHub Actions: `release-stable.yml` workflow | New file | 2026.02.03 |
-| 6 | Plugin manifest: author, URLs, branch updated | `.plg` | 2026.02.03 |
-| 7 | Dead autostart indicator code archived | `docker.js` → `dev/archived/` | 2026.02.16 |
-| 8 | Stale files removed: `orig_folder.js` + 6 old archives | Deleted | 2026.02.03 |
+| 2 | `.gitattributes`: line endings + binary file handling | `.gitattributes` | 2026.02.03, 2026.02.16 |
+| 3 | GitHub Actions: `release-beta.yml` workflow | New file | 2026.02.03 |
+| 4 | GitHub Actions: `release-stable.yml` workflow | New file | 2026.02.03 |
+| 5 | Plugin manifest: author, URLs, branch updated | `.plg` | 2026.02.03 |
+| 6 | Stale files removed: `orig_folder.js` + 6 old archives | Deleted | 2026.02.03 |
+| 7 | Beta branch target: `develop` to `beta` | `pkg_build.sh` | 2026.02.11 |
+| 8 | Dead autostart indicator code archived | `docker.js` → `dev/archived/` | 2026.02.16 |
 
 ### Cleanup
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
 | 1 | Removed upstream CSS comments throughout | `docker.css` | 2026.02.03 |
-| 2 | Removed commented-out debug code | `docker.js`, `lib.php` | 2026.02.10 |
-| 3 | Removed trailing debug comment on line 1 | `docker.js` | 2026.02.03 |
-| 4 | Added EOF newlines (POSIX compliance) | `docker.css`, `folder.css` | 2026.02.03 |
+| 2 | Removed trailing debug comment on line 1 | `docker.js` | 2026.02.03 |
+| 3 | Added EOF newlines (POSIX compliance) | `docker.css`, `folder.css` | 2026.02.03 |
+| 4 | Removed commented-out debug code | `docker.js`, `lib.php` | 2026.02.10 |
 
 ---
 
@@ -185,6 +176,9 @@ Divider bars now use `preview_vertical_bars_color` with fallback to `preview_bor
 
 **Dead autostart indicator removed (2026.02.16):**
 Removed ~22 lines of code that toggled a green/red indicator on `.nav-item.AutostartOrder.util` — the HTML element was never added to page templates. Archived to `dev/archived/autostart-indicator.js`.
+
+**jQuery selector crash for container names with special characters (2026.02.26):**
+`$('#ct-${name}')` threw a jQuery syntax error when the container name contained CSS special characters (e.g. `Dash.` became `#ct-Dash.` — invalid CSS). Replaced with `$(document.getElementById('ct-${name}'))` which treats the string as a literal ID.
 
 ---
 

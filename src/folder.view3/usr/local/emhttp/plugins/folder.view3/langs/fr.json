@@ -161,8 +161,8 @@
     "override-default-actions": "Remplacer les actions par défaut :",
     "override-default-actions-tooltip": "Supprime le menu par défaut et le remplace par les actions personnalisées définies ci-dessous.",
     "custom-actions-arguments": "Arguments :",
-    "folder-webui": "Folder WebUI:",
-    "folder-webui-tooltip": "Default folder WebUI URL.",
-    "folder-webui-url": "WebUI URL:",
-    "folder-webui-url-tooltip": "The URL to open when clicking the WebUI button in the folder context menu."
+    "folder-webui": "WebUI du dossier :",
+    "folder-webui-tooltip": "URL WebUI par défaut du dossier.",
+    "folder-webui-url": "URL WebUI :",
+    "folder-webui-url-tooltip": "L'URL à ouvrir en cliquant sur le bouton WebUI dans le menu contextuel du dossier."
 }
