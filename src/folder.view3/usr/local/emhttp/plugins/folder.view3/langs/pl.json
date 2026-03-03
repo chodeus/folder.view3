@@ -53,7 +53,7 @@
     "by": "Przez",
     "container-id": "ID kontenera",
     "name": "Nazwa:",
-    "name-tooltip": "Nazwa folderu, to nie takie trudne.",
+    "name-tooltip": "Nazwa folderu. Dozwolone: <b>a-z A-Z 0-9 _ . - / spacja</b>. Niedozwolone: <b>&lt; &gt; &amp; \" ' \\ :</b>",
     "icon": "Ikona:",
     "icon-tooltip": "Link do obrazu (<a href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#supported_image_formats\" target=\"_blank\">Obsługiwane formaty</a>)<br>Obsługuje również format <b>data:image/{type};base64,</b> (<a href=\"https://base64.guru/converter/encode/image\" target=\"_blank\">Przekształć obraz na dane</a>)<br><a href=\"https://forums.unraid.net/topic/92824-icon-collections-for-docker-folder-plugin/\" target=\"_blank\">Wątek z ikonami</a>.<br>Możesz kliknąć ikonę Dockera/VM, aby ustawić ikonę folderu.",
     "preview": "Podgląd:",

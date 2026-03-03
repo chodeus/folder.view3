@@ -28,12 +28,12 @@ Markdown="false"
                 <dt data-i18n="name">Name:</dt>
                 <dd>
                     <img class="img" style="visibility: hidden;">
-                    <input type="text" name="name" pattern="[a-zA-Z0-9_.\ \-]+" value="" required>
+                    <input type="text" name="name" pattern="[a-zA-Z0-9_. \/\-]+" value="" required>
                 </dd>
             </dl>
             <blockquote class="inline_help">
                 <p data-i18n="[html]name-tooltip">
-                    The name of the folder, not that difficult.
+                    The name of the folder. Allowed: <b>a-z A-Z 0-9 _ . - / space</b>. Not allowed: <b>&lt; &gt; &amp; " ' \ :</b>
                 </p>
             </blockquote>
         </div>
@@ -478,8 +478,10 @@ Markdown="false"
                 </p>
             </blockquote>
         </div>
-        <input type="submit" value="Submit" data-i18n="[value]submit">
-        <input type="button" value="Cancel" data-i18n="[value]cancel" onclick="cancelBtn()">
+        <span class="buttons-spaced">
+            <input type="submit" value="Submit" data-i18n="[value]submit">
+            <input type="button" value="Cancel" data-i18n="[value]cancel" onclick="cancelBtn()">
+        </span>
         <div class="basic order-section">
             <dl>
                 <dt data-i18n="order">Order:</dt>

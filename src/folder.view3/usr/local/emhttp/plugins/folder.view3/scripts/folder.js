@@ -1,3 +1,20 @@
+const escapeHtml = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
+if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
+    $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
+        if (options.type?.toUpperCase() === 'POST' && options.url?.includes('/plugins/folder.view3/')) {
+            if (typeof options.data === 'string') {
+                options.data += (options.data ? '&' : '') + 'csrf_token=' + encodeURIComponent(csrf_token);
+            } else if (options.data && typeof options.data === 'object') {
+                options.data.csrf_token = csrf_token;
+            }
+        }
+    });
+}
+
 // list of element to select
 let choose = [];
 // element selected by the regex string
@@ -88,7 +105,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         };
 
         currFolder.actions?.forEach((e, i) => {
-            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}">${e.name} <button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
+            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}">${escapeHtml(e.name)} <button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
         });
 
 
@@ -209,17 +226,17 @@ const updateList = () => {
 
     // append the selected elements
     for (const el of selected) {
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${el.Icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${el.Name}</td><td><input class="container-switch" checked type="checkbox" name="containers[]" value="${el.Name}" style="display: none;"></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
     }
 
     // append the rest of the elements
     for (const el of choose) {
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${el.Icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${el.Name}</td><td><input class="container-switch" type="checkbox" name="containers[]" value="${el.Name}" style="display: none;"></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
     }
 
     // prepend the selected regex element
     for (const el of selectedRegex) {
-        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${el.Icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${el.Name}</td><td><input class="container-switch" checked disabled type="checkbox" name="containers[]" value="${el.Name}" style="display: none;"></td></tr>`));
+        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
     }
 
     // create the *cool* unraid button for the autostart
@@ -349,9 +366,9 @@ const customAction = (action = undefined) => {
     selectCt.children().remove();
     [...$('input[name*="containers"]:checked').map((i, e) => $(e).val()), ...selectedRegex.map(e => e.Name)].forEach((e) => {
         if(config.conatiners?.includes(e)) {
-            selectCt.append(`<option value="${e}" selected>${e}</option>`);
+            selectCt.append(`<option value="${escapeHtml(e)}" selected>${escapeHtml(e)}</option>`);
         } else {
-            selectCt.append(`<option value="${e}">${e}</option>`);
+            selectCt.append(`<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`);
         }
     });
     const dialog = $('.dialogCustomAction');
@@ -412,7 +429,7 @@ const customAction = (action = undefined) => {
             $(`.custom-action-n-${action} > input[type="hidden"]`).val(btoa(JSON.stringify(cfg)));
             $(`.custom-action-n-${action} > span`).text(cfg.name + ' ');
         } else {
-            $('.custom-action-wrapper').append(`<div class="custom-action-n-${(action !== undefined) ? action : customNumber}"><span>${cfg.name} </span><button onclick="return customAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(cfg))}"></div>`);
+            $('.custom-action-wrapper').append(`<div class="custom-action-n-${(action !== undefined) ? action : customNumber}"><span>${escapeHtml(cfg.name)} </span><button onclick="return customAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(cfg))}"></div>`);
         }
         $(this).dialog("close");
     };
@@ -422,7 +439,7 @@ const customAction = (action = undefined) => {
     dialog.dialog({
         title: (action !== undefined) ? $.i18n('action-edit') : $.i18n('action-add'),
         resizable: false,
-        width: 800,
+        width: Math.min(800, window.innerWidth - 40),
         modal: true,
         show: { effect: 'fade', duration: 250 },
         hide: { effect: 'fade', duration: 250 },
