@@ -17,6 +17,14 @@
         @file_put_contents($fv3_debug_log_file, "--- FolderView3 lib.php readInfo Start ---\n");
     }
 
+    function fv3_validate_type(string $type): string {
+        if (!in_array($type, ['docker', 'vm'], true)) {
+            http_response_code(400);
+            exit;
+        }
+        return $type;
+    }
+
     $folderVersion = 1.0;
     $configDir = "/boot/config/plugins/folder.view3";
     $sourceDir = "/usr/local/emhttp/plugins/folder.view3";
