@@ -39,6 +39,18 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 14 | i18n keys for Compose and 3rd Party labels (all 7 languages) | `langs/*.json` | 2026.02.24 |
 | 15 | Stacked Compose + 3rd Party labels for mixed folders | `docker.js` | 2026.02.24 |
 
+### Security
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 1 | Switch delete operations from GET to POST | `dashboard.js`, `docker.js`, `vm.js`, `folderview3.js`, `delete.php` | 2026.03.04 |
+| 2 | Add `escapeHtml()` for XSS prevention on user-controlled data in HTML templates | `customEvents.js`, `folder.js`, `folderview3.js`, `docker.js`, `dashboard.js`, `vm.js` | 2026.03.04 |
+| 3 | Add `fv3_validate_type()` allowlist validation on all PHP endpoints | `lib.php`, all `server/*.php` | 2026.03.04 |
+| 4 | Add CSRF token to AJAX POST requests | `customEvents.js`, `folder.js`, `folderview3.js` | 2026.03.04 |
+| 5 | Wrap buttons in `buttons-spaced` for responsive layout | `Folder.page` | 2026.03.04 |
+| 6 | Use CSS variables with fallbacks for theme compatibility | `docker.css` | 2026.03.04 |
+| 7 | Responsive fixes for preview tooltip and dialog widths | `docker.css`, `folder.js` | 2026.03.04 |
+
 ### Bug Fixes
 
 | # | Change | File(s) | Version |

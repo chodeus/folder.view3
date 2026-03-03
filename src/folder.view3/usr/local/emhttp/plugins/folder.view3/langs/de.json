@@ -53,7 +53,7 @@
     "by": "Von",
     "container-id": "Container-ID",
     "name": "Name:",
-    "name-tooltip": "Der Name des Ordners, nicht so schwierig.",
+    "name-tooltip": "Der Name des Ordners. Erlaubt: <b>a-z A-Z 0-9 _ . - / Leerzeichen</b>. Nicht erlaubt: <b>&lt; &gt; &amp; \" ' \\ :</b>",
     "icon": "Symbol:",
     "icon-tooltip": "Ein Link zu einem Bild (<a href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#supported_image_formats\" target=\"_blank\">unterstützte Formate</a>)<br>Es wird auch das <b>data:image/{type};base64,</b> Format unterstützt (<a href=\"https://base64.guru/converter/encode/image\" target=\"_blank\">Bild in Datenstrings umwandeln</a>)<br><a href=\"https://forums.unraid.net/topic/92824-icon-collections-for-docker-folder-plugin/\" target=\"_blank\">Thread mit einigen Symbolen</a>.<br>Du kannst auf das Symbol des Docker-Containers/VM klicken, um es als Ordner-Symbol zu verwenden.",
     "preview": "Vorschau:",

@@ -257,7 +257,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     folder.containers = folder.containers.concat(order.filter(el => containersInfo[el]?.Labels['folder.view3'] === folder.name));
 
     // the HTML template for the folder
-    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${id}" onclick='addDockerFolderContext("${id}")' class="hand docker folder-hand-docker"><img src="${folder.icon}" class="img folder-img-docker" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker"><span class="folder-appname-docker">${folder.name}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker"></i><span class="state folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage"></div></span><div class="folder-showcase-${id} folder-showcase"></div></div>`;
+    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${id}" onclick='addDockerFolderContext("${id}")' class="hand docker folder-hand-docker"><img src="${escapeHtml(folder.icon)}" class="img folder-img-docker" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker"><span class="folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker"></i><span class="state folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage"></div></span><div class="folder-showcase-${id} folder-showcase"></div></div>`;
 
     // insertion at position of the folder
     if (position === 0) {
@@ -457,7 +457,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     }
 
     // the HTML template for the folder
-    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${id}" onclick='addVMFolderContext("${id}")' class="hand vm folder-hand-vm"><img src="${folder.icon}" class="img folder-img-vm" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm"><span class="folder-appname-vm">${folder.name}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm"></i><span class="state folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage" style="display:none"></div></span><div class="folder-showcase-${id} folder-showcase"></div></div>`;
+    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${id}" onclick='addVMFolderContext("${id}")' class="hand vm folder-hand-vm"><img src="${escapeHtml(folder.icon)}" class="img folder-img-vm" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm"><span class="folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm"></i><span class="state folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage" style="display:none"></div></span><div class="folder-showcase-${id} folder-showcase"></div></div>`;
 
     // insertion at position of the folder
     if (position === 0) {
@@ -642,7 +642,7 @@ const rmDockerFolder = (id) => {
     // Ask for a confirmation
     swal({
         title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${globalFolders.docker[id].name}`,
+        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders.docker[id].name)}`,
         type: 'warning',
         html: true,
         showCancelButton: true,
@@ -653,7 +653,7 @@ const rmDockerFolder = (id) => {
     async (c) => {
         if (!c) { setTimeout(loadlist); return; }
         $('div.spinner.fixed').show('slow');
-        await $.get('/plugins/folder.view3/server/delete.php?type=docker&id=' + id).promise();
+        await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
         loadedFolder = false;
         setTimeout(loadlist(), 500)
     });
@@ -667,7 +667,7 @@ const rmVMFolder = (id) => {
     // Ask for a confirmation
     swal({
         title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${globalFolders.vms[id].name}`,
+        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders.vms[id].name)}`,
         type: 'warning',
         html: true,
         showCancelButton: true,
@@ -678,7 +678,7 @@ const rmVMFolder = (id) => {
     async (c) => {
         if (!c) { setTimeout(loadlist); return; }
         $('div.spinner.fixed').show('slow');
-        await $.get('/plugins/folder.view3/server/delete.php?type=vm&id=' + id).promise();
+        await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
         loadedFolder = false;
         setTimeout(loadlist(), 500)
     });
