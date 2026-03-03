@@ -126,7 +126,7 @@ div.folder-preview-4 span.outer {
 
 /* --- Tooltip Content Layout (Theme-agnostic) --- */
 .preview-outbox {
-    min-width: 700px;
+    min-width: min(700px, 90vw);
     max-width: 90vw;
     min-height: 400px;
     max-height: 80vh;
@@ -366,7 +366,7 @@ div.folder-preview-4 span.outer {
 }
 
 .info-ports a, .info-volumes a {
-    color: #6a9fd4;
+    color: var(--blue-400, #6a9fd4);
 }
 
 /* Graph Canvas Responsiveness */

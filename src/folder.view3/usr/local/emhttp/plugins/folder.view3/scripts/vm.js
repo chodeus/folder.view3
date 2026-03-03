@@ -140,7 +140,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     // the HTML template for the folder
     const totalCols = document.querySelector("#kvm_table > thead > tr").childElementCount;
     const colspan = totalCols - 2; // minus name + autostart columns
-    const fld = `<tr parent-id="${id}" class="sortable folder-id-${id} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="vm-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${id}" onclick='addVMFolderContext("${id}")' class="hand folder-hand"><img src="${folder.icon}" class="img folder-img" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><a class="folder-appname" href="#" onclick='editFolder("${id}")'>${folder.name}</a><a class="folder-appname-id">folder-${id}</a><br><i id="load-folder-${id}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${id} folder-dropdown" onclick='dropDownButton("${id}")'><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="folder-autostart"><input class="autostart" type="checkbox" id="folder-${id}-auto" style="display:none"></td></tr><tr child-id="${id}" id="name-${id}" style="display:none"><td colspan="${totalCols}" style="margin:0;padding:0"></td></tr>`;
+    const fld = `<tr parent-id="${id}" class="sortable folder-id-${id} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="vm-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${id}" onclick='addVMFolderContext("${id}")' class="hand folder-hand"><img src="${escapeHtml(folder.icon)}" class="img folder-img" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><a class="folder-appname" href="#" onclick='editFolder("${id}")'>${escapeHtml(folder.name)}</a><a class="folder-appname-id">folder-${id}</a><br><i id="load-folder-${id}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${id} folder-dropdown" onclick='dropDownButton("${id}")'><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="folder-autostart"><input class="autostart" type="checkbox" id="folder-${id}-auto" style="display:none"></td></tr><tr child-id="${id}" id="name-${id}" style="display:none"><td colspan="${totalCols}" style="margin:0;padding:0"></td></tr>`;
 
     // insertion at position of the folder
     if (position === 0) {
@@ -280,7 +280,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                 if (!sel.length) {
                     sel = element;
                 }
-                sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="openTerminal('log', '${container}', '${ct.logs}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
             }
 
             // set the status of the folder
@@ -422,7 +422,7 @@ const rmFolder = (id) => {
     // Ask for a confirmation
     swal({
         title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${globalFolders[id].name}`,
+        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders[id].name)}`,
         type: 'warning',
         html: true,
         showCancelButton: true,
@@ -433,7 +433,7 @@ const rmFolder = (id) => {
     async (c) => {
         if (!c) { setTimeout(loadlist); return; }
         $('div.spinner.fixed').show('slow');
-        await $.get('/plugins/folder.view3/server/delete.php?type=vm&id=' + id).promise();
+        await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
         loadedFolder = false;
         setTimeout(loadlist(), 500)
     });
