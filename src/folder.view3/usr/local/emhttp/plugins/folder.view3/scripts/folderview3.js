@@ -1,3 +1,20 @@
+const escapeHtml = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
+if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
+    $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
+        if (options.type?.toUpperCase() === 'POST' && options.url?.includes('/plugins/folder.view3/')) {
+            if (typeof options.data === 'string') {
+                options.data += (options.data ? '&' : '') + 'csrf_token=' + encodeURIComponent(csrf_token);
+            } else if (options.data && typeof options.data === 'object') {
+                options.data.csrf_token = csrf_token;
+            }
+        }
+    });
+}
+
 const populateTable = async () => {
     const proms = await Promise.all([
         $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
@@ -13,12 +30,12 @@ const populateTable = async () => {
     vmsTable.empty();
 
     for (const [id, folder] of Object.entries(dockers)) {
-        const fld = `<tr><td>${id}</td><td><img src="${folder.icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${folder.name}</td><td><button title="Export" onclick="downloadDocker('${id}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker('${id}')"><i class="fa fa-trash"></i></button></td></tr>`;
+        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadDocker('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
     for (const [id, folder] of Object.entries(vms)) {
-        const fld = `<tr><td>${id}</td><td><img src="${folder.icon}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${folder.name}</td><td><button title="Export" onclick="downloadVm('${id}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm('${id}')"><i class="fa fa-trash"></i></button></td></tr>`;
+        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadVm('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
         vmsTable.append($(fld));
     }
 };
@@ -114,7 +131,7 @@ const clearDocker = (id) => {
     if (id) {
         swal({
             title: 'Are you sure?',
-            text: `Remove folder: ${dockers[id].name}`,
+            text: `Remove folder: ${escapeHtml(dockers[id].name)}`,
             type: 'warning',
             html: true,
             showCancelButton: true,
@@ -124,7 +141,7 @@ const clearDocker = (id) => {
         },
         async (c) => {
             if (!c) { return; }
-            await $.get('/plugins/folder.view3/server/delete.php?type=docker&id=' + id).promise();
+            await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
             populateTable();
         });
     } else {
@@ -141,7 +158,7 @@ const clearDocker = (id) => {
         async (c) => {
             if (!c) { return; }
             for (const cid of Object.keys(dockers)) {
-                await $.get('/plugins/folder.view3/server/delete.php?type=docker&id=' + cid).promise();
+                await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: cid }).promise();
             }
             populateTable();
         });
@@ -160,7 +177,7 @@ const clearVm = (id) => {
     if (id) {
         swal({
             title: 'Are you sure?',
-            text: `Remove folder: ${vms[id].name}`,
+            text: `Remove folder: ${escapeHtml(vms[id].name)}`,
             type: 'warning',
             html: true,
             showCancelButton: true,
@@ -170,7 +187,7 @@ const clearVm = (id) => {
         },
         async (c) => {
             if (!c) { return; }
-            await $.get('/plugins/folder.view3/server/delete.php?type=vm&id=' + id).promise();
+            await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
             populateTable();
         });
     } else {
@@ -187,7 +204,7 @@ const clearVm = (id) => {
         async (c) => {
             if (!c) { return; }
             for (const cid of Object.keys(vms)) {
-                await $.get('/plugins/folder.view3/server/delete.php?type=vm&id=' + cid).promise();
+                await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: cid }).promise();
             }
             populateTable();
         });
