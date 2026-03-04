@@ -6,12 +6,18 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.04">
-<!ENTITY md5 "d96399362a55ec7d85b0e45c29c31bd7">
+<!ENTITY version "2026.03.04.1">
+<!ENTITY md5 "cc57f8a12a779adbfe2deaf01f9fc5b6">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.04.1
+- Fix cached scripts not refreshing after update
+- Fix action buttons clipped on settings page on mobile
+- Fix VM folder row markup
+- Fix settings page button layout overflow
 
 ###2026.03.04
 - Minor security improvements to align with Unraid best practices
