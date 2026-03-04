@@ -8,7 +8,7 @@ Markdown="false"
 $type = 'dashboard';
 require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 ?>
-<script src="/plugins/folder.view3/scripts/include/customEvents.js"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/customEvents.js')?>"></script>
 <?php
 require_once('/usr/local/emhttp/plugins/folder.view3/scripts/custom.php');
 ?>
