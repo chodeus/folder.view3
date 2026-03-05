@@ -5,25 +5,23 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.04.1">
-<!ENTITY md5 "cc57f8a12a779adbfe2deaf01f9fc5b6">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.03.05-beta">
+<!ENTITY md5 "31d333e7164e1d3670a66f45fa569dc4">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
-###2026.03.04.1
-- Fix cached scripts not refreshing after update
-- Fix action buttons clipped on settings page on mobile
-- Fix VM folder row markup
-- Fix settings page button layout overflow
+###2026.03.05
+- Add per-container "Hide Preview" toggle in folder editor
+- Center toggle alignment in folder editor table
+- Restrict drag cursor to container name content
 
 ###2026.03.04
 - Minor security improvements to align with Unraid best practices
 - Fix empty folder showing "3rd Party" label
 - Fix invalid regex pattern in folder name input
-- Note: Clear browser cache and refresh if Docker folders are not visible after update
 
 ###2026.02.26
 - Fix folder rendering crash for container names containing CSS special characters (e.g. periods, colons)
@@ -382,7 +380,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 

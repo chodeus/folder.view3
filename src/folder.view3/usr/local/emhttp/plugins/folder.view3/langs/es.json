@@ -115,6 +115,7 @@
     "order-tooltip": "Arrastre y suelte para cambiar el orden; si editas el tick lo añadirás o eliminarás de la carpeta.",
     "table-name": "Nombre",
     "table-included": "Incluido",
+    "table-hide-preview": "Ocultar vista previa",
     "export-all": "<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Exportar todo",
     "import-all": "<i class=\"fa fa-upload\" aria-hidden=\"true\"></i> Importar",
     "clear-all": "<i class=\"fa fa-ban\" aria-hidden=\"true\"></i> Limpiar",
