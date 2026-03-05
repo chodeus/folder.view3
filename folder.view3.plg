@@ -18,10 +18,17 @@
 - Center toggle alignment in folder editor table
 - Restrict drag cursor to container name content
 
+###2026.03.04.1
+- Fix cached scripts not refreshing after update
+- Fix action buttons clipped on settings page on mobile
+- Fix VM folder row markup
+- Fix settings page button layout overflow
+
 ###2026.03.04
 - Minor security improvements to align with Unraid best practices
 - Fix empty folder showing "3rd Party" label
 - Fix invalid regex pattern in folder name input
+- Note: Clear browser cache and refresh if Docker folders are not visible after update
 
 ###2026.02.26
 - Fix folder rendering crash for container names containing CSS special characters (e.g. periods, colons)
