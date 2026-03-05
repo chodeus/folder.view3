@@ -115,6 +115,7 @@
     "order-tooltip": "拖动以进行排序。编辑正则表达式时，任何手动选择的内容都将被取消。",
     "table-name": "名称",
     "table-included": "添加到文件夹",
+    "table-hide-preview": "隐藏预览",
     "export-all": "<i class=\"fa fa-download\" aria-hidden=\"true\"></i> 导出全部",
     "import-all": "<i class=\"fa fa-upload\" aria-hidden=\"true\"></i> 导入",
     "clear-all": "<i class=\"fa fa-ban\" aria-hidden=\"true\"></i> 清空",

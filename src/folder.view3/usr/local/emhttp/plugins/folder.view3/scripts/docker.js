@@ -470,8 +470,9 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                  if (FOLDER_VIEW_DEBUG_MODE && charts.length > 0) console.log(`[FV3_DEBUG] graphListener (for ct: ${ct.shortId}): Updated ${charts.length} charts.`);
             };
 
-            const tooltip_trigger_element = addPreview(id, ct.shortId, !(ct.info.State.Autostart === false));
-            if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${ct.shortId}: Called addPreview. Returned tooltip_trigger_element:`, tooltip_trigger_element ? tooltip_trigger_element[0] : 'null/undefined');
+            const isHiddenFromPreview = (folder.hidden_preview || []).includes(container_name_in_folder);
+            const tooltip_trigger_element = isHiddenFromPreview ? null : addPreview(id, ct.shortId, !(ct.info.State.Autostart === false));
+            if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${ct.shortId}: Called addPreview (hidden: ${isHiddenFromPreview}). Returned tooltip_trigger_element:`, tooltip_trigger_element ? tooltip_trigger_element[0] : 'null/undefined');
         
             $(`tr.folder-id-${id} div.folder-preview span.inner > span.appname`).css("width", folder.settings.preview_text_width || '');
             if (FOLDER_VIEW_DEBUG_MODE && folder.settings.preview_text_width) console.log(`[FV3_DEBUG] createFolder (id: ${id}): Set preview text width to ${folder.settings.preview_text_width}.`);
@@ -826,71 +827,73 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             };
             if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Stored in newFolder:`, JSON.parse(JSON.stringify(newFolder[container_name_in_folder])));
 
-            const elementForPreviewOpts = $(`tr.folder-id-${id} div.folder-preview > span:last`); // Re-check if this is always correct
-            if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Preview element for options:`, elementForPreviewOpts[0]);
-            let sel_preview_opt;
-            if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Applying preview options based on folder.settings:`, JSON.parse(JSON.stringify(folder.settings)));
-         
-            const $previewElementTarget = $(`tr.folder-id-${id} div.folder-preview > span:last`); // Or elementForPreviewOpts if you prefer
-            let $targetForAppend; // Used for WebUI, Console, Logs icons
+            if (!isHiddenFromPreview) {
+                const elementForPreviewOpts = $(`tr.folder-id-${id} div.folder-preview > span:last`); // Re-check if this is always correct
+                if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Preview element for options:`, elementForPreviewOpts[0]);
+                let sel_preview_opt;
+                if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Applying preview options based on folder.settings:`, JSON.parse(JSON.stringify(folder.settings)));
 
-            if (folder.settings.preview_grayscale) {
-                let $imgToGrayscale = $previewElementTarget.children('span.hand').children('img.img');
-                if (!$imgToGrayscale.length) {
-                    $imgToGrayscale = $previewElementTarget.children('img.img');
-                }
-                if ($imgToGrayscale.length) {
-                    $imgToGrayscale.css('filter', 'grayscale(100%)');
-                    if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Applied grayscale to preview image.`);
-                } else {
-                    if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Grayscale: Could not find image in preview element.`);
-                }
-            }
+                const $previewElementTarget = $(`tr.folder-id-${id} div.folder-preview > span:last`); // Or elementForPreviewOpts if you prefer
+                let $targetForAppend; // Used for WebUI, Console, Logs icons
 
-            if (folder.settings.preview_update && ct.info.State.Updated === false && ct.info.State.manager === "dockerman") {
-                let $appNameSpan = $previewElementTarget.children('span.inner').children('span.appname');
-                if (!$appNameSpan.length) {
-                    $appNameSpan = $previewElementTarget.children('span.appname');
+                if (folder.settings.preview_grayscale) {
+                    let $imgToGrayscale = $previewElementTarget.children('span.hand').children('img.img');
+                    if (!$imgToGrayscale.length) {
+                        $imgToGrayscale = $previewElementTarget.children('img.img');
+                    }
+                    if ($imgToGrayscale.length) {
+                        $imgToGrayscale.css('filter', 'grayscale(100%)');
+                        if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Applied grayscale to preview image.`);
+                    } else {
+                        if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Grayscale: Could not find image in preview element.`);
+                    }
                 }
-                if ($appNameSpan.length) {
-                    $appNameSpan.addClass('orange-text');
-                    $appNameSpan.children('a.exec').addClass('orange-text');
-                    if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Applied orange-text for update status to preview appname.`);
-                } else {
-                     if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Update style: Could not find appname span in preview element.`);
+
+                if (folder.settings.preview_update && ct.info.State.Updated === false && ct.info.State.manager === "dockerman") {
+                    let $appNameSpan = $previewElementTarget.children('span.inner').children('span.appname');
+                    if (!$appNameSpan.length) {
+                        $appNameSpan = $previewElementTarget.children('span.appname');
+                    }
+                    if ($appNameSpan.length) {
+                        $appNameSpan.addClass('orange-text');
+                        $appNameSpan.children('a.exec').addClass('orange-text');
+                        if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Applied orange-text for update status to preview appname.`);
+                    } else {
+                         if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Update style: Could not find appname span in preview element.`);
+                    }
                 }
-            }
 
-            // Determine the element to append WebUI/Console/Logs icons to
-            $targetForAppend = $previewElementTarget.children('span.inner').last();
-            if (!$targetForAppend.length) {
-                $targetForAppend = $previewElementTarget; // Fallback to the main span if no inner span
-            }
-
-            if (folder.settings.preview_webui && ct.info.State.WebUi) {
-                if ($targetForAppend.length) {
-                    $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-webui"><a href="${ct.info.State.WebUi}" target="_blank"><i class="fa fa-globe" aria-hidden="true"></i></a></span>`));
-                    if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Appended WebUI icon to preview.`);
-                } else {
-                     if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: WebUI icon: Could not find target for append in preview element.`);
+                // Determine the element to append WebUI/Console/Logs icons to
+                $targetForAppend = $previewElementTarget.children('span.inner').last();
+                if (!$targetForAppend.length) {
+                    $targetForAppend = $previewElementTarget; // Fallback to the main span if no inner span
                 }
-            }
 
-            if (folder.settings.preview_console) {
-                if ($targetForAppend.length) {
-                    $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i></a></span>`));
-                    if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Appended Console icon to preview.`);
-                } else {
-                     if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Console icon: Could not find target for append in preview element.`);
+                if (folder.settings.preview_webui && ct.info.State.WebUi) {
+                    if ($targetForAppend.length) {
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-webui"><a href="${ct.info.State.WebUi}" target="_blank"><i class="fa fa-globe" aria-hidden="true"></i></a></span>`));
+                        if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Appended WebUI icon to preview.`);
+                    } else {
+                         if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: WebUI icon: Could not find target for append in preview element.`);
+                    }
                 }
-            }
 
-            if (folder.settings.preview_logs) {
-                if ($targetForAppend.length) {
-                    $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
-                    if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Appended Logs icon to preview.`);
-                } else {
-                    if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Logs icon: Could not find target for append in preview element.`);
+                if (folder.settings.preview_console) {
+                    if ($targetForAppend.length) {
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i></a></span>`));
+                        if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Appended Console icon to preview.`);
+                    } else {
+                         if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Console icon: Could not find target for append in preview element.`);
+                    }
+                }
+
+                if (folder.settings.preview_logs) {
+                    if ($targetForAppend.length) {
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                        if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Appended Logs icon to preview.`);
+                    } else {
+                        if (FOLDER_VIEW_DEBUG_MODE) console.warn(`[FV3_DEBUG] createFolder (id: ${id}), container ${container_name_in_folder}: Logs icon: Could not find target for append in preview element.`);
+                    }
                 }
             }
 

@@ -115,6 +115,7 @@
     "order-tooltip": "Drag and drop to make your desired order, if you edit the regex the selection will be deselected.",
     "table-name": "Name",
     "table-included": "Included",
+    "table-hide-preview": "Hide Preview",
     "export-all": "<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Export all",
     "import-all": "<i class=\"fa fa-upload\" aria-hidden=\"true\"></i> Import",
     "clear-all": "<i class=\"fa fa-ban\" aria-hidden=\"true\"></i> Clear",

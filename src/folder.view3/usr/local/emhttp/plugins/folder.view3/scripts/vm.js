@@ -256,31 +256,34 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                 console.log(`${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
             }
             
-            addPreview(id, ct.autostart);
-            $(`tr.folder-id-${id} div.folder-preview span.inner > a`).css("width", folder.settings.preview_text_width || '');
+            const isHiddenFromPreview = (folder.hidden_preview || []).includes(container);
+            if (!isHiddenFromPreview) {
+                addPreview(id, ct.autostart);
+                $(`tr.folder-id-${id} div.folder-preview span.inner > a`).css("width", folder.settings.preview_text_width || '');
 
-            // element to set the preview options
-            const element = $(`tr.folder-id-${id} div.folder-preview > span:last`);
+                // element to set the preview options
+                const element = $(`tr.folder-id-${id} div.folder-preview > span:last`);
 
-            //temp var
-            let sel;
+                //temp var
+                let sel;
 
-            //set the preview option
+                //set the preview option
 
-            if (folder.settings.preview_grayscale) {
-                sel = element.children('span.hand').children('img.img');
-                if (!sel.length) {
-                    sel = element.children('img.img');
+                if (folder.settings.preview_grayscale) {
+                    sel = element.children('span.hand').children('img.img');
+                    if (!sel.length) {
+                        sel = element.children('img.img');
+                    }
+                    sel.css('filter', 'grayscale(100%)');
                 }
-                sel.css('filter', 'grayscale(100%)');
-            }
 
-            if (folder.settings.preview_logs && ct.logs) {
-                sel = element.children('span.inner').last();
-                if (!sel.length) {
-                    sel = element;
+                if (folder.settings.preview_logs && ct.logs) {
+                    sel = element.children('span.inner').last();
+                    if (!sel.length) {
+                        sel = element;
+                    }
+                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
                 }
-                sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
             }
 
             // set the status of the folder

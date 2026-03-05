@@ -21,6 +21,8 @@ let choose = [];
 let selectedRegex = [];
 // element selected manually
 let selected = [];
+// containers hidden from folder preview
+let hiddenPreview = [];
 // docker or vm?
 const type = new URLSearchParams(location.search).get('type');
 //id of the folder if present
@@ -103,6 +105,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
                 selected.push(choose.splice(index, 1)[0]);
             }
         };
+
+        hiddenPreview = currFolder.hidden_preview || [];
 
         currFolder.actions?.forEach((e, i) => {
             $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}">${escapeHtml(e.name)} <button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
@@ -226,29 +230,56 @@ const updateList = () => {
 
     // append the selected elements
     for (const el of selected) {
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
+        const isHidden = hiddenPreview.includes(el.Name);
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td><input class="preview-switch" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
     }
 
     // append the rest of the elements
     for (const el of choose) {
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td></td></tr>`));
     }
 
     // prepend the selected regex element
     for (const el of selectedRegex) {
-        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
+        const isHidden = hiddenPreview.includes(el.Name);
+        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td><input class="preview-switch" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
     }
 
     // create the *cool* unraid button for the autostart
     $('table.sortable > tbody > tr > td > input.container-switch').switchButton({ show_labels: false });
     $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().find('*').css('opacity', '0.5').css('cursor', 'default').off().end().end().each(function() { this.checked = !this.checked; });
 
+    // create the hide preview toggle for included containers
+    $('input.preview-switch').switchButton({ show_labels: false });
+
+    // sync hide preview toggle when included state changes
+    $('table.sortable').off('change', 'input.container-switch').on('change', 'input.container-switch', function() {
+        syncHidePreview($(this).closest('tr'));
+    });
+
     // stuff for the sort table
     $('.item').css('border-color', $('body').css('color'));
+
+    // cursor: move only on name content, not entire row
+    $('.sortable > tbody > .item[draggable="true"] > td:first-child').wrapInner('<span style="cursor: move;"></span>');
 
     $('.sortable').on('dragover', sortTable).on('dragenter', (e) => { e.preventDefault(); });
 
     $('.item').on('dragstart', (e) => { e.target.classList.add("dragging") }).on('dragend', (e) => { e.target.classList.remove("dragging") });
+};
+
+const syncHidePreview = ($row) => {
+    const $cb = $row.find('input.container-switch');
+    const isIncluded = $cb.is(':checked');
+    const $td = $row.find('td:nth-child(3)');
+    if (isIncluded) {
+        if (!$td.find('input.preview-switch').length) {
+            $td.html(`<input class="preview-switch" type="checkbox" value="${escapeHtml($cb.val())}" style="display:none;">`);
+            $td.find('input.preview-switch').switchButton({ show_labels: false });
+        }
+    } else {
+        $td.empty();
+    }
 };
 
 /**
@@ -307,6 +338,7 @@ const submitForm = async (e) => {
         },
         regex: e.regex.value.toString(),
         containers: [...$('input[name*="containers"]:checked').map((i, e) => $(e).val())],
+        hidden_preview: [...$('input.preview-switch:checked').map((i, e) => $(e).val())],
         actions
     }
     // send the data to the right endpoint
