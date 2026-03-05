@@ -7,6 +7,7 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 - **Collapsible folders** on Docker, VM, and Dashboard tabs
 - **Docker label assignment** — add `folder.view3: "FolderName"` to any container or Compose service to auto-assign it to a folder
 - **Per-folder colors** — customize border and vertical bar colors per folder
+- **Hide from preview** — selectively hide individual containers from the collapsed folder preview while keeping them visible when expanded
 - **Real-time stats** — live CPU/memory graphs in Advanced Preview
 - **Compose & 3rd Party awareness** — folders correctly handle Docker Compose and 3rd party containers with appropriate labels and autostart behaviour
 - **Bulk actions** — start, stop, or restart all containers in a folder at once
