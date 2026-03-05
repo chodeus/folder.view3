@@ -1,3 +1,15 @@
+const applyVmZebra = () => {
+    let visibleIndex = 0;
+    $('#kvm_table tbody tr').each(function() {
+        if ($(this).is(':visible')) {
+            this.style.backgroundColor = (visibleIndex % 2 === 1)
+                ? 'var(--dynamix-tablesorter-tbody-row-alt-bg-color)'
+                : 'transparent';
+            visibleIndex++;
+        }
+    });
+};
+
 /**
  * Handles the creation of all folders
  */
@@ -95,6 +107,8 @@ const createFolders = async () => {
 
     // Assing the folder done to the global object
     globalFolders = foldersDone;
+
+    applyVmZebra();
 
     folderDebugMode  = false;
 };
@@ -415,6 +429,7 @@ const dropDownButton = (id) => {
         globalFolders[id].status.expanded = !state;
     }
     folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-expansion', {detail: { id }}));
+    applyVmZebra();
 };
 
 /**
