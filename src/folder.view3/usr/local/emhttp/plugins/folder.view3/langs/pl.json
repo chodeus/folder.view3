@@ -115,6 +115,7 @@
     "order-tooltip": "Przeciągnij i upuść, aby ustawić żądaną kolejność. Edycja wyrażenia regularnego spowoduje odznaczenie wybranych elementów.",
     "table-name": "Nazwa",
     "table-included": "Uwzględniony",
+    "table-hide-preview": "Ukryj podgląd",
     "export-all": "<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Eksportuj wszystko",
     "import-all": "<i class=\"fa fa-upload\" aria-hidden=\"true\"></i> Importuj",
     "clear-all": "<i class=\"fa fa-ban\" aria-hidden=\"true\"></i> Wyczyść",

@@ -115,6 +115,7 @@
     "order-tooltip": "Glisser-déposer pour obtenir l'ordre désiré, si vous modifiez l'expression rationnelle, la sélection sera désélectionnée.",
     "table-name": "Nom",
     "table-included": "Inclus",
+    "table-hide-preview": "Masquer l'aperçu",
     "export-all": "<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Tout exporter",
     "import-all": "<i class=\"fa fa-upload\" aria-hidden=\"true\"></i> Importer",
     "clear-all": "<i class=\"fa fa-ban\" aria-hidden=\"true\"></i> Effacer",

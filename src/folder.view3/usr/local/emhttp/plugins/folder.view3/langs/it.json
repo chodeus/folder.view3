@@ -115,6 +115,7 @@
     "order-tooltip": "Trascina e rilascia per mettere gli elementi nell'ordine desiderato, quando modifichi il campo regex le selezioni fatte manualmente verrano rimosse.",
     "table-name": "Nome",
     "table-included": "Incluso",
+    "table-hide-preview": "Nascondi anteprima",
     "export-all": "<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Esporta tutto",
     "import-all": "<i class=\"fa fa-upload\" aria-hidden=\"true\"></i> Importa",
     "clear-all": "<i class=\"fa fa-ban\" aria-hidden=\"true\"></i> Riumovi tutto",

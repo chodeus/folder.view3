@@ -12,14 +12,25 @@ table.sortable td {
 
 table.sortable th:first-child,
 table.sortable td:first-child {
-    width: 75%;
+    width: 60%;
     text-align: left;
+}
+
+table.sortable th:nth-child(2),
+table.sortable td:nth-child(2) {
+    width: 20%;
+    text-align: center;
 }
 
 table.sortable th:last-child,
 table.sortable td:last-child {
-    width: 25%;
+    width: 20%;
     text-align: center;
+}
+
+table.sortable td .switch-button-background {
+    float: none;
+    margin: 0 auto;
 }
 
 .item {
@@ -32,7 +43,7 @@ table.sortable td:last-child {
 }
 
 .sortable > tbody > .item[draggable="true"] {
-    cursor: move;
+    cursor: default;
 }
 
 .dragging {

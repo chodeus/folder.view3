@@ -115,6 +115,7 @@
     "order-tooltip": "Durch Drag & Drop kannst du die gewünschte Reihenfolge festlegen. Wenn du den regulären Ausdruck bearbeitest, wird die Auswahl aufgehoben.",
     "table-name": "Name",
     "table-included": "Enthalten",
+    "table-hide-preview": "Vorschau ausblenden",
     "export-all": "<i class=\"fa fa-download\" aria-hidden=\"true\"></i> Alles exportieren",
     "import-all": "<i class=\"fa fa-upload\" aria-hidden=\"true\"></i> Importieren",
     "clear-all": "<i class=\"fa fa-ban\" aria-hidden=\"true\"></i> Leeren",
