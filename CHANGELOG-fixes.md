@@ -93,6 +93,8 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 35 | Autostart toggle visible for non-dockerman folders (Compose/3rd Party don't support autostart) | `docker.js`, `dashboard.js` | 2026.02.24 |
 | 36 | Folder drag-and-drop not working for compose/3rd-party-only folders (jQuery UI Sortable not refreshed) | `docker.js` | 2026.02.24 |
 | 37 | jQuery selector crash for container names with CSS special characters (e.g. `Dash.`) | `docker.js` | 2026.02.26 |
+| 38 | `customEvents.js` not using `autov()` cache-busting (stale scripts after update) | `folder.view3.Docker.page`, `folder.view3.VMs.page`, `folder.view3.Dashboard.page` | 2026.03.04.1 |
+| 39 | VM folder template had orphan hidden child row | `vm.js` | 2026.03.04.1 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
@@ -122,8 +124,9 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 5 | Backward-compatible Docker Manager CSS for Unraid 6 | `Folder.page` | 2026.02.08 |
 | 6 | Folder name sub: `align-items: flex-start` to `center` | `docker.css`, `vm.css` | 2026.02.09 |
 | 7 | New folder defaults: all toggles OFF | `Folder.page` | 2026.02.09 |
-| 8 | Center Included/Hide Preview toggles under column headings | `folder.css` | 2026.03.05 |
-| 9 | Restrict drag cursor to container name content in folder editor | `folder.css`, `folder.js` | 2026.03.05 |
+| 8 | Settings page button and table overflow fixes for mobile | `folderview3.css` | 2026.03.04.1 |
+| 9 | Center Included/Hide Preview toggles under column headings | `folder.css` | 2026.03.05 |
+| 10 | Restrict drag cursor to container name content in folder editor | `folder.css`, `folder.js` | 2026.03.05 |
 
 ### Translation Updates
 
@@ -243,6 +246,9 @@ Same fix as `docker.js` — neutral gray border.
 **Vertical bars separate color (2026.02.04):**
 Same pattern as `docker.js`.
 
+**Orphan hidden child row removed (2026.03.04.1):**
+The folder template included a hidden `<tr child-id="${id}" id="name-${id}">` row that was unused. Removed to clean up the DOM output.
+
 ---
 
 ### `scripts/folder.js`
@@ -342,6 +348,9 @@ Override `flex-direction: row` on `<dd>` elements containing color inputs using 
 **Settings page table layout (2026.02.16):**
 Replaced generic `.folder-table > *` with specific rules: buttons get `flex: 1 1 25%` (side-by-side), table gets `flex: 1 1 100%` (full-width row).
 
+**Settings page mobile overflow fixes (2026.03.04.1):**
+Replaced `align-content: center` with `overflow: visible` on `.custom-css` and `.folder-table` containers. Added `min-height: 28px` and `box-sizing: border-box` to buttons. Added `overflow: visible` on `.folder-table > table td:last-child` to prevent action button tooltips from being clipped.
+
 ---
 
 ### `Folder.page`
@@ -363,6 +372,11 @@ New toggle and URL input using existing constraint pattern.
 
 **New folder defaults (2026.02.09):**
 Removed `checked` from 5 preview checkboxes.
+
+### `folder.view3.Docker.page`, `folder.view3.VMs.page`, `folder.view3.Dashboard.page`
+
+**`autov()` cache-busting for `customEvents.js` (2026.03.04.1):**
+Changed `<script src="/plugins/folder.view3/scripts/include/customEvents.js">` to use `<?php autov(...)?>` wrapper. Without `autov()`, browsers could serve a stale cached version of `customEvents.js` after a plugin update, preventing new code from taking effect until the user manually cleared their cache.
 
 ---
 
