@@ -98,6 +98,7 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 40 | VM tab row alternating colors broken by folder insertion (nth-child CSS counts hidden rows) | `vm.js` | 2026.03.06 |
 | 41 | `customEvents.js` `const` declarations cause SyntaxError when Compose Manager re-declares same identifiers | `customEvents.js` | 2026.03.06 |
 | 42 | VM `applyVmZebra()` inline styles block custom CSS row color overrides — added `--fv3-row-alt-bg` / `--fv3-row-bg` CSS variable fallbacks | `vm.js` | 2026.03.07 |
+| 43 | Unconditional `libvirt_helpers.php` include crashes Docker page when VM manager/libvirt is unavailable — lazy-load only when VM operations are requested | `lib.php` | 2026.03.07-beta |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 

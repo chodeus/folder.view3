@@ -32,7 +32,21 @@
 
     require_once("$documentRoot/webGui/include/Helpers.php");
     require_once("$documentRoot/plugins/dynamix.docker.manager/include/DockerClient.php");
-    require_once ("$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php");
+
+    function fv3_require_libvirt_helpers(): bool {
+        global $documentRoot;
+        static $loaded = null;
+        if ($loaded !== null) return $loaded;
+        $path = "$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php";
+        if (!file_exists($path)) { $loaded = false; return false; }
+        try {
+            require_once($path);
+            $loaded = true;
+        } catch (\Throwable $e) {
+            $loaded = false;
+        }
+        return $loaded;
+    }
 
     function fv3_get_tailscale_ip_from_container(string $containerName): ?string {
         if (empty($containerName) || !preg_match('/^[a-zA-Z0-9_.-]+$/', $containerName)) {
@@ -445,8 +459,13 @@
                 if ($isTailscaleEnabledForContainer) { 
                     fv3_debug_log("  $containerName: Tailscale is ENABLED. Attempting to resolve TS WebUI.");
                     $baseTsTemplateFromHelper = '';
-                    if (!empty($rawTsXmlUrl)) { 
-                        $baseTsTemplateFromHelper = generateTSwebui($rawTsXmlUrl, $tsServeModeFromXml, $rawWebUiString); 
+                    if (!empty($rawTsXmlUrl) && function_exists('generateTSwebui')) {
+                        $baseTsTemplateFromHelper = generateTSwebui($rawTsXmlUrl, $tsServeModeFromXml, $rawWebUiString);
+                    } elseif (!empty($rawTsXmlUrl) && !function_exists('generateTSwebui')) {
+                        fv3_require_libvirt_helpers();
+                        if (function_exists('generateTSwebui')) {
+                            $baseTsTemplateFromHelper = generateTSwebui($rawTsXmlUrl, $tsServeModeFromXml, $rawWebUiString);
+                        }
                     } elseif (!empty($ct['Labels']['net.unraid.docker.tailscale.webui'])) {
                         $baseTsTemplateFromHelper = $ct['Labels']['net.unraid.docker.tailscale.webui'];
                     }
@@ -498,8 +517,9 @@
             unset($ct); 
 
         } elseif ($type == "vm") {
+            if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM: libvirt_helpers.php not available."); return []; }
             global $lv;
-            if (!isset($lv)) { 
+            if (!isset($lv)) {
                 $lv = new Libvirt();
                 if (!$lv->connect()) { fv3_debug_log("VM: Libvirt connection failed."); return []; }
             }
@@ -558,6 +578,7 @@
             $order = array_column($containersFromUnraid, 'Name');
 
         } elseif ($type == "vm") {
+            if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM Order: libvirt_helpers.php not available."); return []; }
             global $lv;
             if (!isset($lv)) { $lv = new Libvirt(); if (!$lv->connect()) { fv3_debug_log("VM Order: Libvirt connection failed."); return []; } }
 

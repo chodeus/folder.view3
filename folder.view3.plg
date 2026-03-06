@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.03.07">
-<!ENTITY md5 "7621f4d1754fcd5552d6c94cdf1c147e">
+<!ENTITY version "2026.03.07-beta">
+<!ENTITY md5 "5cf254496c41f230b7ddb7e41bdad847">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.07-beta
+- Lazy-load libvirt to prevent page crash when VM manager is unavailable
 
 ###2026.03.07
 - Allow custom CSS to override VM row alternating colors
