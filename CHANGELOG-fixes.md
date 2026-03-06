@@ -95,6 +95,9 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 37 | jQuery selector crash for container names with CSS special characters (e.g. `Dash.`) | `docker.js` | 2026.02.26 |
 | 38 | `customEvents.js` not using `autov()` cache-busting (stale scripts after update) | `folder.view3.Docker.page`, `folder.view3.VMs.page`, `folder.view3.Dashboard.page` | 2026.03.04.1 |
 | 39 | VM folder template had orphan hidden child row | `vm.js` | 2026.03.04.1 |
+| 40 | VM tab row alternating colors broken by folder insertion (nth-child CSS counts hidden rows) | `vm.js` | 2026.03.06 |
+| 41 | `customEvents.js` `const` declarations cause SyntaxError when Compose Manager re-declares same identifiers | `customEvents.js` | 2026.03.06 |
+| 42 | VM `applyVmZebra()` inline styles block custom CSS row color overrides — added `--fv3-row-alt-bg` / `--fv3-row-bg` CSS variable fallbacks | `vm.js` | 2026.03.07 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
