@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.06">
-<!ENTITY md5 "a647615be376960d18323e3b62cdf574">
+<!ENTITY version "2026.03.07">
+<!ENTITY md5 "7621f4d1754fcd5552d6c94cdf1c147e">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.07
+- Allow custom CSS to override VM row alternating colors
 
 ###2026.03.06
 - Fix VM tab row alternating colors with folders

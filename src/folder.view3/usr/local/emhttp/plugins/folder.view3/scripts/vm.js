@@ -3,8 +3,8 @@ const applyVmZebra = () => {
     $('#kvm_table tbody tr').each(function() {
         if ($(this).is(':visible')) {
             this.style.backgroundColor = (visibleIndex % 2 === 1)
-                ? 'var(--dynamix-tablesorter-tbody-row-alt-bg-color)'
-                : 'transparent';
+                ? 'var(--fv3-row-alt-bg, var(--dynamix-tablesorter-tbody-row-alt-bg-color))'
+                : 'var(--fv3-row-bg, transparent)';
             visibleIndex++;
         }
     });
