@@ -1,9 +1,9 @@
-const folderEvents = new EventTarget();
+window.folderEvents = window.folderEvents || new EventTarget();
 
-const escapeHtml = (str) => {
+window.escapeHtml = window.escapeHtml || ((str) => {
     if (typeof str !== 'string') return str;
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-};
+});
 
 if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
     $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
