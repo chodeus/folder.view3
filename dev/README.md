@@ -1,49 +1,292 @@
-# DEV Guide
+# FolderView3 Custom CSS & JS Developer Guide
 
-## File names
-The file names need to follow this pattern `SOMETHING.TAB_NAME.(js/css)`.
-Where `SOMETHING` is replaced by any string, anything you like.
-Where `TAB_NAME` is one of those values:
- - `dashboard`
- - `docker`
- - `vm`
+## Overview
 
-You can use a file on multiple tabs by chaining those names with a `-` in between.
-DO NOT remove the `.` those are needed.
+FolderView3 supports custom CSS and JavaScript extensions that load alongside the plugin on each tab. You can restyle folders, tooltips, container rows, and the dashboard — or add custom behavior via the JavaScript event system.
 
-Example
-```javascript
-    scolcipitato.dashboard.css // Will only work on the dashboard
-    scolcipitato.docker.css // Will only work on the docker tab
-    scolcipitato.vm.css // Will only work on the vms tab
-    scolcipitato.dashboard-docker.css // Will work on the dashboard and docker tabs
-    scolcipitato.dashboard-vm.css // Will work on the dashboard and vms tabs
-    scolcipitato.dashboard-docker-vm.css // Will work on the dashboard,docker and vms tabs
+**Custom file locations on Unraid:**
+- **CSS:** `/boot/config/plugins/folder.view3/styles/`
+- **JS:** `/boot/config/plugins/folder.view3/scripts/`
 
-    scolcipitato.dashboard.js // Will only work on the dashboard
-    scolcipitato.docker.js // Will only work on the docker tab
-    scolcipitato.vm.js // Will only work on the vms tab
-    scolcipitato.dashboard-docker.js // Will work on the dashboard and docker tabs
-    scolcipitato.dashboard-vm.js // Will work on the dashboard and vms tabs
-    scolcipitato.dashboard-docker-vm.js // Will work on the dashboard,docker and vms tabs
+These directories persist across reboots (they live on the USB flash drive).
 
-    0.scolcipitato.dashboard.css // Will only work on the dashboard
-    scolcipitato-dashboard.css // Will not work
-    
+---
+
+## File Naming
+
+Files must follow the pattern: **`name.tab.ext`**
+
+| Part | Description |
+|------|-------------|
+| `name` | Any string (your theme name, a load-order prefix, etc.) |
+| `tab` | One or more of: `docker`, `vm`, `dashboard` (chain with `-`) |
+| `ext` | `.css` or `.js` |
+
+**Examples:**
+
+```
+mytheme.docker.css              → Docker tab only
+mytheme.vm.css                  → VM tab only
+mytheme.dashboard.css           → Dashboard only
+mytheme.docker-vm.css           → Docker + VM tabs
+mytheme.dashboard-docker-vm.css → All three tabs
+01-colors.docker-vm.css         → Prefixed for load ordering
 ```
 
-## CSS
-The file you want to edit is in `/boot/config/plugins/folder.view3/styles`, it's plain CSS, so you will need to know CSS before doing something.
+**Will NOT work:**
+```
+mytheme-docker.css              → Hyphen instead of dot separator
+mytheme_docker.css              → Underscore separator
+mytheme.css                     → Missing tab name
+```
 
-You can find the template used for creating the folder here, ([Dashboard](./dashboard/tab.html), [Docker](./docker/tab.html), [VMs](./vms/tab.html)), you can't change the template.html because it is hard-coded into the plugin, so any visual modification should be done trough CSS.
+**Disabling:** Append `.disabled` to any file to skip loading without deleting it:
+```
+mytheme.docker.css.disabled
+```
 
-You can find the default styles here, ([Dashboard](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css), [Docker](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/docker.css), [VMs](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/vm.css)).
+---
 
-This is it, have fun.
+## Load Order
 
-## JS
-The file you want to edit is in `/boot/config/plugins/folder.view3/scripts`, it's plain JavaScript, so you will need to know JavaScript before doing something.
+Custom files load **after** the plugin's built-in CSS, so your rules naturally override defaults. No `!important` should be needed for most overrides — use CSS variables where possible.
 
-You can find the template used for creating custom plugins here, ([Dashboard](./dashboard/events.js), [Docker](./docker/events.js), [VMs](./vms/events.js)).
+```
+1. customEvents.js (shared utilities)
+2. Custom JS files (your scripts)
+3. Plugin JS (docker.js / vm.js / dashboard.js)
+4. Plugin CSS (docker.css / vm.css / dashboard.css)
+5. Custom CSS files (your styles — loaded last, highest priority)
+```
 
-You can remove the comments when you are done, thay are there just for documentation.
+---
+
+## CSS Variables Reference
+
+Override these in your custom CSS by redefining them in `:root`. All are defined in both `docker.css` and `vm.css`.
+
+### Layout
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--fv3-folder-name-width` | `220px` | Width of the folder name cell |
+| `--fv3-folder-preview-height` | `3.5em` | Height of the collapsed folder preview bar |
+| `--fv3-folder-preview-radius` | `4px` | Border radius of the preview bar |
+| `--fv3-folder-icon-spacing` | `4px` | Gap between container icons in preview |
+| `--fv3-folder-preview-wrapper-margin` | `10px` | Left margin of each preview icon wrapper |
+
+### Advanced Preview Tooltip
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--fv3-tooltip-min-width` | `700px` | Minimum width of the advanced preview popup |
+| `--fv3-tooltip-max-height` | `80vh` | Maximum height of the advanced preview popup |
+| `--fv3-tooltip-action-pane-width` | `220px` | Width of the action button sidebar |
+
+### Colors (Theme-Agnostic Defaults)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--fv3-surface-tint` | `rgba(128, 128, 128, 0.1)` | Subtle background tint |
+| `--fv3-hover-bg` | `rgba(128, 128, 128, 0.2)` | Hover state background |
+| `--fv3-border` | `1px solid rgba(128, 128, 128, 0.3)` | Standard border style |
+| `--folder-view3-graph-cpu` | `#2b8da3` | CPU graph line color |
+| `--folder-view3-graph-mem` | `#5d6db6` | Memory graph line color |
+
+### VM Row Backgrounds (Override Hooks)
+
+These are **not defined** by the plugin — they exist as CSS variable fallbacks in `vm.js` inline styles. Define them in your custom CSS to control VM table row colors:
+
+| Variable | Fallback | Description |
+|----------|----------|-------------|
+| `--fv3-row-bg` | `transparent` | Normal VM row background |
+| `--fv3-row-alt-bg` | Unraid's `--dynamix-tablesorter-tbody-row-alt-bg-color` | Alternating VM row background |
+
+**Example override:**
+```css
+:root {
+    --fv3-row-bg: #191818;
+    --fv3-row-alt-bg: #212121;
+}
+```
+
+---
+
+## DOM Structure
+
+### Folder Row (Docker & VM Tabs)
+
+```html
+<tr class="sortable folder-id-{ID} folder">
+  <td class="ct-name folder-name">
+    <div class="folder-name-sub">
+      <i class="fa fa-arrows-v mover orange-text"></i>
+      <span class="outer folder-outer">
+        <span class="hand folder-hand">
+          <img class="img folder-img" src="...">
+        </span>
+        <span class="inner folder-inner">
+          <a class="exec folder-appname">Folder Name</a>
+          <i class="fa folder-load-status"></i>
+          <span class="state folder-state">stopped</span>
+        </span>
+      </span>
+      <button class="folder-dropdown">
+        <i class="fa fa-chevron-down"></i>
+      </button>
+    </div>
+  </td>
+  <td class="updatecolumn folder-update">...</td>
+  <td>
+    <div class="folder-storage"><!-- expanded container rows --></div>
+    <div class="folder-preview">
+      <div class="folder-preview-wrapper">
+        <!-- cloned container icon/name -->
+      </div>
+      <div class="folder-preview-divider"></div>
+      <!-- more wrappers + dividers -->
+    </div>
+  </td>
+  <td class="advanced folder-advanced">
+    <span class="folder-cpu">0%</span>
+    <div class="usage-disk mm folder-load">...</div>
+    <span class="folder-mem">0 / 0</span>
+  </td>
+  <td class="folder-autostart">...</td>
+</tr>
+```
+
+### Expanded Container Row
+
+```html
+<tr class="folder-{ID}-element folder-element">
+  <td class="ct-name" style="padding-left: 30px;">
+    <!-- original container row content -->
+  </td>
+</tr>
+```
+
+### Advanced Preview Tooltip
+
+```html
+<div class="preview-outbox preview-outbox-{shortId}">
+  <div class="first-row">
+    <div class="preview-img"><img class="folder-img"></div>
+    <div class="preview-name">
+      <span class="preview-actual-name">Folder Name</span>
+    </div>
+    <table class="preview-status">
+      <tr class="status-header">
+        <th class="status-header-version">...</th>
+        <th class="status-header-stats">...</th>
+        <th class="status-header-autostart">...</th>
+      </tr>
+    </table>
+  </div>
+  <div class="second-row">
+    <div class="action-info">
+      <div class="action action-left"><!-- bulk actions --></div>
+      <div class="action action-right"><!-- quick actions --></div>
+      <div class="info-ct"><!-- container ID, repo --></div>
+    </div>
+    <div class="info-section">
+      <!-- jQuery UI tabs: graph, ports, volumes -->
+    </div>
+  </div>
+</div>
+```
+
+---
+
+## Common Styling Recipes
+
+| Goal | CSS |
+|------|-----|
+| Change folder name width | `:root { --fv3-folder-name-width: 180px; }` |
+| Change preview bar height | `:root { --fv3-folder-preview-height: 2.5em; }` |
+| Style folder name text | `.folder-name-sub .folder-appname { font-size: 1.5rem; font-weight: bold; }` |
+| Style folder icon | `.folder-img { width: 36px; height: 36px; }` |
+| Style icon hover | `.folder-img:hover { transform: scale(1.2); }` |
+| Change preview icon spacing | `:root { --fv3-folder-icon-spacing: 8px; }` |
+| Style expanded container rows | `.folder-element { background-color: rgba(0,0,0,0.05); }` |
+| Style CPU/Memory text | `.folder-cpu { color: #00BCD4; } .folder-mem { color: #673AB7; }` |
+| Change graph colors | `:root { --folder-view3-graph-cpu: #00BCD4; --folder-view3-graph-mem: #673AB7; }` |
+| Style tooltip background | `.preview-outbox { background-color: #1c1b1b; }` |
+| Style preview dividers | `.folder-preview-divider { border-color: #444 !important; }` |
+| Hide folder start/stop text | `.folder-state { display: none; }` |
+| Style dropdown chevron | `.folder-dropdown { color: #607D8B; }` |
+
+---
+
+## JavaScript Extension Events
+
+The plugin dispatches custom events via `folderEvents` (a shared `EventTarget`). Listen in your custom JS:
+
+```javascript
+folderEvents.addEventListener('docker-post-folder-creation', (e) => {
+    const { id, folder } = e.detail;
+    // DOM is ready — modify the folder row
+});
+```
+
+### Available Events
+
+**Docker tab:**
+
+| Event | Fired | Detail |
+|-------|-------|--------|
+| `docker-pre-folders-creation` | Before any folders render | `{ folders, containerInfo, order }` |
+| `docker-post-folders-creation` | After all folders render | `{ folders, containerInfo, order }` |
+| `docker-pre-folder-creation` | Before a single folder renders | `{ id, folder }` |
+| `docker-post-folder-creation` | After a single folder renders | `{ id, folder }` |
+| `docker-pre-folder-preview` | Before preview icons are built | `{ id, folder }` |
+| `docker-post-folder-preview` | After preview icons are built | `{ id, folder }` |
+| `docker-pre-folder-expansion` | Before folder expands/collapses | `{ id }` |
+| `docker-post-folder-expansion` | After folder expands/collapses | `{ id }` |
+| `docker-tooltip-before` | Before advanced preview opens | `{ id }` |
+| `docker-tooltip-ready-start` | Tooltip DOM created, before content | `{ id }` |
+| `docker-tooltip-ready-end` | Tooltip fully populated | `{ id }` |
+| `docker-tooltip-after` | After tooltip closes | `{ id }` |
+| `docker-folder-context` | Right-click context menu opens | `{ id, opts }` |
+
+**VM tab:** Same pattern with `vm-` prefix (no tooltip events).
+
+**Dashboard:** Dispatches both `docker-` and `vm-` events for their respective folder types.
+
+---
+
+## Theme Compatibility Tips
+
+1. **Never use hardcoded colors.** Use `inherit`, `currentColor`, or `rgba()` so your theme works on both Unraid dark and light themes.
+
+2. **Prefer CSS variables over `!important`.** Override `--fv3-*` variables in `:root` — this is the intended customization mechanism.
+
+3. **Docker and VM share selectors.** `.folder-name-sub`, `.folder-outer`, `.folder-preview`, `.folder-dropdown` — if you style one, consider whether you need to style both.
+
+4. **Dashboard has a different DOM structure** than Docker/VM tabs. Dashboard uses tile-based layout, not table rows. Test your theme on all three tabs.
+
+5. **Scope your selectors.** Use `#docker_containers` or `#kvm_table` to target specific tabs and avoid accidentally styling other plugins' elements.
+
+6. **Unraid theme variables** are available. For example, `--dynamix-tablesorter-tbody-row-alt-bg-color` provides the current theme's alternating row color.
+
+7. **Cache busting.** Unraid's `autov()` appends a version hash to file URLs. If your changes aren't appearing, rename the file or clear your browser cache.
+
+---
+
+## Community Themes
+
+These community themes serve as working examples:
+
+- [hernandito/folder.view.custom](https://github.com/hernandito/folder.view.custom) — Compact and Midsize designs
+- [Mattaton/folder.view.custom.css](https://github.com/Tyree/folder.view.custom.css) — urblack, urgray, urwhite themes
+- [masterwishx/folder.view.custom.css](https://github.com/masterwishx/folder.view.custom.css) — urblack theme with extensive CSS variable system
+
+---
+
+## Default Styles
+
+The plugin's built-in stylesheets for reference:
+
+- [docker.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/docker.css)
+- [vm.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/vm.css)
+- [dashboard.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css)
