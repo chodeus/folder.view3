@@ -146,6 +146,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     choose.sort((a, b) => a.Name.localeCompare(b.Name));
 
     updateList();
+
+    $('.canvas form div.basic > dl > dt').css('cursor', 'default').wrapInner('<span style="cursor: help;"></span>');
 })();
 
 /**
