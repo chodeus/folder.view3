@@ -98,6 +98,7 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 40 | VM tab row alternating colors broken by folder insertion (nth-child CSS counts hidden rows) | `vm.js` | 2026.03.06 |
 | 41 | `customEvents.js` `const` declarations cause SyntaxError when Compose Manager re-declares same identifiers | `customEvents.js` | 2026.03.06 |
 | 42 | VM `applyVmZebra()` inline styles block custom CSS row color overrides — added `--fv3-row-alt-bg` / `--fv3-row-bg` CSS variable fallbacks | `vm.js` | 2026.03.07 |
+| 43 | Unconditional `libvirt_helpers.php` include crashes Docker page when VM manager/libvirt is unavailable — lazy-load only when VM operations are requested | `lib.php` | 2026.03.16 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
@@ -427,3 +428,46 @@ Added `*.txz binary` rule to prevent git from mangling binary archives via `text
 - `release-beta.yml`: Manual trigger, builds beta on beta branch, auto-increments beta number
 - `release-stable.yml`: Manual trigger, merges beta→main, builds stable, creates GitHub release
 - `release-main.yml`: Manual trigger, builds stable directly from main (no beta merge), creates GitHub release
+
+### Settings Page & Security (2026.03.16)
+
+#### Bug Fixes
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 44 | Fix Settings page delete buttons — global variables initialized before `populateTable()` call | `folderview3.js` | 2026.03.16 |
+| 45 | Fix delete validation — accept variable-length folder IDs for backward compatibility | `lib.php`, `delete.php` | 2026.03.16 |
+| 46 | Fix Settings page folder order to match current Docker/VM container page order | `folderview3.js` | 2026.03.16 |
+| 47 | Fix folder editor tooltip to click-only, help cursor on label text only | `folder.js` | 2026.03.16 |
+| 48 | Fix import error handling — early return on JSON parse failure instead of falling through | `folderview3.js` | 2026.03.16 |
+
+#### New Features
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 17 | Bulk export preserves folder order via JSON key ordering (mapped from container page order) | `folderview3.js` | 2026.03.16 |
+| 18 | Hover tooltip on folder editor labels — shows help text beneath heading on dt hover | `folder.css` | 2026.03.16 |
+
+#### Security
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 8 | Folder ID format validation on delete and update endpoints | `lib.php`, `delete.php`, `update.php` | 2026.03.16 |
+| 9 | JSON decode safety — validate parsed data before use | `lib.php` | 2026.03.16 |
+| 10 | File permission hardening (0660) on config writes | `lib.php` | 2026.03.16 |
+| 11 | Path traversal protection on custom script/style loaders via `realpath()` + baseDir check | `scripts/custom.php`, `styles/custom.php` | 2026.03.16 |
+
+#### UI/Layout Improvements
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 11 | 14 new CSS variables for customizable folder layout and colors | `docker.css`, `vm.css` | 2026.03.16 |
+
+#### Cleanup
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 5 | Extract `orderFolderIds()` and `buildOrderedExport()` helpers, remove duplicated ordering logic | `folderview3.js` | 2026.03.16 |
+| 6 | Remove dead CSS variables (`--fv3-folder-icon-size`, `--fv3-separator-color`) | `docker.css`, `vm.css` | 2026.03.16 |
+| 7 | Remove unused `fv3_validate_id()` function | `lib.php` | 2026.03.16 |
+| 8 | Remove no-op VM `sync_order` call on import | `folderview3.js` | 2026.03.16 |

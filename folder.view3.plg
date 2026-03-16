@@ -6,12 +6,19 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.07">
-<!ENTITY md5 "7621f4d1754fcd5552d6c94cdf1c147e">
+<!ENTITY version "2026.03.16">
+<!ENTITY md5 "5bc2e2c882cc4e064d818587aabf74cc">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.16
+- Fix folder editor tooltips
+- Export now preserves folder order matching Docker/VM container page
+- Add new CSS variables for customizable layout and colors
+- Enhanced security: ID validation, JSON safety, file permissions
+- Lazy-load libvirt to prevent crashes when VM manager unavailable
 
 ###2026.03.07
 - Allow custom CSS to override VM row alternating colors
