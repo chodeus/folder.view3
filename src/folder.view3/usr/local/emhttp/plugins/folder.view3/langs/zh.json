@@ -53,7 +53,7 @@
     "by": "通过",
     "container-id": "容器编号",
     "name": "名称:",
-    "name-tooltip": "文件夹的名称。允许: <b>a-z A-Z 0-9 _ . - / 空格</b>。不允许: <b>&lt; &gt; &amp; \" ' \\ :</b>",
+    "name-tooltip": "文件夹名称。支持 Unicode（中日韩、西里尔文等）。不允许: <b>&lt; &gt; &amp; \" ' \\ :</b> 和控制字符。",
     "icon": "图标:",
     "icon-tooltip": "一个图片链接（<a href=\"https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element/img#supported_image_formats\" target=\"_blank\">支持的格式</a>）<br>也支持<b>data:image/{type};base64,</b>这种格式（<a href=\"https://tool.lu/base64image/\" target=\"_blank\">将图片转换成data字符串</a>）<br><a href=\"https://forums.unraid.net/topic/92824-icon-collections-for-docker-folder-plugin/\" target=\"_blank\">关于图标的一些帖子</a>。<br>你可以点击Docker/虚拟机的图标，来将其击设置为文件夹的图标。",
     "preview": "预览：",

@@ -53,7 +53,7 @@
     "by": "Da",
     "container-id": "ID Contenitore",
     "name": "Nome:",
-    "name-tooltip": "Il nome della cartella. Consentiti: <b>a-z A-Z 0-9 _ . - / spazio</b>. Non consentiti: <b>&lt; &gt; &amp; \" ' \\ :</b>",
+    "name-tooltip": "Il nome della cartella. Supporta Unicode (CJK, cirillico, ecc). Non consentiti: <b>&lt; &gt; &amp; \" ' \\ :</b> e caratteri di controllo.",
     "icon": "Icona:",
     "icon-tooltip": "Un link a un'immagine (<a href=\"https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#supported_image_formats\" target=\"_blank\">Formati supportati</a>)<br>Supporta anche il formato <b>data:image/{type};base64,</b> (<a href=\"https://base64.guru/converter/encode/image\" target=\"_blank\">Convertire un'immagine</a>)<br><a href=\"https://forums.unraid.net/topic/92824-icon-collections-for-docker-folder-plugin/\" target=\"_blank\">Alcune icone</a>.<br>Puoi cliccare le icone Docker/VM per impostare automaticamente l'icona della cartella.",
     "preview": "Anteprima:",
