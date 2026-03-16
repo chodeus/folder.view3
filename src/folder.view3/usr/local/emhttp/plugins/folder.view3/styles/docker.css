@@ -1,7 +1,25 @@
 :root {
+    /* Graph colors */
     --folder-view3-graph-cpu: #2b8da3;
     --folder-view3-graph-mem: #5d6db6;
+
+    /* Layout dimensions */
+    --fv3-folder-name-width: 220px;
+    --fv3-folder-preview-height: 3.5em;
+    --fv3-folder-preview-radius: 4px;
+    --fv3-folder-icon-spacing: 4px;
+    --fv3-folder-preview-wrapper-margin: 10px;
+
+    /* Tooltip dimensions */
+    --fv3-tooltip-min-width: 700px;
+    --fv3-tooltip-max-height: 80vh;
+    --fv3-tooltip-action-pane-width: 220px;
     --tooltip-spacing: 5px;
+
+    /* Theme colors (theme-safe defaults) */
+    --fv3-surface-tint: rgba(128, 128, 128, 0.1);
+    --fv3-hover-bg: rgba(128, 128, 128, 0.2);
+    --fv3-border: 1px solid rgba(128, 128, 128, 0.3);
 }
 
 /* --- General Folder Styles --- */
@@ -14,7 +32,7 @@
 }
 
 .folder-name {
-    width: 220px;
+    width: var(--fv3-folder-name-width);
     padding: 8px;
     box-sizing: border-box;
 }
@@ -32,7 +50,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     display: block;
-    width: calc(220px - 25px);
+    width: calc(var(--fv3-folder-name-width) - 25px);
 }
 
 .folder-dropdown {
@@ -51,8 +69,8 @@
 }
 
 .folder-preview {
-    border-radius: 4px;
-    height: 3.5em;
+    border-radius: var(--fv3-folder-preview-radius);
+    height: var(--fv3-folder-preview-height);
     overflow: hidden;
     display: flex;
     flex-wrap: wrap;
@@ -62,7 +80,7 @@
 .folder-preview-wrapper {
     float: left;
     height: 100%;
-    margin-left: 10px;
+    margin-left: var(--fv3-folder-preview-wrapper-margin);
     margin-top: 7px;
 }
 
@@ -87,7 +105,7 @@
 }
 
 div.folder-preview img.img {
-    margin-right: 4px;
+    margin-right: var(--fv3-folder-icon-spacing);
 }
 
 .folder-cpu,
@@ -126,10 +144,10 @@ div.folder-preview-4 span.outer {
 
 /* --- Tooltip Content Layout (Theme-agnostic) --- */
 .preview-outbox {
-    min-width: min(700px, 90vw);
+    min-width: min(var(--fv3-tooltip-min-width), 90vw);
     max-width: 90vw;
     min-height: 400px;
-    max-height: 80vh;
+    max-height: var(--fv3-tooltip-max-height);
     padding: var(--tooltip-spacing);
     /* Inherit colors from Unraid's body/theme */
     background-color: inherit;
@@ -160,10 +178,10 @@ div.folder-preview-4 span.outer {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    border: 1px solid rgba(128, 128, 128, 0.3);
+    border: var(--fv3-border);
     border-radius: 5px;
     padding: var(--tooltip-spacing);
-    background-color: rgba(128, 128, 128, 0.1);
+    background-color: var(--fv3-surface-tint);
     gap: var(--tooltip-spacing);
     flex-shrink: 0;
 }
@@ -198,16 +216,16 @@ div.folder-preview-4 span.outer {
 
 .status-header-version {
     border-radius: 5px 0 0 5px;
-    background-color: rgba(128, 128, 128, 0.2);
+    background-color: var(--fv3-hover-bg);
 }
 
 .status-header-stats {
-    background-color: rgba(128, 128, 128, 0.2);
+    background-color: var(--fv3-hover-bg);
 }
 
 .status-header-autostart {
     border-radius: 0 5px 5px 0;
-    background-color: rgba(128, 128, 128, 0.2);
+    background-color: var(--fv3-hover-bg);
 }
 
 .preview-status td {
@@ -228,7 +246,7 @@ div.folder-preview-4 span.outer {
     position: relative;
     flex-grow: 0;
     flex-shrink: 0;
-    flex-basis: 220px;
+    flex-basis: var(--fv3-tooltip-action-pane-width);
     display: flex;
     flex-direction: column;
 }
@@ -256,7 +274,7 @@ div.folder-preview-4 span.outer {
 }
 
 .action a:hover {
-    background-color: rgba(128, 128, 128, 0.2);
+    background-color: var(--fv3-hover-bg);
 }
 
 .action-left {
@@ -269,8 +287,8 @@ div.folder-preview-4 span.outer {
 .info-ct {
     margin-top: auto;
     border-radius: 5px;
-    background-color: rgba(128, 128, 128, 0.1);
-    border: 1px solid rgba(128, 128, 128, 0.3);
+    background-color: var(--fv3-surface-tint);
+    border: var(--fv3-border);
     padding: 5px;
     font-size: 0.9em;
     word-break: break-all;
@@ -321,7 +339,7 @@ div.folder-preview-4 span.outer {
 }
 
 .info-tabs > li:not([aria-selected="true"]) a:hover {
-    background-color: rgba(128, 128, 128, 0.1);
+    background-color: var(--fv3-surface-tint);
 }
 
 .info-tabs > li[aria-disabled="true"] {
@@ -331,8 +349,8 @@ div.folder-preview-4 span.outer {
 .info-section .ui-tabs-panel {
     padding: var(--tooltip-spacing);
     clear: both;
-    background-color: rgba(128, 128, 128, 0.1);
-    border: 1px solid rgba(128, 128, 128, 0.3);
+    background-color: var(--fv3-surface-tint);
+    border: var(--fv3-border);
     border-top: none;
     border-radius: 0 0 4px 4px;
     flex-grow: 1;
@@ -406,7 +424,7 @@ div.folder-preview-4 span.outer {
 
 .docker-context-menu {
     background-color: inherit;
-    border: 1px solid rgba(128, 128, 128, 0.3);
+    border: var(--fv3-border);
     border-radius: 4px;
     padding: 5px 0;
     min-width: 150px;
@@ -420,5 +438,5 @@ div.folder-preview-4 span.outer {
 }
 
 .docker-context-menu a:hover {
-    background-color: rgba(128, 128, 128, 0.2);
+    background-color: var(--fv3-hover-bg);
 }

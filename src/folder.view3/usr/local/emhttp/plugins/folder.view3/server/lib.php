@@ -10,6 +10,7 @@
                 $message = json_encode($message);
             }
             @file_put_contents($fv3_debug_log_file, "[$timestamp] $message\n", FILE_APPEND);
+            @chmod($fv3_debug_log_file, 0600);
         }
     }
 
@@ -32,7 +33,22 @@
 
     require_once("$documentRoot/webGui/include/Helpers.php");
     require_once("$documentRoot/plugins/dynamix.docker.manager/include/DockerClient.php");
-    require_once ("$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php");
+
+    function fv3_require_libvirt_helpers(): bool {
+        global $documentRoot;
+        static $loaded = null;
+        if ($loaded !== null) return $loaded;
+        $path = "$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php";
+        if (!file_exists($path)) { $loaded = false; return false; }
+        try {
+            require_once($path);
+            $loaded = true;
+        } catch (\Throwable $e) {
+            fv3_debug_log("fv3_require_libvirt_helpers: Failed to load libvirt_helpers.php - " . $e->getMessage());
+            $loaded = false;
+        }
+        return $loaded;
+    }
 
     function fv3_get_tailscale_ip_from_container(string $containerName): ?string {
         if (empty($containerName) || !preg_match('/^[a-zA-Z0-9_.-]+$/', $containerName)) {
@@ -211,9 +227,16 @@
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); if (empty($id)) $id = generateId(); }
         if(empty($id)) { $id = generateId(); }
+        $decoded = json_decode($content, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            http_response_code(400);
+            exit;
+        }
         $fileData = json_decode(file_get_contents("$configDir/$type.json"), true) ?: [];
-        $fileData[$id] = json_decode($content, true);
-        file_put_contents("$configDir/$type.json", json_encode($fileData));
+        $fileData[$id] = $decoded;
+        $path = "$configDir/$type.json";
+        file_put_contents($path, json_encode($fileData));
+        @chmod($path, 0660);
     }
 
     function deleteFolder(string $type, string $id) : void {
@@ -221,7 +244,9 @@
         if(!file_exists("$configDir/$type.json")) { createFile($type); return; }
         $fileData = json_decode(file_get_contents("$configDir/$type.json"), true) ?: [];
         unset($fileData[$id]);
-        file_put_contents("$configDir/$type.json", json_encode($fileData));
+        $path = "$configDir/$type.json";
+        file_put_contents($path, json_encode($fileData));
+        @chmod($path, 0660);
     }
 
     function generateId(int $length = 20) : string {
@@ -232,7 +257,9 @@
         global $configDir;
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $default = ['docker' => '{}', 'vm' => '{}'];
-        @file_put_contents("$configDir/$type.json", $default[$type] ?? '{}');
+        $path = "$configDir/$type.json";
+        @file_put_contents($path, $default[$type] ?? '{}');
+        @chmod($path, 0660);
     }
 
     function readInfo(string $type): array {
@@ -445,8 +472,13 @@
                 if ($isTailscaleEnabledForContainer) { 
                     fv3_debug_log("  $containerName: Tailscale is ENABLED. Attempting to resolve TS WebUI.");
                     $baseTsTemplateFromHelper = '';
-                    if (!empty($rawTsXmlUrl)) { 
-                        $baseTsTemplateFromHelper = generateTSwebui($rawTsXmlUrl, $tsServeModeFromXml, $rawWebUiString); 
+                    if (!empty($rawTsXmlUrl) && function_exists('generateTSwebui')) {
+                        $baseTsTemplateFromHelper = generateTSwebui($rawTsXmlUrl, $tsServeModeFromXml, $rawWebUiString);
+                    } elseif (!empty($rawTsXmlUrl) && !function_exists('generateTSwebui')) {
+                        fv3_require_libvirt_helpers();
+                        if (function_exists('generateTSwebui')) {
+                            $baseTsTemplateFromHelper = generateTSwebui($rawTsXmlUrl, $tsServeModeFromXml, $rawWebUiString);
+                        }
                     } elseif (!empty($ct['Labels']['net.unraid.docker.tailscale.webui'])) {
                         $baseTsTemplateFromHelper = $ct['Labels']['net.unraid.docker.tailscale.webui'];
                     }
@@ -498,8 +530,9 @@
             unset($ct); 
 
         } elseif ($type == "vm") {
+            if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM: libvirt_helpers.php not available."); return []; }
             global $lv;
-            if (!isset($lv)) { 
+            if (!isset($lv)) {
                 $lv = new Libvirt();
                 if (!$lv->connect()) { fv3_debug_log("VM: Libvirt connection failed."); return []; }
             }
@@ -558,6 +591,7 @@
             $order = array_column($containersFromUnraid, 'Name');
 
         } elseif ($type == "vm") {
+            if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM Order: libvirt_helpers.php not available."); return []; }
             global $lv;
             if (!isset($lv)) { $lv = new Libvirt(); if (!$lv->connect()) { fv3_debug_log("VM Order: Libvirt connection failed."); return []; } }
 

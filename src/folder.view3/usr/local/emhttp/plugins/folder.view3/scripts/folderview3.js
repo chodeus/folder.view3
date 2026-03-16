@@ -3,6 +3,9 @@ const escapeHtml = (str) => {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
 
+let dockers = {};
+let vms = {};
+
 if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
     $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
         if (options.type?.toUpperCase() === 'POST' && options.url?.includes('/plugins/folder.view3/')) {
@@ -15,13 +18,46 @@ if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
     });
 }
 
+const orderFolderIds = (folders, itemOrder) => {
+    try {
+        const ordered = [];
+        const seen = new Set();
+        for (const name of itemOrder) {
+            for (const [folderId, folder] of Object.entries(folders)) {
+                if (folder.containers && folder.containers.includes(name)) {
+                    if (!seen.has(folderId)) {
+                        ordered.push(folderId);
+                        seen.add(folderId);
+                    }
+                    break;
+                }
+            }
+        }
+        for (const folderId of Object.keys(folders)) {
+            if (!seen.has(folderId)) {
+                ordered.push(folderId);
+            }
+        }
+        return ordered;
+    } catch (error) {
+        return Object.keys(folders);
+    }
+};
+
 const populateTable = async () => {
     const proms = await Promise.all([
         $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
-        $.get('/plugins/folder.view3/server/read.php?type=vm').promise()
+        $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
+        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
+        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
     ]);
-    dockers = JSON.parse(proms[0]);
-    vms = JSON.parse(proms[1]);
+    const dockerData = JSON.parse(proms[0]);
+    const vmData = JSON.parse(proms[1]);
+    const currentDockerContainerOrder = JSON.parse(proms[2]);
+    const currentVmOrder = JSON.parse(proms[3]);
+
+    dockers = dockerData;
+    vms = vmData;
 
     const dockerTable = $('tbody#docker');
     const vmsTable = $('tbody#vms');
@@ -29,12 +65,14 @@ const populateTable = async () => {
     dockerTable.empty();
     vmsTable.empty();
 
-    for (const [id, folder] of Object.entries(dockers)) {
+    for (const id of orderFolderIds(dockers, currentDockerContainerOrder)) {
+        const folder = dockers[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadDocker('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
-    for (const [id, folder] of Object.entries(vms)) {
+    for (const id of orderFolderIds(vms, currentVmOrder)) {
+        const folder = vms[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadVm('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
         vmsTable.append($(fld));
     }
@@ -42,14 +80,27 @@ const populateTable = async () => {
 
 populateTable();
 
-let dockers = {};
-let vms = {};
+const buildOrderedExport = async (folders, type) => {
+    const order = JSON.parse(await $.get(`/plugins/folder.view3/server/read_unraid_order.php?type=${type}`).promise());
+    const orderedIds = orderFolderIds(folders, order);
+    const exportData = {};
+    for (const folderId of orderedIds) {
+        if (folders[folderId]) {
+            exportData[folderId] = folders[folderId];
+        }
+    }
+    return exportData;
+};
 
-const downloadDocker = (id) => {
+const downloadDocker = async (id) => {
     if (id) {
         downloadFile(`${dockers[id].name}.json`, JSON.stringify(dockers[id]));
     } else {
-        downloadFile(`Docker.json`, JSON.stringify(dockers));
+        try {
+            downloadFile(`Docker.json`, JSON.stringify(await buildOrderedExport(dockers, 'docker')));
+        } catch (error) {
+            downloadFile(`Docker.json`, JSON.stringify(dockers));
+        }
     }
 };
 
@@ -76,13 +127,16 @@ const importDocker = () => {
                     text: 'Error parsing the input file, please select a JSON file',
                     type: 'error',
                 });
+                return;
             }
+
             if(content.name) {
                 await $.post('/plugins/folder.view3/server/create.php', { type: 'docker', content: JSON.stringify(content) });
             } else {
                 for (const [id, folder] of Object.entries(content)) {
                     await $.post('/plugins/folder.view3/server/update.php', { type: 'docker', content: JSON.stringify(folder), id: id });
                 }
+                await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' });
             }
             populateTable();
         }
@@ -113,7 +167,9 @@ const importVm = () => {
                     text: 'Error parsing the input file, please select a JSON file',
                     type: 'error',
                 });
+                return;
             }
+
             if(content.name) {
                 await $.post('/plugins/folder.view3/server/create.php', { type: 'vm', content: JSON.stringify(content) });
             } else {
@@ -141,7 +197,13 @@ const clearDocker = (id) => {
         },
         async (c) => {
             if (!c) { return; }
-            await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
+            try {
+                await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
+            } catch (error) {
+                console.error('Docker delete error:', error);
+                swal({ title: 'Error', text: 'Failed to delete folder: ' + error.statusText, type: 'error' });
+                return;
+            }
             populateTable();
         });
     } else {
@@ -157,19 +219,29 @@ const clearDocker = (id) => {
         },
         async (c) => {
             if (!c) { return; }
-            for (const cid of Object.keys(dockers)) {
-                await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: cid }).promise();
+            try {
+                for (const cid of Object.keys(dockers)) {
+                    await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: cid }).promise();
+                }
+            } catch (error) {
+                console.error('Docker clear all error:', error);
+                swal({ title: 'Error', text: 'Failed to clear all folders', type: 'error' });
+                return;
             }
             populateTable();
         });
     }
 };
 
-const downloadVm = (id) => {
+const downloadVm = async (id) => {
     if (id) {
         downloadFile(`${vms[id].name}.json`, JSON.stringify(vms[id]));
     } else {
-        downloadFile(`VM.json`, JSON.stringify(vms));
+        try {
+            downloadFile(`VM.json`, JSON.stringify(await buildOrderedExport(vms, 'vm')));
+        } catch (error) {
+            downloadFile(`VM.json`, JSON.stringify(vms));
+        }
     }
 };
 
@@ -187,7 +259,13 @@ const clearVm = (id) => {
         },
         async (c) => {
             if (!c) { return; }
-            await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
+            try {
+                await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
+            } catch (error) {
+                console.error('VM delete error:', error);
+                swal({ title: 'Error', text: 'Failed to delete folder', type: 'error' });
+                return;
+            }
             populateTable();
         });
     } else {
@@ -203,8 +281,14 @@ const clearVm = (id) => {
         },
         async (c) => {
             if (!c) { return; }
-            for (const cid of Object.keys(vms)) {
-                await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: cid }).promise();
+            try {
+                for (const cid of Object.keys(vms)) {
+                    await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: cid }).promise();
+                }
+            } catch (error) {
+                console.error('VM clear all error:', error);
+                swal({ title: 'Error', text: 'Failed to clear all folders', type: 'error' });
+                return;
             }
             populateTable();
         });
