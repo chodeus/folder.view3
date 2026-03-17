@@ -6,3 +6,144 @@
 .orange-text.blue-text {
     color: var(--color-orange, #f0a30a);
 }
+
+/* ===== Shared: folder name label in child panels ===== */
+.fv3-layout-inset .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-layout-accordion .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-fullwidth-panel[data-folder-name]::after {
+    content: attr(data-folder-name);
+    display: block;
+    width: 100%;
+    text-align: right;
+    font-size: 0.7em;
+    opacity: 0.5;
+    margin-top: 2px;
+    padding-right: 4px;
+}
+
+/* ===== Dashboard Layout: Inset Panel ===== */
+.fv3-layout-inset {
+    flex-wrap: wrap !important;
+    padding-right: 4px;
+}
+
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] {
+    display: flex;
+    flex-direction: column;
+    border: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
+    border-radius: 6px;
+    padding: 4px;
+    margin-bottom: 6px;
+    flex-basis: 100%;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.fv3-layout-inset .folder-showcase:not(:empty) {
+    border: 1px solid rgba(128,128,128,0.2);
+    border-left: 3px solid var(--color-orange, #f0a30a);
+    border-radius: 4px;
+    margin: 6px 4px 4px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.fv3-layout-inset .folder-showcase > span.outer.solid,
+.fv3-layout-inset .folder-showcase > span.outer.apps {
+    transform: none;
+    background: none;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+/* ===== Dashboard Layout: Accordion ===== */
+.fv3-layout-accordion {
+    display: flex !important;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 4px;
+}
+
+.fv3-layout-accordion .folder-showcase-outer {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.folder-showcase-outer.fv3-hidden {
+    display: none !important;
+}
+
+.fv3-layout-accordion .folder-showcase-outer > span.outer {
+    width: 100%;
+}
+
+.fv3-layout-accordion .folder-showcase:not(:empty) {
+    border: 1px solid rgba(128,128,128,0.2);
+    border-left: 3px solid var(--color-orange, #f0a30a);
+    border-radius: 4px;
+    margin: 6px 4px 4px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.fv3-layout-accordion .folder-showcase > span.outer.solid,
+.fv3-layout-accordion .folder-showcase > span.outer.apps {
+    transform: none;
+    background: none;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.fv3-layout-accordion > span.outer:not(.folder-docker):not(.folder-vm) {
+    width: 100%;
+}
+
+/* ===== Dashboard Layout: Full-width Panel ===== */
+.fv3-layout-fullwidth {
+    flex-wrap: wrap !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.fv3-layout-fullwidth .folder-showcase-outer {
+    display: contents;
+}
+
+.fv3-layout-fullwidth .folder-showcase-outer.fv3-hidden > * {
+    display: none !important;
+}
+
+.fv3-layout-fullwidth .folder-showcase:empty,
+.fv3-layout-fullwidth .folder-storage {
+    display: none;
+}
+
+.fv3-fullwidth-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border: 1px solid rgba(128,128,128,0.2);
+    border-left: 3px solid var(--color-orange, #f0a30a);
+    border-radius: 4px;
+    margin: 6px 0;
+    padding: 8px;
+    width: 100%;
+    min-width: 100%;
+    box-sizing: border-box;
+}
+
+.fv3-fullwidth-panel > span.outer.solid,
+.fv3-fullwidth-panel > span.outer.apps {
+    transform: none;
+    background: none;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+}

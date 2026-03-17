@@ -88,6 +88,7 @@ const createFolders = async () => {
         if ($('input#apps').is(':checked')) {
             $('tbody#docker_view > tr.updated > td > div > span.outer.stopped').css('display', 'none');
         }
+        fv3UpdateHidden();
 
         
     
@@ -197,6 +198,7 @@ const createFolders = async () => {
         if ($('input#vms').is(':checked')) {
             $('tbody#vm_view > tr.updated > td > div > span.outer.stopped').css('display', 'none');
         }
+        fv3UpdateHidden();
 
         // Expand folders that are set to be expanded by default, this is here because is easier to work with all compressed folder when creating them
         for (const [id, value] of Object.entries(foldersDone)) {
@@ -257,7 +259,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     folder.containers = folder.containers.concat(order.filter(el => containersInfo[el]?.Labels['folder.view3'] === folder.name));
 
     // the HTML template for the folder
-    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${id}" onclick='addDockerFolderContext("${id}")' class="hand docker folder-hand-docker"><img src="${escapeHtml(folder.icon)}" class="img folder-img-docker" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker"><span class="folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker"></i><span class="state folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage"></div></span><div class="folder-showcase-${id} folder-showcase"></div></div>`;
+    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${id}" onclick='addDockerFolderContext("${id}")' class="hand docker folder-hand-docker"><img src="${escapeHtml(folder.icon)}" class="img folder-img-docker" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker"><span class="folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker"></i><span class="state folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage"></div></span><div class="folder-showcase-${id} folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
     // insertion at position of the folder
     if (position === 0) {
@@ -457,7 +459,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     }
 
     // the HTML template for the folder
-    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${id}" onclick='addVMFolderContext("${id}")' class="hand vm folder-hand-vm"><img src="${escapeHtml(folder.icon)}" class="img folder-img-vm" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm"><span class="folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm"></i><span class="state folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage" style="display:none"></div></span><div class="folder-showcase-${id} folder-showcase"></div></div>`;
+    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${id}" onclick='addVMFolderContext("${id}")' class="hand vm folder-hand-vm"><img src="${escapeHtml(folder.icon)}" class="img folder-img-vm" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm"><span class="folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm"></i><span class="state folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage" style="display:none"></div></span><div class="folder-showcase-${id} folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
     // insertion at position of the folder
     if (position === 0) {
@@ -598,16 +600,27 @@ const expandFolderDocker = (id) => {
     folderEvents.dispatchEvent(new CustomEvent('docker-pre-folder-expansion', {detail: { id }}));
     const el = $(`tbody#docker_view > tr.updated > td span.outer.apps > span#folder-id-${id}`);
     const state = el.attr('expanded') === "true";
+    const outer = $(`.folder-showcase-outer-${id}`);
     if (state) {
+        // Collapsing: retrieve children from fullwidth panel if present
+        const panel = outer.data('fv3-panel');
+        if (panel) {
+            el.parents().siblings('div.folder-showcase').append(panel.children());
+            panel.remove();
+            outer.removeData('fv3-panel');
+        }
         el.siblings('div.folder-storage').append(el.parents().siblings('div.folder-showcase').children());
         el.attr('expanded', 'false');
     } else {
         el.parents().siblings('div.folder-showcase').append(el.siblings('div.folder-storage').children());
         el.attr('expanded', 'true');
     }
-    $(`tbody#docker_view .folder-showcase-outer-${id}`).attr('expanded', !state ? 'true' : 'false');
+    outer.attr('expanded', !state ? 'true' : 'false');
     if(globalFolders.docker) {
         globalFolders.docker[id].status.expanded = !state;
+    }
+    if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady) {
+        fv3FullwidthExpand(id, 'docker');
     }
     folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-expansion', {detail: { id }}));
 };
@@ -620,16 +633,26 @@ const expandFolderVM = (id) => {
     folderEvents.dispatchEvent(new CustomEvent('vm-pre-folder-expansion', {detail: { id }}));
     const el = $(`tbody#vm_view > tr.updated > td span.outer.vms > span#folder-id-${id}`);
     const state = el.attr('expanded') === "true";
+    const outer = $(`.folder-showcase-outer-${id}`);
     if (state) {
+        const panel = outer.data('fv3-panel');
+        if (panel) {
+            el.parents().siblings('div.folder-showcase').append(panel.children());
+            panel.remove();
+            outer.removeData('fv3-panel');
+        }
         el.siblings('div.folder-storage').append(el.parents().siblings('div.folder-showcase').children());
         el.attr('expanded', 'false');
     } else {
         el.parents().siblings('div.folder-showcase').append(el.siblings('div.folder-storage').children());
         el.attr('expanded', 'true');
     }
-    $(`tbody#vm_view .folder-showcase-outer-${id}`).attr('expanded', !state ? 'true' : 'false');
+    outer.attr('expanded', !state ? 'true' : 'false');
     if(globalFolders.vms) {
         globalFolders.vms[id].status.expanded = !state;
+    }
+    if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady) {
+        fv3FullwidthExpand(id, 'vm');
     }
     folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-expansion', {detail: { id }}));
 };
@@ -1306,6 +1329,73 @@ let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = false;
 let folderDebugModeWindow = [];
+let dockerDashboardLayout = 'classic';
+let vmDashboardLayout = 'classic';
+let fv3LayoutReady = false;
+const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').promise().then(r => {
+    try {
+        const s = JSON.parse(r);
+        if (s.dashboard_docker_layout) dockerDashboardLayout = s.dashboard_docker_layout;
+        if (s.dashboard_vm_layout) vmDashboardLayout = s.dashboard_vm_layout;
+    } catch(e) {}
+});
+
+const applyDashboardLayouts = () => {
+    const layouts = ['fv3-layout-classic', 'fv3-layout-fullwidth', 'fv3-layout-accordion', 'fv3-layout-inset'];
+    const dockerTd = $('tbody#docker_view > tr.updated > td');
+    const vmTd = $('tbody#vm_view > tr.updated > td');
+    dockerTd.removeClass(layouts.join(' ')).addClass('fv3-layout-' + dockerDashboardLayout);
+    vmTd.removeClass(layouts.join(' ')).addClass('fv3-layout-' + vmDashboardLayout);
+};
+
+const fv3UpdateHidden = () => {
+    const dockerChecked = $('input#apps').is(':checked');
+    $('tbody#docker_view .folder-showcase-outer').each(function() {
+        const isStopped = $(this).children('span.outer').hasClass('stopped');
+        $(this).toggleClass('fv3-hidden', dockerChecked && isStopped);
+    });
+    const vmChecked = $('input#vms').is(':checked');
+    $('tbody#vm_view .folder-showcase-outer').each(function() {
+        const isStopped = $(this).children('span.outer').hasClass('stopped');
+        $(this).toggleClass('fv3-hidden', vmChecked && isStopped);
+    });
+};
+
+$(document).on('change', 'input#apps, input#vms', fv3UpdateHidden);
+
+const fv3FullwidthExpand = (id, type) => {
+    const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
+    const outer = $(`.folder-showcase-outer-${id}`);
+    const showcase = outer.find('.folder-showcase');
+    const expanded = outer.attr('expanded') === 'true';
+
+    if (expanded && showcase.children().length > 0) {
+        const parentTd = $(`tbody#${tbody} > tr.updated > td`);
+        const folderTile = outer.children('span.outer').first();
+        const folderTop = Math.round(folderTile[0].getBoundingClientRect().top);
+
+        let lastInRow = folderTile;
+        parentTd.children('span.outer, .folder-showcase-outer').each(function() {
+            const el = this.style.display === 'contents' ? $(this).children('span.outer')[0] : this;
+            if (el && Math.round(el.getBoundingClientRect().top) === folderTop && $(el).is(':visible')) {
+                lastInRow = $(this);
+            }
+        });
+
+        const folderName = showcase.attr('data-folder-name') || '';
+        const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
+        lastInRow.after(panel);
+        panel.append(showcase.children());
+        outer.data('fv3-panel', panel);
+    } else {
+        const panel = outer.data('fv3-panel');
+        if (panel) {
+            showcase.append(panel.children());
+            panel.remove();
+            outer.removeData('fv3-panel');
+        }
+    }
+};
 let folderReq = {
     docker: [],
     vm: []
@@ -1346,8 +1436,25 @@ window.loadlist = (x) => {
 // this is needed to trigger the funtion to create the folders
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
     if (options.url === "/webGui/include/DashboardApps.php" && !loadedFolder) {
-        jqXHR.promise().then(() => {
+        jqXHR.promise().then(async () => {
+            await fv3SettingsReq;
             createFolders();
+            applyDashboardLayouts();
+            requestAnimationFrame(() => { requestAnimationFrame(() => {
+                fv3LayoutReady = true;
+                if (dockerDashboardLayout === 'fullwidth') {
+                    $('tbody#docker_view .folder-showcase-outer[expanded="true"]').each(function() {
+                        const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+                        if (id) fv3FullwidthExpand(id, 'docker');
+                    });
+                }
+                if (vmDashboardLayout === 'fullwidth') {
+                    $('tbody#vm_view .folder-showcase-outer[expanded="true"]').each(function() {
+                        const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+                        if (id) fv3FullwidthExpand(id, 'vm');
+                    });
+                }
+            }); });
             $('div.spinner.fixed').hide();
             loadedFolder = !loadedFolder
         });
