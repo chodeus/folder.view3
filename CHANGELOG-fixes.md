@@ -39,6 +39,10 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 13 | Hide autostart toggle for non-dockerman folders | `docker.js`, `dashboard.js` | 2026.02.24 |
 | 14 | i18n keys for Compose and 3rd Party labels (all 7 languages) | `langs/*.json` | 2026.02.24 |
 | 15 | Stacked Compose + 3rd Party labels for mixed folders | `docker.js` | 2026.02.24 |
+| 17 | Dashboard layout options: Classic, Full-width Panel, Accordion, Inset Panel | `dashboard.js`, `dashboard.css`, `FolderView3.page`, `folderview3.js`, `folderview3.css`, `lib.php`, `read_settings.php` (new), `update_settings.php` (new), `langs/*.json` | 2026.03.17 |
+| 18 | Separate Docker and VM dashboard layout settings | `FolderView3.page`, `folderview3.js`, `dashboard.js` | 2026.03.17 |
+| 19 | Folder name label in child panels for non-classic layouts | `dashboard.js`, `dashboard.css` | 2026.03.17 |
+| 20 | Allow Unicode characters in folder names (CJK, Cyrillic, etc) — blocklist approach | `Folder.page`, `langs/*.json` | 2026.03.17 |
 
 ### Security
 
@@ -99,6 +103,11 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 41 | `customEvents.js` `const` declarations cause SyntaxError when Compose Manager re-declares same identifiers | `customEvents.js` | 2026.03.06 |
 | 42 | VM `applyVmZebra()` inline styles block custom CSS row color overrides — added `--fv3-row-alt-bg` / `--fv3-row-bg` CSS variable fallbacks | `vm.js` | 2026.03.07 |
 | 43 | Unconditional `libvirt_helpers.php` include crashes Docker page when VM manager/libvirt is unavailable — lazy-load only when VM operations are requested | `lib.php` | 2026.03.16 |
+| 44 | Dashboard "Started Only" toggle causes blank rows in accordion/inset layouts — `fv3UpdateHidden` used `css('display')` check (timing-dependent) instead of `.stopped` class | `dashboard.js` | 2026.03.17 |
+| 45 | Full-width panel appearing at bottom instead of after folder's grid row — `offsetTop` unreliable, switched to `getBoundingClientRect().top` with `display: contents` on wrapper divs | `dashboard.js`, `dashboard.css` | 2026.03.17 |
+| 46 | Inset panel broken with multiple folders — expanded `.folder-showcase-outer` constrained to single tile width, added `flex-wrap` and `flex-basis: 100%` | `dashboard.css` | 2026.03.17 |
+| 47 | Full-width panel overhanging container box — missing `box-sizing: border-box` | `dashboard.css` | 2026.03.17 |
+| 48 | Dashboard child tiles showing different background than classic mode — removed tile chrome (background, border, box-shadow) inside expansion panels | `dashboard.css` | 2026.03.17 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
