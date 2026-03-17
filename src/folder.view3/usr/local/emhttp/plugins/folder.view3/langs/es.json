@@ -165,5 +165,12 @@
     "folder-webui": "WebUI de carpeta:",
     "folder-webui-tooltip": "URL de WebUI predeterminada de la carpeta.",
     "folder-webui-url": "URL de WebUI:",
-    "folder-webui-url-tooltip": "La URL que se abre al hacer clic en el botón WebUI en el menú contextual de la carpeta."
+    "folder-webui-url-tooltip": "La URL que se abre al hacer clic en el botón WebUI en el menú contextual de la carpeta.",
+    "dashboard-settings": "Panel de control",
+    "dashboard-docker-layout": "Diseño del panel Docker",
+    "dashboard-vm-layout": "Diseño del panel VM",
+    "layout-classic": "Clásico",
+    "layout-fullwidth": "Panel de ancho completo",
+    "layout-accordion": "Acordeón",
+    "layout-inset": "Panel insertado"
 }
