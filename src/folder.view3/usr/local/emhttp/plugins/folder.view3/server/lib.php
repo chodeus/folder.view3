@@ -249,6 +249,34 @@
         @chmod($path, 0660);
     }
 
+    function readSettings() : string {
+        global $configDir;
+        $path = "$configDir/settings.json";
+        if(!file_exists($path)) {
+            if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
+            @file_put_contents($path, '{}');
+            @chmod($path, 0660);
+        }
+        return file_get_contents($path);
+    }
+
+    function updateSettings(string $key, string $value) : void {
+        global $configDir;
+        $allowed = [
+            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset'],
+            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset']
+        ];
+        if (!isset($allowed[$key]) || !in_array($value, $allowed[$key], true)) {
+            http_response_code(400);
+            exit;
+        }
+        $path = "$configDir/settings.json";
+        $data = json_decode(readSettings(), true) ?: [];
+        $data[$key] = $value;
+        file_put_contents($path, json_encode($data));
+        @chmod($path, 0660);
+    }
+
     function generateId(int $length = 20) : string {
         return substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes((int)ceil($length * 3 / 4)))), 0, $length);
     }

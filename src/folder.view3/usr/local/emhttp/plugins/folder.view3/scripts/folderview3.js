@@ -311,3 +311,27 @@ const downloadFile = (name, content) => {
 const fileManager = async (type) => {
     location.href = location.pathname + '/Browse?dir=/boot/config/plugins/folder.view3';
 };
+
+const loadDashboardSettings = async () => {
+    try {
+        const settings = JSON.parse(await $.get('/plugins/folder.view3/server/read_settings.php').promise());
+        if (settings.dashboard_docker_layout) {
+            $('select#dashboard-docker-layout').val(settings.dashboard_docker_layout);
+        }
+        if (settings.dashboard_vm_layout) {
+            $('select#dashboard-vm-layout').val(settings.dashboard_vm_layout);
+        }
+    } catch (e) {
+        console.error('Failed to load dashboard settings:', e);
+    }
+};
+
+const saveDashboardSetting = async (key, value) => {
+    try {
+        await $.post('/plugins/folder.view3/server/update_settings.php', { key, value }).promise();
+    } catch (e) {
+        console.error('Failed to save dashboard setting:', e);
+    }
+};
+
+loadDashboardSettings();
