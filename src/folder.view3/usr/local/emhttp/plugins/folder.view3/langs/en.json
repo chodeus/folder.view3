@@ -165,5 +165,12 @@
     "folder-webui": "Folder WebUI:",
     "folder-webui-tooltip": "Default folder WebUI URL.",
     "folder-webui-url": "WebUI URL:",
-    "folder-webui-url-tooltip": "The URL to open when clicking the WebUI button in the folder context menu."
+    "folder-webui-url-tooltip": "The URL to open when clicking the WebUI button in the folder context menu.",
+    "dashboard-settings": "Dashboard",
+    "dashboard-docker-layout": "Docker Dashboard Layout",
+    "dashboard-vm-layout": "VM Dashboard Layout",
+    "layout-classic": "Classic",
+    "layout-fullwidth": "Full-width Panel",
+    "layout-accordion": "Accordion",
+    "layout-inset": "Inset Panel"
 }

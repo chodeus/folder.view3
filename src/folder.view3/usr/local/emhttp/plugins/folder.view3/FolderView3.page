@@ -17,6 +17,37 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 </script>
 <link rel="stylesheet" href="<?=autov('/plugins/folder.view3/styles/folderview3.css')?>">
 
+<h2 data-i18n="dashboard-settings">Dashboard</h2>
+<div class="folder-table-settings">
+    <table>
+        <tbody>
+            <tr>
+                <td><label data-i18n="dashboard-docker-layout">Docker Dashboard Layout</label></td>
+                <td>
+                    <select id="dashboard-docker-layout" onchange="saveDashboardSetting('dashboard_docker_layout', this.value)">
+                        <option value="classic" data-i18n="layout-classic">Classic</option>
+                        <option value="fullwidth" data-i18n="layout-fullwidth">Full-width Panel</option>
+                        <option value="accordion" data-i18n="layout-accordion">Accordion</option>
+                        <option value="inset" data-i18n="layout-inset">Inset Panel</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td><label data-i18n="dashboard-vm-layout">VM Dashboard Layout</label></td>
+                <td>
+                    <select id="dashboard-vm-layout" onchange="saveDashboardSetting('dashboard_vm_layout', this.value)">
+                        <option value="classic" data-i18n="layout-classic">Classic</option>
+                        <option value="fullwidth" data-i18n="layout-fullwidth">Full-width Panel</option>
+                        <option value="accordion" data-i18n="layout-accordion">Accordion</option>
+                        <option value="inset" data-i18n="layout-inset">Inset Panel</option>
+                    </select>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<hr>
+
 <h2 data-i18n="customizations">Customizations</h2>
 <button data-i18n="file-manager" onclick="fileManager()">Open File Manager</button>
 

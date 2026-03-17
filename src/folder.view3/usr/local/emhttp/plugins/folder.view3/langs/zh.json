@@ -165,5 +165,12 @@
     "folder-webui": "文件夹 WebUI：",
     "folder-webui-tooltip": "默认文件夹 WebUI 地址。",
     "folder-webui-url": "WebUI 地址：",
-    "folder-webui-url-tooltip": "点击文件夹右键菜单中的 WebUI 按钮时打开的地址。"
+    "folder-webui-url-tooltip": "点击文件夹右键菜单中的 WebUI 按钮时打开的地址。",
+    "dashboard-settings": "仪表板",
+    "dashboard-docker-layout": "Docker 仪表板布局",
+    "dashboard-vm-layout": "虚拟机仪表板布局",
+    "layout-classic": "经典",
+    "layout-fullwidth": "全宽面板",
+    "layout-accordion": "手风琴",
+    "layout-inset": "嵌入面板"
 }

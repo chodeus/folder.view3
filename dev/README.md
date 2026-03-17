@@ -112,6 +112,70 @@ These are **not defined** by the plugin — they exist as CSS variable fallbacks
 
 ---
 
+## Dashboard Layout Classes
+
+FolderView3 adds layout classes to the container `<td>` when a non-classic dashboard layout is selected. These are useful for custom CSS targeting.
+
+| Class | Applied to | Description |
+|-------|-----------|-------------|
+| `.fv3-layout-inset` | Container `<td>` | Inset panel mode — expanded folders shown as bordered inset cards |
+| `.fv3-layout-accordion` | Container `<td>` | Accordion mode — all folders stacked vertically |
+| `.fv3-layout-fullwidth` | Container `<td>` | Full-width panel mode — expanded children span the full row width |
+| `.fv3-fullwidth-panel` | Injected `<div>` | The full-width child panel (inserted after the last tile in the folder's row) |
+| `.folder-showcase-outer` | Wrapper `<div>` | Wraps each folder's tile + showcase + storage on the Dashboard |
+| `.fv3-hidden` | `.folder-showcase-outer` | Applied when "Started only" hides a stopped folder |
+
+### Dashboard Child Panel Styling
+
+Expanded folder children on the Dashboard are rendered inside `.folder-showcase` (inset/accordion) or `.fv3-fullwidth-panel` (fullwidth). The child `span.outer` tiles receive these overrides:
+
+```css
+/* Remove tile chrome inside expansion panels */
+.fv3-layout-inset .folder-showcase > span.outer.solid,
+.fv3-layout-accordion .folder-showcase > span.outer.solid,
+.fv3-fullwidth-panel > span.outer.solid {
+    transform: none;
+    background: none;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+}
+```
+
+The `.solid` / `.apps` suffix provides enough specificity to override Unraid's base `span.outer` styles without `!important`.
+
+### Dashboard Layout Override Examples
+
+```css
+/* Change the expansion panel border color */
+.fv3-layout-accordion .folder-showcase:not(:empty),
+.fv3-layout-inset .folder-showcase:not(:empty),
+.fv3-fullwidth-panel {
+    border-color: rgba(255, 165, 0, 0.3);
+}
+
+/* Change the left accent bar color */
+.fv3-layout-accordion .folder-showcase:not(:empty),
+.fv3-layout-inset .folder-showcase:not(:empty),
+.fv3-fullwidth-panel {
+    border-left-color: #2b8da3;
+}
+
+/* Hide the folder name label in expansion panels */
+.fv3-layout-inset .folder-showcase::after,
+.fv3-layout-accordion .folder-showcase::after,
+.fv3-fullwidth-panel::after {
+    display: none !important;
+}
+
+/* Style accordion folder tiles to full width */
+.fv3-layout-accordion .folder-showcase-outer > span.outer {
+    width: 100%;
+}
+```
+
+---
+
 ## DOM Structure
 
 ### Folder Row (Docker & VM Tabs)
@@ -164,6 +228,36 @@ These are **not defined** by the plugin — they exist as CSS variable fallbacks
     <!-- original container row content -->
   </td>
 </tr>
+```
+
+### Dashboard Folder (Tile Layout)
+
+```html
+<tbody id="docker_view">
+  <tr class="updated">
+    <td class="fv3-layout-{mode}">
+      <!-- Regular tiles -->
+      <span class="outer solid">...</span>
+      <!-- Folder wrapper -->
+      <div class="folder-showcase-outer folder-showcase-outer-{ID}" expanded="true|false">
+        <span class="outer solid folder-docker">
+          <!-- Folder tile: icon, name, status -->
+        </span>
+        <div class="folder-showcase" data-folder-name="Folder Name">
+          <!-- Expanded child tiles (inset/accordion) -->
+          <span class="outer solid">...</span>
+        </div>
+        <div class="folder-storage">
+          <!-- Hidden/collapsed children -->
+        </div>
+      </div>
+      <!-- Fullwidth panel (injected after last tile in row) -->
+      <div class="fv3-fullwidth-panel" data-folder-name="Folder Name">
+        <span class="outer solid">...</span>
+      </div>
+    </td>
+  </tr>
+</tbody>
 ```
 
 ### Advanced Preview Tooltip

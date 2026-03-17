@@ -45,3 +45,16 @@
 .folder-table > table td:last-child {
     overflow: visible;
 }
+
+.folder-table-settings {
+    display: table;
+}
+
+.folder-table-settings td:first-child {
+    padding-right: 20px;
+    white-space: nowrap;
+}
+
+.folder-table-settings select {
+    width: 200px;
+}
