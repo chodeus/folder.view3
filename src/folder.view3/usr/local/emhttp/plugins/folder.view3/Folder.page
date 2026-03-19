@@ -285,6 +285,29 @@ Markdown="false"
                     </li>
                 </ul>
             </li>
+            <li constraint="preview-1 preview-2 preview-3 preview-4">
+                <div class="basic">
+                    <dl>
+                        <dt data-i18n="preview-overflow">Preview overflow:</dt>
+                        <dd>
+                            <img class="img" style="visibility: hidden;">
+                            <select name="preview_overflow">
+                                <option value="0" data-i18n="preview-overflow-0" selected>Default</option>
+                                <option value="1" data-i18n="preview-overflow-1">Expand row</option>
+                                <option value="2" data-i18n="preview-overflow-2">Scroll</option>
+                            </select>
+                        </dd>
+                    </dl>
+                    <blockquote class="inline_help">
+                        <p data-i18n="[html]preview-overflow-tooltip">
+                            Controls what happens when there are too many containers to fit in the preview area.
+                            <br><b>Default:</b> Extra containers are hidden when the row is too narrow.
+                            <br><b>Expand row:</b> The preview area grows taller to show all containers on multiple lines.
+                            <br><b>Scroll:</b> A horizontal scrollbar appears to access all containers.
+                        </p>
+                    </blockquote>
+                </div>
+            </li>
             <li constraint="docker preview-1 preview-2 preview-3 preview-4">
                 <div class="basic">
                     <dl>

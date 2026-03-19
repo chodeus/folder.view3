@@ -58,3 +58,7 @@
 .folder-table-settings select {
     width: 200px;
 }
+
+.fv3-setting-sub td:first-child label {
+    padding-left: 40px;
+}

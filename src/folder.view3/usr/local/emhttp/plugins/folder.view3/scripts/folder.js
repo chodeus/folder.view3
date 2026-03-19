@@ -86,6 +86,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         form.preview_logs.checked = currFolder.settings.preview_logs;
         form.preview_console.checked = currFolder.settings.preview_console || false;
         form.preview_vertical_bars.checked = currFolder.settings.preview_vertical_bars || false;
+        form.preview_overflow.value = (currFolder.settings.preview_overflow || 0).toString();
         form.context.value = currFolder.settings.context?.toString() || '1';
         form.context_trigger.value = currFolder.settings.context_trigger?.toString() || '0';
         form.context_graph.value = currFolder.settings.context_graph?.toString() || '1';
@@ -325,6 +326,7 @@ const submitForm = async (e) => {
             preview_logs: e.preview_logs.checked,
             preview_console: e.preview_console.checked,
             preview_vertical_bars: e.preview_vertical_bars.checked,
+            preview_overflow: parseInt(e.preview_overflow.value.toString()),
             context: parseInt(e.context.value.toString()),
             context_trigger: parseInt(e.context_trigger.value.toString()),
             context_graph: parseInt(e.context_graph.value.toString()),
