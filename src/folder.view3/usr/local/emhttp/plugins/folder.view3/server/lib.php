@@ -277,9 +277,18 @@
             exit;
         }
         $path = "$configDir/settings.json";
-        $data = json_decode(readSettings(), true) ?: [];
+        $fp = fopen($path, 'c+');
+        if (!$fp) { http_response_code(500); exit; }
+        flock($fp, LOCK_EX);
+        $raw = stream_get_contents($fp);
+        $data = json_decode($raw, true) ?: [];
         $data[$key] = $value;
-        file_put_contents($path, json_encode($data));
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($data));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
         @chmod($path, 0660);
     }
 
