@@ -110,6 +110,13 @@ const createFolders = async () => {
 
     applyVmZebra();
 
+    let maxNameWidth = 0;
+    document.querySelectorAll('td.vm-name .inner, td.vm-name .folder-inner').forEach(el => {
+        if (el.scrollWidth > maxNameWidth) maxNameWidth = el.scrollWidth;
+    });
+    const nameColWidth = Math.min(maxNameWidth + 80, 300);
+    document.querySelectorAll('#vm_list th.th1').forEach(th => { th.style.width = nameColWidth + 'px'; });
+
     folderDebugMode  = false;
 };
 
@@ -334,6 +341,11 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     // wrap the preview with a div
     $(`tr.folder-id-${id} div.folder-preview > span`).wrap('<div class="folder-preview-wrapper"></div>');
 
+    if (folder.settings.preview_overflow === 1) {
+        $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-expand');
+    } else if (folder.settings.preview_overflow === 2) {
+        $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-scroll');
+    }
     if(folder.settings.preview_vertical_bars) {
         const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
         $(`tr.folder-id-${id} div.folder-preview > div`).not(':last').after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
