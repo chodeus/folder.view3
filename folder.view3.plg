@@ -6,12 +6,24 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.17">
-<!ENTITY md5 "f24e859d5527cc21dffe8db12f014bcc">
+<!ENTITY version "2026.03.19-beta15">
+<!ENTITY md5 "d5e0c9909383d40d7dc919b1e1375670">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.19
+- Fix folder name/icon not vertically centered on Docker and VM pages
+- Reorganize dashboard settings with Docker/VM section headings
+- Convert Yes/No settings to Unraid-native On/Off toggle switches
+- Fix chevron button alignment on Docker and VM pages
+- Add Quick collapse (expand toggle) for non-Classic dashboard layouts
+- Add per-folder preview overflow setting (Default / Expand Row / Scroll)
+- Add responsive mobile breakpoints for dashboard child tiles
+- Auto-width dashboard tiles for folders with 3 or fewer children
+- Dynamic NAME column width on VM page
+- Inset dashboard style improved
 
 ###2026.03.17
 - Add dashboard layout options: Classic, Full-width Panel, Accordion, Inset Panel

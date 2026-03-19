@@ -43,6 +43,11 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 18 | Separate Docker and VM dashboard layout settings | `FolderView3.page`, `folderview3.js`, `dashboard.js` | 2026.03.17 |
 | 19 | Folder name label in child panels for non-classic layouts | `dashboard.js`, `dashboard.css` | 2026.03.17 |
 | 20 | Allow Unicode characters in folder names (CJK, Cyrillic, etc) — blocklist approach | `Folder.page`, `langs/*.json` | 2026.03.17 |
+| 21 | Quick collapse (expand toggle) for non-Classic dashboard layouts | `dashboard.js`, `dashboard.css`, `FolderView3.page`, `folderview3.js`, `folderview3.css`, `langs/*.json` | 2026.03.19 |
+| 22 | Per-folder preview overflow setting (Default / Expand Row / Scroll) | `Folder.page`, `folder.js`, `docker.js`, `docker.css`, `langs/*.json` | 2026.03.19 |
+| 23 | Responsive mobile breakpoints for dashboard child tiles (3-col at 768px, 2-col at 480px) | `dashboard.css` | 2026.03.19 |
+| 24 | Auto-width dashboard tiles for folders with ≤3 children | `dashboard.js` | 2026.03.19 |
+| 25 | Dynamic NAME column width on VM page based on longest name | `vm.js` | 2026.03.19 |
 
 ### Security
 
@@ -108,6 +113,10 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 46 | Inset panel broken with multiple folders — expanded `.folder-showcase-outer` constrained to single tile width, added `flex-wrap` and `flex-basis: 100%` | `dashboard.css` | 2026.03.17 |
 | 47 | Full-width panel overhanging container box — missing `box-sizing: border-box` | `dashboard.css` | 2026.03.17 |
 | 48 | Dashboard child tiles showing different background than classic mode — removed tile chrome (background, border, box-shadow) inside expansion panels | `dashboard.css` | 2026.03.17 |
+| 49 | Folder name/icon not vertically centered in Docker and VM rows — Unraid's `span.outer` sets `margin-bottom: 20px`, override with higher-specificity selector | `docker.css`, `vm.css` | 2026.03.19 |
+| 50 | Chevron button not centered in dropdown box on Docker and VM pages — adjusted padding | `docker.css`, `vm.css` | 2026.03.19 |
+| 51 | Inset SVG border not resizing when toggling Started Only — replaced `setTimeout` with `ResizeObserver` on `.folder-showcase` elements | `dashboard.js` | 2026.03.19 |
+| 52 | Negative SVG rect dimensions when all children hidden in Inset layout — check for visible children before drawing | `dashboard.js` | 2026.03.19 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
@@ -140,6 +149,9 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 8 | Settings page button and table overflow fixes for mobile | `folderview3.css` | 2026.03.04.1 |
 | 9 | Center Included/Hide Preview toggles under column headings | `folder.css` | 2026.03.05 |
 | 10 | Restrict drag cursor to container name content in folder editor | `folder.css`, `folder.js` | 2026.03.05 |
+| 11 | Reorganize dashboard settings with Docker/VM section headings and indented sub-options | `FolderView3.page`, `folderview3.js`, `folderview3.css` | 2026.03.19 |
+| 12 | Convert Yes/No settings to Unraid-native On/Off toggle switches (switchButton) | `FolderView3.page`, `folderview3.js` | 2026.03.19 |
+| 13 | Inset dashboard style improved — SVG L-shape border with ResizeObserver, tighter child tile spacing | `dashboard.js`, `dashboard.css` | 2026.03.19 |
 
 ### Translation Updates
 
@@ -156,6 +168,7 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 9 | Compose/3rd Party i18n keys (`compose`, `third-party`) in all 7 languages | All `langs/*.json` | 2026.02.24 |
 | 10 | WebUI feature: 4 keys translated in 6 non-English languages (previously English-only) | `de.json`, `es.json`, `fr.json`, `it.json`, `pl.json`, `zh.json` | 2026.02.11 |
 | 11 | Hide Preview i18n key (`table-hide-preview`) in all 7 languages | All `langs/*.json` | 2026.03.05 |
+| 12 | Dashboard settings i18n keys (expand toggle, preview overflow) in all 7 languages | All `langs/*.json` | 2026.03.19 |
 
 ### Build System & Infrastructure
 
