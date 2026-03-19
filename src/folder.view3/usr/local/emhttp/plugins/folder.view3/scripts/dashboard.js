@@ -1603,21 +1603,9 @@ const fv3FullwidthExpand = (id, type) => {
     const expanded = outer.attr('expanded') === 'true';
 
     if (expanded && showcase.children().length > 0) {
-        const parentTd = $(`tbody#${tbody} > tr.updated > td`);
-        const folderTile = outer.children('span.outer').first();
-        const folderTop = Math.round(folderTile[0].getBoundingClientRect().top);
-
-        let lastInRow = folderTile;
-        parentTd.children('span.outer, .folder-showcase-outer').each(function() {
-            const el = this.style.display === 'contents' ? $(this).children('span.outer')[0] : this;
-            if (el && Math.round(el.getBoundingClientRect().top) === folderTop && $(el).is(':visible')) {
-                lastInRow = $(this);
-            }
-        });
-
         const folderName = showcase.attr('data-folder-name') || '';
         const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
-        lastInRow.after(panel);
+        outer.after(panel);
         panel.append(showcase.children());
         outer.data('fv3-panel', panel);
     } else {
