@@ -941,6 +941,11 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}): Attached folderobserver to .folder-storage span.outer elements.`);
     $(`tr.folder-id-${id} div.folder-preview > span`).wrap('<div class="folder-preview-wrapper"></div>');
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}): Wrapped preview spans with .folder-preview-wrapper.`);
+    if (folder.settings.preview_overflow === 1) {
+        $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-expand');
+    } else if (folder.settings.preview_overflow === 2) {
+        $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-scroll');
+    }
     if(folder.settings.preview_vertical_bars) {
         const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
         $(`tr.folder-id-${id} div.folder-preview > div`).after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
