@@ -312,10 +312,13 @@ const fileManager = async (type) => {
     location.href = location.pathname + '/Browse?dir=/boot/config/plugins/folder.view3';
 };
 
+let fv3SuppressToggle = false;
+
 const fv3InitToggle = (id, settingKey) => {
     const $cb = $(`#${id}`);
     $cb.switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
     $cb.on('change', function() {
+        if (fv3SuppressToggle) return;
         saveDashboardSetting(settingKey, this.checked ? 'yes' : 'no');
     });
 };
@@ -359,8 +362,10 @@ const fv3ToggleNonClassicSettings = () => {
 const fv3ResetNonClassicSettings = async (type) => {
     const id = type === 'docker' ? 'dashboard-docker' : 'dashboard-vm';
     const key = type === 'docker' ? 'dashboard_docker' : 'dashboard_vm';
+    fv3SuppressToggle = true;
     $(`#${id}-folder-label`).prop('checked', false).switchButton('option', 'checked', false);
     $(`#${id}-expand-toggle`).prop('checked', false).switchButton('option', 'checked', false);
+    fv3SuppressToggle = false;
     await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_folder_label`, value: 'no' }).promise();
     await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_expand_toggle`, value: 'no' }).promise();
 };
