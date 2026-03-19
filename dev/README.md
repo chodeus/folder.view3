@@ -124,6 +124,12 @@ FolderView3 adds layout classes to the container `<td>` when a non-classic dashb
 | `.fv3-fullwidth-panel` | Injected `<div>` | The full-width child panel (inserted after the last tile in the folder's row) |
 | `.folder-showcase-outer` | Wrapper `<div>` | Wraps each folder's tile + showcase + storage on the Dashboard |
 | `.fv3-hidden` | `.folder-showcase-outer` | Applied when "Started only" hides a stopped folder |
+| `.fv3-folder-appname` | `span` inside folder tile | The folder's name text — target with `[expanded="true"]` parent for expanded-only styling |
+| `.fv3-child-appname` | `span.inner` inside child tiles | The child container/VM name text inside an expanded folder's showcase |
+| `.fv3-label-hidden` | Container `<td>` | Applied when "Show folder name in expanded panel" is set to No |
+| `.fv3-inset-border` | SVG element | The SVG wrapper for the inset layout's L-shape + inner box borders |
+| `.fv3-inset-lshape` | SVG `path` | The L-shaped outer border path (tab + body) — customizable via `stroke` |
+| `.fv3-inset-innerbox` | SVG `rect` | The inner container box border — customizable via `stroke` |
 
 ### Dashboard Child Panel Styling
 
@@ -241,11 +247,13 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
       <!-- Folder wrapper -->
       <div class="folder-showcase-outer folder-showcase-outer-{ID}" expanded="true|false">
         <span class="outer solid folder-docker">
-          <!-- Folder tile: icon, name, status -->
+          <!-- Folder tile: icon, name (.fv3-folder-appname), status -->
         </span>
         <div class="folder-showcase" data-folder-name="Folder Name">
           <!-- Expanded child tiles (inset/accordion) -->
-          <span class="outer solid">...</span>
+          <span class="outer solid">
+            <span class="inner fv3-child-appname">Container Name</span>
+          </span>
         </div>
         <div class="folder-storage">
           <!-- Hidden/collapsed children -->
@@ -307,6 +315,8 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
 | Change graph colors | `:root { --folder-view3-graph-cpu: #00BCD4; --folder-view3-graph-mem: #673AB7; }` |
 | Style tooltip background | `.preview-outbox { background-color: #1c1b1b; }` |
 | Style preview dividers | `.folder-preview-divider { border-color: #444 !important; }` |
+| Style expanded folder name | `.folder-showcase-outer[expanded="true"] .fv3-folder-appname { font-weight: bold; color: #f0a30a; }` |
+| Style child container names | `.fv3-child-appname { font-weight: bold; }` |
 | Hide folder start/stop text | `.folder-state { display: none; }` |
 | Style dropdown chevron | `.folder-dropdown { color: #607D8B; }` |
 
