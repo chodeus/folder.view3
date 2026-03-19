@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.19.1">
-<!ENTITY md5 "44c30e1c839ebeb815fcb8a473321eb1">
+<!ENTITY version "2026.03.19.2">
+<!ENTITY md5 "ffc6c22fc785dee7c0676b4ab7006b5a">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.19.2
+- Fix fullwidth panel placement for expanded folders on dashboard
 
 ###2026.03.19.1
 - Fix dashboard settings race condition when switching layouts
