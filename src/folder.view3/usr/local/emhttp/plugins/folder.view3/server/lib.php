@@ -264,7 +264,13 @@
         global $configDir;
         $allowed = [
             'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset'],
-            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset']
+            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset'],
+            'dashboard_docker_expand_toggle' => ['yes', 'no'],
+            'dashboard_docker_greyscale'     => ['yes', 'no'],
+            'dashboard_docker_folder_label'  => ['yes', 'no'],
+            'dashboard_vm_expand_toggle'     => ['yes', 'no'],
+            'dashboard_vm_greyscale'         => ['yes', 'no'],
+            'dashboard_vm_folder_label'      => ['yes', 'no']
         ];
         if (!isset($allowed[$key]) || !in_array($value, $allowed[$key], true)) {
             http_response_code(400);

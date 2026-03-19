@@ -312,6 +312,14 @@ const fileManager = async (type) => {
     location.href = location.pathname + '/Browse?dir=/boot/config/plugins/folder.view3';
 };
 
+const fv3InitToggle = (id, settingKey) => {
+    const $cb = $(`#${id}`);
+    $cb.switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+    $cb.on('change', function() {
+        saveDashboardSetting(settingKey, this.checked ? 'yes' : 'no');
+    });
+};
+
 const loadDashboardSettings = async () => {
     try {
         const settings = JSON.parse(await $.get('/plugins/folder.view3/server/read_settings.php').promise());
@@ -321,14 +329,52 @@ const loadDashboardSettings = async () => {
         if (settings.dashboard_vm_layout) {
             $('select#dashboard-vm-layout').val(settings.dashboard_vm_layout);
         }
+        const toggleMap = {
+            'dashboard-docker-expand-toggle': 'dashboard_docker_expand_toggle',
+            'dashboard-docker-greyscale': 'dashboard_docker_greyscale',
+            'dashboard-docker-folder-label': 'dashboard_docker_folder_label',
+            'dashboard-vm-expand-toggle': 'dashboard_vm_expand_toggle',
+            'dashboard-vm-greyscale': 'dashboard_vm_greyscale',
+            'dashboard-vm-folder-label': 'dashboard_vm_folder_label'
+        };
+        for (const [id, key] of Object.entries(toggleMap)) {
+            if (settings[key] === 'yes') {
+                $(`#${id}`).prop('checked', true);
+            }
+            fv3InitToggle(id, key);
+        }
+        fv3ToggleNonClassicSettings();
     } catch (e) {
         console.error('Failed to load dashboard settings:', e);
     }
 };
 
+const fv3ToggleNonClassicSettings = () => {
+    const docker = $('select#dashboard-docker-layout').val();
+    const vm = $('select#dashboard-vm-layout').val();
+    $('.fv3-docker-nonclassic').toggle(docker !== 'classic');
+    $('.fv3-vm-nonclassic').toggle(vm !== 'classic');
+};
+
+const fv3ResetNonClassicSettings = async (type) => {
+    const id = type === 'docker' ? 'dashboard-docker' : 'dashboard-vm';
+    const key = type === 'docker' ? 'dashboard_docker' : 'dashboard_vm';
+    $(`#${id}-folder-label`).prop('checked', false).switchButton('option', 'checked', false);
+    $(`#${id}-expand-toggle`).prop('checked', false).switchButton('option', 'checked', false);
+    await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_folder_label`, value: 'no' }).promise();
+    await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_expand_toggle`, value: 'no' }).promise();
+};
+
 const saveDashboardSetting = async (key, value) => {
     try {
         await $.post('/plugins/folder.view3/server/update_settings.php', { key, value }).promise();
+        if (key === 'dashboard_docker_layout') {
+            fv3ToggleNonClassicSettings();
+            if (value === 'classic') fv3ResetNonClassicSettings('docker');
+        } else if (key === 'dashboard_vm_layout') {
+            fv3ToggleNonClassicSettings();
+            if (value === 'classic') fv3ResetNonClassicSettings('vm');
+        }
     } catch (e) {
         console.error('Failed to save dashboard setting:', e);
     }

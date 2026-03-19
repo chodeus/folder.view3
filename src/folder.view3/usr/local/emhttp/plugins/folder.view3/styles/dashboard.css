@@ -2,14 +2,14 @@
     display:none;
 }
 
-/* Override Unraid's blue-text with orange when both classes are present (folder update indicator) */
+
 .orange-text.blue-text {
     color: var(--color-orange, #f0a30a);
 }
 
 /* ===== Shared: folder name label in child panels ===== */
-.fv3-layout-inset .folder-showcase[data-folder-name]:not(:empty)::after,
 .fv3-layout-accordion .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-layout-inset .folder-showcase[data-folder-name]:not(:empty)::after,
 .fv3-fullwidth-panel[data-folder-name]::after {
     content: attr(data-folder-name);
     display: block;
@@ -17,8 +17,15 @@
     text-align: right;
     font-size: 0.7em;
     opacity: 0.5;
-    margin-top: 2px;
-    padding-right: 4px;
+    margin-top: 0;
+    padding-right: 8px;
+    padding-bottom: 2px;
+    box-sizing: border-box;
+}
+
+.fv3-label-hidden .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-label-hidden .fv3-fullwidth-panel[data-folder-name]::after {
+    content: none;
 }
 
 /* ===== Dashboard Layout: Inset Panel ===== */
@@ -30,24 +37,44 @@
 .fv3-layout-inset .folder-showcase-outer[expanded="true"] {
     display: flex;
     flex-direction: column;
-    border: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
-    border-radius: 6px;
-    padding: 4px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     flex-basis: 100%;
     width: 100%;
     box-sizing: border-box;
+    position: relative;
+}
+
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer {
+    padding: 4px;
+    margin: 0;
+    align-self: flex-start;
+    position: relative;
+}
+
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer::before,
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer::after {
+    content: none;
 }
 
 .fv3-layout-inset .folder-showcase:not(:empty) {
-    border: 1px solid rgba(128,128,128,0.2);
-    border-left: 3px solid var(--color-orange, #f0a30a);
-    border-radius: 4px;
-    margin: 6px 4px 4px;
-    padding: 8px;
+    border: none;
+    margin: 0;
+    padding: 12px 8px 4px;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+}
+
+.fv3-layout-inset .folder-showcase:not(:empty)::before {
+    content: none;
+}
+
+.fv3-inset-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: visible;
 }
 
 .fv3-layout-inset .folder-showcase > span.outer.solid,
@@ -55,8 +82,12 @@
     transform: none;
     background: none;
     border: none;
+    border-bottom: none;
     box-shadow: none;
     overflow: hidden;
+    margin-bottom: 8px;
+    margin-right: 0;
+    width: calc(25% - 5px);
 }
 
 /* ===== Dashboard Layout: Accordion ===== */
@@ -97,8 +128,12 @@
     transform: none;
     background: none;
     border: none;
+    border-bottom: none;
     box-shadow: none;
     overflow: hidden;
+    margin-bottom: 8px;
+    margin-right: 0;
+    width: calc(25% - 5px);
 }
 
 .fv3-layout-accordion > span.outer:not(.folder-docker):not(.folder-vm) {
@@ -144,6 +179,101 @@
     transform: none;
     background: none;
     border: none;
+    border-bottom: none;
     box-shadow: none;
     overflow: hidden;
+    margin-bottom: 8px;
+    margin-right: 0;
+    width: calc(25% - 5px);
+}
+
+/* ===== Expand toggle button ===== */
+.fv3-expanded-tab {
+    position: relative;
+}
+
+.fv3-expand-toggle {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 0 !important;
+    width: 18px !important;
+    height: 18px !important;
+    max-width: 18px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+    font-size: 10px;
+    background: transparent;
+    border: 2px solid #ff8c2f !important;
+    border-radius: 3px;
+    color: #ff8c2f;
+    cursor: pointer;
+}
+
+.fv3-expand-toggle:hover {
+    border-color: #ffad5c !important;
+    color: #ffad5c;
+}
+
+.fv3-expand-toggle i.fa {
+    display: block;
+    width: 100%;
+    text-align: center;
+    line-height: 1;
+    font-size: inherit;
+    padding-left: 1px;
+}
+
+.fv3-layout-fullwidth .fv3-expand-toggle,
+.fv3-layout-accordion .fv3-expand-toggle {
+    position: static;
+    transform: none;
+    margin: 0 0 0 10px !important;
+    vertical-align: middle;
+}
+
+.fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer,
+.fv3-layout-accordion .folder-showcase-outer[expanded="true"] > span.outer {
+    margin-bottom: 5px;
+}
+
+/* ===== Greyscale collapsed folders when one is expanded ===== */
+.fv3-greyscale-active .folder-showcase-outer:not([expanded="true"]) > span.outer {
+    filter: grayscale(100%);
+    opacity: 0.5;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.fv3-greyscale-active .folder-showcase-outer[expanded="true"] > span.outer {
+    filter: none;
+    opacity: 1;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* ===== Mobile responsive: child tile widths ===== */
+@media (max-width: 768px) {
+    .fv3-layout-inset .folder-showcase > span.outer.solid,
+    .fv3-layout-inset .folder-showcase > span.outer.apps,
+    .fv3-layout-accordion .folder-showcase > span.outer.solid,
+    .fv3-layout-accordion .folder-showcase > span.outer.apps,
+    .fv3-fullwidth-panel > span.outer.solid,
+    .fv3-fullwidth-panel > span.outer.apps {
+        width: calc(33.33% - 5px);
+    }
+}
+
+@media (max-width: 480px) {
+    .fv3-layout-inset .folder-showcase > span.outer.solid,
+    .fv3-layout-inset .folder-showcase > span.outer.apps,
+    .fv3-layout-accordion .folder-showcase > span.outer.solid,
+    .fv3-layout-accordion .folder-showcase > span.outer.apps,
+    .fv3-fullwidth-panel > span.outer.solid,
+    .fv3-fullwidth-panel > span.outer.apps {
+        width: calc(50% - 4px);
+    }
 }
