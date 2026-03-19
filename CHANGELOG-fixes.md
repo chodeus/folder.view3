@@ -117,6 +117,7 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 50 | Chevron button not centered in dropdown box on Docker and VM pages — adjusted padding | `docker.css`, `vm.css` | 2026.03.19 |
 | 51 | Inset SVG border not resizing when toggling Started Only — replaced `setTimeout` with `ResizeObserver` on `.folder-showcase` elements | `dashboard.js` | 2026.03.19 |
 | 52 | Negative SVG rect dimensions when all children hidden in Inset layout — check for visible children before drawing | `dashboard.js` | 2026.03.19 |
+| 53 | Dashboard settings race condition — concurrent `update_settings.php` requests cause read-modify-write collision, wiping other keys. Fixed with `flock(LOCK_EX)` for atomic file access and `fv3SuppressToggle` flag to prevent `switchButton` change events firing duplicate saves during programmatic resets | `lib.php`, `folderview3.js` | 2026.03.19.1 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
