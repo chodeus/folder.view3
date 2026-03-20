@@ -229,7 +229,6 @@
     padding-left: 1px;
 }
 
-.fv3-layout-fullwidth .fv3-expand-toggle,
 .fv3-layout-accordion .fv3-expand-toggle {
     position: static;
     transform: none;
@@ -242,6 +241,52 @@
     margin-bottom: 5px;
 }
 
+/* ===== Dashboard Layout: Classic ===== */
+td.fv3-layout-classic {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.fv3-layout-classic .folder-showcase-outer {
+    display: contents;
+}
+
+.fv3-layout-classic .folder-showcase {
+    display: contents;
+}
+
+.fv3-layout-classic .folder-showcase-outer.fv3-hidden,
+.fv3-layout-classic .folder-showcase-outer.fv3-hidden > * {
+    display: none;
+}
+
+.fv3-layout-fullwidth .fv3-folder-appname {
+    display: inline-block;
+    max-width: calc(100% - 30px);
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.fv3-layout-inset .folder-showcase-outer:not([expanded="true"]) .fv3-folder-appname {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.fv3-layout-classic .fv3-folder-appname {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
 /* ===== Greyscale collapsed folders when one is expanded ===== */
 .fv3-greyscale-active .folder-showcase-outer:not([expanded="true"]) > span.outer {
     filter: grayscale(100%);
@@ -252,6 +297,12 @@
 .fv3-greyscale-active .folder-showcase-outer[expanded="true"] > span.outer {
     filter: none;
     opacity: 1;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.fv3-greyscale-active > span.outer:not(:empty) {
+    filter: grayscale(100%);
+    opacity: 0.5;
     transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
