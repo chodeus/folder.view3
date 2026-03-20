@@ -500,3 +500,12 @@ const rCcustomAction =  (action) => {
     $(`.custom-action-n-${action}`).remove();
     return false;
 };
+
+const nameInput = document.querySelector('input[name="name"]');
+const nameWarning = document.getElementById('fv3-name-warning');
+if (nameInput && nameWarning) {
+    nameInput.addEventListener('input', function() {
+        nameWarning.style.display = this.value.length > 20 ? 'block' : 'none';
+    });
+    if (nameInput.value.length > 20) nameWarning.style.display = 'block';
+}

@@ -118,11 +118,13 @@ FolderView3 adds layout classes to the container `<td>` when a non-classic dashb
 
 | Class | Applied to | Description |
 |-------|-----------|-------------|
+| `.fv3-layout-classic` | Container `<td>` | Classic mode — Unraid's native tile layout with `display: flex; flex-wrap: wrap` |
 | `.fv3-layout-inset` | Container `<td>` | Inset panel mode — expanded folders shown as bordered inset cards |
 | `.fv3-layout-accordion` | Container `<td>` | Accordion mode — all folders stacked vertically |
 | `.fv3-layout-fullwidth` | Container `<td>` | Full-width panel mode — expanded children span the full row width |
 | `.fv3-fullwidth-panel` | Injected `<div>` | The full-width child panel (inserted after the last tile in the folder's row) |
 | `.folder-showcase-outer` | Wrapper `<div>` | Wraps each folder's tile + showcase + storage on the Dashboard |
+| `.fv3-greyscale-active` | Container `<td>` | Applied when any folder is expanded and greyscale dimming is enabled — dims non-expanded folders and standalone tiles |
 | `.fv3-hidden` | `.folder-showcase-outer` | Applied when "Started only" hides a stopped folder |
 | `.fv3-folder-appname` | `span` inside folder tile | The folder's name text — target with `[expanded="true"]` parent for expanded-only styling |
 | `.fv3-child-appname` | `span.inner` inside child tiles | The child container/VM name text inside an expanded folder's showcase |
