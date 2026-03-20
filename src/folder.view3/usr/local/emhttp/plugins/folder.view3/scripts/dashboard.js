@@ -1393,9 +1393,10 @@ const fv3InjectExpandToggles = () => {
         const enabled = isDocker ? fv3DockerExpandToggle : fv3VmExpandToggle;
         const isInset = outer.closest('.fv3-layout-inset') !== null;
         const isClassic = outer.closest('.fv3-layout-classic') !== null;
+        const isFullwidth = outer.closest('.fv3-layout-fullwidth') !== null;
         const inner = tab.querySelector('span.inner');
         tab.classList.toggle('fv3-expanded-tab', expanded);
-        if (expanded && enabled && !isClassic) {
+        if (expanded && enabled && !isClassic && !isFullwidth) {
             if (inner) {
                 inner.style.width = 'auto';
                 inner.style.whiteSpace = 'nowrap';
@@ -1444,12 +1445,26 @@ const fv3PositionChevrons = () => {
     document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle').forEach(btn => {
         const tab = btn.closest('span.outer');
         if (!tab) return;
-        const inner = tab.querySelector('span.inner');
-        if (!inner) return;
+        const appname = tab.querySelector('.fv3-folder-appname');
+        if (!appname) return;
         const tabRect = tab.getBoundingClientRect();
-        const innerRect = inner.getBoundingClientRect();
-        btn.style.left = (innerRect.right - tabRect.left + 10) + 'px';
+        const nameRect = appname.getBoundingClientRect();
+        btn.style.left = (nameRect.right - tabRect.left + 10) + 'px';
         btn.style.right = 'auto';
+    });
+    document.querySelectorAll('.fv3-layout-fullwidth .fv3-expand-toggle').forEach(btn => {
+        const tab = btn.closest('span.outer');
+        if (!tab) return;
+        const appname = tab.querySelector('.fv3-folder-appname');
+        if (!appname) return;
+        const tabRect = tab.getBoundingClientRect();
+        const nameRect = appname.getBoundingClientRect();
+        const ideal = nameRect.right - tabRect.left + 10;
+        const max = tabRect.width - 24;
+        btn.style.left = Math.min(ideal, max) + 'px';
+        btn.style.right = 'auto';
+        btn.style.top = (nameRect.top - tabRect.top + nameRect.height / 2) + 'px';
+        btn.style.transform = 'translateY(-50%)';
     });
 };
 
@@ -1542,9 +1557,37 @@ const fv3UpdateInsetBorders = () => {
     });
 };
 
+let fv3FullwidthRaf = null;
+const fv3FullwidthReflow = () => {
+    if (fv3FullwidthRaf || !fv3LayoutReady) return;
+    fv3FullwidthRaf = requestAnimationFrame(() => {
+        fv3FullwidthRaf = null;
+        ['docker', 'vm'].forEach(type => {
+            const layout = type === 'docker' ? dockerDashboardLayout : vmDashboardLayout;
+            if (layout !== 'fullwidth') return;
+            const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
+            $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]`).each(function() {
+                const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+                if (!id) return;
+                const panel = $(this).data('fv3-panel');
+                if (panel) {
+                    $(this).find('.folder-showcase').append(panel.children());
+                    panel.remove();
+                    $(this).removeData('fv3-panel');
+                }
+            });
+            $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]`).each(function() {
+                const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+                if (id) fv3FullwidthExpand(id, type);
+            });
+        });
+    });
+};
+
 const fv3InsetObserver = new ResizeObserver(() => {
     fv3PositionChevrons();
     fv3UpdateInsetBorders();
+    fv3FullwidthReflow();
 });
 fv3InsetObserver.observe(document.documentElement);
 
@@ -1603,9 +1646,32 @@ const fv3FullwidthExpand = (id, type) => {
     const expanded = outer.attr('expanded') === 'true';
 
     if (expanded && showcase.children().length > 0) {
+        showcase.css('display', 'none');
+        const parentTd = $(`tbody#${tbody} > tr.updated > td`);
+        const folderTile = outer.children('span.outer').first()[0];
+        if (!folderTile) { showcase.css('display', ''); return; }
+        const folderTop = Math.round(folderTile.getBoundingClientRect().top);
+
+        let lastInRow = outer;
+        parentTd.children('.folder-showcase-outer, span.outer:not(:empty)').each(function() {
+            if (this.classList.contains('fv3-fullwidth-panel')) return;
+            let visualEl;
+            if (this.classList.contains('folder-showcase-outer')) {
+                visualEl = this.querySelector(':scope > span.outer');
+            } else {
+                visualEl = this;
+            }
+            if (!visualEl) return;
+            if (visualEl.offsetParent === null) return;
+            if (Math.round(visualEl.getBoundingClientRect().top) === folderTop) {
+                lastInRow = $(this);
+            }
+        });
+
         const folderName = showcase.attr('data-folder-name') || '';
         const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
-        outer.after(panel);
+        if (!fv3LayoutReady) panel.css('display', 'none');
+        lastInRow.after(panel);
         panel.append(showcase.children());
         outer.data('fv3-panel', panel);
     } else {
@@ -1662,19 +1728,25 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
             createFolders();
             applyDashboardLayouts();
             requestAnimationFrame(() => { requestAnimationFrame(() => {
-                fv3LayoutReady = true;
                 if (dockerDashboardLayout === 'fullwidth') {
+                    $('tbody#docker_view .folder-showcase').css('display', 'none');
                     $('tbody#docker_view .folder-showcase-outer[expanded="true"]').each(function() {
                         const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
                         if (id) fv3FullwidthExpand(id, 'docker');
                     });
+                    $('tbody#docker_view .folder-showcase').css('display', '');
+                    $('tbody#docker_view .fv3-fullwidth-panel').css('display', '');
                 }
                 if (vmDashboardLayout === 'fullwidth') {
+                    $('tbody#vm_view .folder-showcase').css('display', 'none');
                     $('tbody#vm_view .folder-showcase-outer[expanded="true"]').each(function() {
                         const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
                         if (id) fv3FullwidthExpand(id, 'vm');
                     });
+                    $('tbody#vm_view .folder-showcase').css('display', '');
+                    $('tbody#vm_view .fv3-fullwidth-panel').css('display', '');
                 }
+                fv3LayoutReady = true;
             }); });
             $('div.spinner.fixed').hide();
             loadedFolder = !loadedFolder
