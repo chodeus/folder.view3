@@ -48,8 +48,6 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 23 | Responsive mobile breakpoints for dashboard child tiles (3-col at 768px, 2-col at 480px) | `dashboard.css` | 2026.03.19 |
 | 24 | Auto-width dashboard tiles for folders with ≤3 children | `dashboard.js` | 2026.03.19 |
 | 25 | Dynamic NAME column width on VM page based on longest name | `vm.js` | 2026.03.19 |
-| 26 | Reorganize dashboard settings with Docker/VM section headings and sub-option indentation | `FolderView3.page`, `folderview3.js`, `folderview3.css` | 2026.03.19 |
-| 27 | Convert Yes/No settings to Unraid-native On/Off toggle switches (switchButton) | `FolderView3.page`, `folderview3.js` | 2026.03.19 |
 
 ### Security
 
@@ -120,7 +118,7 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 51 | Inset SVG border not resizing when toggling Started Only — replaced `setTimeout` with `ResizeObserver` on `.folder-showcase` elements | `dashboard.js` | 2026.03.19 |
 | 52 | Negative SVG rect dimensions when all children hidden in Inset layout — check for visible children before drawing | `dashboard.js` | 2026.03.19 |
 | 53 | Dashboard settings race condition — concurrent `update_settings.php` requests cause read-modify-write collision, wiping other keys. Fixed with `flock(LOCK_EX)` for atomic file access and `fv3SuppressToggle` flag to prevent `switchButton` change events firing duplicate saves during programmatic resets | `lib.php`, `folderview3.js` | 2026.03.19.1 |
-| 54 | Fullwidth panel placed after last row item instead of after folder — standalone containers/VMs appeared between folder tab and its panel. Simplified `fv3FullwidthExpand` to always insert panel directly after the `folder-showcase-outer` div | `dashboard.js` | 2026.03.19.2 |
+| 54 | Blank gaps in classic dashboard layout — folder wrapper divs (`folder-showcase-outer`) were block-level elements disrupting tile flow. Fixed with `display: contents` to remove wrappers from layout, `display: flex; flex-wrap: wrap` on the `<td>`, and fixed pixel `max-width` on folder names instead of circular percentage dependency | `dashboard.css` | 2026.03.20 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
