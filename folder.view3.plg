@@ -17,6 +17,10 @@
 - Add folder name clipping for inset layout when collapsed
 - Fix fullwidth panel pushing non-folder items to wrong row
 - Add fullwidth panel reflow on window resize
+- Add 20 character warning for folder names to folder settings page
+
+###2026.03.19.2
+- Fix fullwidth panel placement for expanded folders on dashboard
 
 ###2026.03.19.1
 - Fix dashboard settings race condition when switching layouts
