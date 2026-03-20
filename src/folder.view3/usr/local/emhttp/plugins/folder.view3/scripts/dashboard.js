@@ -1438,7 +1438,10 @@ const fv3InjectExpandToggles = () => {
             if (inner) inner.after(btn);
         }
     });
-    fv3PositionChevrons();
+    requestAnimationFrame(() => {
+        fv3PositionChevrons();
+        fv3UpdateInsetBorders();
+    });
 };
 
 const fv3PositionChevrons = () => {
@@ -1446,11 +1449,16 @@ const fv3PositionChevrons = () => {
         const tab = btn.closest('span.outer');
         if (!tab) return;
         const appname = tab.querySelector('.fv3-folder-appname');
+        const state = tab.querySelector('.state');
         if (!appname) return;
         const tabRect = tab.getBoundingClientRect();
         const nameRect = appname.getBoundingClientRect();
-        btn.style.left = (nameRect.right - tabRect.left + 10) + 'px';
+        const stateRect = state?.getBoundingClientRect();
+        const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
+        btn.style.left = (contentRight + 10) + 'px';
         btn.style.right = 'auto';
+        btn.style.top = (tab.offsetHeight / 2) + 'px';
+        btn.style.transform = 'translateY(-50%)';
     });
     document.querySelectorAll('.fv3-layout-fullwidth .fv3-expand-toggle').forEach(btn => {
         const tab = btn.closest('span.outer');
@@ -1500,8 +1508,11 @@ const fv3UpdateInsetBorders = () => {
             const W = outer.offsetWidth;
             const outerRect = outer.getBoundingClientRect();
             const chevron = outer.querySelector('.fv3-expand-toggle');
-            const endEl = chevron || tab;
-            const tabEndX = endEl.getBoundingClientRect().right - outerRect.left + 4;
+            const appname = tab.querySelector('.fv3-folder-appname');
+            const state = tab.querySelector('.state');
+            const icon = tab.querySelector('[id^="folder-id-"]');
+            const candidates = [icon, appname, state, chevron].filter(Boolean);
+            const tabEndX = Math.max(...candidates.map(el => el.getBoundingClientRect().right - outerRect.left)) + 4;
             const jointY = showcase.offsetTop;
             const H = jointY + showcase.offsetHeight;
             if (W <= 0 || H <= 0) return;
