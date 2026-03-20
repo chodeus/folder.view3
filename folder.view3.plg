@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.20">
-<!ENTITY md5 "cbb789e062db9c1d73fc506c96fd43a2">
+<!ENTITY version "2026.03.20.1">
+<!ENTITY md5 "807140471350f2a545f0a2f58af49d9c">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.20.1
+- Fix inset panel chevron positioning and SVG border sizing
 
 ###2026.03.20
 - Add folder name clipping for inset layout when collapsed
