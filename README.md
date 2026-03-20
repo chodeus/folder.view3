@@ -5,13 +5,17 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 ## Features
 
 - **Collapsible folders** on Docker, VM, and Dashboard tabs
+- **Dashboard layouts** — Classic, Full-width Panel, Accordion, and Inset Panel views with per-section settings for Docker and VMs
+- **Quick collapse** — expand/collapse folders directly on the dashboard (non-Classic layouts) with optional greyscale dimming of collapsed folders
 - **Docker label assignment** — add `folder.view3: "FolderName"` to any container or Compose service to auto-assign it to a folder
 - **Per-folder colors** — customize border and vertical bar colors per folder
+- **Per-folder preview overflow** — choose Default, Expand Row, or Scroll behavior for the collapsed folder preview bar
 - **Hide from preview** — selectively hide individual containers from the collapsed folder preview while keeping them visible when expanded
 - **Real-time stats** — live CPU/memory graphs in Advanced Preview
 - **Compose & 3rd Party awareness** — folders correctly handle Docker Compose and 3rd party containers with appropriate labels and autostart behaviour
 - **Bulk actions** — start, stop, or restart all containers in a folder at once
 - **Autostart sync** — container autostart order stays aligned with your folder layout automatically
+- **Folder name length warning** — warns when folder names exceed 20 characters to prevent layout issues
 - **Custom CSS/JS extensions** — drop files into the plugin's `styles/` or `scripts/` directory
 - **7 languages** — English, German, Spanish, French, Italian, Polish, Chinese
 
@@ -60,6 +64,10 @@ There are two ways to assign containers to a folder:
 This fork includes changes beyond the upstream VladoPortos version:
 
 - **Active autostart sync** — container autostart order is automatically rewritten to match your folder layout whenever you save or reorder. Stale entries from removed containers are cleaned up automatically. This replaces the old passive indicator from the original plugin.
+
+  ![Autostart Sequence](img/autostartsequence.png)
+- **Dashboard layouts** — four layout modes (Classic, Full-width Panel, Accordion, Inset Panel) with independent Docker/VM settings, quick collapse toggles, greyscale dimming, and folder name labels
+- **Preview overflow options** — per-folder control over how the collapsed preview bar handles many containers (expand row or scroll)
 - **Folder WebUI setting** — open a container's WebUI directly from the folder context menu
 - **Dashboard fixes** — VM folder icons and names now have correct CSS classes
 
