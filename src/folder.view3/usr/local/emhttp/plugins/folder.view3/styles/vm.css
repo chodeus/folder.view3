@@ -46,7 +46,7 @@
 
 td.folder-name .folder-outer {
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: clip;
     white-space: nowrap;
     display: block;
     width: calc(var(--fv3-folder-name-width) - 25px);
