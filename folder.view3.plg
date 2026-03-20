@@ -5,18 +5,28 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.20">
-<!ENTITY md5 "cbb789e062db9c1d73fc506c96fd43a2">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.03.20.2">
+<!ENTITY md5 "ad00e6eb7c8eb0706cf3dbaeb1aedc17">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.03.20.2
+- Inset quick collapse tweak
+
+###2026.03.20.1
+- Fix inset panel chevron positioning and SVG border sizing
+
 ###2026.03.20
 - Add folder name clipping for inset layout when collapsed
 - Fix fullwidth panel pushing non-folder items to wrong row
 - Add fullwidth panel reflow on window resize
+- Add 20 character warning for folder names to folder settings page
+
+###2026.03.19.2
+- Fix fullwidth panel placement for expanded folders on dashboard
 
 ###2026.03.19.1
 - Fix dashboard settings race condition when switching layouts
@@ -425,7 +435,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
