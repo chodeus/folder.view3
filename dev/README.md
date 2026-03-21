@@ -156,10 +156,10 @@ These variables can be set on the layout class (e.g., `.fv3-layout-inset`) or `:
 |----------|---------|-------------|
 | `--fv3-embossed-border` | `rgba(128,128,128,0.3)` | Outer wrapper border color |
 | `--fv3-embossed-accent` | `var(--color-orange, #f0a30a)` | Outer left accent border color |
-| `--fv3-embossed-bg` | `rgba(128,128,128,0.08)` | Outer wrapper background color |
-| `--fv3-embossed-shadow` | `inset 0 1px 4px rgba(0,0,0,0.12)` | Outer wrapper inset shadow |
+| `--fv3-embossed-bg` | `transparent` | Outer wrapper background color |
+| `--fv3-embossed-shadow` | `none` | Outer wrapper inset shadow |
 | `--fv3-embossed-inner-border` | `rgba(128,128,128,0.2)` | Inner showcase border color |
-| `--fv3-embossed-inner-bg` | `rgba(0,0,0,0.08)` | Inner showcase background color |
+| `--fv3-embossed-inner-bg` | `rgba(128,128,128,0.08)` | Inner showcase background color |
 
 **Example — custom Inset colors:**
 ```css
