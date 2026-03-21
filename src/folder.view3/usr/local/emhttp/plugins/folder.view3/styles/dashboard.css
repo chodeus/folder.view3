@@ -30,6 +30,10 @@
     content: none;
 }
 
+.fv3-label-hidden.fv3-layout-inset .folder-showcase > span.outer:last-child {
+    margin-bottom: 7px;
+}
+
 
 /* ===== Dashboard Layout: Inset Panel ===== */
 .fv3-layout-inset {
