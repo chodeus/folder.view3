@@ -1453,8 +1453,8 @@ let fv3DockerExpandToggle = false;
 let fv3VmExpandToggle = false;
 let fv3DockerGreyscale = false;
 let fv3VmGreyscale = false;
-let fv3DockerShowLabel = true;
-let fv3VmShowLabel = true;
+let fv3DockerShowLabel = false;
+let fv3VmShowLabel = false;
 let fv3AnimationEnabled = false;
 let fv3LayoutReady = false;
 const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').promise().then(r => {
@@ -1466,8 +1466,8 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         fv3VmExpandToggle = s.dashboard_vm_expand_toggle === 'yes';
         fv3DockerGreyscale = s.dashboard_docker_greyscale === 'yes';
         fv3VmGreyscale = s.dashboard_vm_greyscale === 'yes';
-        fv3DockerShowLabel = s.dashboard_docker_folder_label !== 'no';
-        fv3VmShowLabel = s.dashboard_vm_folder_label !== 'no';
+        fv3DockerShowLabel = s.dashboard_docker_folder_label === 'yes';
+        fv3VmShowLabel = s.dashboard_vm_folder_label === 'yes';
         fv3AnimationEnabled = s.dashboard_animation === 'yes';
     } catch(e) {}
 });
@@ -1489,7 +1489,7 @@ const fv3InjectExpandToggles = () => {
         if (!tab) return;
         const isDocker = outer.querySelector('.folder-appname-docker') !== null;
         const enabled = isDocker ? fv3DockerExpandToggle : fv3VmExpandToggle;
-        const isInset = outer.closest('.fv3-layout-inset, .fv3-layout-embossed') !== null;
+        const isInset = outer.closest('.fv3-layout-inset') !== null;
         const isClassic = outer.closest('.fv3-layout-classic') !== null;
         const isFullwidth = outer.closest('.fv3-layout-fullwidth') !== null;
         const inner = tab.querySelector('span.inner');
@@ -1543,7 +1543,7 @@ const fv3InjectExpandToggles = () => {
 };
 
 const fv3PositionChevrons = () => {
-    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle, .fv3-layout-embossed .fv3-expand-toggle').forEach(btn => {
+    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle').forEach(btn => {
         const tab = btn.closest('span.outer');
         if (!tab) return;
         const appname = tab.querySelector('.fv3-folder-appname');
@@ -1569,7 +1569,7 @@ const fv3PositionChevrons = () => {
         const max = tabRect.width - 24;
         btn.style.left = Math.min(ideal, max) + 'px';
         btn.style.right = 'auto';
-        btn.style.top = (nameRect.top - tabRect.top + nameRect.height / 2) + 'px';
+        btn.style.top = (tab.offsetHeight / 2) + 'px';
         btn.style.transform = 'translateY(-50%)';
     });
 };

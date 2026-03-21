@@ -6,12 +6,16 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.03.21-beta">
-<!ENTITY md5 "b01afb5e041826ccae2fb998a78b8af0">
+<!ENTITY version "2026.03.21-beta7">
+<!ENTITY md5 "c9a83a382b401f7da9b09551b89db087">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.21-beta3
+- Fix embossed layout chevron position and outer wrapper styling
+- Tighten child tile spacing in expanded panels
 
 ###2026.03.20.2
 - Inset quick collapse tweak
