@@ -1569,7 +1569,7 @@ const fv3PositionChevrons = () => {
         const max = tabRect.width - 24;
         btn.style.left = Math.min(ideal, max) + 'px';
         btn.style.right = 'auto';
-        btn.style.top = (nameRect.top - tabRect.top + nameRect.height / 2) + 'px';
+        btn.style.top = (tab.offsetHeight / 2) + 'px';
         btn.style.transform = 'translateY(-50%)';
     });
 };

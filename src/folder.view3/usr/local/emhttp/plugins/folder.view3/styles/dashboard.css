@@ -30,6 +30,7 @@
     content: none;
 }
 
+
 /* ===== Dashboard Layout: Inset Panel ===== */
 .fv3-layout-inset {
     flex-wrap: wrap !important;
@@ -102,7 +103,7 @@
     border-bottom: none;
     box-shadow: none;
     overflow: hidden;
-    margin-bottom: 5px;
+    margin-bottom: 0;
     margin-right: 0;
     width: calc(25% - 5px);
 }
@@ -148,7 +149,7 @@
     border-bottom: none;
     box-shadow: none;
     overflow: hidden;
-    margin-bottom: 5px;
+    margin-bottom: 0;
     margin-right: 0;
     width: calc(25% - 5px);
 }
@@ -238,15 +239,14 @@
 }
 
 .fv3-layout-embossed .folder-showcase:not(:empty) {
-    border: none;
-    border-top: 1px solid var(--fv3-embossed-border, rgba(128,128,128,0.2));
-    border-radius: 0;
-    margin: 0;
+    border: 1px solid var(--fv3-embossed-inner-border, rgba(128,128,128,0.2));
+    border-radius: 4px;
+    margin: 0 6px 6px;
     padding: 8px;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    background-color: transparent;
+    background-color: var(--fv3-embossed-inner-bg, rgba(0,0,0,0.08));
 }
 
 .fv3-layout-embossed .folder-showcase:not(:empty)::before {
