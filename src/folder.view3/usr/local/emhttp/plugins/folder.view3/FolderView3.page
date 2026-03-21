@@ -24,6 +24,12 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
     <table>
         <tbody>
             <tr>
+                <td><label data-i18n="dashboard-animation">Expand/collapse animation</label></td>
+                <td>
+                    <input class="basic-switch" id="dashboard-animation" type="checkbox" style="display: none;" />
+                </td>
+            </tr>
+            <tr>
                 <td colspan="2"><strong data-i18n="dashboard-docker-heading">Docker</strong></td>
             </tr>
             <tr>
@@ -34,6 +40,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                         <option value="fullwidth" data-i18n="layout-fullwidth">Full-width Panel</option>
                         <option value="accordion" data-i18n="layout-accordion">Accordion</option>
                         <option value="inset" data-i18n="layout-inset">Inset Panel</option>
+                        <option value="embossed" data-i18n="layout-embossed">Embossed</option>
                     </select>
                 </td>
             </tr>
@@ -66,6 +73,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                         <option value="fullwidth" data-i18n="layout-fullwidth">Full-width Panel</option>
                         <option value="accordion" data-i18n="layout-accordion">Accordion</option>
                         <option value="inset" data-i18n="layout-inset">Inset Panel</option>
+                        <option value="embossed" data-i18n="layout-embossed">Embossed</option>
                     </select>
                 </td>
             </tr>

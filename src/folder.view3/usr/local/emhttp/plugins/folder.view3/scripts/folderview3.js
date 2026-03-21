@@ -332,6 +332,10 @@ const loadDashboardSettings = async () => {
         if (settings.dashboard_vm_layout) {
             $('select#dashboard-vm-layout').val(settings.dashboard_vm_layout);
         }
+        if (settings.dashboard_animation === 'yes') {
+            $('#dashboard-animation').prop('checked', true);
+        }
+        fv3InitToggle('dashboard-animation', 'dashboard_animation');
         const toggleMap = {
             'dashboard-docker-expand-toggle': 'dashboard_docker_expand_toggle',
             'dashboard-docker-greyscale': 'dashboard_docker_greyscale',
