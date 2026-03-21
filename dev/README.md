@@ -154,11 +154,9 @@ These variables can be set on the layout class (e.g., `.fv3-layout-inset`) or `:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `--fv3-embossed-border` | `rgba(128,128,128,0.3)` | Outer border color |
-| `--fv3-embossed-accent` | `rgba(128,128,128,0.4)` | Left accent border color |
-| `--fv3-embossed-bg` | `rgba(128,128,128,0.08)` | Outer background color |
-| `--fv3-embossed-showcase-border` | `rgba(128,128,128,0.2)` | Showcase border color |
-| `--fv3-embossed-showcase-bg` | `rgba(128,128,128,0.05)` | Showcase background color |
+| `--fv3-embossed-border` | `rgba(128,128,128,0.2)` | Showcase border color |
+| `--fv3-embossed-accent` | `var(--color-orange, #f0a30a)` | Left accent border color |
+| `--fv3-embossed-bg` | `rgba(128,128,128,0.05)` | Showcase background color |
 
 **Example — custom Inset colors:**
 ```css
@@ -175,9 +173,7 @@ These variables can be set on the layout class (e.g., `.fv3-layout-inset`) or `:
 .fv3-layout-embossed {
     --fv3-embossed-border: #cfcfcf;
     --fv3-embossed-accent: #bababa;
-    --fv3-embossed-bg: #ebebeb;
-    --fv3-embossed-showcase-border: #c1c1c1;
-    --fv3-embossed-showcase-bg: #fbf5e3;
+    --fv3-embossed-bg: #fbf5e3;
 }
 ```
 
@@ -219,7 +215,7 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
 /* Change embossed border colors via CSS variables */
 .fv3-layout-embossed {
     --fv3-embossed-border: rgba(255, 165, 0, 0.3);
-    --fv3-embossed-showcase-border: rgba(255, 165, 0, 0.2);
+    --fv3-embossed-accent: rgba(255, 165, 0, 0.5);
 }
 
 /* Hide the folder name label in expansion panels */

@@ -1489,7 +1489,7 @@ const fv3InjectExpandToggles = () => {
         if (!tab) return;
         const isDocker = outer.querySelector('.folder-appname-docker') !== null;
         const enabled = isDocker ? fv3DockerExpandToggle : fv3VmExpandToggle;
-        const isInset = outer.closest('.fv3-layout-inset, .fv3-layout-embossed') !== null;
+        const isInset = outer.closest('.fv3-layout-inset') !== null;
         const isClassic = outer.closest('.fv3-layout-classic') !== null;
         const isFullwidth = outer.closest('.fv3-layout-fullwidth') !== null;
         const inner = tab.querySelector('span.inner');
@@ -1543,7 +1543,7 @@ const fv3InjectExpandToggles = () => {
 };
 
 const fv3PositionChevrons = () => {
-    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle, .fv3-layout-embossed .fv3-expand-toggle').forEach(btn => {
+    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle').forEach(btn => {
         const tab = btn.closest('span.outer');
         if (!tab) return;
         const appname = tab.querySelector('.fv3-folder-appname');
