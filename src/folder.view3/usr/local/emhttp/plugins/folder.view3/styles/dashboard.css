@@ -102,7 +102,7 @@
     border-bottom: none;
     box-shadow: none;
     overflow: hidden;
-    margin-bottom: 0;
+    margin-bottom: 5px;
     margin-right: 0;
     width: calc(25% - 5px);
 }
@@ -214,24 +214,39 @@
     display: contents;
 }
 
+.fv3-layout-embossed .folder-showcase-outer[expanded="true"] {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    border: 1px solid var(--fv3-embossed-border, rgba(128,128,128,0.3));
+    border-left: 4px solid var(--fv3-embossed-accent, var(--color-orange, #f0a30a));
+    border-radius: 6px;
+    background-color: var(--fv3-embossed-bg, rgba(128,128,128,0.08));
+    box-shadow: var(--fv3-embossed-shadow, inset 0 1px 4px rgba(0,0,0,0.12));
+}
+
+.fv3-layout-embossed .folder-showcase-outer[expanded="true"] > span.outer {
+    padding: 6px 8px;
+    margin: 0;
+}
+
 .fv3-layout-embossed .folder-showcase-outer.fv3-hidden > * {
     display: none !important;
 }
 
 .fv3-layout-embossed .folder-showcase:not(:empty) {
-    border: 1px solid var(--fv3-embossed-border, rgba(128,128,128,0.3));
-    border-left: 4px solid var(--fv3-embossed-accent, var(--color-orange, #f0a30a));
-    border-radius: 4px;
-    margin: 6px 0;
+    border: none;
+    border-top: 1px solid var(--fv3-embossed-border, rgba(128,128,128,0.2));
+    border-radius: 0;
+    margin: 0;
     padding: 8px;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    width: 100%;
-    min-width: 100%;
-    box-sizing: border-box;
-    background-color: var(--fv3-embossed-bg, rgba(128,128,128,0.12));
-    box-shadow: var(--fv3-embossed-shadow, inset 0 1px 4px rgba(0,0,0,0.15));
+    background-color: transparent;
 }
 
 .fv3-layout-embossed .folder-showcase:not(:empty)::before {
@@ -260,8 +275,7 @@
     vertical-align: middle;
 }
 
-.fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer,
-.fv3-layout-embossed .folder-showcase-outer[expanded="true"] > span.outer {
+.fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer {
     margin-bottom: 5px;
 }
 
