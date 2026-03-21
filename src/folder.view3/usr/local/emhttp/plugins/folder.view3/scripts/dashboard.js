@@ -1562,10 +1562,13 @@ const fv3PositionChevrons = () => {
         const tab = btn.closest('span.outer');
         if (!tab) return;
         const appname = tab.querySelector('.fv3-folder-appname');
+        const state = tab.querySelector('.state');
         if (!appname) return;
         const tabRect = tab.getBoundingClientRect();
         const nameRect = appname.getBoundingClientRect();
-        const ideal = nameRect.right - tabRect.left + 10;
+        const stateRect = state?.getBoundingClientRect();
+        const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
+        const ideal = contentRight + 10;
         const max = tabRect.width - 24;
         btn.style.left = Math.min(ideal, max) + 'px';
         btn.style.right = 'auto';

@@ -229,8 +229,8 @@
     border: 1px solid var(--fv3-embossed-border, rgba(128,128,128,0.3));
     border-left: 4px solid var(--fv3-embossed-accent, var(--color-orange, #f0a30a));
     border-radius: 6px;
-    background-color: var(--fv3-embossed-bg, rgba(128,128,128,0.08));
-    box-shadow: var(--fv3-embossed-shadow, inset 0 1px 4px rgba(0,0,0,0.12));
+    background-color: transparent;
+    box-shadow: none;
 }
 
 .fv3-layout-embossed .folder-showcase-outer[expanded="true"] > span.outer {
@@ -250,7 +250,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    background-color: var(--fv3-embossed-inner-bg, rgba(0,0,0,0.08));
+    background-color: rgba(128,128,128,0.08);
 }
 
 .fv3-layout-embossed .folder-showcase:not(:empty)::before {
