@@ -6,12 +6,17 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.20.2">
-<!ENTITY md5 "ad00e6eb7c8eb0706cf3dbaeb1aedc17">
+<!ENTITY version "2026.03.21">
+<!ENTITY md5 "b6b790c6df2cbcd38fb168c3e76b36a2">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.21
+- Add Embossed dashboard layout style
+- Add expand/collapse animation option for dashboard layouts
+- Add CSS custom properties for inset and embossed panel theming
 
 ###2026.03.20.2
 - Inset quick collapse tweak
