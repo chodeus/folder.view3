@@ -62,3 +62,12 @@
 .fv3-setting-sub td:first-child label {
     padding-left: 40px;
 }
+
+.folder-table-settings td[colspan="2"] strong {
+    display: inline-block;
+    margin-top: 10px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(128,128,128,0.3);
+    width: 100%;
+    font-size: 1.1em;
+}

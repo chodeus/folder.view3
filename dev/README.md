@@ -119,7 +119,8 @@ FolderView3 adds layout classes to the container `<td>` when a non-classic dashb
 | Class | Applied to | Description |
 |-------|-----------|-------------|
 | `.fv3-layout-classic` | Container `<td>` | Classic mode — Unraid's native tile layout with `display: flex; flex-wrap: wrap` |
-| `.fv3-layout-inset` | Container `<td>` | Inset panel mode — expanded folders shown as bordered inset cards |
+| `.fv3-layout-inset` | Container `<td>` | Inset panel mode — expanded folders shown with SVG L-shaped borders |
+| `.fv3-layout-embossed` | Container `<td>` | Embossed mode — expanded folders shown with solid CSS borders and colored backgrounds |
 | `.fv3-layout-accordion` | Container `<td>` | Accordion mode — all folders stacked vertically |
 | `.fv3-layout-fullwidth` | Container `<td>` | Full-width panel mode — expanded children span the full row width |
 | `.fv3-fullwidth-panel` | Injected `<div>` | The full-width child panel (inserted after the last tile in the folder's row) |
@@ -127,11 +128,60 @@ FolderView3 adds layout classes to the container `<td>` when a non-classic dashb
 | `.fv3-greyscale-active` | Container `<td>` | Applied when any folder is expanded and greyscale dimming is enabled — dims non-expanded folders and standalone tiles |
 | `.fv3-hidden` | `.folder-showcase-outer` | Applied when "Started only" hides a stopped folder |
 | `.fv3-folder-appname` | `span` inside folder tile | The folder's name text — target with `[expanded="true"]` parent for expanded-only styling |
-| `.fv3-child-appname` | `span.inner` inside child tiles | The child container/VM name text inside an expanded folder's showcase |
+| `.fv3-child-appname` | `span.inner` inside child tiles | The child container/VM name wrapper inside an expanded folder's showcase |
+| `.fv3-child-appname-text` | `span` inside `.fv3-child-appname` | The actual container/VM name text span — use this to style individual child names |
 | `.fv3-label-hidden` | Container `<td>` | Applied when "Show folder name in expanded panel" is set to No |
 | `.fv3-inset-border` | SVG element | The SVG wrapper for the inset layout's L-shape + inner box borders |
-| `.fv3-inset-lshape` | SVG `path` | The L-shaped outer border path (tab + body) — customizable via `stroke` |
-| `.fv3-inset-innerbox` | SVG `rect` | The inner container box border — customizable via `stroke` |
+| `.fv3-inset-lshape` | SVG `path` | The L-shaped outer border path (tab + body) — styled via CSS custom properties |
+| `.fv3-inset-innerbox` | SVG `rect` | The inner container box border — styled via CSS custom properties |
+
+### Dashboard CSS Custom Properties
+
+These variables can be set on the layout class (e.g., `.fv3-layout-inset`) or `:root` to customize dashboard panels.
+
+**Inset Panel (SVG borders):**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--fv3-inset-border-color` | `rgba(128,128,128,0.3)` | SVG L-shape outer border stroke |
+| `--fv3-inset-fill` | `none` | SVG L-shape fill (tab + content area background) |
+| `--fv3-inset-showcase-border` | `rgba(128,128,128,0.2)` | SVG inner box stroke |
+| `--fv3-inset-showcase-fill` | `none` | SVG inner box fill (showcase area background) |
+| `--fv3-inset-bg` | `transparent` | CSS background of the expanded outer wrapper |
+| `--fv3-showcase-bg` | `transparent` | CSS background of the showcase (child area) |
+
+**Embossed Panel (two-box layout — outer wrapper + inner showcase):**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--fv3-embossed-border` | `rgba(128,128,128,0.3)` | Outer wrapper border color |
+| `--fv3-embossed-accent` | `var(--color-orange, #f0a30a)` | Outer left accent border color |
+| `--fv3-embossed-bg` | `transparent` | Outer wrapper background color |
+| `--fv3-embossed-shadow` | `none` | Outer wrapper inset shadow |
+| `--fv3-embossed-inner-border` | `rgba(128,128,128,0.2)` | Inner showcase border color |
+| `--fv3-embossed-inner-bg` | `rgba(128,128,128,0.08)` | Inner showcase background color |
+
+**Example — custom Inset colors:**
+```css
+.fv3-layout-inset {
+    --fv3-inset-border-color: #cfcfcf;
+    --fv3-inset-fill: rgba(235,235,235,0.5);
+    --fv3-inset-showcase-border: #c1c1c1;
+    --fv3-inset-showcase-fill: rgba(251,245,227,0.5);
+}
+```
+
+**Example — custom Embossed colors:**
+```css
+.fv3-layout-embossed {
+    --fv3-embossed-border: #cfcfcf;
+    --fv3-embossed-accent: #bababa;
+    --fv3-embossed-bg: #ebebeb;
+    --fv3-embossed-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    --fv3-embossed-inner-border: #c1c1c1;
+    --fv3-embossed-inner-bg: #fbf5e3;
+}
+```
 
 ### Dashboard Child Panel Styling
 
@@ -140,6 +190,7 @@ Expanded folder children on the Dashboard are rendered inside `.folder-showcase`
 ```css
 /* Remove tile chrome inside expansion panels */
 .fv3-layout-inset .folder-showcase > span.outer.solid,
+.fv3-layout-embossed .folder-showcase > span.outer.solid,
 .fv3-layout-accordion .folder-showcase > span.outer.solid,
 .fv3-fullwidth-panel > span.outer.solid {
     transform: none;
@@ -155,22 +206,27 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
 ### Dashboard Layout Override Examples
 
 ```css
-/* Change the expansion panel border color */
+/* Change the expansion panel border color (accordion/fullwidth) */
 .fv3-layout-accordion .folder-showcase:not(:empty),
-.fv3-layout-inset .folder-showcase:not(:empty),
 .fv3-fullwidth-panel {
     border-color: rgba(255, 165, 0, 0.3);
 }
 
-/* Change the left accent bar color */
-.fv3-layout-accordion .folder-showcase:not(:empty),
-.fv3-layout-inset .folder-showcase:not(:empty),
-.fv3-fullwidth-panel {
-    border-left-color: #2b8da3;
+/* Change inset SVG border colors via CSS variables */
+.fv3-layout-inset {
+    --fv3-inset-border-color: rgba(255, 165, 0, 0.3);
+    --fv3-inset-showcase-border: rgba(255, 165, 0, 0.2);
+}
+
+/* Change embossed border colors via CSS variables */
+.fv3-layout-embossed {
+    --fv3-embossed-border: rgba(255, 165, 0, 0.3);
+    --fv3-embossed-accent: rgba(255, 165, 0, 0.5);
 }
 
 /* Hide the folder name label in expansion panels */
 .fv3-layout-inset .folder-showcase::after,
+.fv3-layout-embossed .folder-showcase::after,
 .fv3-layout-accordion .folder-showcase::after,
 .fv3-fullwidth-panel::after {
     display: none !important;
@@ -254,7 +310,9 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
         <div class="folder-showcase" data-folder-name="Folder Name">
           <!-- Expanded child tiles (inset/accordion) -->
           <span class="outer solid">
-            <span class="inner fv3-child-appname">Container Name</span>
+            <span class="inner fv3-child-appname">
+              <span class="fv3-child-appname-text">Container Name</span>
+            </span>
           </span>
         </div>
         <div class="folder-storage">
@@ -318,7 +376,7 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
 | Style tooltip background | `.preview-outbox { background-color: #1c1b1b; }` |
 | Style preview dividers | `.folder-preview-divider { border-color: #444 !important; }` |
 | Style expanded folder name | `.folder-showcase-outer[expanded="true"] .fv3-folder-appname { font-weight: bold; color: #f0a30a; }` |
-| Style child container names | `.fv3-child-appname { font-weight: bold; }` |
+| Style child container names | `.fv3-child-appname-text { font-weight: bold; color: #00698c; }` |
 | Hide folder start/stop text | `.folder-state { display: none; }` |
 | Style dropdown chevron | `.folder-dropdown { color: #607D8B; }` |
 

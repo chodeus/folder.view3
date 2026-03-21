@@ -1,0 +1,415 @@
+/* ============================================
+   FolderView3 — Compact Theme (Dark/Light Safe)
+   Based on hernandito's Compact 2026 design
+   ============================================
+   File: compact.docker-vm.css
+   Place in: /boot/config/plugins/folder.view3/styles/
+   ============================================ */
+
+:root {
+    /* Graph colors */
+    --folder-view3-graph-cpu: #0067ec;
+    --folder-view3-graph-mem: #44a600;
+
+    /* Tooltip spacing */
+    --tooltip-spacing: 10px;
+
+    /* Compact folder layout */
+    --fv3-folder-name-width: 220px;
+    --fv3-folder-preview-height: 3.7em;
+    --fv3-folder-preview-radius: 0px;
+    --fv3-folder-icon-spacing: 5px;
+    --fv3-folder-preview-wrapper-margin: 0px;
+
+    /* Theme-safe accent — works on dark and light */
+    --compact-accent: rgba(128, 180, 220, 0.35);
+    --compact-accent-border: rgba(128, 180, 220, 0.6);
+    --compact-folder-bg: rgba(128, 128, 128, 0.08);
+    --compact-tooltip-bg: var(--fv3-surface-tint);
+
+    /* VM row alternating colors (dark theme defaults) */
+    --fv3-row-bg: rgba(128, 128, 128, 0.03);
+    --fv3-row-alt-bg: rgba(128, 128, 128, 0.08);
+}
+
+/* ============================================
+   Container & Folder Icons
+   ============================================ */
+
+img.img, i.img {
+    width: 38px;
+    height: 38px;
+    margin-right: 5px;
+}
+
+img.folder-img {
+    padding-top: 3px;
+}
+
+/* ============================================
+   Folder Name Area
+   ============================================ */
+
+div.folder-name-sub {
+    border: 1px solid var(--compact-accent-border);
+    background-color: var(--compact-folder-bg);
+    border-radius: 4px;
+    padding: 4px;
+    border-left: 8px solid var(--compact-accent-border);
+    border-right: 8px solid var(--compact-accent-border);
+}
+
+a.folder-appname {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.folder-outer {
+    width: calc(var(--fv3-folder-name-width) - 50px);
+}
+
+/* Dropdown chevron */
+button[class*='dropDown-'] {
+    margin-top: 5px;
+    margin-right: 3px;
+    color: rgba(128, 128, 128, 0.7);
+    background: var(--compact-folder-bg);
+    border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+/* ============================================
+   Folder State Text
+   ============================================ */
+
+i.red-text {
+    font-size: 16px;
+}
+
+/* Hide state text in preview, show in expanded */
+span.state {
+    font-size: 0px;
+    margin-left: 0px;
+}
+
+td.ct-name span.state {
+    font-size: 1.1rem;
+    margin-left: 7px;
+}
+
+/* ============================================
+   Folder Preview Bar
+   ============================================ */
+
+.folder-preview {
+    background-color: var(--compact-folder-bg);
+    border-left: 8px solid var(--compact-accent-border);
+    padding-top: 2px;
+}
+
+.folder-preview-wrapper {
+    margin-top: 4px;
+}
+
+.folder-preview-divider {
+    padding-right: 5px;
+}
+
+/* Hide WebUI/logs icons in icon-only preview mode */
+div.folder-preview-4 i.fa-globe,
+div.folder-preview-4 i.fa-bars {
+    font-size: 0px;
+}
+
+div.folder-preview-4 a.exec {
+    color: inherit;
+    opacity: 0.6;
+}
+
+span.folder-inner {
+    margin-top: 4px;
+}
+
+span.inner {
+    margin-top: 2px;
+}
+
+span.outer {
+    margin-bottom: 0px;
+    margin-right: 0;
+}
+
+/* Update column */
+td.updatecolumn {
+    width: 90px;
+    padding: 4px 4px 4px 0px;
+    text-align: center;
+}
+
+/* Update text */
+.appname .orange-text,
+.warning a.exec {
+    font-weight: bold;
+}
+
+a:hover {
+    text-decoration: none;
+}
+
+/* Container tool icons */
+i.fa-globe,
+i.fa-bars {
+    font-size: 18px;
+    color: rgba(128, 128, 128, 0.6);
+}
+
+/* ============================================
+   Advanced View (CPU/Memory in table)
+   ============================================ */
+
+span[class*='cpu-folder-'] {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--folder-view3-graph-cpu);
+}
+
+span[class*='mem-folder-'] {
+    font-size: 9px;
+}
+
+td.folder-advanced {
+    width: 80px;
+}
+
+.folder-load {
+    height: 7px;
+    margin: 0;
+}
+
+/* Hide uptime column header text */
+th.five {
+    width: 0px;
+    font-size: 0px;
+    padding: 0px;
+}
+
+th.advanced {
+    font-size: 0px;
+}
+
+th.load {
+    width: 80px;
+}
+
+.advanced {
+    display: none;
+    white-space: nowrap;
+    font-size: 1.1rem;
+}
+
+/* ============================================
+   Advanced Preview Tooltip
+   ============================================ */
+
+.preview-outbox {
+    min-width: min(700px, 90vw);
+    min-height: 400px;
+    max-height: 800px;
+    padding: 10px;
+    background-color: inherit;
+    color: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.4);
+    border-radius: 0px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--tooltip-spacing);
+    overflow: auto;
+}
+
+div.tooltipster-content {
+    background-color: inherit;
+}
+
+.tooltipster-sidetip .tooltipster-box {
+    border-radius: 0px;
+}
+
+/* Tooltip container icon */
+div.tooltipster-content img.img,
+div.tooltipster-content i.img {
+    width: 58px;
+    height: 58px;
+    padding-left: 6px;
+    font-size: 2.3rem;
+    font-weight: bold;
+}
+
+/* Tooltip container name */
+div.tooltipster-content span.appname {
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+div.tooltipster-content div.preview-actual-name {
+    padding-left: 5px;
+}
+
+div.tooltipster-content div.preview-name {
+    border-right: 1px solid rgba(128, 128, 128, 0.3);
+    width: 21vw;
+}
+
+/* First row header */
+div.tooltipster-content div.first-row {
+    background-color: var(--fv3-surface-tint);
+}
+
+div.tooltipster-content div.second-row {
+    padding-top: 4px;
+}
+
+/* Status headers */
+div.tooltipster-content th[class*='status-header-'] {
+    color: inherit;
+    opacity: 0.8;
+    background-color: var(--fv3-surface-tint);
+    border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+.status-header-autostart,
+.status-header-version {
+    border-radius: 0px;
+}
+
+.preview-status {
+    padding-left: 4px;
+}
+
+/* Container info box */
+div.tooltipster-content div.info-ct {
+    padding-right: 30px;
+    bottom: 7px;
+    background-color: var(--fv3-surface-tint);
+}
+
+span.repo {
+    font-size: 0px;
+}
+
+span.repo a {
+    font-size: 9px;
+}
+
+/* Action buttons */
+.action-info {
+    height: 320px;
+}
+
+div.action-left {
+    width: 80px;
+    margin-right: 20px;
+}
+
+div.action-right {
+    width: 80px;
+}
+
+.action a:hover {
+    background-color: var(--fv3-hover-bg);
+}
+
+/* Tabs */
+.ui-state-active,
+.ui-widget-content .ui-state-active,
+.ui-widget-header .ui-state-active {
+    border: 1px solid rgba(128, 128, 128, 0.4);
+    background: var(--fv3-surface-tint);
+    font-weight: normal;
+    color: inherit;
+}
+
+.ui-state-default,
+.ui-widget-content .ui-state-default,
+.ui-widget-header .ui-state-default {
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    background: var(--fv3-hover-bg);
+    font-weight: normal;
+    color: inherit;
+    margin-right: 6px;
+}
+
+.info-tabs > li[aria-selected="true"] a {
+    background-color: var(--fv3-surface-tint);
+    border-color: rgba(128, 128, 128, 0.3);
+    position: relative;
+}
+
+.info-tabs a {
+    padding: 2px 20px;
+    border: none;
+    border-radius: 4px;
+    margin-bottom: 0px;
+}
+
+.info-section .ui-tabs-panel {
+    padding: 20px;
+}
+
+/* Ports & Volumes */
+div[id*='info-ports-'],
+div[id*='info-volumes-'] {
+    padding-top: 10px;
+    background-color: var(--fv3-surface-tint);
+    padding-left: 10px;
+    border: var(--fv3-border);
+}
+
+/* Graph area */
+div[id^="comb-grapth-"] {
+    padding: 0px;
+}
+
+[id^="comb-grapth-"] canvas {
+    height: 100%;
+}
+
+div.tooltipster-content canvas {
+    border: 1px solid rgba(128, 128, 128, 0.2);
+    padding: 2px 8px;
+    background-color: var(--fv3-surface-tint);
+}
+
+/* ============================================
+   Table Tweaks
+   ============================================ */
+
+table.tablesorter tbody tr td {
+    padding-right: 0px;
+}
+
+th.nine {
+    width: 0px;
+    padding-right: 12px;
+}
+
+/* ============================================
+   Responsive — Smaller Screens
+   ============================================ */
+
+@media only screen and (max-width: 1400px) {
+    img.img, i.img {
+        width: 38px;
+        height: 38px;
+        margin-right: 3px;
+        margin-left: 3px;
+    }
+
+    .folder-preview-wrapper {
+        margin-top: 4px;
+        margin-left: 3px;
+    }
+
+    td.ct-name {
+        width: var(--fv3-folder-name-width);
+    }
+}
