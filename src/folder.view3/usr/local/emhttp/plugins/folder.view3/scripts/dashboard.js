@@ -1453,8 +1453,8 @@ let fv3DockerExpandToggle = false;
 let fv3VmExpandToggle = false;
 let fv3DockerGreyscale = false;
 let fv3VmGreyscale = false;
-let fv3DockerShowLabel = true;
-let fv3VmShowLabel = true;
+let fv3DockerShowLabel = false;
+let fv3VmShowLabel = false;
 let fv3AnimationEnabled = false;
 let fv3LayoutReady = false;
 const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').promise().then(r => {
@@ -1466,8 +1466,8 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         fv3VmExpandToggle = s.dashboard_vm_expand_toggle === 'yes';
         fv3DockerGreyscale = s.dashboard_docker_greyscale === 'yes';
         fv3VmGreyscale = s.dashboard_vm_greyscale === 'yes';
-        fv3DockerShowLabel = s.dashboard_docker_folder_label !== 'no';
-        fv3VmShowLabel = s.dashboard_vm_folder_label !== 'no';
+        fv3DockerShowLabel = s.dashboard_docker_folder_label === 'yes';
+        fv3VmShowLabel = s.dashboard_vm_folder_label === 'yes';
         fv3AnimationEnabled = s.dashboard_animation === 'yes';
     } catch(e) {}
 });
