@@ -263,8 +263,9 @@
     function updateSettings(string $key, string $value) : void {
         global $configDir;
         $allowed = [
-            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset'],
-            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset'],
+            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+            'dashboard_animation'            => ['yes', 'no'],
             'dashboard_docker_expand_toggle' => ['yes', 'no'],
             'dashboard_docker_greyscale'     => ['yes', 'no'],
             'dashboard_docker_folder_label'  => ['yes', 'no'],

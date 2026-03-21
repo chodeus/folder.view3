@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git log:*)",
+      "Bash(gh api:*)",
+      "Bash(xargs -I {} gh api repos/mstrhakr/compose_plugin/git/trees/{}?recursive=1 --jq '.tree[].path')"
+    ]
+  }
+}

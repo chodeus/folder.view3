@@ -9,6 +9,7 @@
 
 /* ===== Shared: folder name label in child panels ===== */
 .fv3-layout-accordion .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-layout-embossed .folder-showcase[data-folder-name]:not(:empty)::after,
 .fv3-layout-inset .folder-showcase[data-folder-name]:not(:empty)::after,
 .fv3-fullwidth-panel[data-folder-name]::after {
     content: attr(data-folder-name);
@@ -24,9 +25,15 @@
 }
 
 .fv3-label-hidden .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-label-hidden .fv3-embossed-panel[data-folder-name]::after,
 .fv3-label-hidden .fv3-fullwidth-panel[data-folder-name]::after {
     content: none;
 }
+
+.fv3-label-hidden.fv3-layout-inset .folder-showcase > span.outer:last-child {
+    margin-bottom: 7px;
+}
+
 
 /* ===== Dashboard Layout: Inset Panel ===== */
 .fv3-layout-inset {
@@ -42,6 +49,7 @@
     width: 100%;
     box-sizing: border-box;
     position: relative;
+    background-color: var(--fv3-inset-bg, transparent);
 }
 
 .fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer {
@@ -63,6 +71,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    background-color: var(--fv3-showcase-bg, transparent);
 }
 
 .fv3-layout-inset .folder-showcase:not(:empty)::before {
@@ -77,6 +86,19 @@
     overflow: visible;
 }
 
+.fv3-inset-lshape {
+    fill: var(--fv3-inset-fill, none);
+    stroke: var(--fv3-inset-border-color, rgba(128,128,128,0.3));
+    stroke-width: 1;
+    stroke-linejoin: round;
+}
+
+.fv3-inset-innerbox {
+    fill: var(--fv3-inset-showcase-fill, none);
+    stroke: var(--fv3-inset-showcase-border, rgba(128,128,128,0.2));
+    stroke-width: 1;
+}
+
 .fv3-layout-inset .folder-showcase > span.outer.solid,
 .fv3-layout-inset .folder-showcase > span.outer.apps {
     transform: none;
@@ -85,7 +107,7 @@
     border-bottom: none;
     box-shadow: none;
     overflow: hidden;
-    margin-bottom: 8px;
+    margin-bottom: 0;
     margin-right: 0;
     width: calc(25% - 5px);
 }
@@ -131,7 +153,7 @@
     border-bottom: none;
     box-shadow: none;
     overflow: hidden;
-    margin-bottom: 8px;
+    margin-bottom: 0;
     margin-right: 0;
     width: calc(25% - 5px);
 }
@@ -182,9 +204,83 @@
     border-bottom: none;
     box-shadow: none;
     overflow: hidden;
-    margin-bottom: 8px;
+    margin-bottom: 0;
     margin-right: 0;
     width: calc(25% - 5px);
+}
+
+/* ===== Dashboard Layout: Embossed ===== */
+.fv3-layout-embossed {
+    flex-wrap: wrap !important;
+    padding-right: 4px;
+}
+
+.fv3-layout-embossed .folder-showcase-outer {
+    display: contents;
+}
+
+.fv3-layout-embossed .folder-showcase-outer[expanded="true"] {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    border: 1px solid var(--fv3-embossed-border, rgba(128,128,128,0.3));
+    border-left: 4px solid var(--fv3-embossed-accent, var(--color-orange, #f0a30a));
+    border-radius: 6px;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.fv3-layout-embossed .folder-showcase-outer[expanded="true"] > span.outer {
+    padding: 6px 8px;
+    margin: 0;
+}
+
+.fv3-layout-embossed .folder-showcase-outer.fv3-hidden > * {
+    display: none !important;
+}
+
+.fv3-layout-embossed .folder-showcase:not(:empty) {
+    border: 1px solid var(--fv3-embossed-inner-border, rgba(128,128,128,0.2));
+    border-radius: 4px;
+    margin: 0 6px 6px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background-color: rgba(128,128,128,0.08);
+}
+
+.fv3-layout-embossed .folder-showcase:not(:empty)::before {
+    content: none;
+}
+
+.fv3-layout-embossed .folder-showcase > span.outer.solid,
+.fv3-layout-embossed .folder-showcase > span.outer.apps {
+    transform: none;
+    background: none;
+    border: none;
+    border-bottom: none;
+    box-shadow: none;
+    overflow: hidden;
+    margin-bottom: 0;
+    margin-right: 0;
+    width: calc(25% - 5px);
+}
+
+.fv3-layout-embossed .folder-showcase-outer:not([expanded="true"]) .fv3-folder-appname {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer {
+    margin-bottom: 5px;
 }
 
 /* ===== Expand toggle button ===== */
@@ -287,7 +383,23 @@ td.fv3-layout-classic {
     vertical-align: middle;
 }
 
+/* ===== Expand/collapse animation ===== */
+.fv3-layout-classic .folder-showcase,
+.fv3-layout-inset .folder-showcase,
+.fv3-layout-embossed .folder-showcase,
+.fv3-layout-accordion .folder-showcase,
+.fv3-fullwidth-panel {
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+
 /* ===== Greyscale collapsed folders when one is expanded ===== */
+.fv3-layout-embossed .fv3-expand-toggle {
+    position: static;
+    transform: none;
+    margin: 0 0 0 10px !important;
+    vertical-align: middle;
+}
+
 .fv3-greyscale-active .folder-showcase-outer:not([expanded="true"]) > span.outer {
     filter: grayscale(100%);
     opacity: 0.5;
@@ -306,10 +418,16 @@ td.fv3-layout-classic {
     transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
+table.dashboard tr:last-child > td {
+    padding-bottom: 5px;
+}
+
 /* ===== Mobile responsive: child tile widths ===== */
 @media (max-width: 768px) {
     .fv3-layout-inset .folder-showcase > span.outer.solid,
     .fv3-layout-inset .folder-showcase > span.outer.apps,
+    .fv3-layout-embossed .folder-showcase > span.outer.solid,
+    .fv3-layout-embossed .folder-showcase > span.outer.apps,
     .fv3-layout-accordion .folder-showcase > span.outer.solid,
     .fv3-layout-accordion .folder-showcase > span.outer.apps,
     .fv3-fullwidth-panel > span.outer.solid,
@@ -321,6 +439,8 @@ td.fv3-layout-classic {
 @media (max-width: 480px) {
     .fv3-layout-inset .folder-showcase > span.outer.solid,
     .fv3-layout-inset .folder-showcase > span.outer.apps,
+    .fv3-layout-embossed .folder-showcase > span.outer.solid,
+    .fv3-layout-embossed .folder-showcase > span.outer.apps,
     .fv3-layout-accordion .folder-showcase > span.outer.solid,
     .fv3-layout-accordion .folder-showcase > span.outer.apps,
     .fv3-fullwidth-panel > span.outer.solid,
