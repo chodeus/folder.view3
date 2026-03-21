@@ -5,7 +5,8 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 ## Features
 
 - **Collapsible folders** on Docker, VM, and Dashboard tabs
-- **Dashboard layouts** — Classic, Full-width Panel, Accordion, and Inset Panel views with per-section settings for Docker and VMs
+- **Dashboard layouts** — Classic, Full-width Panel, Accordion, Inset Panel, and Embossed views with per-section settings for Docker and VMs
+- **Expand/collapse animation** — optional smooth animation when expanding or collapsing dashboard folders
 - **Quick collapse** — expand/collapse folders directly on the dashboard (non-Classic layouts) with optional greyscale dimming of collapsed folders
 - **Docker label assignment** — add `folder.view3: "FolderName"` to any container or Compose service to auto-assign it to a folder
 - **Per-folder colors** — customize border and vertical bar colors per folder
@@ -66,7 +67,7 @@ This fork includes changes beyond the upstream VladoPortos version:
 - **Active autostart sync** — container autostart order is automatically rewritten to match your folder layout whenever you save or reorder. Stale entries from removed containers are cleaned up automatically. This replaces the old passive indicator from the original plugin.
 
   ![Autostart Sequence](img/autostartsequence.png)
-- **Dashboard layouts** — four layout modes (Classic, Full-width Panel, Accordion, Inset Panel) with independent Docker/VM settings, quick collapse toggles, greyscale dimming, and folder name labels
+- **Dashboard layouts** — five layout modes (Classic, Full-width Panel, Accordion, Inset Panel, Embossed) with independent Docker/VM settings, quick collapse toggles, greyscale dimming, expand/collapse animation, and folder name labels
 - **Preview overflow options** — per-folder control over how the collapsed preview bar handles many containers (expand row or scroll)
 - **Folder WebUI setting** — open a container's WebUI directly from the folder context menu
 - **Dashboard fixes** — VM folder icons and names now have correct CSS classes

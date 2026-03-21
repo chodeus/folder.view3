@@ -48,6 +48,9 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 23 | Responsive mobile breakpoints for dashboard child tiles (3-col at 768px, 2-col at 480px) | `dashboard.css` | 2026.03.19 |
 | 24 | Auto-width dashboard tiles for folders with ≤3 children | `dashboard.js` | 2026.03.19 |
 | 25 | Dynamic NAME column width on VM page based on longest name | `vm.js` | 2026.03.19 |
+| 26 | Embossed dashboard layout with CSS borders and themed backgrounds | `dashboard.js`, `dashboard.css`, `FolderView3.page`, `folderview3.js`, `lib.php`, `langs/*.json` | 2026.03.21 |
+| 27 | Expand/collapse animation toggle for dashboard layouts | `dashboard.js`, `dashboard.css`, `FolderView3.page`, `folderview3.js`, `lib.php`, `langs/*.json` | 2026.03.21 |
+| 28 | CSS custom properties for embossed and inset panel theming | `dashboard.css`, `dashboard.js` | 2026.03.21 |
 
 ### Security
 
