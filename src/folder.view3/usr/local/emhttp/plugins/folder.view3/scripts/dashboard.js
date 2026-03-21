@@ -104,7 +104,7 @@ const createFolders = async () => {
         fv3UpdateGreyscale();
         fv3UpdateInsetBorders();
         fv3AutoWidthTiles();
-        document.querySelectorAll('.fv3-layout-inset .folder-showcase').forEach(el => fv3ShowcaseObserver.observe(el));
+        document.querySelectorAll('.fv3-layout-inset .folder-showcase, .fv3-layout-embossed .folder-showcase').forEach(el => fv3ShowcaseObserver.observe(el));
 
         folderEvents.dispatchEvent(new CustomEvent('docker-post-folders-creation', {detail: {
             folders: folders,
@@ -218,7 +218,7 @@ const createFolders = async () => {
         fv3UpdateGreyscale();
         fv3UpdateInsetBorders();
         fv3AutoWidthTiles();
-        document.querySelectorAll('.fv3-layout-inset .folder-showcase').forEach(el => fv3ShowcaseObserver.observe(el));
+        document.querySelectorAll('.fv3-layout-inset .folder-showcase, .fv3-layout-embossed .folder-showcase').forEach(el => fv3ShowcaseObserver.observe(el));
 
         folderEvents.dispatchEvent(new CustomEvent('vm-post-folders-creation', {detail: {
             folders: folders,
@@ -330,6 +330,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
                 return innerText === container;
             }).first();
             $containerEl.find('span.inner').addClass('fv3-child-appname');
+            $containerEl.find('span.inner').children('span').first().addClass('fv3-child-appname-text');
             element.append($containerEl.addClass(`folder-${id}-element`).addClass(`folder-element-docker`).addClass(`${!(ct.info.State.Autostart === false) ? 'autostart' : ''}`));
 
 
@@ -534,6 +535,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
                 return innerText === container;
             }).first();
             $vmEl.find('span.inner').addClass('fv3-child-appname');
+            $vmEl.find('span.inner').children('span').first().addClass('fv3-child-appname-text');
             $(`tbody#vm_view span#folder-id-${id}`).siblings('div.folder-storage').append($vmEl.addClass(`folder-${id}-element`).addClass(`folder-element-vm`).addClass(`${ct.autostart ? 'autostart' : ''}`));
 
             if(folderDebugMode) {
@@ -606,6 +608,71 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     return remBefore;
 };
 
+const fv3AnimateExpand = (el) => {
+    if (!el) return;
+    const isContents = getComputedStyle(el).display === 'contents';
+    if (isContents) {
+        el.style.display = 'flex';
+        el.style.flexWrap = 'wrap';
+    }
+    el.style.transition = 'none';
+    el.style.maxHeight = '0px';
+    el.style.overflow = 'hidden';
+    el.style.opacity = '0';
+    el.offsetHeight;
+    el.style.transition = '';
+    el.style.maxHeight = el.scrollHeight + 'px';
+    el.style.opacity = '1';
+    const done = (e) => {
+        if (e.propertyName !== 'max-height') return;
+        el.removeEventListener('transitionend', done);
+        el.style.maxHeight = '';
+        el.style.overflow = '';
+        el.style.opacity = '';
+        if (isContents) {
+            el.style.display = '';
+            el.style.flexWrap = '';
+        }
+        fv3UpdateInsetBorders();
+    };
+    el.addEventListener('transitionend', done);
+};
+
+const fv3AnimateCollapse = (el, onComplete) => {
+    if (!el || el.offsetHeight === 0) { if (onComplete) onComplete(); return; }
+    const isContents = getComputedStyle(el).display === 'contents';
+    if (isContents) {
+        el.style.display = 'flex';
+        el.style.flexWrap = 'wrap';
+    }
+    el.style.transition = 'none';
+    el.style.maxHeight = el.offsetHeight + 'px';
+    el.style.overflow = 'hidden';
+    el.offsetHeight;
+    el.style.transition = '';
+    el.style.maxHeight = '0px';
+    el.style.opacity = '0';
+    const done = (e) => {
+        if (e.propertyName !== 'max-height') return;
+        el.removeEventListener('transitionend', done);
+        el.style.maxHeight = '';
+        el.style.overflow = '';
+        el.style.opacity = '';
+        if (isContents) {
+            el.style.display = '';
+            el.style.flexWrap = '';
+        }
+        if (onComplete) onComplete();
+    };
+    el.addEventListener('transitionend', done);
+};
+
+const fv3GetAnimTarget = (layout, outer, showcase) => {
+    if (!fv3AnimationEnabled) return null;
+    if (layout === 'fullwidth' && outer.data('fv3-panel')) return outer.data('fv3-panel')[0];
+    return showcase[0] || null;
+};
+
 /**
  * Handle the dropdown expand button of folders
  * @param {string} id the id of the folder
@@ -615,32 +682,46 @@ const expandFolderDocker = (id) => {
     const el = $(`tbody#docker_view > tr.updated > td span.outer.apps > span#folder-id-${id}`);
     const state = el.attr('expanded') === "true";
     const outer = $(`.folder-showcase-outer-${id}`);
+    const showcase = el.parents().siblings('div.folder-showcase');
     if (state) {
-        // Collapsing: retrieve children from fullwidth panel if present
-        const panel = outer.data('fv3-panel');
-        if (panel) {
-            el.parents().siblings('div.folder-showcase').append(panel.children());
-            panel.remove();
-            outer.removeData('fv3-panel');
-        }
-        el.siblings('div.folder-storage').append(el.parents().siblings('div.folder-showcase').children());
-        el.attr('expanded', 'false');
+        const animTarget = fv3GetAnimTarget(dockerDashboardLayout, outer, showcase);
+        const doCollapse = () => {
+            const panel = outer.data('fv3-panel');
+            if (panel) {
+                showcase.append(panel.children());
+                panel.remove();
+                outer.removeData('fv3-panel');
+            }
+            el.siblings('div.folder-storage').append(showcase.children());
+            el.attr('expanded', 'false');
+            outer.attr('expanded', 'false');
+            if(globalFolders.docker) {
+                globalFolders.docker[id].status.expanded = false;
+            }
+            fv3InjectExpandToggles();
+            fv3UpdateGreyscale();
+            fv3UpdateInsetBorders();
+            fv3AutoWidthTiles();
+            folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-expansion', {detail: { id }}));
+        };
+        fv3AnimateCollapse(animTarget, doCollapse);
     } else {
-        el.parents().siblings('div.folder-showcase').append(el.siblings('div.folder-storage').children());
+        showcase.append(el.siblings('div.folder-storage').children());
         el.attr('expanded', 'true');
+        outer.attr('expanded', 'true');
+        if(globalFolders.docker) {
+            globalFolders.docker[id].status.expanded = true;
+        }
+        if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady) {
+            fv3FullwidthExpand(id, 'docker');
+        }
+        fv3InjectExpandToggles();
+        fv3UpdateGreyscale();
+        fv3AutoWidthTiles();
+        const animTarget = fv3GetAnimTarget(dockerDashboardLayout, outer, showcase);
+        fv3AnimateExpand(animTarget);
+        folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-expansion', {detail: { id }}));
     }
-    outer.attr('expanded', !state ? 'true' : 'false');
-    if(globalFolders.docker) {
-        globalFolders.docker[id].status.expanded = !state;
-    }
-    if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady) {
-        fv3FullwidthExpand(id, 'docker');
-    }
-    fv3InjectExpandToggles();
-    fv3UpdateGreyscale();
-    fv3UpdateInsetBorders();
-    fv3AutoWidthTiles();
-    folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-expansion', {detail: { id }}));
 };
 
 /**
@@ -652,31 +733,46 @@ const expandFolderVM = (id) => {
     const el = $(`tbody#vm_view > tr.updated > td span.outer.vms > span#folder-id-${id}`);
     const state = el.attr('expanded') === "true";
     const outer = $(`.folder-showcase-outer-${id}`);
+    const showcase = el.parents().siblings('div.folder-showcase');
     if (state) {
-        const panel = outer.data('fv3-panel');
-        if (panel) {
-            el.parents().siblings('div.folder-showcase').append(panel.children());
-            panel.remove();
-            outer.removeData('fv3-panel');
-        }
-        el.siblings('div.folder-storage').append(el.parents().siblings('div.folder-showcase').children());
-        el.attr('expanded', 'false');
+        const animTarget = fv3GetAnimTarget(vmDashboardLayout, outer, showcase);
+        const doCollapse = () => {
+            const panel = outer.data('fv3-panel');
+            if (panel) {
+                showcase.append(panel.children());
+                panel.remove();
+                outer.removeData('fv3-panel');
+            }
+            el.siblings('div.folder-storage').append(showcase.children());
+            el.attr('expanded', 'false');
+            outer.attr('expanded', 'false');
+            if(globalFolders.vms) {
+                globalFolders.vms[id].status.expanded = false;
+            }
+            fv3InjectExpandToggles();
+            fv3UpdateGreyscale();
+            fv3UpdateInsetBorders();
+            fv3AutoWidthTiles();
+            folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-expansion', {detail: { id }}));
+        };
+        fv3AnimateCollapse(animTarget, doCollapse);
     } else {
-        el.parents().siblings('div.folder-showcase').append(el.siblings('div.folder-storage').children());
+        showcase.append(el.siblings('div.folder-storage').children());
         el.attr('expanded', 'true');
+        outer.attr('expanded', 'true');
+        if(globalFolders.vms) {
+            globalFolders.vms[id].status.expanded = true;
+        }
+        if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady) {
+            fv3FullwidthExpand(id, 'vm');
+        }
+        fv3InjectExpandToggles();
+        fv3UpdateGreyscale();
+        fv3AutoWidthTiles();
+        const animTarget = fv3GetAnimTarget(vmDashboardLayout, outer, showcase);
+        fv3AnimateExpand(animTarget);
+        folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-expansion', {detail: { id }}));
     }
-    outer.attr('expanded', !state ? 'true' : 'false');
-    if(globalFolders.vms) {
-        globalFolders.vms[id].status.expanded = !state;
-    }
-    if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady) {
-        fv3FullwidthExpand(id, 'vm');
-    }
-    fv3InjectExpandToggles();
-    fv3UpdateGreyscale();
-    fv3UpdateInsetBorders();
-    fv3AutoWidthTiles();
-    folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-expansion', {detail: { id }}));
 };
 
 /**
@@ -1359,6 +1455,7 @@ let fv3DockerGreyscale = false;
 let fv3VmGreyscale = false;
 let fv3DockerShowLabel = true;
 let fv3VmShowLabel = true;
+let fv3AnimationEnabled = false;
 let fv3LayoutReady = false;
 const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').promise().then(r => {
     try {
@@ -1371,11 +1468,12 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         fv3VmGreyscale = s.dashboard_vm_greyscale === 'yes';
         fv3DockerShowLabel = s.dashboard_docker_folder_label !== 'no';
         fv3VmShowLabel = s.dashboard_vm_folder_label !== 'no';
+        fv3AnimationEnabled = s.dashboard_animation === 'yes';
     } catch(e) {}
 });
 
 const applyDashboardLayouts = () => {
-    const layouts = ['fv3-layout-classic', 'fv3-layout-fullwidth', 'fv3-layout-accordion', 'fv3-layout-inset'];
+    const layouts = ['fv3-layout-classic', 'fv3-layout-fullwidth', 'fv3-layout-accordion', 'fv3-layout-inset', 'fv3-layout-embossed'];
     const dockerTd = $('tbody#docker_view > tr.updated > td');
     const vmTd = $('tbody#vm_view > tr.updated > td');
     dockerTd.removeClass(layouts.join(' ')).addClass('fv3-layout-' + dockerDashboardLayout);
@@ -1391,7 +1489,7 @@ const fv3InjectExpandToggles = () => {
         if (!tab) return;
         const isDocker = outer.querySelector('.folder-appname-docker') !== null;
         const enabled = isDocker ? fv3DockerExpandToggle : fv3VmExpandToggle;
-        const isInset = outer.closest('.fv3-layout-inset') !== null;
+        const isInset = outer.closest('.fv3-layout-inset, .fv3-layout-embossed') !== null;
         const isClassic = outer.closest('.fv3-layout-classic') !== null;
         const isFullwidth = outer.closest('.fv3-layout-fullwidth') !== null;
         const inner = tab.querySelector('span.inner');
@@ -1445,7 +1543,7 @@ const fv3InjectExpandToggles = () => {
 };
 
 const fv3PositionChevrons = () => {
-    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle').forEach(btn => {
+    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle, .fv3-layout-embossed .fv3-expand-toggle').forEach(btn => {
         const tab = btn.closest('span.outer');
         if (!tab) return;
         const appname = tab.querySelector('.fv3-folder-appname');
@@ -1542,10 +1640,6 @@ const fv3UpdateInsetBorders = () => {
                 `A ${r1} ${r1} 0 0 1 ${r1} 0`,
                 'Z'
             ].join(' '));
-            lShape.setAttribute('fill', 'none');
-            lShape.setAttribute('stroke', 'rgba(128,128,128,0.3)');
-            lShape.setAttribute('stroke-width', '1');
-            lShape.setAttribute('stroke-linejoin', 'round');
             svg.appendChild(lShape);
 
             const inset = 6;
@@ -1558,9 +1652,6 @@ const fv3UpdateInsetBorders = () => {
             innerBox.setAttribute('height', H - jointY - inset * 2);
             innerBox.setAttribute('rx', ir);
             innerBox.setAttribute('ry', ir);
-            innerBox.setAttribute('fill', 'none');
-            innerBox.setAttribute('stroke', 'rgba(128,128,128,0.2)');
-            innerBox.setAttribute('stroke-width', '1');
             svg.appendChild(innerBox);
 
             outer.appendChild(svg);
