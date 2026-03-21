@@ -150,15 +150,16 @@ These variables can be set on the layout class (e.g., `.fv3-layout-inset`) or `:
 | `--fv3-inset-bg` | `transparent` | CSS background of the expanded outer wrapper |
 | `--fv3-showcase-bg` | `transparent` | CSS background of the showcase (child area) |
 
-**Embossed Panel (CSS borders):**
+**Embossed Panel (two-box layout — outer wrapper + inner showcase):**
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `--fv3-embossed-border` | `rgba(128,128,128,0.3)` | Outer border color |
-| `--fv3-embossed-accent` | `rgba(128,128,128,0.4)` | Left accent border color |
-| `--fv3-embossed-bg` | `rgba(128,128,128,0.08)` | Outer background color |
-| `--fv3-embossed-showcase-border` | `rgba(128,128,128,0.2)` | Showcase border color |
-| `--fv3-embossed-showcase-bg` | `rgba(128,128,128,0.05)` | Showcase background color |
+| `--fv3-embossed-border` | `rgba(128,128,128,0.3)` | Outer wrapper border color |
+| `--fv3-embossed-accent` | `var(--color-orange, #f0a30a)` | Outer left accent border color |
+| `--fv3-embossed-bg` | `rgba(128,128,128,0.08)` | Outer wrapper background color |
+| `--fv3-embossed-shadow` | `inset 0 1px 4px rgba(0,0,0,0.12)` | Outer wrapper inset shadow |
+| `--fv3-embossed-inner-border` | `rgba(128,128,128,0.2)` | Inner showcase border color |
+| `--fv3-embossed-inner-bg` | `rgba(0,0,0,0.08)` | Inner showcase background color |
 
 **Example — custom Inset colors:**
 ```css
@@ -176,8 +177,9 @@ These variables can be set on the layout class (e.g., `.fv3-layout-inset`) or `:
     --fv3-embossed-border: #cfcfcf;
     --fv3-embossed-accent: #bababa;
     --fv3-embossed-bg: #ebebeb;
-    --fv3-embossed-showcase-border: #c1c1c1;
-    --fv3-embossed-showcase-bg: #fbf5e3;
+    --fv3-embossed-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    --fv3-embossed-inner-border: #c1c1c1;
+    --fv3-embossed-inner-bg: #fbf5e3;
 }
 ```
 
@@ -219,7 +221,7 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
 /* Change embossed border colors via CSS variables */
 .fv3-layout-embossed {
     --fv3-embossed-border: rgba(255, 165, 0, 0.3);
-    --fv3-embossed-showcase-border: rgba(255, 165, 0, 0.2);
+    --fv3-embossed-accent: rgba(255, 165, 0, 0.5);
 }
 
 /* Hide the folder name label in expansion panels */
