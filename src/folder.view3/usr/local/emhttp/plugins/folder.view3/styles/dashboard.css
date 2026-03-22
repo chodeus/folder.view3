@@ -321,11 +321,7 @@ button.fv3-expand-toggle:hover {
 .fv3-layout-embossed button.fv3-expand-toggle,
 .fv3-layout-fullwidth button.fv3-expand-toggle,
 .fv3-layout-inset button.fv3-expand-toggle {
-    position: static;
-    display: inline-flex;
-    transform: none;
-    margin: -2px 0 0 6px;
-    vertical-align: middle;
+    margin: 0;
 }
 
 .fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer,

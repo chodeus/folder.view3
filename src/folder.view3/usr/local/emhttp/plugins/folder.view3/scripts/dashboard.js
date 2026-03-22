@@ -1491,9 +1491,30 @@ const fv3InjectExpandToggles = () => {
         if (!tab) return;
         const isDocker = outer.querySelector('.folder-appname-docker') !== null;
         const enabled = isDocker ? fv3DockerExpandToggle : fv3VmExpandToggle;
+        const isInset = outer.closest('.fv3-layout-inset') !== null;
         const isClassic = outer.closest('.fv3-layout-classic') !== null;
+        const isFullwidth = outer.closest('.fv3-layout-fullwidth') !== null;
         const inner = tab.querySelector('span.inner');
         tab.classList.toggle('fv3-expanded-tab', expanded);
+        if (expanded && enabled && !isClassic && !isFullwidth) {
+            if (inner) {
+                inner.style.width = 'auto';
+                inner.style.whiteSpace = 'nowrap';
+            }
+            if (!isInset) {
+                tab.style.display = 'inline-flex';
+                tab.style.alignItems = 'center';
+            }
+        } else {
+            if (inner) {
+                inner.style.width = '';
+                inner.style.whiteSpace = '';
+            }
+            if (!isInset) {
+                tab.style.display = '';
+                tab.style.alignItems = '';
+            }
+        }
         if (!enabled || !expanded || isClassic) {
             outer.querySelectorAll('.fv3-expand-toggle').forEach(el => el.remove());
             return;
@@ -1511,14 +1532,52 @@ const fv3InjectExpandToggles = () => {
             if (isDocker) expandFolderDocker(id);
             else expandFolderVM(id);
         });
-        if (inner) inner.appendChild(btn);
+        if (isInset) {
+            tab.appendChild(btn);
+        } else {
+            if (inner) inner.after(btn);
+        }
     });
     requestAnimationFrame(() => {
+        fv3PositionChevrons();
         fv3UpdateInsetBorders();
     });
 };
 
-const fv3PositionChevrons = () => {};
+const fv3PositionChevrons = () => {
+    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle').forEach(btn => {
+        const tab = btn.closest('span.outer');
+        if (!tab) return;
+        const appname = tab.querySelector('.fv3-folder-appname');
+        const state = tab.querySelector('.state');
+        if (!appname) return;
+        const tabRect = tab.getBoundingClientRect();
+        const nameRect = appname.getBoundingClientRect();
+        const stateRect = state?.getBoundingClientRect();
+        const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
+        btn.style.left = (contentRight + 10) + 'px';
+        btn.style.right = 'auto';
+        btn.style.top = (tab.offsetHeight / 2) + 'px';
+        btn.style.transform = 'translateY(-50%)';
+    });
+    document.querySelectorAll('.fv3-layout-fullwidth .fv3-expand-toggle').forEach(btn => {
+        const tab = btn.closest('span.outer');
+        if (!tab) return;
+        const appname = tab.querySelector('.fv3-folder-appname');
+        const state = tab.querySelector('.state');
+        if (!appname) return;
+        const tabRect = tab.getBoundingClientRect();
+        const nameRect = appname.getBoundingClientRect();
+        const stateRect = state?.getBoundingClientRect();
+        const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
+        const ideal = contentRight + 10;
+        const max = tabRect.width - 24;
+        btn.style.left = Math.min(ideal, max) + 'px';
+        btn.style.right = 'auto';
+        btn.style.top = (tab.offsetHeight / 2) + 'px';
+        btn.style.transform = 'translateY(-50%)';
+    });
+};
 
 const fv3UpdateGreyscale = () => {
     const dockerTd = $('tbody#docker_view > tr.updated > td');
@@ -1615,9 +1674,8 @@ const fv3FullwidthReflow = (onlyType) => {
             const layout = type === 'docker' ? dockerDashboardLayout : vmDashboardLayout;
             if (layout !== 'fullwidth') return;
             const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
+            const parentTd = $(`tbody#${tbody} > tr.updated > td`);
             $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]`).each(function() {
-                const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
-                if (!id) return;
                 const panel = $(this).data('fv3-panel');
                 if (panel) {
                     $(this).find('.folder-showcase').append(panel.children());
@@ -1625,10 +1683,43 @@ const fv3FullwidthReflow = (onlyType) => {
                     $(this).removeData('fv3-panel');
                 }
             });
+            $(`tbody#${tbody} .folder-showcase`).css('display', 'none');
+            const expandData = [];
             $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).each(function() {
                 const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
-                if (id) fv3FullwidthExpand(id, type);
+                if (!id) return;
+                const outer = $(this);
+                const showcase = outer.find('.folder-showcase');
+                const folderTile = outer.children('span.outer').first()[0];
+                if (!folderTile) return;
+                const folderTop = Math.round(folderTile.getBoundingClientRect().top);
+                let lastInRow = outer;
+                parentTd.children('.folder-showcase-outer, span.outer:not(:empty)').each(function() {
+                    if (this.classList.contains('fv3-fullwidth-panel')) return;
+                    let visualEl;
+                    if (this.classList.contains('folder-showcase-outer')) {
+                        visualEl = this.querySelector(':scope > span.outer');
+                    } else {
+                        visualEl = this;
+                    }
+                    if (!visualEl || visualEl.offsetParent === null) return;
+                    if (Math.round(visualEl.getBoundingClientRect().top) === folderTop) {
+                        lastInRow = $(this);
+                    }
+                });
+                expandData.push({ outer, showcase, lastInRow, folderName: showcase.attr('data-folder-name') || '' });
             });
+            expandData.forEach(({ outer, showcase, lastInRow, folderName }) => {
+                const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
+                let insertAfter = lastInRow;
+                while (insertAfter.next('.fv3-fullwidth-panel').length) {
+                    insertAfter = insertAfter.next('.fv3-fullwidth-panel');
+                }
+                insertAfter.after(panel);
+                panel.append(showcase.children());
+                outer.data('fv3-panel', panel);
+            });
+            $(`tbody#${tbody} .folder-showcase`).css('display', '');
         });
     });
 };
