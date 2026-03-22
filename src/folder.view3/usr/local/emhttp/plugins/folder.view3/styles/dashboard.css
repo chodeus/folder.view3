@@ -317,7 +317,10 @@ button.fv3-expand-toggle:hover {
     padding-left: 1px;
 }
 
-.fv3-layout-accordion button.fv3-expand-toggle {
+.fv3-layout-accordion button.fv3-expand-toggle,
+.fv3-layout-embossed button.fv3-expand-toggle,
+.fv3-layout-fullwidth button.fv3-expand-toggle,
+.fv3-layout-inset button.fv3-expand-toggle {
     position: static;
     transform: none;
     margin: 0 0 0 10px;
@@ -377,13 +380,6 @@ td.fv3-layout-classic {
 }
 
 /* ===== Greyscale collapsed folders when one is expanded ===== */
-.fv3-layout-embossed button.fv3-expand-toggle {
-    position: static;
-    transform: none;
-    margin: 0 0 0 10px;
-    vertical-align: middle;
-}
-
 .fv3-greyscale-active .folder-showcase-outer:not([expanded="true"]) > span.outer {
     filter: grayscale(100%);
     opacity: 0.5;

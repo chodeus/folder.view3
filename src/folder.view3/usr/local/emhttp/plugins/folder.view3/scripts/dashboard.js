@@ -1491,29 +1491,23 @@ const fv3InjectExpandToggles = () => {
         if (!tab) return;
         const isDocker = outer.querySelector('.folder-appname-docker') !== null;
         const enabled = isDocker ? fv3DockerExpandToggle : fv3VmExpandToggle;
-        const isInset = outer.closest('.fv3-layout-inset') !== null;
         const isClassic = outer.closest('.fv3-layout-classic') !== null;
-        const isFullwidth = outer.closest('.fv3-layout-fullwidth') !== null;
         const inner = tab.querySelector('span.inner');
         tab.classList.toggle('fv3-expanded-tab', expanded);
-        if (expanded && enabled && !isClassic && !isFullwidth) {
+        if (expanded && enabled && !isClassic) {
             if (inner) {
                 inner.style.width = 'auto';
                 inner.style.whiteSpace = 'nowrap';
             }
-            if (!isInset) {
-                tab.style.display = 'inline-flex';
-                tab.style.alignItems = 'center';
-            }
+            tab.style.display = 'inline-flex';
+            tab.style.alignItems = 'center';
         } else {
             if (inner) {
                 inner.style.width = '';
                 inner.style.whiteSpace = '';
             }
-            if (!isInset) {
-                tab.style.display = '';
-                tab.style.alignItems = '';
-            }
+            tab.style.display = '';
+            tab.style.alignItems = '';
         }
         if (!enabled || !expanded || isClassic) {
             outer.querySelectorAll('.fv3-expand-toggle').forEach(el => el.remove());
@@ -1532,52 +1526,14 @@ const fv3InjectExpandToggles = () => {
             if (isDocker) expandFolderDocker(id);
             else expandFolderVM(id);
         });
-        if (isInset) {
-            tab.appendChild(btn);
-        } else {
-            if (inner) inner.after(btn);
-        }
+        if (inner) inner.after(btn);
     });
     requestAnimationFrame(() => {
-        fv3PositionChevrons();
         fv3UpdateInsetBorders();
     });
 };
 
-const fv3PositionChevrons = () => {
-    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle').forEach(btn => {
-        const tab = btn.closest('span.outer');
-        if (!tab) return;
-        const appname = tab.querySelector('.fv3-folder-appname');
-        const state = tab.querySelector('.state');
-        if (!appname) return;
-        const tabRect = tab.getBoundingClientRect();
-        const nameRect = appname.getBoundingClientRect();
-        const stateRect = state?.getBoundingClientRect();
-        const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
-        btn.style.left = (contentRight + 10) + 'px';
-        btn.style.right = 'auto';
-        btn.style.top = (tab.offsetHeight / 2) + 'px';
-        btn.style.transform = 'translateY(-50%)';
-    });
-    document.querySelectorAll('.fv3-layout-fullwidth .fv3-expand-toggle').forEach(btn => {
-        const tab = btn.closest('span.outer');
-        if (!tab) return;
-        const appname = tab.querySelector('.fv3-folder-appname');
-        const state = tab.querySelector('.state');
-        if (!appname) return;
-        const tabRect = tab.getBoundingClientRect();
-        const nameRect = appname.getBoundingClientRect();
-        const stateRect = state?.getBoundingClientRect();
-        const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
-        const ideal = contentRight + 10;
-        const max = tabRect.width - 24;
-        btn.style.left = Math.min(ideal, max) + 'px';
-        btn.style.right = 'auto';
-        btn.style.top = (tab.offsetHeight / 2) + 'px';
-        btn.style.transform = 'translateY(-50%)';
-    });
-};
+const fv3PositionChevrons = () => {};
 
 const fv3UpdateGreyscale = () => {
     const dockerTd = $('tbody#docker_view > tr.updated > td');
@@ -1709,7 +1665,7 @@ const fv3UpdateHidden = () => {
         const panel = $(this).data('fv3-panel');
         if (panel) panel.toggle(!shouldHide);
     });
-    $('tbody#docker_view .folder-showcase > span.outer, .fv3-fullwidth-panel > span.outer').each(function() {
+    $('tbody#docker_view .folder-showcase > span.outer, tbody#docker_view .fv3-fullwidth-panel > span.outer').each(function() {
         const isStopped = $(this).hasClass('stopped');
         $(this).toggle(!(dockerChecked && isStopped));
     });
@@ -1721,7 +1677,7 @@ const fv3UpdateHidden = () => {
         const panel = $(this).data('fv3-panel');
         if (panel) panel.toggle(!shouldHide);
     });
-    $('tbody#vm_view .folder-showcase > span.outer').each(function() {
+    $('tbody#vm_view .folder-showcase > span.outer, tbody#vm_view .fv3-fullwidth-panel > span.outer').each(function() {
         const isStopped = $(this).hasClass('stopped');
         $(this).toggle(!(vmChecked && isStopped));
     });
@@ -1753,10 +1709,6 @@ $(document).on('change', 'input#apps, input#vms', () => {
         fv3AutoWidthTiles();
         fv3UpdateInsetBorders();
         fv3FullwidthReflow();
-        requestAnimationFrame(() => {
-            fv3PositionChevrons();
-            fv3UpdateInsetBorders();
-        });
     }); });
 });
 
