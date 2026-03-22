@@ -1606,11 +1606,12 @@ const fv3UpdateInsetBorders = () => {
 };
 
 let fv3FullwidthRaf = null;
-const fv3FullwidthReflow = () => {
+const fv3FullwidthReflow = (onlyType) => {
     if (fv3FullwidthRaf || !fv3LayoutReady) return;
     fv3FullwidthRaf = requestAnimationFrame(() => {
         fv3FullwidthRaf = null;
-        ['docker', 'vm'].forEach(type => {
+        const types = onlyType ? [onlyType] : ['docker', 'vm'];
+        types.forEach(type => {
             const layout = type === 'docker' ? dockerDashboardLayout : vmDashboardLayout;
             if (layout !== 'fullwidth') return;
             const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
@@ -1685,17 +1686,20 @@ const fv3AutoWidthTiles = () => {
     });
 };
 
-$(document).on('change', 'input#apps, input#vms', () => {
+const fv3OnFilterChange = (type) => {
     fv3UpdateHidden();
-    document.querySelectorAll('.folder-showcase-outer:not(.fv3-hidden)[expanded="true"] .fv3-expand-toggle').forEach(el => el.remove());
+    const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
+    document.querySelectorAll(`#${tbody} .folder-showcase-outer:not(.fv3-hidden)[expanded="true"] .fv3-expand-toggle`).forEach(el => el.remove());
     requestAnimationFrame(() => { requestAnimationFrame(() => {
         fv3InjectExpandToggles();
         fv3UpdateGreyscale();
         fv3AutoWidthTiles();
         fv3UpdateInsetBorders();
-        fv3FullwidthReflow();
+        fv3FullwidthReflow(type);
     }); });
-});
+};
+$(document).on('change', 'input#apps', () => fv3OnFilterChange('docker'));
+$(document).on('change', 'input#vms', () => fv3OnFilterChange('vm'));
 
 const fv3FullwidthExpand = (id, type) => {
     const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
