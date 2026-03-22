@@ -1562,7 +1562,8 @@ const fv3PositionChevrons = () => {
     });
     document.querySelectorAll('.fv3-layout-fullwidth .fv3-expand-toggle').forEach(btn => {
         const tab = btn.closest('span.outer');
-        if (!tab) return;
+        if (!tab || !tab.offsetHeight) return;
+        const inner = tab.querySelector('span.inner');
         const appname = tab.querySelector('.fv3-folder-appname');
         const state = tab.querySelector('.state');
         if (!appname) return;
@@ -1572,7 +1573,8 @@ const fv3PositionChevrons = () => {
         const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
         btn.style.left = (contentRight + 10) + 'px';
         btn.style.right = 'auto';
-        btn.style.top = (tab.offsetHeight / 2) + 'px';
+        const vCenter = inner ? inner.offsetTop + inner.offsetHeight / 2 : tab.offsetHeight / 2;
+        btn.style.top = vCenter + 'px';
         btn.style.transform = 'translateY(-50%)';
     });
 };
