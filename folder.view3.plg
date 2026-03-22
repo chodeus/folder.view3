@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.03.22-beta5">
-<!ENTITY md5 "34682c9fb46b082c39d000d33722df48">
+<!ENTITY version "2026.03.22-beta6">
+<!ENTITY md5 "dd8c532b5cb05abf7eacce7f727fa149">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
@@ -19,6 +19,9 @@
 - Fix chevron position after toggling Started only filter back
 - Fix animation firing when disabled in dashboard settings
 - Remove all !important from dashboard CSS for custom CSS compatibility
+- Fix fullwidth panel ordering after Started only toggle
+- Fix fullwidth chevron positioning to match inset layout
+- Restore static chevron positioning for accordion and embossed layouts
 
 ###2026.03.21
 - Add Embossed dashboard layout style

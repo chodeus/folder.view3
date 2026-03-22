@@ -1570,9 +1570,7 @@ const fv3PositionChevrons = () => {
         const nameRect = appname.getBoundingClientRect();
         const stateRect = state?.getBoundingClientRect();
         const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
-        const ideal = contentRight + 10;
-        const max = tabRect.width - 24;
-        btn.style.left = Math.min(ideal, max) + 'px';
+        btn.style.left = (contentRight + 10) + 'px';
         btn.style.right = 'auto';
         btn.style.top = (tab.offsetHeight / 2) + 'px';
         btn.style.transform = 'translateY(-50%)';
@@ -1684,7 +1682,6 @@ const fv3FullwidthReflow = (onlyType) => {
                 }
             });
             $(`tbody#${tbody} .folder-showcase`).css('display', 'none');
-            const expandData = [];
             $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).each(function() {
                 const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
                 if (!id) return;
@@ -1707,9 +1704,7 @@ const fv3FullwidthReflow = (onlyType) => {
                         lastInRow = $(this);
                     }
                 });
-                expandData.push({ outer, showcase, lastInRow, folderName: showcase.attr('data-folder-name') || '' });
-            });
-            expandData.forEach(({ outer, showcase, lastInRow, folderName }) => {
+                const folderName = showcase.attr('data-folder-name') || '';
                 const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
                 let insertAfter = lastInRow;
                 while (insertAfter.next('.fv3-fullwidth-panel').length) {
@@ -1787,6 +1782,7 @@ const fv3OnFilterChange = (type) => {
         fv3AutoWidthTiles();
         fv3UpdateInsetBorders();
         fv3FullwidthReflow(type);
+        requestAnimationFrame(() => fv3PositionChevrons());
     }); });
 };
 $(document).on('change', 'input#apps', () => fv3OnFilterChange('docker'));
