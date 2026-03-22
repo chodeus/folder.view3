@@ -1753,6 +1753,10 @@ $(document).on('change', 'input#apps, input#vms', () => {
         fv3AutoWidthTiles();
         fv3UpdateInsetBorders();
         fv3FullwidthReflow();
+        requestAnimationFrame(() => {
+            fv3PositionChevrons();
+            fv3UpdateInsetBorders();
+        });
     }); });
 });
 
