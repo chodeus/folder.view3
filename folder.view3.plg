@@ -19,6 +19,9 @@
 - Fix chevron position after toggling Started only filter back
 - Fix animation firing when disabled in dashboard settings
 - Remove all !important from dashboard CSS for custom CSS compatibility
+- Fix fullwidth panel ordering after Started only toggle
+- Fix fullwidth chevron positioning to match inset layout
+- Restore static chevron positioning for accordion and embossed layouts
 
 ###2026.03.21
 - Add Embossed dashboard layout style
