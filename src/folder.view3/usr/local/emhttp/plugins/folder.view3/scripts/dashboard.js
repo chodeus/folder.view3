@@ -1682,17 +1682,20 @@ const fv3FullwidthReflow = (onlyType) => {
                 }
             });
             $(`tbody#${tbody} .folder-showcase`).css('display', 'none');
-            $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).each(function() {
-                const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+            const expandedOuters = $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).toArray();
+            expandedOuters.forEach((current, idx) => {
+                const id = (current.className || '').match(/folder-showcase-outer-(\S+)/)?.[1];
                 if (!id) return;
-                const outer = $(this);
+                const outer = $(current);
                 const showcase = outer.find('.folder-showcase');
                 const folderTile = outer.children('span.outer').first()[0];
                 if (!folderTile) return;
                 const folderTop = Math.round(folderTile.getBoundingClientRect().top);
                 let lastInRow = outer;
+                const nextExpanded = idx < expandedOuters.length - 1 ? expandedOuters[idx + 1] : null;
                 parentTd.children('.folder-showcase-outer, span.outer:not(:empty)').each(function() {
                     if (this.classList.contains('fv3-fullwidth-panel')) return;
+                    if (nextExpanded && this === nextExpanded) return false;
                     let visualEl;
                     if (this.classList.contains('folder-showcase-outer')) {
                         visualEl = this.querySelector(':scope > span.outer');
