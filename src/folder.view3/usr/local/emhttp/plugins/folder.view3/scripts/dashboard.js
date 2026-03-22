@@ -1480,6 +1480,8 @@ const applyDashboardLayouts = () => {
     vmTd.removeClass(layouts.join(' ')).addClass('fv3-layout-' + vmDashboardLayout);
     dockerTd.toggleClass('fv3-label-hidden', !fv3DockerShowLabel);
     vmTd.toggleClass('fv3-label-hidden', !fv3VmShowLabel);
+    dockerTd.toggleClass('fv3-animate', fv3AnimationEnabled);
+    vmTd.toggleClass('fv3-animate', fv3AnimationEnabled);
 };
 
 const fv3InjectExpandToggles = () => {
@@ -1681,7 +1683,7 @@ const fv3FullwidthReflow = () => {
                     $(this).removeData('fv3-panel');
                 }
             });
-            $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]`).each(function() {
+            $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).each(function() {
                 const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
                 if (id) fv3FullwidthExpand(id, type);
             });
@@ -1702,7 +1704,10 @@ const fv3UpdateHidden = () => {
     const dockerChecked = $('input#apps').is(':checked');
     $('tbody#docker_view .folder-showcase-outer').each(function() {
         const isStopped = $(this).children('span.outer').hasClass('stopped');
-        $(this).toggleClass('fv3-hidden', dockerChecked && isStopped);
+        const shouldHide = dockerChecked && isStopped;
+        $(this).toggleClass('fv3-hidden', shouldHide);
+        const panel = $(this).data('fv3-panel');
+        if (panel) panel.toggle(!shouldHide);
     });
     $('tbody#docker_view .folder-showcase > span.outer, .fv3-fullwidth-panel > span.outer').each(function() {
         const isStopped = $(this).hasClass('stopped');
@@ -1711,7 +1716,10 @@ const fv3UpdateHidden = () => {
     const vmChecked = $('input#vms').is(':checked');
     $('tbody#vm_view .folder-showcase-outer').each(function() {
         const isStopped = $(this).children('span.outer').hasClass('stopped');
-        $(this).toggleClass('fv3-hidden', vmChecked && isStopped);
+        const shouldHide = vmChecked && isStopped;
+        $(this).toggleClass('fv3-hidden', shouldHide);
+        const panel = $(this).data('fv3-panel');
+        if (panel) panel.toggle(!shouldHide);
     });
     $('tbody#vm_view .folder-showcase > span.outer').each(function() {
         const isStopped = $(this).hasClass('stopped');
@@ -1738,10 +1746,14 @@ const fv3AutoWidthTiles = () => {
 
 $(document).on('change', 'input#apps, input#vms', () => {
     fv3UpdateHidden();
-    fv3InjectExpandToggles();
-    fv3UpdateGreyscale();
-    fv3AutoWidthTiles();
-    fv3UpdateInsetBorders();
+    document.querySelectorAll('.folder-showcase-outer:not(.fv3-hidden)[expanded="true"] .fv3-expand-toggle').forEach(el => el.remove());
+    requestAnimationFrame(() => { requestAnimationFrame(() => {
+        fv3InjectExpandToggles();
+        fv3UpdateGreyscale();
+        fv3AutoWidthTiles();
+        fv3UpdateInsetBorders();
+        fv3FullwidthReflow();
+    }); });
 });
 
 const fv3FullwidthExpand = (id, type) => {

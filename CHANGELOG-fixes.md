@@ -122,6 +122,11 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 52 | Negative SVG rect dimensions when all children hidden in Inset layout — check for visible children before drawing | `dashboard.js` | 2026.03.19 |
 | 53 | Dashboard settings race condition — concurrent `update_settings.php` requests cause read-modify-write collision, wiping other keys. Fixed with `flock(LOCK_EX)` for atomic file access and `fv3SuppressToggle` flag to prevent `switchButton` change events firing duplicate saves during programmatic resets | `lib.php`, `folderview3.js` | 2026.03.19.1 |
 | 54 | Blank gaps in classic dashboard layout — folder wrapper divs (`folder-showcase-outer`) were block-level elements disrupting tile flow. Fixed with `display: contents` to remove wrappers from layout, `display: flex; flex-wrap: wrap` on the `<td>`, and fixed pixel `max-width` on folder names instead of circular percentage dependency | `dashboard.css` | 2026.03.20 |
+| 55 | Dashboard items wrap right/center on narrow screens for inset, embossed, fullwidth — missing `display: flex` on td (only `flex-wrap` was set). Added explicit `display: flex` | `dashboard.css` | 2026.03.22 |
+| 56 | Expanded fullwidth panel stays visible when folder hidden by Started Only toggle — `fv3-fullwidth-panel` is a sibling, not child. Added panel toggle in `fv3UpdateHidden()` and `:not(.fv3-hidden)` guard in `fv3FullwidthReflow()` | `dashboard.js` | 2026.03.22 |
+| 57 | Chevron position wrong after toggling Started Only back — stale absolute-positioned chevrons not refreshed. Added chevron removal + double-rAF re-injection in change handler | `dashboard.js` | 2026.03.22 |
+| 58 | Dashboard expand/collapse animation fires when disabled — CSS transitions applied unconditionally. Gated behind `.fv3-animate` parent class toggled by `applyDashboardLayouts()` | `dashboard.css`, `dashboard.js` | 2026.03.22 |
+| 59 | Removed all `!important` from dashboard CSS — replaced with element+class selectors (`button.fv3-expand-toggle`), layout-specific compound selectors, and cascade ordering for custom CSS compatibility | `dashboard.css` | 2026.03.22 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 

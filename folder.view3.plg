@@ -5,13 +5,20 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.21">
-<!ENTITY md5 "b6b790c6df2cbcd38fb168c3e76b36a2">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.03.22-beta">
+<!ENTITY md5 "e10f9006d99f804cb3b7c9b653b1532e">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.22
+- Fix dashboard alignment on narrow screens for inset, embossed, fullwidth layouts
+- Fix expanded panel remnant when toggling Started only filter
+- Fix chevron position after toggling Started only filter back
+- Fix animation firing when disabled in dashboard settings
+- Remove all !important from dashboard CSS for custom CSS compatibility
 
 ###2026.03.21
 - Add Embossed dashboard layout style
@@ -440,7 +447,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
