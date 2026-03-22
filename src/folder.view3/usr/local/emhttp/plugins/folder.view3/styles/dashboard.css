@@ -322,8 +322,9 @@ button.fv3-expand-toggle:hover {
 .fv3-layout-fullwidth button.fv3-expand-toggle,
 .fv3-layout-inset button.fv3-expand-toggle {
     position: static;
+    display: inline-flex;
     transform: none;
-    margin: 0 0 0 10px;
+    margin: 0 0 0 6px;
     vertical-align: middle;
 }
 

@@ -1494,21 +1494,6 @@ const fv3InjectExpandToggles = () => {
         const isClassic = outer.closest('.fv3-layout-classic') !== null;
         const inner = tab.querySelector('span.inner');
         tab.classList.toggle('fv3-expanded-tab', expanded);
-        if (expanded && enabled && !isClassic) {
-            if (inner) {
-                inner.style.width = 'auto';
-                inner.style.whiteSpace = 'nowrap';
-            }
-            tab.style.display = 'inline-flex';
-            tab.style.alignItems = 'center';
-        } else {
-            if (inner) {
-                inner.style.width = '';
-                inner.style.whiteSpace = '';
-            }
-            tab.style.display = '';
-            tab.style.alignItems = '';
-        }
         if (!enabled || !expanded || isClassic) {
             outer.querySelectorAll('.fv3-expand-toggle').forEach(el => el.remove());
             return;
@@ -1526,7 +1511,7 @@ const fv3InjectExpandToggles = () => {
             if (isDocker) expandFolderDocker(id);
             else expandFolderVM(id);
         });
-        if (inner) inner.after(btn);
+        if (inner) inner.appendChild(btn);
     });
     requestAnimationFrame(() => {
         fv3UpdateInsetBorders();
@@ -1744,7 +1729,11 @@ const fv3FullwidthExpand = (id, type) => {
         const folderName = showcase.attr('data-folder-name') || '';
         const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
         if (!fv3LayoutReady) panel.css('display', 'none');
-        lastInRow.after(panel);
+        let insertAfter = lastInRow;
+        while (insertAfter.next('.fv3-fullwidth-panel').length) {
+            insertAfter = insertAfter.next('.fv3-fullwidth-panel');
+        }
+        insertAfter.after(panel);
         panel.append(showcase.children());
         outer.data('fv3-panel', panel);
     } else {
