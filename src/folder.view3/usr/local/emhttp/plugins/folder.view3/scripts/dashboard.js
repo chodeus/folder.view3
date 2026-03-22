@@ -1721,13 +1721,14 @@ const fv3FullwidthReflow = (onlyType) => {
             });
             $(`tbody#${tbody} .folder-showcase`).css('display', '');
         });
+        requestAnimationFrame(() => fv3PositionChevrons());
     });
 };
 
 const fv3InsetObserver = new ResizeObserver(() => {
-    fv3PositionChevrons();
     fv3UpdateInsetBorders();
     fv3FullwidthReflow();
+    requestAnimationFrame(() => fv3PositionChevrons());
 });
 fv3InsetObserver.observe(document.documentElement);
 
@@ -1787,7 +1788,7 @@ const fv3OnFilterChange = (type) => {
         fv3AutoWidthTiles();
         fv3UpdateInsetBorders();
         fv3FullwidthReflow(type);
-        requestAnimationFrame(() => fv3PositionChevrons());
+        requestAnimationFrame(() => { requestAnimationFrame(() => fv3PositionChevrons()); });
     }); });
 };
 $(document).on('change', 'input#apps', () => fv3OnFilterChange('docker'));
