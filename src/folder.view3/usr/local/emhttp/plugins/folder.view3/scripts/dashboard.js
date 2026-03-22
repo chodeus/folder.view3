@@ -1779,8 +1779,16 @@ const fv3AutoWidthTiles = () => {
 };
 
 const fv3OnFilterChange = (type) => {
-    fv3UpdateHidden();
     const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
+    $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]`).each(function() {
+        const panel = $(this).data('fv3-panel');
+        if (panel) {
+            $(this).find('.folder-showcase').append(panel.children());
+            panel.remove();
+            $(this).removeData('fv3-panel');
+        }
+    });
+    fv3UpdateHidden();
     document.querySelectorAll(`#${tbody} .folder-showcase-outer:not(.fv3-hidden)[expanded="true"] .fv3-expand-toggle`).forEach(el => el.remove());
     requestAnimationFrame(() => { requestAnimationFrame(() => {
         fv3InjectExpandToggles();
