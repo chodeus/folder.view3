@@ -13,6 +13,13 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.03.22
+- Fix dashboard alignment on narrow screens for inset, embossed, fullwidth layouts
+- Fix expanded panel remnant when toggling Started only filter
+- Fix chevron position after toggling Started only filter back
+- Fix animation firing when disabled in dashboard settings
+- Remove all !important from dashboard CSS for custom CSS compatibility
+
 ###2026.03.21
 - Add Embossed dashboard layout style
 - Add expand/collapse animation option for dashboard layouts
