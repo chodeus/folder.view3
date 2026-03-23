@@ -50,6 +50,7 @@
     width: 100%;
     box-sizing: border-box;
     position: relative;
+    z-index: 0;
     background-color: var(--fv3-inset-bg, transparent);
 }
 
@@ -83,6 +84,7 @@
     position: absolute;
     top: 0;
     left: 0;
+    z-index: -1;
     pointer-events: none;
     overflow: visible;
 }
