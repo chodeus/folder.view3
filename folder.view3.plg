@@ -5,13 +5,27 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.21">
-<!ENTITY md5 "b6b790c6df2cbcd38fb168c3e76b36a2">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.03.23">
+<!ENTITY md5 "2b54245adb4ca4c2ce5472ecfdca3bd6">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.23
+- Fix fullwidth panel appearing in wrong row after Started only toggle
+- Fix chevron missing position styles after Started only toggle
+- Fix dashboard fullwidth panel and chevron positioning after Started only toggle
+- Add fv3-* CSS classes to all dashboard folder elements for custom themes
+- Add fv3-standalone class for containers/VMs not in folders
+- Fix dashboard alignment on narrow screens for inset, embossed, fullwidth layouts
+- Fix expanded panel remnant when toggling Started only filter
+- Fix chevron position after toggling Started only filter back
+- Fix animation firing when disabled in dashboard settings
+- Fix fullwidth panel ordering after Started only toggle
+- Fix fullwidth chevron positioning to match inset layout
+- Restore static chevron positioning for accordion and embossed layouts
 
 ###2026.03.21
 - Add Embossed dashboard layout style

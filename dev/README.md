@@ -127,7 +127,17 @@ FolderView3 adds layout classes to the container `<td>` when a non-classic dashb
 | `.folder-showcase-outer` | Wrapper `<div>` | Wraps each folder's tile + showcase + storage on the Dashboard |
 | `.fv3-greyscale-active` | Container `<td>` | Applied when any folder is expanded and greyscale dimming is enabled — dims non-expanded folders and standalone tiles |
 | `.fv3-hidden` | `.folder-showcase-outer` | Applied when "Started only" hides a stopped folder |
-| `.fv3-folder-appname` | `span` inside folder tile | The folder's name text — target with `[expanded="true"]` parent for expanded-only styling |
+| `.fv3-standalone` | `span.outer` | Applied to containers/VMs on the Dashboard that are not inside any folder |
+| `.fv3-collapse-toggle` | `button` inside folder tile | The collapse chevron button shown on expanded folders (positioned absolutely via JS) |
+| `.fv3-expanded-tab` | `span.outer` folder tile | Applied to the folder tile when expanded — adds `position: relative` for collapse toggle positioning |
+| `.fv3-folder-hand` / `.fv3-folder-hand-docker` / `.fv3-folder-hand-vm` | `span` inside folder tile | Icon wrapper (clickable area around folder icon) |
+| `.fv3-folder-icon` / `.fv3-folder-icon-docker` / `.fv3-folder-icon-vm` | `img` inside `.fv3-folder-hand` | The folder icon image |
+| `.fv3-folder-inner` / `.fv3-folder-inner-docker` / `.fv3-folder-inner-vm` | `span` inside folder tile | Text wrapper containing name + state |
+| `.fv3-folder-appname` / `.fv3-folder-appname-docker` / `.fv3-folder-appname-vm` | `span` inside `.fv3-folder-inner` | The folder's name text — target with `[expanded="true"]` parent for expanded-only styling |
+| `.fv3-folder-status-icon` / `.fv3-folder-status-icon-docker` / `.fv3-folder-status-icon-vm` | `i.fa` inside `.fv3-folder-inner` | Play/square status icon |
+| `.fv3-folder-state` / `.fv3-folder-state-docker` / `.fv3-folder-state-vm` | `span` inside `.fv3-folder-inner` | The "X/Y started" or "stopped" status text |
+| `.fv3-folder-storage` | `div` inside folder tile | Hidden container for collapsed children |
+| `.fv3-folder-showcase` | `div` inside `.folder-showcase-outer` | Container for expanded children (inset/accordion/embossed) |
 | `.fv3-child-appname` | `span.inner` inside child tiles | The child container/VM name wrapper inside an expanded folder's showcase |
 | `.fv3-child-appname-text` | `span` inside `.fv3-child-appname` | The actual container/VM name text span — use this to style individual child names |
 | `.fv3-label-hidden` | Container `<td>` | Applied when "Show folder name in expanded panel" is set to No |
@@ -305,18 +315,23 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
       <!-- Folder wrapper -->
       <div class="folder-showcase-outer folder-showcase-outer-{ID}" expanded="true|false">
         <span class="outer solid folder-docker">
-          <!-- Folder tile: icon, name (.fv3-folder-appname), status -->
+          <span class="hand fv3-folder-hand fv3-folder-hand-docker">
+            <img class="img fv3-folder-icon fv3-folder-icon-docker" src="...">
+          </span>
+          <span class="inner fv3-folder-inner fv3-folder-inner-docker">
+            <span class="fv3-folder-appname fv3-folder-appname-docker">Folder Name</span>
+            <i class="fa fv3-folder-status-icon fv3-folder-status-icon-docker"></i>
+            <span class="state fv3-folder-state fv3-folder-state-docker">2/5 started</span>
+          </span>
+          <div class="folder-storage fv3-folder-storage"></div>
         </span>
-        <div class="folder-showcase" data-folder-name="Folder Name">
+        <div class="folder-showcase fv3-folder-showcase" data-folder-name="Folder Name">
           <!-- Expanded child tiles (inset/accordion) -->
           <span class="outer solid">
             <span class="inner fv3-child-appname">
               <span class="fv3-child-appname-text">Container Name</span>
             </span>
           </span>
-        </div>
-        <div class="folder-storage">
-          <!-- Hidden/collapsed children -->
         </div>
       </div>
       <!-- Fullwidth panel (injected after last tile in row) -->
