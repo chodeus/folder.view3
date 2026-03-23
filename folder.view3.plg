@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.03.23.1
+- Dynamic folder name column width — expands/shrinks to fit folder name
+
 ###2026.03.23
 - Fix fullwidth panel appearing in wrong row after Started only toggle
 - Fix chevron missing position styles after Started only toggle
