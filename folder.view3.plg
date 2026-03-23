@@ -5,7 +5,7 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
 <!ENTITY version "2026.03.23.2">
 <!ENTITY md5 "7747491c51dfc37068a0dd9515e46541">
 ]>
