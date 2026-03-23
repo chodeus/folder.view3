@@ -271,16 +271,21 @@
     vertical-align: middle;
 }
 
+.fv3-layout-fullwidth.fv3-collapse-padded > span.outer,
+.fv3-layout-fullwidth .fv3-collapse-enabled > span.outer {
+    padding-right: 10px;
+}
+
 .fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer {
     margin-bottom: 5px;
 }
 
-/* ===== Expand toggle button ===== */
+/* ===== Collapse toggle button ===== */
 .fv3-expanded-tab {
     position: relative;
 }
 
-button.fv3-expand-toggle {
+button.fv3-collapse-toggle {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -303,12 +308,12 @@ button.fv3-expand-toggle {
     cursor: pointer;
 }
 
-button.fv3-expand-toggle:hover {
+button.fv3-collapse-toggle:hover {
     border-color: #ffad5c;
     color: #ffad5c;
 }
 
-.fv3-expand-toggle i.fa {
+.fv3-collapse-toggle i.fa {
     display: block;
     width: 100%;
     text-align: center;
@@ -317,16 +322,16 @@ button.fv3-expand-toggle:hover {
     padding-left: 1px;
 }
 
-.fv3-layout-accordion button.fv3-expand-toggle,
-.fv3-layout-embossed button.fv3-expand-toggle {
+.fv3-layout-accordion button.fv3-collapse-toggle,
+.fv3-layout-embossed button.fv3-collapse-toggle {
     position: static;
     transform: none;
     margin: 0 0 0 10px;
     vertical-align: middle;
 }
 
-.fv3-layout-fullwidth button.fv3-expand-toggle,
-.fv3-layout-inset button.fv3-expand-toggle {
+.fv3-layout-fullwidth button.fv3-collapse-toggle,
+.fv3-layout-inset button.fv3-collapse-toggle {
     margin: 0;
 }
 

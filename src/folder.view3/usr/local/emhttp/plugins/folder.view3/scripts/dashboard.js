@@ -100,11 +100,12 @@ const createFolders = async () => {
             }
         }
 
-        fv3InjectExpandToggles();
+        fv3InjectCollapseToggles();
         fv3UpdateGreyscale();
         fv3UpdateInsetBorders();
         fv3AutoWidthTiles();
         document.querySelectorAll('.fv3-layout-inset .folder-showcase, .fv3-layout-embossed .folder-showcase').forEach(el => fv3ShowcaseObserver.observe(el));
+        $('tbody#docker_view > tr.updated > td').children('span.outer').not('.folder-docker').not('.folder-element-docker').addClass('fv3-standalone');
 
         folderEvents.dispatchEvent(new CustomEvent('docker-post-folders-creation', {detail: {
             folders: folders,
@@ -214,11 +215,12 @@ const createFolders = async () => {
             }
         }
 
-        fv3InjectExpandToggles();
+        fv3InjectCollapseToggles();
         fv3UpdateGreyscale();
         fv3UpdateInsetBorders();
         fv3AutoWidthTiles();
         document.querySelectorAll('.fv3-layout-inset .folder-showcase, .fv3-layout-embossed .folder-showcase').forEach(el => fv3ShowcaseObserver.observe(el));
+        $('tbody#vm_view > tr.updated > td').children('span.outer').not('.folder-vm').not('.folder-element-vm').addClass('fv3-standalone');
 
         folderEvents.dispatchEvent(new CustomEvent('vm-post-folders-creation', {detail: {
             folders: folders,
@@ -271,7 +273,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     folder.containers = folder.containers.concat(order.filter(el => containersInfo[el]?.Labels['folder.view3'] === folder.name));
 
     // the HTML template for the folder
-    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${id}" onclick='addDockerFolderContext("${id}")' class="hand docker folder-hand-docker"><img src="${escapeHtml(folder.icon)}" class="img folder-img-docker" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker"><span class="folder-appname-docker fv3-folder-appname">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker"></i><span class="state folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage"></div></span><div class="folder-showcase-${id} folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
+    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${id}" onclick='addDockerFolderContext("${id}")' class="hand docker folder-hand-docker fv3-folder-hand fv3-folder-hand-docker"><img src="${escapeHtml(folder.icon)}" class="img folder-img-docker fv3-folder-icon fv3-folder-icon-docker" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker fv3-folder-inner fv3-folder-inner-docker"><span class="folder-appname-docker fv3-folder-appname fv3-folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker fv3-folder-status-icon fv3-folder-status-icon-docker"></i><span class="state folder-state-docker fv3-folder-state fv3-folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage"></div></span><div class="folder-showcase-${id} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
     // insertion at position of the folder
     if (position === 0) {
@@ -473,7 +475,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     }
 
     // the HTML template for the folder
-    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${id}" onclick='addVMFolderContext("${id}")' class="hand vm folder-hand-vm"><img src="${escapeHtml(folder.icon)}" class="img folder-img-vm" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm"><span class="folder-appname-vm fv3-folder-appname">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm"></i><span class="state folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage" style="display:none"></div></span><div class="folder-showcase-${id} folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
+    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${id}" onclick='addVMFolderContext("${id}")' class="hand vm folder-hand-vm fv3-folder-hand fv3-folder-hand-vm"><img src="${escapeHtml(folder.icon)}" class="img folder-img-vm fv3-folder-icon fv3-folder-icon-vm" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm fv3-folder-inner fv3-folder-inner-vm"><span class="folder-appname-vm fv3-folder-appname fv3-folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm fv3-folder-status-icon fv3-folder-status-icon-vm"></i><span class="state folder-state-vm fv3-folder-state fv3-folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage" style="display:none"></div></span><div class="folder-showcase-${id} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
     // insertion at position of the folder
     if (position === 0) {
@@ -698,7 +700,7 @@ const expandFolderDocker = (id) => {
             if(globalFolders.docker) {
                 globalFolders.docker[id].status.expanded = false;
             }
-            fv3InjectExpandToggles();
+            fv3InjectCollapseToggles();
             fv3UpdateGreyscale();
             fv3UpdateInsetBorders();
             fv3AutoWidthTiles();
@@ -715,7 +717,7 @@ const expandFolderDocker = (id) => {
         if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady) {
             fv3FullwidthExpand(id, 'docker');
         }
-        fv3InjectExpandToggles();
+        fv3InjectCollapseToggles();
         fv3UpdateGreyscale();
         fv3AutoWidthTiles();
         const animTarget = fv3GetAnimTarget(dockerDashboardLayout, outer, showcase);
@@ -749,7 +751,7 @@ const expandFolderVM = (id) => {
             if(globalFolders.vms) {
                 globalFolders.vms[id].status.expanded = false;
             }
-            fv3InjectExpandToggles();
+            fv3InjectCollapseToggles();
             fv3UpdateGreyscale();
             fv3UpdateInsetBorders();
             fv3AutoWidthTiles();
@@ -766,7 +768,7 @@ const expandFolderVM = (id) => {
         if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady) {
             fv3FullwidthExpand(id, 'vm');
         }
-        fv3InjectExpandToggles();
+        fv3InjectCollapseToggles();
         fv3UpdateGreyscale();
         fv3AutoWidthTiles();
         const animTarget = fv3GetAnimTarget(vmDashboardLayout, outer, showcase);
@@ -1449,8 +1451,8 @@ let folderDebugMode = false;
 let folderDebugModeWindow = [];
 let dockerDashboardLayout = 'classic';
 let vmDashboardLayout = 'classic';
-let fv3DockerExpandToggle = false;
-let fv3VmExpandToggle = false;
+let fv3DockerCollapseToggle = false;
+let fv3VmCollapseToggle = false;
 let fv3DockerGreyscale = false;
 let fv3VmGreyscale = false;
 let fv3DockerShowLabel = false;
@@ -1462,8 +1464,8 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         const s = JSON.parse(r);
         if (s.dashboard_docker_layout) dockerDashboardLayout = s.dashboard_docker_layout;
         if (s.dashboard_vm_layout) vmDashboardLayout = s.dashboard_vm_layout;
-        fv3DockerExpandToggle = s.dashboard_docker_expand_toggle === 'yes';
-        fv3VmExpandToggle = s.dashboard_vm_expand_toggle === 'yes';
+        fv3DockerCollapseToggle = s.dashboard_docker_expand_toggle === 'yes';
+        fv3VmCollapseToggle = s.dashboard_vm_expand_toggle === 'yes';
         fv3DockerGreyscale = s.dashboard_docker_greyscale === 'yes';
         fv3VmGreyscale = s.dashboard_vm_greyscale === 'yes';
         fv3DockerShowLabel = s.dashboard_docker_folder_label === 'yes';
@@ -1482,20 +1484,23 @@ const applyDashboardLayouts = () => {
     vmTd.toggleClass('fv3-label-hidden', !fv3VmShowLabel);
     dockerTd.toggleClass('fv3-animate', fv3AnimationEnabled);
     vmTd.toggleClass('fv3-animate', fv3AnimationEnabled);
+    dockerTd.toggleClass('fv3-collapse-padded', dockerDashboardLayout === 'fullwidth' && fv3DockerCollapseToggle);
+    vmTd.toggleClass('fv3-collapse-padded', vmDashboardLayout === 'fullwidth' && fv3VmCollapseToggle);
 };
 
-const fv3InjectExpandToggles = () => {
+const fv3InjectCollapseToggles = () => {
     document.querySelectorAll('.folder-showcase-outer').forEach(outer => {
         const expanded = outer.getAttribute('expanded') === 'true';
         const tab = outer.querySelector(':scope > span.outer');
         if (!tab) return;
         const isDocker = outer.querySelector('.folder-appname-docker') !== null;
-        const enabled = isDocker ? fv3DockerExpandToggle : fv3VmExpandToggle;
+        const enabled = isDocker ? fv3DockerCollapseToggle : fv3VmCollapseToggle;
         const isInset = outer.closest('.fv3-layout-inset') !== null;
         const isClassic = outer.closest('.fv3-layout-classic') !== null;
         const isFullwidth = outer.closest('.fv3-layout-fullwidth') !== null;
         const inner = tab.querySelector('span.inner');
-        tab.classList.toggle('fv3-expanded-tab', expanded);
+        tab.classList.toggle('fv3-expanded-tab', expanded && enabled && !isClassic);
+        outer.classList.toggle('fv3-collapse-enabled', isFullwidth && enabled);
         if (expanded && enabled && !isClassic && !isFullwidth) {
             if (inner) {
                 inner.style.width = 'auto';
@@ -1516,15 +1521,15 @@ const fv3InjectExpandToggles = () => {
             }
         }
         if (!enabled || !expanded || isClassic) {
-            outer.querySelectorAll('.fv3-expand-toggle').forEach(el => el.remove());
+            outer.querySelectorAll('.fv3-collapse-toggle').forEach(el => el.remove());
             return;
         }
-        if (outer.querySelector('.fv3-expand-toggle')) return;
+        if (outer.querySelector('.fv3-collapse-toggle')) return;
         const idEl = outer.querySelector('[id^="folder-id-"]');
         if (!idEl) return;
         const id = idEl.id.replace('folder-id-', '');
         const btn = document.createElement('button');
-        btn.className = 'fv3-expand-toggle';
+        btn.className = 'fv3-collapse-toggle';
         btn.innerHTML = '<i class="fa fa-chevron-up" aria-hidden="true"></i>';
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1544,10 +1549,12 @@ const fv3InjectExpandToggles = () => {
     });
 };
 
+let fv3ChevronRetry = null;
 const fv3PositionChevrons = () => {
-    document.querySelectorAll('.fv3-layout-inset .fv3-expand-toggle').forEach(btn => {
+    let hasZero = false;
+    document.querySelectorAll('.fv3-layout-inset .fv3-collapse-toggle').forEach(btn => {
         const tab = btn.closest('span.outer');
-        if (!tab) return;
+        if (!tab || !tab.offsetWidth || !tab.offsetHeight) { hasZero = true; return; }
         const appname = tab.querySelector('.fv3-folder-appname');
         const state = tab.querySelector('.state');
         if (!appname) return;
@@ -1560,9 +1567,9 @@ const fv3PositionChevrons = () => {
         btn.style.top = (tab.offsetHeight / 2) + 'px';
         btn.style.transform = 'translateY(-50%)';
     });
-    document.querySelectorAll('.fv3-layout-fullwidth .fv3-expand-toggle').forEach(btn => {
+    document.querySelectorAll('.fv3-layout-fullwidth .fv3-collapse-toggle').forEach(btn => {
         const tab = btn.closest('span.outer');
-        if (!tab || !tab.offsetHeight) return;
+        if (!tab || !tab.offsetWidth || !tab.offsetHeight) { hasZero = true; return; }
         const inner = tab.querySelector('span.inner');
         const appname = tab.querySelector('.fv3-folder-appname');
         const state = tab.querySelector('.state');
@@ -1577,6 +1584,10 @@ const fv3PositionChevrons = () => {
         btn.style.top = vCenter + 'px';
         btn.style.transform = 'translateY(-50%)';
     });
+    if (hasZero) {
+        if (fv3ChevronRetry) clearTimeout(fv3ChevronRetry);
+        fv3ChevronRetry = setTimeout(() => { fv3ChevronRetry = null; fv3PositionChevrons(); fv3UpdateInsetBorders(); }, 200);
+    }
 };
 
 const fv3UpdateGreyscale = () => {
@@ -1610,7 +1621,7 @@ const fv3UpdateInsetBorders = () => {
 
             const W = outer.offsetWidth;
             const outerRect = outer.getBoundingClientRect();
-            const chevron = outer.querySelector('.fv3-expand-toggle');
+            const chevron = outer.querySelector('.fv3-collapse-toggle');
             const appname = tab.querySelector('.fv3-folder-appname');
             const state = tab.querySelector('.state');
             const icon = tab.querySelector('[id^="folder-id-"]');
@@ -1665,62 +1676,69 @@ const fv3UpdateInsetBorders = () => {
 };
 
 let fv3FullwidthRaf = null;
+const fv3FullwidthReflowSync = (onlyType) => {
+    const types = onlyType ? [onlyType] : ['docker', 'vm'];
+    types.forEach(type => {
+        const layout = type === 'docker' ? dockerDashboardLayout : vmDashboardLayout;
+        if (layout !== 'fullwidth') return;
+        const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
+        const parentTd = $(`tbody#${tbody} > tr.updated > td`);
+        const expandedOuters = $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).toArray();
+        const needsPanel = expandedOuters.filter(el => !$(el).data('fv3-panel'));
+        if (needsPanel.length === 0) return;
+        $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]`).each(function() {
+            const panel = $(this).data('fv3-panel');
+            if (panel) {
+                $(this).find('.folder-showcase').append(panel.children());
+                panel.remove();
+                $(this).removeData('fv3-panel');
+            }
+        });
+        expandedOuters.forEach(el => {
+            $(el).find('.folder-showcase').css('display', 'none');
+        });
+        expandedOuters.forEach((current, idx) => {
+            const id = (current.className || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+            if (!id) return;
+            const outer = $(current);
+            const showcase = outer.find('.folder-showcase');
+            const folderTile = outer.children('span.outer').first()[0];
+            if (!folderTile) return;
+            const folderTop = Math.round(folderTile.getBoundingClientRect().top);
+            let lastInRow = outer;
+            const nextExpanded = idx < expandedOuters.length - 1 ? expandedOuters[idx + 1] : null;
+            parentTd.children('.folder-showcase-outer, span.outer:not(:empty)').each(function() {
+                if (this.classList.contains('fv3-fullwidth-panel')) return;
+                if (nextExpanded && this === nextExpanded) return false;
+                let visualEl;
+                if (this.classList.contains('folder-showcase-outer')) {
+                    visualEl = this.querySelector(':scope > span.outer');
+                } else {
+                    visualEl = this;
+                }
+                if (!visualEl || visualEl.offsetParent === null) return;
+                if (Math.round(visualEl.getBoundingClientRect().top) === folderTop) {
+                    lastInRow = $(this);
+                }
+            });
+            const folderName = showcase.attr('data-folder-name') || '';
+            const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
+            let insertAfter = lastInRow;
+            while (insertAfter.next('.fv3-fullwidth-panel').length) {
+                insertAfter = insertAfter.next('.fv3-fullwidth-panel');
+            }
+            insertAfter.after(panel);
+            panel.append(showcase.children());
+            outer.data('fv3-panel', panel);
+        });
+        $(`tbody#${tbody} .folder-showcase`).css('display', '');
+    });
+};
 const fv3FullwidthReflow = (onlyType) => {
     if (fv3FullwidthRaf || !fv3LayoutReady) return;
     fv3FullwidthRaf = requestAnimationFrame(() => {
         fv3FullwidthRaf = null;
-        const types = onlyType ? [onlyType] : ['docker', 'vm'];
-        types.forEach(type => {
-            const layout = type === 'docker' ? dockerDashboardLayout : vmDashboardLayout;
-            if (layout !== 'fullwidth') return;
-            const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
-            const parentTd = $(`tbody#${tbody} > tr.updated > td`);
-            $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]`).each(function() {
-                const panel = $(this).data('fv3-panel');
-                if (panel) {
-                    $(this).find('.folder-showcase').append(panel.children());
-                    panel.remove();
-                    $(this).removeData('fv3-panel');
-                }
-            });
-            $(`tbody#${tbody} .folder-showcase`).css('display', 'none');
-            const expandedOuters = $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).toArray();
-            expandedOuters.forEach((current, idx) => {
-                const id = (current.className || '').match(/folder-showcase-outer-(\S+)/)?.[1];
-                if (!id) return;
-                const outer = $(current);
-                const showcase = outer.find('.folder-showcase');
-                const folderTile = outer.children('span.outer').first()[0];
-                if (!folderTile) return;
-                const folderTop = Math.round(folderTile.getBoundingClientRect().top);
-                let lastInRow = outer;
-                const nextExpanded = idx < expandedOuters.length - 1 ? expandedOuters[idx + 1] : null;
-                parentTd.children('.folder-showcase-outer, span.outer:not(:empty)').each(function() {
-                    if (this.classList.contains('fv3-fullwidth-panel')) return;
-                    if (nextExpanded && this === nextExpanded) return false;
-                    let visualEl;
-                    if (this.classList.contains('folder-showcase-outer')) {
-                        visualEl = this.querySelector(':scope > span.outer');
-                    } else {
-                        visualEl = this;
-                    }
-                    if (!visualEl || visualEl.offsetParent === null) return;
-                    if (Math.round(visualEl.getBoundingClientRect().top) === folderTop) {
-                        lastInRow = $(this);
-                    }
-                });
-                const folderName = showcase.attr('data-folder-name') || '';
-                const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
-                let insertAfter = lastInRow;
-                while (insertAfter.next('.fv3-fullwidth-panel').length) {
-                    insertAfter = insertAfter.next('.fv3-fullwidth-panel');
-                }
-                insertAfter.after(panel);
-                panel.append(showcase.children());
-                outer.data('fv3-panel', panel);
-            });
-            $(`tbody#${tbody} .folder-showcase`).css('display', '');
-        });
+        fv3FullwidthReflowSync(onlyType);
         requestAnimationFrame(() => fv3PositionChevrons());
     });
 };
@@ -1780,23 +1798,21 @@ const fv3AutoWidthTiles = () => {
 
 const fv3OnFilterChange = (type) => {
     const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
-    $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]`).each(function() {
-        const panel = $(this).data('fv3-panel');
-        if (panel) {
-            $(this).find('.folder-showcase').append(panel.children());
-            panel.remove();
-            $(this).removeData('fv3-panel');
-        }
-    });
+    fv3InsetObserver.disconnect();
+    if (fv3FullwidthRaf) { cancelAnimationFrame(fv3FullwidthRaf); fv3FullwidthRaf = null; }
     fv3UpdateHidden();
-    document.querySelectorAll(`#${tbody} .folder-showcase-outer:not(.fv3-hidden)[expanded="true"] .fv3-expand-toggle`).forEach(el => el.remove());
+    document.querySelectorAll(`#${tbody} .folder-showcase-outer:not(.fv3-hidden)[expanded="true"] .fv3-collapse-toggle`).forEach(el => el.remove());
     requestAnimationFrame(() => { requestAnimationFrame(() => {
-        fv3InjectExpandToggles();
+        fv3InjectCollapseToggles();
         fv3UpdateGreyscale();
         fv3AutoWidthTiles();
         fv3UpdateInsetBorders();
-        fv3FullwidthReflow(type);
-        requestAnimationFrame(() => { requestAnimationFrame(() => fv3PositionChevrons()); });
+        requestAnimationFrame(() => {
+            fv3PositionChevrons();
+            document.documentElement.style.paddingRight = '0.25px';
+            fv3InsetObserver.observe(document.documentElement);
+            requestAnimationFrame(() => { document.documentElement.style.paddingRight = ''; });
+        });
     }); });
 };
 $(document).on('change', 'input#apps', () => fv3OnFilterChange('docker'));
@@ -1841,7 +1857,7 @@ const fv3FullwidthExpand = (id, type) => {
         insertAfter.after(panel);
         panel.append(showcase.children());
         outer.data('fv3-panel', panel);
-    } else {
+    } else if (!expanded) {
         const panel = outer.data('fv3-panel');
         if (panel) {
             showcase.append(panel.children());
