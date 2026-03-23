@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.03.23.3
+- Fix chevron position shift when expanding/collapsing folders
+
 ###2026.03.23.2
 - Dynamic folder name column width — expands/shrinks to fit folder name
 

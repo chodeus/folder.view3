@@ -168,6 +168,7 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 12 | Convert Yes/No settings to Unraid-native On/Off toggle switches (switchButton) | `FolderView3.page`, `folderview3.js` | 2026.03.19 |
 | 13 | Inset dashboard style improved — SVG L-shape border with ResizeObserver, tighter child tile spacing | `dashboard.js`, `dashboard.css` | 2026.03.19 |
 | 14 | Dynamic folder name column width — shrinks/expands to fit folder name instead of fixed 220px | `docker.css`, `vm.css` | 2026.03.23.2 |
+| 15 | Fix chevron position shift when expanding/collapsing folders — add min-width to match Unraid container cell width | `docker.css`, `vm.css` | 2026.03.23.3 |
 
 ### Translation Updates
 
