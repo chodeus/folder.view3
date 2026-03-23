@@ -127,6 +127,8 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 57 | Chevron position wrong after toggling Started Only back — stale absolute-positioned chevrons not refreshed. Added chevron removal + double-rAF re-injection in change handler | `dashboard.js` | 2026.03.22 |
 | 58 | Dashboard expand/collapse animation fires when disabled — CSS transitions applied unconditionally. Gated behind `.fv3-animate` parent class toggled by `applyDashboardLayouts()` | `dashboard.css`, `dashboard.js` | 2026.03.22 |
 | 59 | Removed all `!important` from dashboard CSS — replaced with element+class selectors (`button.fv3-expand-toggle`), layout-specific compound selectors, and cascade ordering for custom CSS compatibility | `dashboard.css` | 2026.03.22 |
+| 60 | Fullwidth panel inserted in wrong row after Started Only toggle — `fv3FullwidthReflow` hid ALL `.folder-showcase` elements, changing flex row wrapping so more tiles fit per row. Scoped hiding to only expanded folders' showcases, matching `fv3FullwidthExpand` behavior | `dashboard.js` | 2026.03.23 |
+| 61 | Chevron expand-toggle missing inline position styles after Started Only toggle — ResizeObserver raced with explicit rAF chain, blocking `fv3FullwidthReflow(type)` via `fv3FullwidthRaf` guard. Disconnect observer during filter change, reconnect after all rAFs settle | `dashboard.js` | 2026.03.23 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
