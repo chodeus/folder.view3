@@ -15,6 +15,8 @@ const createFolders = async () => {
         const unraidOrder = JSON.parse(prom[1]);
         const containersInfo = JSON.parse(prom[2]);
         let order = Object.values(JSON.parse(prom[3]));
+
+        fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
     
         // Filter the order to get the container that aren't in the order, this happen when a new container is created
         let newOnes = order.filter(x => !unraidOrder.includes(x));
@@ -132,6 +134,8 @@ const createFolders = async () => {
         const unraidOrder = Object.values(JSON.parse(prom[1]));
         const vmInfo = JSON.parse(prom[2]);
         let order = Object.values(JSON.parse(prom[3]));
+
+        fv3ResolveRenamedContainers(folders, vmInfo, 'vm');
     
         // Filter the webui order to get the container that aren't in the order, this happen when a new container is created
         let newOnes = order.filter(x => !unraidOrder.includes(x));

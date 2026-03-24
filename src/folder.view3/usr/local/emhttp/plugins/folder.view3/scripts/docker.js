@@ -18,6 +18,8 @@ const createFolders = async () => {
     const containersInfo = JSON.parse(prom[2]);
     let order = Object.values(JSON.parse(prom[3]));
 
+    fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
+
     if (FOLDER_VIEW_DEBUG_MODE) {
         console.log('[FV3_DEBUG] createFolders: --- INITIAL ORDERS ---');
         console.log('[FV3_DEBUG] createFolders: Raw `unraidOrder` (from read_order.php):', JSON.parse(JSON.stringify(unraidOrder)));
@@ -160,6 +162,8 @@ const createFolders = async () => {
     // Assing the folder done to the global object
     globalFolders = foldersDone;
     if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] createFolders: Assigned foldersDone to globalFolders:', {...globalFolders});
+
+    requestAnimationFrame(() => fv3SyncPreviewHeights());
 
     folderDebugMode = false; // Existing flag
     if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] createFolders: Set folderDebugMode (existing) to false.');
@@ -943,6 +947,9 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}): Wrapped preview spans with .folder-preview-wrapper.`);
     if (folder.settings.preview_overflow === 1) {
         $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-expand');
+        if (folder.settings.preview_row_separator) {
+            requestAnimationFrame(() => fv3UpdateRowSeparators(id));
+        }
     } else if (folder.settings.preview_overflow === 2) {
         $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-scroll');
     }
@@ -1726,6 +1733,93 @@ if (FOLDER_VIEW_DEBUG_MODE) {
         folderobserverConfig: {...folderobserverConfig}, folderReq: [...folderReq]
     });
 }
+
+const fv3UpdateRowSeparators = (folderId) => {
+    const ids = folderId ? [folderId] : Object.keys(globalFolders);
+    ids.forEach(id => {
+        const folder = globalFolders[id];
+        if (!folder || !folder.settings.preview_row_separator || folder.settings.preview_overflow !== 1) return;
+        const preview = $(`tr.folder-id-${id} div.folder-preview`)[0];
+        if (!preview) return;
+        preview.querySelectorAll('.fv3-row-separator').forEach(el => el.remove());
+        const wrappers = $(`tr.folder-id-${id} div.folder-preview .folder-preview-wrapper`).get();
+        if (wrappers.length < 2) return;
+        let lastTop = wrappers[0].offsetTop;
+        const rows = [[]];
+        wrappers.forEach(w => {
+            if (w.offsetTop > lastTop) { rows.push([]); lastTop = w.offsetTop; }
+            rows[rows.length - 1].push(w);
+        });
+        if (rows.length > 1) {
+            const sepColor = folder.settings.preview_row_separator_color || '';
+            for (let i = 0; i < rows.length - 1; i++) {
+                const lastInRow = rows[i][rows[i].length - 1];
+                const nextRowFirst = rows[i + 1][0];
+                const bottom = lastInRow.offsetTop + lastInRow.offsetHeight;
+                const top = nextRowFirst.offsetTop;
+                const sep = document.createElement('div');
+                sep.className = 'fv3-row-separator';
+                sep.style.top = Math.round((bottom + top) / 2) + 'px';
+                if (sepColor) sep.style.backgroundColor = sepColor;
+                preview.appendChild(sep);
+            }
+        }
+    });
+};
+
+let fv3ResizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(fv3ResizeTimer);
+    fv3ResizeTimer = setTimeout(() => {
+        fv3SyncPreviewHeights();
+        fv3UpdateRowSeparators();
+    }, 150);
+});
+
+const fv3SyncPreviewHeights = () => {
+    const isAdvanced = $.cookie('docker_listview_mode') == 'advanced';
+    document.querySelectorAll('tr.folder div.folder-preview:not(.fv3-overflow-expand)').forEach(el => {
+        el.style.height = '';
+        el.querySelectorAll('.folder-preview-wrapper').forEach(w => { w.style.marginTop = ''; });
+        if (!el.classList.contains('fv3-overflow-scroll')) {
+            el.querySelectorAll('.folder-preview-divider').forEach(d => { d.style.marginTop = ''; });
+        }
+        const cpuCell = el.closest('tr').querySelector('td.folder-advanced');
+        const isScroll = el.classList.contains('fv3-overflow-scroll');
+        if (isAdvanced && cpuCell && cpuCell.offsetHeight > 0) {
+            const targetHeight = cpuCell.offsetHeight - 10;
+            const defaultHeight = el.offsetHeight;
+            if (targetHeight > defaultHeight) {
+                el.style.height = targetHeight + 'px';
+                const extra = targetHeight - defaultHeight;
+                const newMargin = 7 + extra / 2;
+                el.querySelectorAll('.folder-preview-wrapper').forEach(w => {
+                    w.style.marginTop = newMargin + 'px';
+                });
+                if (!isScroll) {
+                    el.querySelectorAll('.folder-preview-divider').forEach(d => {
+                        d.style.marginTop = -newMargin + 'px';
+                    });
+                }
+            }
+        }
+    });
+};
+
+// Detect advanced/basic view toggle and recalculate on resize
+let fv3LastAdvanced = $.cookie('docker_listview_mode') == 'advanced';
+document.addEventListener('click', () => {
+    setTimeout(() => {
+        const nowAdvanced = $.cookie('docker_listview_mode') == 'advanced';
+        if (nowAdvanced !== fv3LastAdvanced) {
+            fv3LastAdvanced = nowAdvanced;
+            setTimeout(() => {
+                fv3SyncPreviewHeights();
+                fv3UpdateRowSeparators();
+            }, 300);
+        }
+    }, 100);
+});
 
 // Add the button for creating a folder
 const createFolderBtn = () => {

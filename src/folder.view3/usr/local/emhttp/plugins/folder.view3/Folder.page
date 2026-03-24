@@ -292,7 +292,7 @@ Markdown="false"
                         <dt data-i18n="preview-overflow">Preview overflow:</dt>
                         <dd>
                             <img class="img" style="visibility: hidden;">
-                            <select name="preview_overflow">
+                            <select name="preview_overflow" onchange="updateForm()">
                                 <option value="0" data-i18n="preview-overflow-0" selected>Default</option>
                                 <option value="1" data-i18n="preview-overflow-1">Expand row</option>
                                 <option value="2" data-i18n="preview-overflow-2">Scroll</option>
@@ -308,6 +308,45 @@ Markdown="false"
                         </p>
                     </blockquote>
                 </div>
+                <ul constraint="overflow-expand" style="display: none;">
+                    <li>
+                        <div class="basic">
+                            <dl>
+                                <dt data-i18n="row-separator">Row separator:</dt>
+                                <dd>
+                                    <input class="basic-switch" name="preview_row_separator" type="checkbox" style="display: none;" onchange="updateForm()" />
+                                </dd>
+                            </dl>
+                            <blockquote class="inline_help">
+                                <p data-i18n="[html]row-separator-tooltip">
+                                    Shows a faint horizontal line between rows when the preview expands to multiple lines.
+                                </p>
+                            </blockquote>
+                        </div>
+                        <ul constraint="separator-color" style="display: none;">
+                            <li>
+                                <div class="basic">
+                                    <dl>
+                                        <dt data-i18n="separator-color">Separator color:</dt>
+                                        <dd>
+                                            <input type="color" name="preview_row_separator_color" style="height:28px;vertical-align:middle;">
+                                            <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_row_separator_color.value = rgbToHex($('body').css('color'));" style="width:44px;height:28px;min-width:0;padding:0;margin:0;margin-left:0.5em;vertical-align:middle;">
+                                                <i class="fa fa-repeat" aria-hidden="true"></i>
+                                            </button>
+                                        </dd>
+                                    </dl>
+                                    <blockquote class="inline_help">
+                                        <p data-i18n="[html]separator-color-tooltip">
+                                            Set the color of the row separator line.
+                                            <br>
+                                            The <i class="fa fa-repeat" aria-hidden="true"></i> button will reset to the current font color.
+                                        </p>
+                                    </blockquote>
+                                </div>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
             </li>
             <li constraint="docker preview-1 preview-2 preview-3 preview-4">
                 <div class="basic">

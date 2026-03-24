@@ -6,12 +6,19 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.23.3">
-<!ENTITY md5 "003e0cdd2ee8ece9818cb4a079d6a0ae">
+<!ENTITY version "2026.03.24">
+<!ENTITY md5 "91030cd14b08177b6ce278204e74f19f">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.24
+- Row separator as configurable folder setting
+- Fix containers ejected from folders after rename
+- Preview borders adapt to advanced view row height
+- Mobile device UI improvements
+- Scroll overflow preview centering fix
 
 ###2026.03.23.3
 - Fix chevron position shift when expanding/collapsing folders

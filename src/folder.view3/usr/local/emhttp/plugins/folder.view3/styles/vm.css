@@ -81,7 +81,21 @@ td.folder-name .folder-outer {
 
 .folder-preview.fv3-overflow-expand {
     height: auto;
+    min-height: var(--fv3-folder-preview-height);
     max-height: none;
+    overflow: visible;
+    padding-bottom: 7px;
+    row-gap: 7px;
+    position: relative;
+}
+
+.fv3-row-separator {
+    position: absolute;
+    left: var(--fv3-folder-preview-wrapper-margin);
+    right: var(--fv3-folder-preview-wrapper-margin);
+    height: 1px;
+    background: rgba(128, 128, 128, 0.15);
+    pointer-events: none;
 }
 
 .folder-preview.fv3-overflow-scroll {
@@ -92,6 +106,8 @@ td.folder-name .folder-outer {
 
 .folder-preview.fv3-overflow-scroll .folder-preview-wrapper {
     flex-shrink: 0;
+    height: calc(var(--fv3-folder-preview-height) - 7px);
+    margin-top: 10px;
 }
 
 .folder-preview.fv3-overflow-scroll::-webkit-scrollbar {
@@ -135,8 +151,29 @@ td.folder-name .folder-outer {
     margin-top: -7px;
 }
 
+.folder-preview.fv3-overflow-scroll .folder-preview-divider:not(:last-child) {
+    height: auto;
+    align-self: stretch;
+    margin-top: 10px;
+    margin-bottom: 0;
+}
+
+.folder-preview.fv3-overflow-expand .folder-preview-divider:not(:last-child) {
+    height: calc(var(--fv3-folder-preview-height) * 0.8);
+    margin-top: 7px;
+    align-self: flex-start;
+}
+
 .folder-element .ct-name {
     padding-left: 30px !important;
+}
+
+.folder-element .ct-name .inner {
+    display: inline-block;
+    max-width: calc(100% - 55px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
 }
 
 div.folder-preview-4 span.outer{
@@ -148,4 +185,50 @@ div.folder-preview-4 span.outer{
 
 .folder-element-custom-btn {
     margin-left: 0.5em;
+}
+
+/* --- Mobile / Narrow Screen --- */
+@media (max-width: 768px) {
+    :root {
+        --fv3-folder-icon-spacing: 2px;
+        --fv3-folder-preview-wrapper-margin: 6px;
+    }
+
+    .folder-preview {
+        padding-bottom: 4px;
+    }
+
+    .folder-preview-wrapper {
+        margin-top: 4px;
+    }
+
+    .folder-preview-divider:not(:last-child) {
+        margin-left: 2px;
+        margin-top: -4px;
+    }
+
+    .folder-preview.fv3-overflow-expand {
+        padding-bottom: 4px;
+        row-gap: 4px;
+    }
+
+    .folder-preview.fv3-overflow-expand .folder-preview-wrapper {
+        margin-top: 4px;
+    }
+
+    .folder-preview.fv3-overflow-scroll .folder-preview-wrapper {
+        margin-top: 4px;
+    }
+
+    .folder-preview.fv3-overflow-scroll .folder-preview-divider:not(:last-child) {
+        margin-top: 4px;
+    }
+
+    div.folder-preview img.img {
+        vertical-align: middle;
+    }
+
+    div.folder-preview span.inner {
+        vertical-align: middle;
+    }
 }

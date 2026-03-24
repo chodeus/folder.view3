@@ -239,6 +239,40 @@
         @chmod($path, 0660);
     }
 
+    function updateFolderIds(string $type, string $data) : void {
+        global $configDir;
+        if(!file_exists("$configDir/$type.json")) { return; }
+        $updates = json_decode($data, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($updates)) { http_response_code(400); exit; }
+        $fileData = json_decode(file_get_contents("$configDir/$type.json"), true) ?: [];
+        $changed = false;
+        foreach ($updates as $folderId => $patch) {
+            if (!preg_match('/^[A-Za-z0-9+\/=]+$/', $folderId)) continue;
+            if (!isset($fileData[$folderId])) continue;
+            if (isset($patch['containers']) && is_array($patch['containers'])) {
+                $fileData[$folderId]['containers'] = $patch['containers'];
+                $changed = true;
+            }
+            if (isset($patch['containerIds']) && is_array($patch['containerIds'])) {
+                $fileData[$folderId]['containerIds'] = $patch['containerIds'];
+                $changed = true;
+            }
+            if (isset($patch['containerImages']) && is_array($patch['containerImages'])) {
+                $fileData[$folderId]['containerImages'] = $patch['containerImages'];
+                $changed = true;
+            }
+            if (isset($patch['hidden_preview']) && is_array($patch['hidden_preview'])) {
+                $fileData[$folderId]['hidden_preview'] = $patch['hidden_preview'];
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $path = "$configDir/$type.json";
+            file_put_contents($path, json_encode($fileData));
+            @chmod($path, 0660);
+        }
+    }
+
     function deleteFolder(string $type, string $id) : void {
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); return; }

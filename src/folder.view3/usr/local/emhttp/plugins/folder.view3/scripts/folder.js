@@ -50,7 +50,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             return {
                 'Name': e.info.Name,
                 'Icon': e.info.Config.Labels['net.unraid.docker.icon'],
-                'Label': e.info.Config.Labels['folder.view3']
+                'Label': e.info.Config.Labels['folder.view3'],
+                'Image': e.info.Config.Image || ''
             }
         };
     } else if (type === 'vm') {
@@ -58,7 +59,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             return {
                 'Name': e.name,
                 'Icon': e.icon,
-                'Label': undefined
+                'Label': undefined,
+                'ContainerId': e.uuid || ''
             }
         };
     }
@@ -87,6 +89,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         form.preview_console.checked = currFolder.settings.preview_console || false;
         form.preview_vertical_bars.checked = currFolder.settings.preview_vertical_bars || false;
         form.preview_overflow.value = (currFolder.settings.preview_overflow || 0).toString();
+        form.preview_row_separator.checked = currFolder.settings.preview_row_separator || false;
+        form.preview_row_separator_color.value = currFolder.settings.preview_row_separator_color || rgbToHex($('body').css('color'));
         form.context.value = currFolder.settings.context?.toString() || '1';
         form.context_trigger.value = currFolder.settings.context_trigger?.toString() || '0';
         form.context_graph.value = currFolder.settings.context_graph?.toString() || '1';
@@ -212,6 +216,14 @@ const updateForm = () => {
     if(form.preview_vertical_bars.checked) {
         $('[constraint*="bars-color"]').show();
     }
+    $('[constraint*="overflow-expand"]').hide();
+    $('[constraint*="separator-color"]').hide();
+    if(form.preview_overflow.value === '1') {
+        $('[constraint*="overflow-expand"]').show();
+        if(form.preview_row_separator.checked) {
+            $('[constraint*="separator-color"]').show();
+        }
+    }
     $('[constraint*="folder-webui"]').hide();
     if(form.folder_webui.checked) {
         $('[constraint*="folder-webui"]').show();
@@ -327,6 +339,8 @@ const submitForm = async (e) => {
             preview_console: e.preview_console.checked,
             preview_vertical_bars: e.preview_vertical_bars.checked,
             preview_overflow: parseInt(e.preview_overflow.value.toString()),
+            preview_row_separator: e.preview_row_separator.checked,
+            preview_row_separator_color: e.preview_row_separator_color.value.toString(),
             context: parseInt(e.context.value.toString()),
             context_trigger: parseInt(e.context_trigger.value.toString()),
             context_graph: parseInt(e.context_graph.value.toString()),
@@ -342,6 +356,24 @@ const submitForm = async (e) => {
         },
         regex: e.regex.value.toString(),
         containers: [...$('input[name*="containers"]:checked').map((i, e) => $(e).val())],
+        containerIds: type === 'vm' ? (() => {
+            const ids = {};
+            const allKnown = [...selected, ...selectedRegex, ...choose];
+            for (const name of [...$('input[name*="containers"]:checked').map((i, e) => $(e).val())]) {
+                const entry = allKnown.find(c => c.Name === name);
+                if (entry && entry.ContainerId) ids[name] = entry.ContainerId;
+            }
+            return ids;
+        })() : undefined,
+        containerImages: type === 'docker' ? (() => {
+            const imgs = {};
+            const allKnown = [...selected, ...selectedRegex, ...choose];
+            for (const name of [...$('input[name*="containers"]:checked').map((i, e) => $(e).val())]) {
+                const entry = allKnown.find(c => c.Name === name);
+                if (entry && entry.Image) imgs[name] = entry.Image;
+            }
+            return imgs;
+        })() : undefined,
         hidden_preview: [...$('input.preview-switch:checked').map((i, e) => $(e).val())],
         actions
     }

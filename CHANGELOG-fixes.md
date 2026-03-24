@@ -132,6 +132,15 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 62 | Renamed `fv3-expand-toggle` to `fv3-collapse-toggle`, `fv3InjectExpandToggles` to `fv3InjectCollapseToggles`, `fv3DockerExpandToggle`/`fv3VmExpandToggle` to collapse variants. `fv3-expanded-tab` class now only added when collapse toggle is enabled | `dashboard.js`, `dashboard.css` | 2026.03.23 |
 | 63 | Added `fv3-*` CSS classes to all dashboard folder elements: `fv3-folder-hand`, `fv3-folder-icon`, `fv3-folder-inner`, `fv3-folder-appname-docker`/`-vm`, `fv3-folder-status-icon`, `fv3-folder-state`, `fv3-folder-storage`, `fv3-folder-showcase`, `fv3-standalone`. Generic + type-suffixed variants | `dashboard.js` | 2026.03.23 |
 | 64 | Added 10px right padding on fullwidth folder/container tiles when collapse toggle is enabled — `fv3-collapse-padded` on td, `fv3-collapse-enabled` on outers | `dashboard.js`, `dashboard.css` | 2026.03.23 |
+| 65 | Row separators not updating on window resize — positions calculated once at creation, never recalculated. Extracted into `fv3UpdateRowSeparators()` with debounced resize listener | `docker.js`, `vm.js` | 2026.03.24 |
+| 66 | Mobile responsive spacing for folder previews — added `@media (max-width: 768px)` reducing divider margins, icon spacing, and expand row-gap | `docker.css`, `vm.css` | 2026.03.24 |
+| 67 | Containers ejected from folders after rename — Unraid recreates containers (new ID) on rename, so container ID matching never worked. Replaced with image-based matching: stores `containerImages` map, matches renamed containers by finding unclaimed containers with same image. VMs keep UUID matching (libvirt preserves UUIDs) | `customEvents.js`, `folder.js`, `lib.php` | 2026.03.24 |
+| 68 | Preview borders adapt to advanced view row height — `fv3SyncPreviewHeights()` measures CPU cell height and sets preview height + wrapper/divider margins. Click-based toggle detection (cookie polling) replaces MutationObserver. Resize listener also syncs heights | `docker.js`, `vm.js` | 2026.03.24 |
+| 69 | Scroll overflow wrapper height mismatch — scrollbar track reduced content area. Added explicit `height: calc(3.5em - 7px)` and `margin-top: 10px` for scroll wrappers, `margin-top: 10px` for scroll dividers | `docker.css`, `vm.css` | 2026.03.24 |
+| 70 | Mobile preview icon/text alignment — added `vertical-align: middle` to preview icons and inner text spans in mobile media query | `docker.css`, `vm.css` | 2026.03.24 |
+| 71 | Mobile preview wrapper centering — reduced base wrapper `margin-top` from 7px to 4px and divider `margin-top` from -7px to -4px on mobile | `docker.css`, `vm.css` | 2026.03.24 |
+| 72 | Row separator as configurable folder setting — per-folder toggle with custom color picker. Separators drawn between rows in expanded preview using absolute positioning | `Folder.page`, `folder.js`, `docker.js`, `vm.js`, `docker.css`, `vm.css`, `lib.php`, all 7 lang files | 2026.03.24 |
+| 73 | Container name/icon stacking fix — folder name and icon layout corrected, overflow-expand preview height fixed | `docker.js` | 2026.03.24 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
