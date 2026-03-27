@@ -135,12 +135,12 @@ window.fv3DetectApi = async () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ query: '{ info { os { version } } }' })
+            body: JSON.stringify({ query: '{ info { os { release } } }' })
         });
         if (resp.ok) {
             const json = await resp.json();
-            fv3ApiAvailable = !!(json && json.data && json.data.info && json.data.info.os && json.data.info.os.version);
-            if (fv3ApiAvailable) fv3Debug('API', 'Unraid GraphQL API detected, version:', json.data.info.os.version);
+            fv3ApiAvailable = !!(json && json.data && json.data.info && json.data.info.os && json.data.info.os.release);
+            if (fv3ApiAvailable) fv3Debug('API', 'Unraid GraphQL API detected, release:', json.data.info.os.release);
         } else {
             fv3ApiAvailable = false;
         }
@@ -289,6 +289,9 @@ window.fv3DisconnectStats = () => {
 };
 
 fv3Cleanups.push(fv3DisconnectStats);
+
+// Fire API detection early so it's resolved before any action is triggered
+fv3DetectApi();
 
 // --- End Phase 6 ---
 
