@@ -263,6 +263,9 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                 return $(this).find('td.vm-name span.outer span.inner a').first().text().trim() === container;
             }).first();
             $(`tr.folder-id-${id} div.folder-storage`).append($vmTR.addClass(`folder-${id}-element`).addClass(`folder-element`).removeClass('sortable'));
+            $vmTR.find('input:not([name]):not([id])').each(function() {
+                $(this).attr('name', `fv3-${$(this).attr('class') || 'input'}-${container}`);
+            });
 
             if(folderDebugMode) {
                 console.log(`${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);

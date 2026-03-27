@@ -390,6 +390,9 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             $(`tr.folder-id-${id} div.folder-storage`).append(
                 $containerTR.addClass(`folder-${id}-element folder-element`).removeClass('sortable ui-sortable-handle')
             );
+            $containerTR.find('input:not([name]):not([id])').each(function() {
+                $(this).attr('name', `fv3-${$(this).attr('class') || 'input'}-${ct.info.Name}`);
+            });
             fv3Debug('createFolder', id, container_name_in_folder, 'Moved TR to folder storage.');
 
             const currentIndexInLiveList = liveOrderArray.indexOf(container_name_in_folder);
@@ -733,7 +736,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                     <tbody><tr>
                                         <td><div class="status-version">${ct.info.State.manager === 'composeman' ? `<span class="folder-update-text"><i class="fa fa-docker fa-fw"></i> ${$.i18n('compose')}</span>` : ct.info.State.manager !== 'dockerman' ? `<span class="folder-update-text"><i class="fa fa-docker fa-fw"></i> ${$.i18n('third-party')}</span>` : ct.info.State.Updated !== false ? `<span class="green-text folder-update-text"><i class="fa fa-check fa-fw"></i>${$.i18n('up-to-date')}</span><br><a class="exec" onclick="hideAllTips(); updateContainer('${escapeHtml(ct.info.Name)}');"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i>${$.i18n('force-update')}</span></a>` : `<span class="orange-text folder-update-text" style="white-space:nowrap;"><i class="fa fa-flash fa-fw"></i>${$.i18n('update-ready')}</span><br><a class="exec" onclick="hideAllTips(); updateContainer('${escapeHtml(ct.info.Name)}');"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i>${$.i18n('apply-update')}</span></a>`}<br><i class="fa fa-info-circle fa-fw"></i> ${ct.info.Config.Image.split(':').pop()}</div></td>
                                         <td><div class="status-stats"><span class="cpu-${ct.shortId}">0%</span><div class="usage-disk mm"><span id="cpu-${ct.shortId}" style="width: 0%;"></span><span></span></div><br><span class="mem-${ct.shortId}">0 / 0</span></div></td>
-                                        <td><div class="status-autostart"><input type="checkbox" style="display:none" class="staus-autostart-checkbox"></div></td>
+                                        <td><div class="status-autostart"><input type="checkbox" style="display:none" class="staus-autostart-checkbox" name="preview-autostart-${ct.shortId}"></div></td>
                                     </tr></tbody>
                                 </table>
                             </div>

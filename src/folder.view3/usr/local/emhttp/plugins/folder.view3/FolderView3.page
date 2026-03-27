@@ -24,7 +24,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
     <table>
         <tbody>
             <tr>
-                <td><label data-i18n="dashboard-animation">Expand/collapse animation</label></td>
+                <td><label for="dashboard-animation" data-i18n="dashboard-animation">Expand/collapse animation</label></td>
                 <td>
                     <input class="basic-switch" id="dashboard-animation" type="checkbox" style="display: none;" />
                 </td>
@@ -33,7 +33,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                 <td colspan="2"><strong data-i18n="dashboard-docker-heading">Docker</strong></td>
             </tr>
             <tr>
-                <td><label data-i18n="dashboard-docker-layout">Style</label></td>
+                <td><label for="dashboard-docker-layout" data-i18n="dashboard-docker-layout">Style</label></td>
                 <td>
                     <select id="dashboard-docker-layout" onchange="saveDashboardSetting('dashboard_docker_layout', this.value)">
                         <option value="classic" data-i18n="layout-classic">Classic</option>
@@ -45,19 +45,19 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                 </td>
             </tr>
             <tr class="fv3-docker-nonclassic fv3-setting-sub">
-                <td><label data-i18n="dashboard-docker-folder-label">Show folder name in panel</label></td>
+                <td><label for="dashboard-docker-folder-label" data-i18n="dashboard-docker-folder-label">Show folder name in panel</label></td>
                 <td>
                     <input class="basic-switch" id="dashboard-docker-folder-label" type="checkbox" style="display: none;" />
                 </td>
             </tr>
             <tr class="fv3-docker-nonclassic fv3-setting-sub">
-                <td><label data-i18n="dashboard-docker-expand-toggle">Quick collapse</label></td>
+                <td><label for="dashboard-docker-expand-toggle" data-i18n="dashboard-docker-expand-toggle">Quick collapse</label></td>
                 <td>
                     <input class="basic-switch" id="dashboard-docker-expand-toggle" type="checkbox" style="display: none;" />
                 </td>
             </tr>
             <tr>
-                <td><label data-i18n="dashboard-docker-greyscale">Greyscale collapsed folders</label></td>
+                <td><label for="dashboard-docker-greyscale" data-i18n="dashboard-docker-greyscale">Greyscale collapsed folders</label></td>
                 <td>
                     <input class="basic-switch" id="dashboard-docker-greyscale" type="checkbox" style="display: none;" />
                 </td>
@@ -66,7 +66,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                 <td colspan="2"><strong data-i18n="dashboard-vm-heading">VM</strong></td>
             </tr>
             <tr>
-                <td><label data-i18n="dashboard-vm-layout">Style</label></td>
+                <td><label for="dashboard-vm-layout" data-i18n="dashboard-vm-layout">Style</label></td>
                 <td>
                     <select id="dashboard-vm-layout" onchange="saveDashboardSetting('dashboard_vm_layout', this.value)">
                         <option value="classic" data-i18n="layout-classic">Classic</option>
@@ -78,19 +78,19 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                 </td>
             </tr>
             <tr class="fv3-vm-nonclassic fv3-setting-sub">
-                <td><label data-i18n="dashboard-vm-folder-label">Show folder name in panel</label></td>
+                <td><label for="dashboard-vm-folder-label" data-i18n="dashboard-vm-folder-label">Show folder name in panel</label></td>
                 <td>
                     <input class="basic-switch" id="dashboard-vm-folder-label" type="checkbox" style="display: none;" />
                 </td>
             </tr>
             <tr class="fv3-vm-nonclassic fv3-setting-sub">
-                <td><label data-i18n="dashboard-vm-expand-toggle">Quick collapse</label></td>
+                <td><label for="dashboard-vm-expand-toggle" data-i18n="dashboard-vm-expand-toggle">Quick collapse</label></td>
                 <td>
                     <input class="basic-switch" id="dashboard-vm-expand-toggle" type="checkbox" style="display: none;" />
                 </td>
             </tr>
             <tr>
-                <td><label data-i18n="dashboard-vm-greyscale">Greyscale collapsed folders</label></td>
+                <td><label for="dashboard-vm-greyscale" data-i18n="dashboard-vm-greyscale">Greyscale collapsed folders</label></td>
                 <td>
                     <input class="basic-switch" id="dashboard-vm-greyscale" type="checkbox" style="display: none;" />
                 </td>
