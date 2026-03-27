@@ -55,6 +55,9 @@ cp --parents -f $(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-conf
 # Set permissions for Unraid (only in temp dir, not the repo)
 chmod -R 0755 $tmpdir
 
+# Touch all files so autov() generates fresh cache-busting hashes
+find $tmpdir -type f -exec touch {} +
+
 cd $tmpdir
 tar -cJf $filename *
 
