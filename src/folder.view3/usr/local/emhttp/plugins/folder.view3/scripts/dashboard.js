@@ -105,6 +105,20 @@ const createFolders = async () => {
 
         globalFolders.docker = foldersDone;
 
+        fv3CheckUpdates().then(statuses => {
+            if (!statuses || !Object.keys(statuses).length) return;
+            fv3Debug('dashboard', 'API update statuses received:', statuses);
+            for (const [folderId, folder] of Object.entries(globalFolders.docker || {})) {
+                if (!folder.containers) continue;
+                for (const containerName of Object.keys(folder.containers)) {
+                    if (statuses[containerName] === 'UPDATE_AVAILABLE') {
+                        folder.status.upToDate = false;
+                        break;
+                    }
+                }
+            }
+        });
+
     }
 
 

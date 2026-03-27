@@ -127,6 +127,7 @@ window.fv3SyncPreviewHeights = (cookieName) => {
 // --- Phase 6: Unraid 7.2+ API Integration ---
 
 window.fv3ApiAvailable = null;
+window.fv3CpuCores = null;
 
 window.fv3DetectApi = async () => {
     if (fv3ApiAvailable !== null) return fv3ApiAvailable;
@@ -135,13 +136,19 @@ window.fv3DetectApi = async () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
             credentials: 'same-origin',
-            body: JSON.stringify({ query: '{ info { os { release } } }' })
+            body: JSON.stringify({ query: '{ info { os { release } cpu { cores } } }' })
         });
         if (resp.ok) {
             const json = await resp.json();
             if (json.errors && json.errors.length) { fv3ApiAvailable = false; fv3Debug('API', 'GraphQL returned error:', json.errors[0].message); return fv3ApiAvailable; }
             fv3ApiAvailable = !!(json && json.data && json.data.info && json.data.info.os && json.data.info.os.release);
-            if (fv3ApiAvailable) fv3Debug('API', 'Unraid GraphQL API detected, release:', json.data.info.os.release);
+            if (fv3ApiAvailable) {
+                fv3Debug('API', 'Unraid GraphQL API detected, release:', json.data.info.os.release);
+                if (json.data.info.cpu && json.data.info.cpu.cores) {
+                    fv3CpuCores = json.data.info.cpu.cores;
+                    fv3Debug('API', 'CPU cores from API:', fv3CpuCores);
+                }
+            }
         } else {
             fv3ApiAvailable = false;
         }
@@ -225,13 +232,14 @@ window.fv3VmAction = (action, uuid) => {
 window.fv3CheckUpdates = async () => {
     if (!await fv3DetectApi()) return {};
     try {
-        var data = await fv3GraphQL('{ docker { containerUpdateStatuses { id updateAvailable } } }');
+        var data = await fv3GraphQL('{ docker { containerUpdateStatuses { name updateStatus } } }');
         var statuses = data && data.docker && data.docker.containerUpdateStatuses;
         if (!statuses) return {};
         var result = {};
         for (var i = 0; i < statuses.length; i++) {
-            result[statuses[i].id] = statuses[i].updateAvailable;
+            result[statuses[i].name] = statuses[i].updateStatus;
         }
+        fv3Debug('API', 'Update check complete:', Object.keys(result).length, 'containers');
         return result;
     } catch (e) {
         fv3Debug('API', 'Update check failed:', e.message);
@@ -241,42 +249,74 @@ window.fv3CheckUpdates = async () => {
 
 // Stats connection management
 window.fv3StatsConnection = null;
+window.fv3StatsCallbacks = [];
 
-window.fv3ConnectStats = (onData) => {
+window.fv3ConnectStats = (onData, onFallback) => {
     if (fv3ApiAvailable) {
-        try { return fv3ConnectStatsWebSocket(onData); }
-        catch (e) { fv3DebugWarn('API', 'WebSocket stats init failed, using SSE'); }
+        fv3StatsCallbacks.push(onData);
+        if (fv3StatsConnection && fv3StatsConnection.readyState <= 1) {
+            fv3Debug('API', 'WebSocket already connected, added listener');
+            return fv3StatsConnection;
+        }
+        try {
+            return fv3ConnectStatsWebSocket(onFallback);
+        } catch (e) {
+            fv3DebugWarn('API', 'WebSocket stats init failed, using SSE');
+            if (onFallback) onFallback();
+        }
     }
     return null;
 };
 
-window.fv3ConnectStatsWebSocket = (onData) => {
+window.fv3ConnectStatsWebSocket = (onFallback) => {
     var wsUrl = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/graphql';
     var ws = new WebSocket(wsUrl, 'graphql-transport-ws');
 
     ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'connection_init' }));
-        ws.send(JSON.stringify({
-            id: 'fv3-stats',
-            type: 'subscribe',
-            payload: { query: 'subscription { dockerContainerStats { id cpu memory } }' }
-        }));
+        ws.send(JSON.stringify({ type: 'connection_init', payload: { 'x-csrf-token': typeof csrf_token !== 'undefined' ? csrf_token : '' } }));
+        setTimeout(() => {
+            ws.send(JSON.stringify({
+                id: 'fv3-stats',
+                type: 'subscribe',
+                payload: { query: 'subscription { dockerContainerStats { id cpuPercent memUsage } }' }
+            }));
+        }, 200);
         fv3Debug('API', 'WebSocket stats connected');
     };
 
     ws.onmessage = (event) => {
         var msg = fv3SafeParse(event.data, null);
-        if (msg && msg.type === 'next' && msg.payload && msg.payload.data && msg.payload.data.dockerContainerStats) {
-            onData(msg.payload.data.dockerContainerStats);
+        if (!msg) return;
+        if (msg.type === 'next' && msg.payload && msg.payload.data && msg.payload.data.dockerContainerStats) {
+            var raw = msg.payload.data.dockerContainerStats;
+            var cleanId = raw.id.replace(/[\x00-\x1f]/g, '').split(':').pop();
+            var stat = {
+                shortId: cleanId.substring(0, 12),
+                cpuPercent: raw.cpuPercent,
+                mem: raw.memUsage.split(' / ')
+            };
+            for (var i = 0; i < fv3StatsCallbacks.length; i++) {
+                try { fv3StatsCallbacks[i](stat); } catch(e) {}
+            }
+        } else if (msg.type === 'error') {
+            fv3DebugWarn('API', 'WebSocket subscription error:', msg.payload);
+            ws.close();
         }
     };
 
     ws.onerror = () => {
         fv3DebugWarn('API', 'WebSocket stats error, falling back to SSE');
         fv3StatsConnection = null;
+        fv3StatsCallbacks = [];
+        if (onFallback) onFallback();
     };
 
-    ws.onclose = () => { fv3StatsConnection = null; };
+    ws.onclose = () => {
+        if (fv3StatsConnection === ws) {
+            fv3StatsConnection = null;
+            fv3StatsCallbacks = [];
+        }
+    };
 
     fv3StatsConnection = ws;
     fv3Cleanups.push(() => { if (ws.readyState <= 1) ws.close(); });

@@ -145,6 +145,29 @@ const createFolders = async () => {
 
     requestAnimationFrame(() => fv3SyncPreviewHeights('docker_listview_mode'));
 
+    fv3CheckUpdates().then(statuses => {
+        if (!statuses || !Object.keys(statuses).length) return;
+        fv3Debug('createFolders', 'API update statuses received:', statuses);
+        for (const [folderId, folder] of Object.entries(globalFolders)) {
+            let folderHasUpdate = false;
+            if (!folder.containers) continue;
+            for (const containerName of Object.keys(folder.containers)) {
+                if (statuses[containerName] === 'UPDATE_AVAILABLE') {
+                    folderHasUpdate = true;
+                    break;
+                }
+            }
+            if (folderHasUpdate) {
+                const $badge = $(`tr.folder-id-${folderId} .folder-update-text`);
+                if ($badge.length && !$badge.hasClass('orange-text')) {
+                    $badge.removeClass('green-text').addClass('orange-text')
+                        .html(`<i class="fa fa-flash fa-fw"></i> ${$.i18n('update-ready')}`);
+                    fv3Debug('createFolders', `Folder ${folderId} has update available`);
+                }
+            }
+        }
+    });
+
     folderDebugMode = false;
 
     fv3Debug('createFolders', 'Exit');
@@ -408,49 +431,39 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
             let CPU = []; let MEM = []; let charts = []; let tootltipObserver;
             fv3Debug('createFolder', id, container_name_in_folder, 'Initialized CPU, MEM, charts, tootltipObserver for tooltip.');
-            const graphListener = (e) => {
-                fv3Debug('graphListener', ct.shortId, 'message', e.data ? e.data : e);
-                let now = Date.now();
-                try {
-                    let dataToParse = e.data ? e.data : e; // Handle SSE vs direct string
-                    let loadMatch = dataToParse.match(new RegExp(`^${ct.shortId}\;.*\;.*\ \/\ .*$`, 'm'));
-                    if (!loadMatch) {
-                        fv3DebugWarn('graphlistener', ct.shortId, 'No match for regex. Data:', dataToParse);
-                        CPU.push({ x: now, y: 0 });
-                        MEM.push({ x: now, y: 0 });
-                        return;
-                    }
-                    let load = loadMatch[0].split(';');
-                    load = {
-                        cpu: parseFloat(load[1].replace('%', ''))/cpus,
-                        mem: load[2].split(' / ')
-                    }
-                    load.mem = memToB(load.mem[0]) / memToB(load.mem[1]) * 100;
-                    CPU.push({
-                        x: now,
-                        y: load.cpu
-                    });
-                    MEM.push({
-                        x: now,
-                        y: load.mem
-                    });
-                    fv3Debug('graphlistener', ct.shortId, 'Parsed load:', {cpu: load.cpu, mem: load.mem}, "Pushed to CPU/MEM arrays.");
-                } catch (error) {
-                    fv3DebugWarn('graphlistener', ct.shortId, 'Error parsing load data.', error, "Original data:", e.data ? e.data : e);
-                    CPU.push({
-                        x: now,
-                        y: 0
-                    });
-                    MEM.push({
-                        x: now,
-                        y: 0
-                    });
-                }
 
-                for (const chart of charts) {
-                    chart.update('quiet');
+            const pushChartData = (cpuVal, memVal) => {
+                const now = Date.now();
+                CPU.push({ x: now, y: cpuVal });
+                MEM.push({ x: now, y: memVal });
+                for (const chart of charts) { chart.update('quiet'); }
+            };
+
+            const graphListenerSSE = (e) => {
+                try {
+                    let dataToParse = e.data ? e.data : e;
+                    let loadMatch = dataToParse.match(new RegExp(`^${ct.shortId}\;.*\;.*\ \/\ .*$`, 'm'));
+                    if (!loadMatch) { pushChartData(0, 0); return; }
+                    let load = loadMatch[0].split(';');
+                    let cpuVal = parseFloat(load[1].replace('%', '')) / cpus;
+                    let memParts = load[2].split(' / ');
+                    let memVal = memToB(memParts[0]) / memToB(memParts[1]) * 100;
+                    pushChartData(cpuVal, memVal);
+                } catch (error) {
+                    pushChartData(0, 0);
                 }
-                 if (charts.length > 0) fv3Debug('graphListener', ct.shortId, `updated ${charts.length} charts`);
+            };
+
+            const graphListenerWS = (e) => {
+                const detail = e.detail;
+                if (detail.source !== 'ws' || !detail.stat || detail.stat.shortId !== ct.shortId) return;
+                try {
+                    let cpuVal = detail.stat.cpuPercent;
+                    let memVal = memToB(detail.stat.mem[0]) / memToB(detail.stat.mem[1]) * 100;
+                    pushChartData(cpuVal, memVal);
+                } catch (error) {
+                    pushChartData(0, 0);
+                }
             };
 
             const isHiddenFromPreview = (folder.hidden_preview || []).includes(container_name_in_folder);
@@ -673,8 +686,13 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                              fv3DebugWarn('tooltipster', ct.shortId, 'Autostart switch placeholder not found as expected in tooltip.');
                         }
 
-                        dockerload.addEventListener('message', graphListener);
-                        fv3Debug('tooltipster', ct.shortId, 'Added graphListener to dockerload SSE.');
+                        if (fv3UsingWebSocket) {
+                            folderEvents.addEventListener('fv3-stats-update', graphListenerWS);
+                            fv3Debug('tooltipster', ct.shortId, 'Added graphListener via WebSocket events.');
+                        } else {
+                            dockerload.addEventListener('message', graphListenerSSE);
+                            fv3Debug('tooltipster', ct.shortId, 'Added graphListener to dockerload SSE.');
+                        }
 
                         fv3Debug('tooltipster', ct.shortId, 'Dispatching docker-tooltip-ready-end event.');
                         folderEvents.dispatchEvent(new CustomEvent('docker-tooltip-ready-end', {detail: {
@@ -707,8 +725,12 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                 MEM
                             }
                         }}));
-                        dockerload.removeEventListener('message', graphListener);
-                        fv3Debug('tooltipster', ct.shortId, 'Removed graphListener from dockerload SSE.');
+                        if (fv3UsingWebSocket) {
+                            folderEvents.removeEventListener('fv3-stats-update', graphListenerWS);
+                        } else {
+                            dockerload.removeEventListener('message', graphListenerSSE);
+                        }
+                        fv3Debug('tooltipster', ct.shortId, 'Removed graphListener.');
                         for (const chart of charts) {
                             chart.destroy();
                         }
@@ -1607,63 +1629,83 @@ window.loadlist = () => {
      fv3Debug('Patched loadlist', 'Exit.');
 };
 
-fv3Debug('init', 'requesting CPU count');
-$.get('/plugins/folder.view3/server/cpu.php').promise().then((data) => {
-    cpus = parseInt(data);
-    fv3Debug('CPU count received', `${cpus}. Attaching SSE listener for dockerload.`);
-    dockerload.addEventListener('message', (e_sse) => {
-        // Unraid's dockerload passes data directly as the event in some versions, not in e.data
-        const sseData = (typeof e_sse.data === 'string') ? e_sse.data : (typeof e_sse === 'string' ? e_sse : null);
+// Folder stats aggregation — shared by both SSE and WebSocket paths
+const fv3UpdateFolderStats = (load, divideByCore) => {
+    for (const [id, value] of Object.entries(globalFolders)) {
+        let loadCpu = 0;
+        let totalMemB = 0;
+        let loadMemB = 0;
 
-        if (!sseData || !sseData.trim()) {
-            return; // Skip if no valid data
+        if (!value || !value.containers) continue;
+
+        for (const [cid_name, cvalue] of Object.entries(value.containers)) {
+            const containerShortId = cvalue.id;
+            const curLoad = load[containerShortId] || { cpu: '0.00%', mem: ['0B', '0B'] };
+            const cpuVal = typeof curLoad.cpu === 'number' ? curLoad.cpu : parseFloat(curLoad.cpu.replace('%', ''));
+            loadCpu += divideByCore ? cpuVal / cpus : cpuVal;
+            loadMemB += memToB(curLoad.mem[0]);
+            let tempTotalMem = memToB(curLoad.mem[1]);
+            totalMemB = Math.max(totalMemB, tempTotalMem);
         }
 
-        fv3Debug('dockerload SSE', 'Message received:', sseData.substring(0, 100) + '...');
-        let load = {};
-        const lines = sseData.split('\n');
-        lines.forEach((line_str) => { // Renamed e to line_str
-            if (!line_str.trim()) return; // Skip empty lines
-            const exp = line_str.split(';');
-            if (exp.length >= 3) { // Basic validation
-                load[exp[0]] = {
-                    cpu: exp[1],
-                    mem: exp[2].split(' / ')
-                };
-            } else {
-                fv3DebugWarn('dockerload SSE', 'Malformed line:', line_str);
-            }
+        $(`span.mem-folder-${id}`).text(`${bToMem(loadMemB)} / ${bToMem(totalMemB)}`);
+        $(`span.cpu-folder-${id}`).text(`${loadCpu.toFixed(2)}%`);
+        $(`span#cpu-folder-${id}`).css('width', `${Math.min(100, loadCpu).toFixed(2)}%`);
+    }
+};
+
+// WebSocket stats state for debounced folder aggregation
+let fv3WsLoad = {};
+let fv3WsDebounceTimer = null;
+let fv3UsingWebSocket = false;
+
+const fv3InitSSEStats = () => {
+    fv3Debug('init', 'requesting CPU count for SSE fallback');
+    $.get('/plugins/folder.view3/server/cpu.php').promise().then((data) => {
+        cpus = parseInt(data);
+        fv3Debug('CPU count received', `${cpus}. Attaching SSE listener for dockerload.`);
+        dockerload.addEventListener('message', (e_sse) => {
+            const sseData = (typeof e_sse.data === 'string') ? e_sse.data : (typeof e_sse === 'string' ? e_sse : null);
+            if (!sseData || !sseData.trim()) return;
+
+            let load = {};
+            const lines = sseData.split('\n');
+            lines.forEach((line_str) => {
+                if (!line_str.trim()) return;
+                const exp = line_str.split(';');
+                if (exp.length >= 3) {
+                    load[exp[0]] = { cpu: exp[1], mem: exp[2].split(' / ') };
+                }
+            });
+
+            fv3UpdateFolderStats(load, true);
+
+            folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { load, source: 'sse' } }));
         });
-        fv3Debug('dockerload SSE', 'Parsed load data:', {...load});
-
-        for (const [id, value] of Object.entries(globalFolders)) {
-            let loadCpu = 0;
-            let totalMemB = 0; // Use Bytes for sum then convert
-            let loadMemB = 0;  // Use Bytes for sum then convert
-
-            if (!value || !value.containers) {
-                fv3DebugWarn('dockerload SSE', `Folder ${id} or its containers not found in globalFolders.`);
-                continue;
-            }
-
-            for (const [cid_name, cvalue] of Object.entries(value.containers)) { // cid_name is container name, cvalue is {id, state, ...}
-                const containerShortId = cvalue.id;
-                const curLoad = load[containerShortId] || { cpu: '0.00%', mem: ['0B', '0B'] };
-                loadCpu += parseFloat(curLoad.cpu.replace('%', '')) / cpus; // Already per core from SSE
-                loadMemB += memToB(curLoad.mem[0]);
-                let tempTotalMem = memToB(curLoad.mem[1]);
-                totalMemB = Math.max(totalMemB, tempTotalMem); // Max of individual limits, or sum if preferred
-            }
-            fv3Debug('dockerSSE', id, `Calculated totals - loadCpu: ${loadCpu.toFixed(2)}%, loadMemB: ${loadMemB}, totalMemB: ${totalMemB}`);
-
-            $(`span.mem-folder-${id}`).text(`${bToMem(loadMemB)} / ${bToMem(totalMemB)}`);
-            $(`span.cpu-folder-${id}`).text(`${loadCpu.toFixed(2)}%`);
-            $(`span#cpu-folder-${id}`).css('width', `${Math.min(100, loadCpu).toFixed(2)}%`); // Cap at 100% for display
-        }
+    }).catch(err => {
+        fv3DebugWarn('init', 'error fetching CPU count', err);
     });
-}).catch(err => {
-    fv3DebugWarn('init', 'error fetching CPU count', err);
-});
+};
+
+if (fv3ApiAvailable && fv3CpuCores) {
+    cpus = fv3CpuCores;
+    fv3Debug('init', `CPU cores from API: ${cpus}. Trying WebSocket stats.`);
+    fv3ConnectStats(
+        (stat) => {
+            fv3UsingWebSocket = true;
+            fv3WsLoad[stat.shortId] = { cpu: stat.cpuPercent, mem: stat.mem };
+            folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { stat, source: 'ws' } }));
+
+            clearTimeout(fv3WsDebounceTimer);
+            fv3WsDebounceTimer = setTimeout(() => {
+                fv3UpdateFolderStats(fv3WsLoad, false);
+            }, 200);
+        },
+        fv3InitSSEStats
+    );
+} else {
+    fv3InitSSEStats();
+}
 
 /**
  * Convert memory unit to Bytes
