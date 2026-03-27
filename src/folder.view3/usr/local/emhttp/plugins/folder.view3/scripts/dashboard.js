@@ -9,7 +9,6 @@ const createFolders = async () => {
     if($('tbody#docker_view').length > 0) {
 
         let prom = await Promise.all(folderReq.docker);
-        fv3DetectApi();
         let folders = fv3SafeParseWithRecovery(prom[0], 'docker-folders', {});
         const unraidOrder = fv3SafeParse(prom[1], []);
         const containersInfo = fv3SafeParse(prom[2], {});
@@ -319,6 +318,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
             newFolder[container] = {};
             newFolder[container].id = ct.shortId;
+            newFolder[container].fullId = ct.Id;
             newFolder[container].pause = ct.info.State.Paused;
             newFolder[container].state = ct.info.State.Running;
             newFolder[container].update = ct.info.State.Updated === false && ct.info.State.manager === 'dockerman';
@@ -841,18 +841,18 @@ const folderDockerCustomAction = async (id, action) => {
             if(act.modes === 0) {
                 ctAction = (e) => {
                     if(e.state) {
-                        prom.push(fv3DockerAction('stop', e.id));
+                        prom.push(fv3DockerAction('stop', e.id, e.fullId));
                     } else {
-                        prom.push(fv3DockerAction('start', e.id));
+                        prom.push(fv3DockerAction('start', e.id, e.fullId));
                     }
                 };
             } else if(act.modes === 1) {
                 ctAction = (e) => {
                     if(e.state) {
                         if(e.pause) {
-                            prom.push(fv3DockerAction('resume', e.id));
+                            prom.push(fv3DockerAction('resume', e.id, e.fullId));
                         } else {
-                            prom.push(fv3DockerAction('pause', e.id));
+                            prom.push(fv3DockerAction('pause', e.id, e.fullId));
                         }
                     }
                 };
@@ -863,25 +863,25 @@ const folderDockerCustomAction = async (id, action) => {
             if(act.modes === 0) {
                 ctAction = (e) => {
                     if(!e.state) {
-                        prom.push(fv3DockerAction('start', e.id));
+                        prom.push(fv3DockerAction('start', e.id, e.fullId));
                     }
                 };
             } else if(act.modes === 1) {
                 ctAction = (e) => {
                     if(e.state) {
-                        prom.push(fv3DockerAction('stop', e.id));
+                        prom.push(fv3DockerAction('stop', e.id, e.fullId));
                     }
                 };
             } else if(act.modes === 2) {
                 ctAction = (e) => {
                     if(e.state && !e.pause) {
-                        prom.push(fv3DockerAction('pause', e.id));
+                        prom.push(fv3DockerAction('pause', e.id, e.fullId));
                     }
                 };
             } else if(act.modes === 3) {
                 ctAction = (e) => {
                     if(e.state && e.pause) {
-                        prom.push(fv3DockerAction('resume', e.id));
+                        prom.push(fv3DockerAction('resume', e.id, e.fullId));
                     }
                 };
             }
@@ -889,7 +889,7 @@ const folderDockerCustomAction = async (id, action) => {
         } else if(act.action === 2) {
 
             ctAction = (e) => {
-                prom.push(fv3DockerAction('restart', e.id));
+                prom.push(fv3DockerAction('restart', e.id, e.fullId));
             };
 
         }
@@ -1092,6 +1092,7 @@ const actionFolderDocker = async (id, action) => {
     for (let index = 0; index < cts.length; index++) {
         const ct = folder.containers[cts[index]];
         const cid = ct.id;
+        const fullCid = ct.fullId;
         let pass;
         switch (action) {
             case "start":
@@ -1114,7 +1115,7 @@ const actionFolderDocker = async (id, action) => {
                 break;
         }
         if(pass) {
-            proms.push(fv3DockerAction(action, cid));
+            proms.push(fv3DockerAction(action, cid, fullCid));
         }
     }
 
