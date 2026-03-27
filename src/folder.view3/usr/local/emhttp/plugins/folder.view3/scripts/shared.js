@@ -195,10 +195,10 @@ window.fv3ContainerAction = async (type, id, action) => {
     return null;
 };
 
-window.fv3DockerAction = (action, containerId) => {
+window.fv3DockerAction = (action, containerId, fullId) => {
     var gqlAction = fv3DockerActionMap[action];
-    if (fv3ApiAvailable && gqlAction) {
-        return fv3GraphQL('mutation($id: PrefixedID!) { docker { ' + gqlAction + '(id: $id) { id } } }', { id: containerId })
+    if (fv3ApiAvailable && gqlAction && fullId) {
+        return fv3GraphQL('mutation($id: PrefixedID!) { docker { ' + gqlAction + '(id: $id) { id } } }', { id: fullId })
             .then(() => { fv3Debug('API', 'Docker', gqlAction, containerId, 'OK'); return { success: true }; })
             .catch((e) => {
                 fv3DebugWarn('API', 'Docker GraphQL failed, falling back:', e.message);

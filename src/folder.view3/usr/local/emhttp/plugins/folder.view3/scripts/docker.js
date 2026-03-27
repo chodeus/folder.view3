@@ -4,7 +4,6 @@
 const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
     const prom = await Promise.all(folderReq);
-    fv3DetectApi();
     fv3Debug('createFolders', 'Promises resolved', prom);
 
     let folders = fv3SafeParseWithRecovery(prom[0], 'docker-folders', {});
@@ -797,6 +796,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
             newFolder[container_name_in_folder] = {
                 id: ct.shortId,
+                fullId: ct.Id,
                 pause: ct.info.State.Paused,
                 state: ct.info.State.Running,
                 update: ct.info.State.Updated === false && ct.info.State.manager === 'dockerman',
@@ -1238,7 +1238,8 @@ const actionFolder = async (id, action) => {
             continue;
         }
         const cid = ct.id;
-        let pass = false; // Default to false
+        const fullCid = ct.fullId;
+        let pass = false;
         fv3Debug('actionFolder', id, `Processing container ${containerName} (cid: ${cid}). State: ${ct.state}, Paused: ${ct.pause}.`);
         switch (action) {
             case "start":
@@ -1264,7 +1265,7 @@ const actionFolder = async (id, action) => {
         fv3Debug('actionFolder', id, `Container ${containerName} - action '${action}', pass condition: ${pass}.`);
         if(pass) {
             fv3Debug('actionFolder', id, `Pushing POST request for container ${cid}, action ${action}.`);
-            proms.push(fv3DockerAction(action, cid));
+            proms.push(fv3DockerAction(action, cid, fullCid));
         }
     }
 
@@ -1326,9 +1327,9 @@ const folderCustomAction = async (id, actionIndex) => {
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Cycle Start-Stop: State: ${e_ct.state}`);
                     if(e_ct.state) { // if running
-                        prom.push(fv3DockerAction('stop', e_ct.id));
+                        prom.push(fv3DockerAction('stop', e_ct.id, e_ct.fullId));
                     } else { // if stopped
-                        prom.push(fv3DockerAction('start', e_ct.id));
+                        prom.push(fv3DockerAction('start', e_ct.id, e_ct.fullId));
                     }
                 };
             } else if(act.modes === 1) { // Pause - Resume
@@ -1336,9 +1337,9 @@ const folderCustomAction = async (id, actionIndex) => {
                     fv3Debug('customAction', e_ct.id, `Cycle Pause-Resume: State: ${e_ct.state}, Paused: ${e_ct.pause}`);
                     if(e_ct.state) { // if running (can be paused or not)
                         if(e_ct.pause) { // if paused
-                            prom.push(fv3DockerAction('resume', e_ct.id));
+                            prom.push(fv3DockerAction('resume', e_ct.id, e_ct.fullId));
                         } else { // if running but not paused
-                            prom.push(fv3DockerAction('pause', e_ct.id));
+                            prom.push(fv3DockerAction('pause', e_ct.id, e_ct.fullId));
                         }
                     }
                 };
@@ -1348,29 +1349,29 @@ const folderCustomAction = async (id, actionIndex) => {
             if(act.modes === 0) { // Start
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Set Start: State: ${e_ct.state}`);
-                    if(!e_ct.state) { prom.push(fv3DockerAction('start', e_ct.id)); }
+                    if(!e_ct.state) { prom.push(fv3DockerAction('start', e_ct.id, e_ct.fullId)); }
                 };
             } else if(act.modes === 1) { // Stop
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Set Stop: State: ${e_ct.state}`);
-                    if(e_ct.state) { prom.push(fv3DockerAction('stop', e_ct.id)); }
+                    if(e_ct.state) { prom.push(fv3DockerAction('stop', e_ct.id, e_ct.fullId)); }
                 };
             } else if(act.modes === 2) { // Pause
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Set Pause: State: ${e_ct.state}, Paused: ${e_ct.pause}`);
-                    if(e_ct.state && !e_ct.pause) { prom.push(fv3DockerAction('pause', e_ct.id)); }
+                    if(e_ct.state && !e_ct.pause) { prom.push(fv3DockerAction('pause', e_ct.id, e_ct.fullId)); }
                 };
             } else if(act.modes === 3) { // Resume
                 ctAction = (e_ct) => {
                      fv3Debug('customAction', e_ct.id, `Set Resume: State: ${e_ct.state}, Paused: ${e_ct.pause}`);
-                    if(e_ct.state && e_ct.pause) { prom.push(fv3DockerAction('resume', e_ct.id)); }
+                    if(e_ct.state && e_ct.pause) { prom.push(fv3DockerAction('resume', e_ct.id, e_ct.fullId)); }
                 };
             }
         } else if(act.action === 2) { // Restart
             fv3Debug('folderCustomAction', id, 'Standard action type 2 (Restart).');
             ctAction = (e_ct) => {
                 fv3Debug('customAction', e_ct.id, 'restart');
-                prom.push(fv3DockerAction('restart', e_ct.id));
+                prom.push(fv3DockerAction('restart', e_ct.id, e_ct.fullId));
             };
         }
         cts.forEach((e_ct_data) => { // e_ct_data is like {id: "...", state: true, ...}
