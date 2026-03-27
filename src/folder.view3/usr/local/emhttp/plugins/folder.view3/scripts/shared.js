@@ -167,7 +167,7 @@ window.fv3GraphQL = async (query, variables) => {
 
 // Action name mapping: FV3 → GraphQL
 var fv3DockerActionMap = {
-    start: 'start', stop: 'stop', pause: 'pause', resume: 'unpause', restart: 'restart'
+    start: 'start', stop: 'stop', pause: 'pause', resume: 'unpause'
 };
 var fv3VmActionMap = {
     'domain-start': 'start', 'domain-stop': 'stop', 'domain-pause': 'pause',
@@ -182,9 +182,9 @@ window.fv3ContainerAction = async (type, id, action) => {
             try {
                 fv3Debug('API', type + ' action via GraphQL:', gqlAction, id);
                 if (type === 'docker') {
-                    await fv3GraphQL('mutation($id: String!) { docker { ' + gqlAction + '(id: $id) } }', { id: id });
+                    await fv3GraphQL('mutation($id: PrefixedID!) { docker { ' + gqlAction + '(id: $id) { id } } }', { id: id });
                 } else {
-                    await fv3GraphQL('mutation($vmId: String!) { vms { ' + gqlAction + '(vmId: $vmId) } }', { vmId: id });
+                    await fv3GraphQL('mutation($id: PrefixedID!) { vm { ' + gqlAction + '(id: $id) { id } } }', { id: id });
                 }
                 return { success: true };
             } catch (e) {
@@ -198,7 +198,7 @@ window.fv3ContainerAction = async (type, id, action) => {
 window.fv3DockerAction = (action, containerId) => {
     var gqlAction = fv3DockerActionMap[action];
     if (fv3ApiAvailable && gqlAction) {
-        return fv3GraphQL('mutation($id: String!) { docker { ' + gqlAction + '(id: $id) } }', { id: containerId })
+        return fv3GraphQL('mutation($id: PrefixedID!) { docker { ' + gqlAction + '(id: $id) { id } } }', { id: containerId })
             .then(() => { fv3Debug('API', 'Docker', gqlAction, containerId, 'OK'); return { success: true }; })
             .catch((e) => {
                 fv3DebugWarn('API', 'Docker GraphQL failed, falling back:', e.message);
@@ -211,7 +211,7 @@ window.fv3DockerAction = (action, containerId) => {
 window.fv3VmAction = (action, uuid) => {
     var gqlAction = fv3VmActionMap[action];
     if (fv3ApiAvailable && gqlAction) {
-        return fv3GraphQL('mutation($vmId: String!) { vms { ' + gqlAction + '(vmId: $vmId) } }', { vmId: uuid })
+        return fv3GraphQL('mutation($id: PrefixedID!) { vm { ' + gqlAction + '(id: $id) { id } } }', { id: uuid })
             .then(() => { fv3Debug('API', 'VM', gqlAction, uuid, 'OK'); return { success: true }; })
             .catch((e) => {
                 fv3DebugWarn('API', 'VM GraphQL failed, falling back:', e.message);
