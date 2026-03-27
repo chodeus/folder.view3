@@ -141,6 +141,20 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 71 | Mobile preview wrapper centering — reduced base wrapper `margin-top` from 7px to 4px and divider `margin-top` from -7px to -4px on mobile | `docker.css`, `vm.css` | 2026.03.24 |
 | 72 | Row separator as configurable folder setting — per-folder toggle with custom color picker. Separators drawn between rows in expanded preview using absolute positioning | `Folder.page`, `folder.js`, `docker.js`, `vm.js`, `docker.css`, `vm.css`, `lib.php`, all 7 lang files | 2026.03.24 |
 | 73 | Container name/icon stacking fix — folder name and icon layout corrected, overflow-expand preview height fixed | `docker.js` | 2026.03.24 |
+| 74 | Fix `setTimeout(loadlist(), 500)` immediate invocation — parentheses invoke function immediately, 500ms delay applied to undefined return value. Removed parentheses so `loadlist` is passed as callback | `dashboard.js`, `vm.js` | 2026.03.27 |
+| 75 | Fix `loadedFolder = !loadedFolder` toggle bug — toggling instead of setting true causes missed folder renders on 3rd+ call. Changed to `= true` | `vm.js`, `dashboard.js` | 2026.03.27 |
+| 76 | Fix invalid CSS `align-items: left` — not a valid value, changed to `flex-start` | `vm.css` | 2026.03.27 |
+| 77 | Fix implicit global `buttons = {}` — missing `let` keyword creates global variable | `folder.js` | 2026.03.27 |
+| 78 | Add `fv3SafeParse()` for safe JSON parsing — 28 unguarded `JSON.parse()` calls across all JS files now use try/catch with fallback values. Prevents page crashes on malformed server responses | `docker.js`, `vm.js`, `dashboard.js`, `folder.js`, `folderview3.js`, `customEvents.js` | 2026.03.27 |
+| 79 | Wrap unguarded `new RegExp()` in try/catch — invalid regex patterns in folder config no longer crash the page | `dashboard.js`, `folder.js` | 2026.03.27 |
+| 80 | Add `autov()` cache-busting to Chart.js library includes — `chart.min.js`, `moment.min.js`, `chartjs-adapter-moment.min.js`, `chartjs-plugin-streaming.min.js` now use `?v=HASH` | `folder.view3.Docker.page` | 2026.03.27 |
+| 81 | Fix preview divider vertical alignment — scroll and expand dividers use fixed 36px height instead of percentage to prevent scrollbar from affecting height calculation. Default divider `margin-top` adjusted from -7px to -6px | `docker.css`, `vm.css` | 2026.03.27 |
+| 82 | Equal wrapper margins — added `margin-right` matching `margin-left` via CSS variable, divider `margin-left` set to 0 (spacing handled by wrapper margins) | `docker.css`, `vm.css` | 2026.03.27 |
+| 83 | Smart overflow detection — scroll/expand classes only applied when content actually overflows. `ResizeObserver` dynamically toggles classes on window resize. Expand measures `scrollHeight > clientHeight` after removing class; scroll measures `scrollWidth > clientWidth` after re-adding class | `docker.js`, `vm.js` | 2026.03.27 |
+| 84 | Theme-aware custom action dialog — uses `hsl(var(--background))` for Unraid's HSL component CSS variables with solid fallbacks for dark mode. Type select `min-width: 120px` | `folder.css` | 2026.03.27 |
+| 85 | Mobile preview alignment — default rows get `padding-bottom: 3px` to prevent status icon clipping at bottom border. Expand dividers: 42px height, `align-self: flex-start` on mobile | `docker.css`, `vm.css` | 2026.03.27 |
+| 86 | Deduplicate PHP API requests — pending-state check prevents `loadlist()` from firing new PHP requests when previous ones haven't resolved. Unraid's `loadlist_original()` still runs for native rendering. Halves API calls per page load (8→4) | `docker.js`, `vm.js` | 2026.03.27 |
+| 87 | Fix README description — "next to" changed to "above" for Add Container/VM button | `README.md` | 2026.03.27 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 

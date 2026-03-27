@@ -3,6 +3,11 @@ const escapeHtml = (str) => {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
 
+const fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
+    try { return JSON.parse(raw); }
+    catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
+});
+
 if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
     $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
         if (options.type?.toUpperCase() === 'POST' && options.url?.includes('/plugins/folder.view3/')) {
@@ -42,7 +47,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         $('[constraint*="docker"]').hide();
     }
     // get folders
-    let folders = JSON.parse(await $.get(`/plugins/folder.view3/server/read.php?type=${type}`).promise());
+    let folders = fv3SafeParse(await $.get(`/plugins/folder.view3/server/read.php?type=${type}`).promise(), {});
     // get the list of element docker/vm
     let typeFilter;
     if (type === 'docker') {
@@ -65,7 +70,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         };
     }
 
-    choose = Object.values(JSON.parse(await $.get(`/plugins/folder.view3/server/read_info.php?type=${type}`).promise())).map(typeFilter);
+    choose = Object.values(fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_info.php?type=${type}`).promise(), {})).map(typeFilter);
 
     // if editing a folder and not creating one
     if (folderId) {
@@ -131,12 +136,14 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     for (const [folderId, value] of Object.entries(folders)) {
         // match the element to the regex
         if (value.regex) {
-            const regex = new RegExp(value.regex);
-            for (const container of choose) {
-                if (regex.test(container.Name)) {
-                    value.containers.push(container.Name);
+            try {
+                const regex = new RegExp(value.regex);
+                for (const container of choose) {
+                    if (regex.test(container.Name)) {
+                        value.containers.push(container.Name);
+                    }
                 }
-            }
+            } catch (e) { console.error('[FV3] Invalid regex:', value.regex, e); }
         }
 
         // remove the containers from the order
@@ -173,16 +180,18 @@ const updateRegex = (e) => {
     selectedRegex = choose.filter(el => el.Label === fldName);
     choose = choose.filter(el => el.Label !== fldName);
     if (e.value) {
-        const regex = new RegExp(e.value);
-        for (let i = 0; i < choose.length; i++) {
-            if (regex.test(choose[i].Name)) {
-                const tmpSel = choose.splice(i, 1)[0];
-                if(!selectedRegex.includes(tmpSel)) {
-                    selectedRegex.push(tmpSel);
+        try {
+            const regex = new RegExp(e.value);
+            for (let i = 0; i < choose.length; i++) {
+                if (regex.test(choose[i].Name)) {
+                    const tmpSel = choose.splice(i, 1)[0];
+                    if(!selectedRegex.includes(tmpSel)) {
+                        selectedRegex.push(tmpSel);
+                    }
+                    i--;
                 }
-                i--;
             }
-        }
+        } catch (e) { console.error('[FV3] Invalid regex:', e); }
     }
     updateList();
 };
@@ -321,7 +330,7 @@ const sortTable = (e) => {
  * @returns {bool} always false
  */
 const submitForm = async (e) => {
-    const actions = $('input[name*="custom_action"]').map((i, e) => JSON.parse(atob($(e).val()))).get();
+    const actions = $('input[name*="custom_action"]').map((i, e) => fv3SafeParse(atob($(e).val()), {})).get();
     // this is easy, no need for a comment :)
     const folder = {
         name: e.name.value.toString(),
@@ -428,7 +437,7 @@ const customAction = (action = undefined) => {
         script_icon: ''
     }
     if(action !== undefined) {
-        config = JSON.parse(atob($('input[name*="custom_action"]').map((i, e) => $(e).val()).get()[action]));
+        config = fv3SafeParse(atob($('input[name*="custom_action"]').map((i, e) => $(e).val()).get()[action]), {});
     }
     const selectCt = $('.action-subject [name="action_elements"]');
     selectCt.children().remove();
@@ -472,7 +481,7 @@ const customAction = (action = undefined) => {
         dialog.find('[name="action_script_args"]').val(config.script_args || '');
     }
     dialog.find('[name="action_script_icon"]').val(config.script_icon);
-    buttons = {};
+    let buttons = {};
     buttons[(action !== undefined) ? $.i18n('action-edit-btn') : $.i18n('action-add-btn')] = function() {
         const that = $(this);
         let cfg = {

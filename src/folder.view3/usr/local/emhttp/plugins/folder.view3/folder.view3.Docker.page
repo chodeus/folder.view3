@@ -21,10 +21,10 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <script src="<?php autov('/plugins/folder.view3/scripts/include/customEvents.js')?>"></script>
 <?php require_once('/usr/local/emhttp/plugins/folder.view3/scripts/custom.php') ?>
 
-<script src="/plugins/folder.view3/scripts/include/chart.min.js"></script>
-<script src="/plugins/folder.view3/scripts/include/moment.min.js"></script>
-<script src="/plugins/folder.view3/scripts/include/chartjs-adapter-moment.min.js"></script>
-<script src="/plugins/folder.view3/scripts/include/chartjs-plugin-streaming.min.js"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/chart.min.js')?>"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/moment.min.js')?>"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/chartjs-adapter-moment.min.js')?>"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/chartjs-plugin-streaming.min.js')?>"></script>
 <script defer src="<?php autov('/plugins/folder.view3/scripts/docker.js')?>"></script>
 
 <link rel="stylesheet" href="<?php autov('/plugins/folder.view3/styles/docker.css')?>">

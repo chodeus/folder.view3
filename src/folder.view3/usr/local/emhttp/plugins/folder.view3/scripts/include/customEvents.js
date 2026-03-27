@@ -80,6 +80,11 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
     }
 });
 
+window.fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
+    try { return JSON.parse(raw); }
+    catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
+});
+
 if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
     $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
         if (options.type?.toUpperCase() === 'POST' && options.url?.includes('/plugins/folder.view3/')) {

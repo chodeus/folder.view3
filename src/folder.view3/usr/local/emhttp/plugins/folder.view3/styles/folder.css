@@ -60,6 +60,72 @@ table.sortable td .switch-button-background {
     text-overflow: ellipsis;
 }
 
+/* Custom action dialog — theme-aware
+   Unraid CSS variables are HSL components (e.g. --background: 0 0% 100%)
+   so they must be wrapped in hsl(). jQuery UI applies .ui-widget.ui-widget-content
+   on the dialog, so we need matching specificity to override jquery.ui.css.
+   We set our own --fv3-dialog-* vars with hsl() wrappers and safe fallbacks. */
+.ui-dialog.ui-widget.ui-widget-content {
+    --fv3-dialog-bg: hsl(var(--background, 0 0% 11%));
+    --fv3-dialog-text: hsl(var(--text, 0 0% 95%));
+    --fv3-dialog-header: hsl(var(--header, 0 0% 16%));
+    --fv3-dialog-border: hsl(var(--line, 0 0% 50% / 0.3));
+    background: var(--fv3-dialog-bg);
+    color: var(--fv3-dialog-text);
+    border: 1px solid var(--fv3-dialog-border);
+    border-radius: 4px;
+}
+
+.ui-dialog .ui-dialog-titlebar.ui-widget-header {
+    background: var(--fv3-dialog-header);
+    color: var(--fv3-dialog-text);
+    border-bottom: 1px solid var(--fv3-dialog-border);
+}
+
+.ui-dialog .ui-dialog-content {
+    color: var(--fv3-dialog-text);
+}
+
+.ui-dialog .ui-dialog-content dt {
+    color: var(--fv3-dialog-text);
+}
+
+.ui-dialog .ui-dialog-content select {
+    min-width: 120px;
+}
+
+.ui-dialog .ui-dialog-content select,
+.ui-dialog .ui-dialog-content input[type="text"] {
+    background: var(--fv3-dialog-bg);
+    color: var(--fv3-dialog-text);
+    border: 1px solid var(--fv3-dialog-border);
+}
+
+.ui-dialog .ui-dialog-buttonpane {
+    background: var(--fv3-dialog-bg);
+    border-top: 1px solid var(--fv3-dialog-border);
+}
+
+.ui-dialog .ui-dialog-buttonpane .ui-button {
+    color: var(--fv3-dialog-text);
+    border: 1px solid var(--fv3-dialog-border);
+    background: var(--fv3-dialog-bg);
+}
+
+.ui-dialog .ui-dialog-buttonpane .ui-button:hover {
+    background: var(--fv3-dialog-header);
+}
+
+.ui-multiselect-menu.ui-widget.ui-widget-content {
+    background: var(--fv3-dialog-bg, hsl(0 0% 11%));
+    color: var(--fv3-dialog-text, hsl(0 0% 95%));
+    border: 1px solid var(--fv3-dialog-border, hsl(0 0% 50% / 0.3));
+}
+
+.ui-multiselect-menu label {
+    color: var(--fv3-dialog-text, hsl(0 0% 95%));
+}
+
 /* Fix tooltip bullet points - remove list markers and align with headings */
 .canvas form > ul,
 .canvas form ul {

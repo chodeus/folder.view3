@@ -13,10 +13,10 @@ const createFolders = async () => {
     if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] createFolders: Promises resolved', prom);
 
     // Parse the results
-    let folders = JSON.parse(prom[0]);
-    const unraidOrder = JSON.parse(prom[1]);
-    const containersInfo = JSON.parse(prom[2]);
-    let order = Object.values(JSON.parse(prom[3]));
+    let folders = fv3SafeParse(prom[0], {});
+    const unraidOrder = fv3SafeParse(prom[1], []);
+    const containersInfo = fv3SafeParse(prom[2], {});
+    let order = Object.values(fv3SafeParse(prom[3], {}));
 
     fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
 
@@ -53,7 +53,7 @@ const createFolders = async () => {
             version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
             folders,
             unraidOrder,
-            originalOrder: JSON.parse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()),
+            originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
             newOnes,
             order,
             containersInfo
@@ -946,12 +946,51 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     $(`tr.folder-id-${id} div.folder-preview > span`).wrap('<div class="folder-preview-wrapper"></div>');
     if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}): Wrapped preview spans with .folder-preview-wrapper.`);
     if (folder.settings.preview_overflow === 1) {
-        $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-expand');
+        const $expandPreview = $(`tr.folder-id-${id} div.folder-preview`);
+        $expandPreview.addClass('fv3-overflow-expand');
         if (folder.settings.preview_row_separator) {
             requestAnimationFrame(() => fv3UpdateRowSeparators(id));
         }
+        requestAnimationFrame(() => {
+            const el = $expandPreview[0];
+            if (el && el.scrollHeight <= el.clientHeight) {
+                $expandPreview.removeClass('fv3-overflow-expand');
+            }
+        });
+        new ResizeObserver(() => {
+            const el = $expandPreview[0];
+            if (!el) return;
+            // Remove expand to measure if content overflows the fixed height
+            el.classList.remove('fv3-overflow-expand');
+            requestAnimationFrame(() => {
+                if (el.scrollHeight > el.clientHeight) {
+                    el.classList.add('fv3-overflow-expand');
+                }
+                if (folder.settings.preview_row_separator) {
+                    fv3UpdateRowSeparators(id);
+                }
+            });
+        }).observe($expandPreview[0]);
     } else if (folder.settings.preview_overflow === 2) {
-        $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-scroll');
+        const $scrollPreview = $(`tr.folder-id-${id} div.folder-preview`);
+        $scrollPreview.addClass('fv3-overflow-scroll');
+        requestAnimationFrame(() => {
+            const el = $scrollPreview[0];
+            if (el && el.scrollWidth <= el.clientWidth) {
+                $scrollPreview.removeClass('fv3-overflow-scroll');
+            }
+        });
+        new ResizeObserver(() => {
+            const el = $scrollPreview[0];
+            if (!el) return;
+            // Temporarily force nowrap to measure if content would overflow
+            el.classList.add('fv3-overflow-scroll');
+            requestAnimationFrame(() => {
+                if (el.scrollWidth <= el.clientWidth) {
+                    el.classList.remove('fv3-overflow-scroll');
+                }
+            });
+        }).observe($scrollPreview[0]);
     }
     if(folder.settings.preview_vertical_bars) {
         const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
@@ -1562,21 +1601,30 @@ window.listview = () => {
 };
 
 window.loadlist_original = window.loadlist; // Ensure original is captured
+let fv3FolderReqPending = false;
 window.loadlist = () => {
     if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] Patched loadlist: Entry.');
-    loadedFolder = false;
-    if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] Patched loadlist: Set loadedFolder to false.');
-    folderReq = [
-        // Get the folders
-        $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
-        // Get the order as unraid sees it
-        $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-        // Get the info on containers, needed for autostart, update and started
-        $.get('/plugins/folder.view3/server/read_info.php?type=docker').promise(),
-        // Get the order that is shown in the webui
-        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()
-    ];
-    if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] Patched loadlist: folderReq initialized with 4 promises.');
+
+    // Only create new PHP requests if previous ones have been consumed
+    if (!fv3FolderReqPending) {
+        fv3FolderReqPending = true;
+        loadedFolder = false;
+        if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] Patched loadlist: Set loadedFolder to false.');
+        folderReq = [
+            // Get the folders
+            $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
+            // Get the order as unraid sees it
+            $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
+            // Get the info on containers, needed for autostart, update and started
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').promise(),
+            // Get the order that is shown in the webui
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()
+        ];
+        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
+        if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] Patched loadlist: folderReq initialized with 4 promises.');
+    } else {
+        if (FOLDER_VIEW_DEBUG_MODE) console.log('[FV3_DEBUG] Patched loadlist: Skipping — requests already pending.');
+    }
 
     if (typeof window.loadlist_original === 'function') {
         window.loadlist_original();

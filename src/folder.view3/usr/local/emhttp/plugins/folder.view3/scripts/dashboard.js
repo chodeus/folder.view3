@@ -11,10 +11,10 @@ const createFolders = async () => {
 
         let prom = await Promise.all(folderReq.docker);
         // Parse the results
-        let folders = JSON.parse(prom[0]);
-        const unraidOrder = JSON.parse(prom[1]);
-        const containersInfo = JSON.parse(prom[2]);
-        let order = Object.values(JSON.parse(prom[3]));
+        let folders = fv3SafeParse(prom[0], {});
+        const unraidOrder = fv3SafeParse(prom[1], []);
+        const containersInfo = fv3SafeParse(prom[2], {});
+        let order = Object.values(fv3SafeParse(prom[3], {}));
 
         fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
     
@@ -35,7 +35,7 @@ const createFolders = async () => {
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
                 folders,
                 unraidOrder,
-                originalOrder: JSON.parse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()),
+                originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
                 newOnes,
                 order,
                 containersInfo
@@ -130,10 +130,10 @@ const createFolders = async () => {
 
         const prom = await Promise.all(folderReq.vm);
         // Parse the results
-        let folders = JSON.parse(prom[0]);
-        const unraidOrder = Object.values(JSON.parse(prom[1]));
-        const vmInfo = JSON.parse(prom[2]);
-        let order = Object.values(JSON.parse(prom[3]));
+        let folders = fv3SafeParse(prom[0], {});
+        const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
+        const vmInfo = fv3SafeParse(prom[2], {});
+        let order = Object.values(fv3SafeParse(prom[3], {}));
 
         fv3ResolveRenamedContainers(folders, vmInfo, 'vm');
     
@@ -154,7 +154,7 @@ const createFolders = async () => {
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
                 folders,
                 unraidOrder,
-                originalOrder: JSON.parse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()),
+                originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), []),
                 newOnes,
                 order,
                 vmInfo
@@ -270,8 +270,10 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
     // If regex is present searches all containers for a match and put them inside the folder containers
     if (folder.regex) {
-        const regex = new RegExp(folder.regex);
-        folder.containers = folder.containers.concat(order.filter(el => regex.test(el)));
+        try {
+            const regex = new RegExp(folder.regex);
+            folder.containers = folder.containers.concat(order.filter(el => regex.test(el)));
+        } catch (e) { console.error('[FV3] Invalid regex:', folder.regex, e); }
     }
 
     folder.containers = folder.containers.concat(order.filter(el => containersInfo[el]?.Labels['folder.view3'] === folder.name));
@@ -474,8 +476,10 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
 
     // If regex is present searches all containers for a match and put them inside the folder containers
     if (folder.regex) {
-        const regex = new RegExp(folder.regex);
-        folder.containers = folder.containers.concat(order.filter(el => regex.test(el)));
+        try {
+            const regex = new RegExp(folder.regex);
+            folder.containers = folder.containers.concat(order.filter(el => regex.test(el)));
+        } catch (e) { console.error('[FV3] Invalid regex:', folder.regex, e); }
     }
 
     // the HTML template for the folder
@@ -802,7 +806,7 @@ const rmDockerFolder = (id) => {
         $('div.spinner.fixed').show('slow');
         await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
         loadedFolder = false;
-        setTimeout(loadlist(), 500)
+        setTimeout(loadlist, 500)
     });
 };
 
@@ -827,7 +831,7 @@ const rmVMFolder = (id) => {
         $('div.spinner.fixed').show('slow');
         await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
         loadedFolder = false;
-        setTimeout(loadlist(), 500)
+        setTimeout(loadlist, 500)
     });
 };
 
@@ -1936,7 +1940,7 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
                 fv3LayoutReady = true;
             }); });
             $('div.spinner.fixed').hide();
-            loadedFolder = !loadedFolder
+            loadedFolder = true
         });
     }
 });

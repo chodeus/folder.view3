@@ -3,6 +3,11 @@ const escapeHtml = (str) => {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
 
+const fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
+    try { return JSON.parse(raw); }
+    catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
+});
+
 let dockers = {};
 let vms = {};
 
@@ -51,10 +56,10 @@ const populateTable = async () => {
         $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
         $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
     ]);
-    const dockerData = JSON.parse(proms[0]);
-    const vmData = JSON.parse(proms[1]);
-    const currentDockerContainerOrder = JSON.parse(proms[2]);
-    const currentVmOrder = JSON.parse(proms[3]);
+    const dockerData = fv3SafeParse(proms[0], {});
+    const vmData = fv3SafeParse(proms[1], {});
+    const currentDockerContainerOrder = fv3SafeParse(proms[2], []);
+    const currentVmOrder = fv3SafeParse(proms[3], []);
 
     dockers = dockerData;
     vms = vmData;

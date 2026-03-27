@@ -16,10 +16,10 @@ const applyVmZebra = () => {
 const createFolders = async () => {
     const prom = await Promise.all(folderReq);
     // Parse the results
-    let folders = JSON.parse(prom[0]);
-    const unraidOrder = Object.values(JSON.parse(prom[1]));
-    const vmInfo = JSON.parse(prom[2]);
-    let order = Object.values(JSON.parse(prom[3]));
+    let folders = fv3SafeParse(prom[0], {});
+    const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
+    const vmInfo = fv3SafeParse(prom[2], {});
+    let order = Object.values(fv3SafeParse(prom[3], {}));
 
     fv3ResolveRenamedContainers(folders, vmInfo, 'vm');
     
@@ -42,7 +42,7 @@ const createFolders = async () => {
             version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
             folders,
             unraidOrder,
-            originalOrder: JSON.parse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()),
+            originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), []),
             newOnes,
             order,
             vmInfo
@@ -346,12 +346,49 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     $(`tr.folder-id-${id} div.folder-preview > span`).wrap('<div class="folder-preview-wrapper"></div>');
 
     if (folder.settings.preview_overflow === 1) {
-        $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-expand');
+        const $expandPreview = $(`tr.folder-id-${id} div.folder-preview`);
+        $expandPreview.addClass('fv3-overflow-expand');
         if (folder.settings.preview_row_separator) {
             requestAnimationFrame(() => fv3UpdateRowSeparators(id));
         }
+        requestAnimationFrame(() => {
+            const el = $expandPreview[0];
+            if (el && el.scrollHeight <= el.clientHeight) {
+                $expandPreview.removeClass('fv3-overflow-expand');
+            }
+        });
+        new ResizeObserver(() => {
+            const el = $expandPreview[0];
+            if (!el) return;
+            el.classList.remove('fv3-overflow-expand');
+            requestAnimationFrame(() => {
+                if (el.scrollHeight > el.clientHeight) {
+                    el.classList.add('fv3-overflow-expand');
+                }
+                if (folder.settings.preview_row_separator) {
+                    fv3UpdateRowSeparators(id);
+                }
+            });
+        }).observe($expandPreview[0]);
     } else if (folder.settings.preview_overflow === 2) {
-        $(`tr.folder-id-${id} div.folder-preview`).addClass('fv3-overflow-scroll');
+        const $scrollPreview = $(`tr.folder-id-${id} div.folder-preview`);
+        $scrollPreview.addClass('fv3-overflow-scroll');
+        requestAnimationFrame(() => {
+            const el = $scrollPreview[0];
+            if (el && el.scrollWidth <= el.clientWidth) {
+                $scrollPreview.removeClass('fv3-overflow-scroll');
+            }
+        });
+        new ResizeObserver(() => {
+            const el = $scrollPreview[0];
+            if (!el) return;
+            el.classList.add('fv3-overflow-scroll');
+            requestAnimationFrame(() => {
+                if (el.scrollWidth <= el.clientWidth) {
+                    el.classList.remove('fv3-overflow-scroll');
+                }
+            });
+        }).observe($scrollPreview[0]);
     }
     if(folder.settings.preview_vertical_bars) {
         const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
@@ -472,7 +509,7 @@ const rmFolder = (id) => {
         $('div.spinner.fixed').show('slow');
         await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
         loadedFolder = false;
-        setTimeout(loadlist(), 500)
+        setTimeout(loadlist, 500)
     });
 };
 
@@ -772,18 +809,24 @@ let folderReq = [];
 
 // Patching the original function to make sure the containers are rendered before insering the folder
 window.loadlist_original = loadlist;
+let fv3FolderReqPending = false;
 window.loadlist = (x) => {
-    loadedFolder = false;
-    folderReq = [
-        // Get the folders
-        $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
-        // Get the order as unraid sees it
-        $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-        // Get the info on VMs, needed for autostart and started
-        $.get('/plugins/folder.view3/server/read_info.php?type=vm').promise(),
-        // Get the order that is shown in the webui
-        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
-    ];
+    // Only create new PHP requests if previous ones have been consumed
+    if (!fv3FolderReqPending) {
+        fv3FolderReqPending = true;
+        loadedFolder = false;
+        folderReq = [
+            // Get the folders
+            $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
+            // Get the order as unraid sees it
+            $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
+            // Get the info on VMs, needed for autostart and started
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').promise(),
+            // Get the order that is shown in the webui
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
+        ];
+        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
+    }
     loadlist_original(x);
 };
 
@@ -898,7 +941,7 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
         jqXHR.promise().then(() => {
             createFolders();
             $('div.spinner.fixed').hide();
-            loadedFolder = !loadedFolder
+            loadedFolder = true
         });
     }
 });
