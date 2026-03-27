@@ -135,8 +135,8 @@
 }
 
 .fv3-layout-accordion .folder-showcase:not(:empty) {
-    border: 1px solid rgba(128,128,128,0.2);
-    border-left: 3px solid var(--color-orange, #f0a30a);
+    border: 1px solid var(--fv3-panel-border, rgba(128,128,128,0.2));
+    border-left: 3px solid var(--fv3-accent-color, var(--color-orange, #f0a30a));
     border-radius: 4px;
     margin: 6px 4px 4px;
     padding: 8px;
@@ -183,8 +183,8 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    border: 1px solid rgba(128,128,128,0.2);
-    border-left: 3px solid var(--color-orange, #f0a30a);
+    border: 1px solid var(--fv3-panel-border, rgba(128,128,128,0.2));
+    border-left: 3px solid var(--fv3-accent-color, var(--color-orange, #f0a30a));
     border-radius: 4px;
     margin: 6px 0;
     padding: 8px;
@@ -244,7 +244,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    background-color: rgba(128,128,128,0.08);
+    background-color: var(--fv3-panel-bg, rgba(128,128,128,0.08));
 }
 
 .fv3-layout-embossed .folder-showcase:not(:empty)::before {
@@ -451,5 +451,21 @@ table.dashboard tr:last-child > td {
     .fv3-fullwidth-panel > span.outer.solid,
     .fv3-fullwidth-panel > span.outer.apps {
         width: calc(50% - 4px);
+    }
+}
+
+@media (max-width: 360px) {
+    .fv3-layout-inset .folder-showcase,
+    .fv3-layout-embossed .folder-showcase,
+    .fv3-layout-accordion .folder-showcase,
+    .fv3-fullwidth-panel .folder-showcase {
+        width: calc(100% - 4px);
+    }
+}
+
+@media (hover: none) {
+    .fv3-collapse-toggle {
+        min-width: 36px;
+        min-height: 36px;
     }
 }

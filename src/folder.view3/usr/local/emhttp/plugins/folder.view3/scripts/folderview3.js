@@ -86,7 +86,7 @@ const populateTable = async () => {
 populateTable();
 
 const buildOrderedExport = async (folders, type) => {
-    const order = JSON.parse(await $.get(`/plugins/folder.view3/server/read_unraid_order.php?type=${type}`).promise());
+    const order = fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_unraid_order.php?type=${type}`).promise(), []);
     const orderedIds = orderFolderIds(folders, order);
     const exportData = {};
     for (const folderId of orderedIds) {
