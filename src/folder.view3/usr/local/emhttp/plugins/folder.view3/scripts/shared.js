@@ -133,12 +133,13 @@ window.fv3DetectApi = async () => {
     try {
         const resp = await fetch('/graphql', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
             credentials: 'same-origin',
             body: JSON.stringify({ query: '{ info { os { release } } }' })
         });
         if (resp.ok) {
             const json = await resp.json();
+            if (json.errors && json.errors.length) { fv3ApiAvailable = false; fv3Debug('API', 'GraphQL returned error:', json.errors[0].message); return fv3ApiAvailable; }
             fv3ApiAvailable = !!(json && json.data && json.data.info && json.data.info.os && json.data.info.os.release);
             if (fv3ApiAvailable) fv3Debug('API', 'Unraid GraphQL API detected, release:', json.data.info.os.release);
         } else {
@@ -154,7 +155,7 @@ window.fv3DetectApi = async () => {
 window.fv3GraphQL = async (query, variables) => {
     const resp = await fetch('/graphql', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
         credentials: 'same-origin',
         body: JSON.stringify(variables ? { query: query, variables: variables } : { query: query })
     });
