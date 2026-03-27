@@ -1315,7 +1315,15 @@ const addVMFolderContext = (id) => {
             icon: "fa-bomb",
             action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-destroy'); }
         });
-    
+
+        if (fv3ApiAvailable) {
+            opts.push({
+                text: $.i18n('reset'),
+                icon: "fa-bolt",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-reset'); }
+            });
+        }
+
         opts.push({
             divider: true
         });
@@ -1384,6 +1392,7 @@ const actionFolderVM = async (id, action) => {
             case "domain-stop":
             case "domain-pause":
             case "domain-restart":
+            case "domain-reset":
             case "domain-pmsuspend":
                 pass = ct.state === "running";
                 break;

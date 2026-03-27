@@ -15,7 +15,6 @@ const applyVmZebra = () => {
  */
 const createFolders = async () => {
     const prom = await Promise.all(folderReq);
-    fv3DetectApi();
     let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
     const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
     const vmInfo = fv3SafeParse(prom[2], {});
@@ -532,6 +531,7 @@ const actionFolder = async (id, action) => {
             case "domain-stop":
             case "domain-pause":
             case "domain-restart":
+            case "domain-reset":
             case "domain-pmsuspend":
                 pass = ct.state === "running";
                 break;
@@ -741,7 +741,15 @@ const addVMFolderContext = (id) => {
             icon:"fa-bomb",
             action:(e) => { e.preventDefault(); actionFolder(id, 'domain-destroy'); }
         });
-    
+
+        if (fv3ApiAvailable) {
+            opts.push({
+                text:$.i18n('reset'),
+                icon:"fa-bolt",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-reset'); }
+            });
+        }
+
         opts.push({
             divider: true
         });
