@@ -2,7 +2,6 @@ Menu="Utilities"
 Title="FolderView3"
 Icon="folder-open-o"
 Type="xmenu"
-Tabs="true"
 Markdown="false"
 ---
 
@@ -18,145 +17,263 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
     }
 </script>
 <link rel="stylesheet" href="<?=autov('/plugins/folder.view3/styles/folderview3.css')?>">
+<link rel="stylesheet" href="<?=autov('/plugins/folder.view3/styles/csstool.css')?>">
 
-<h2 data-i18n="dashboard-settings">Dashboard</h2>
-<div class="folder-table-settings">
-    <table>
-        <tbody>
-            <tr>
-                <td><label for="dashboard-animation" data-i18n="dashboard-animation">Expand/collapse animation</label></td>
-                <td>
-                    <input class="basic-switch" id="dashboard-animation" type="checkbox" style="display: none;" />
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2"><strong data-i18n="dashboard-docker-heading">Docker</strong></td>
-            </tr>
-            <tr>
-                <td><label for="dashboard-docker-layout" data-i18n="dashboard-docker-layout">Style</label></td>
-                <td>
-                    <select id="dashboard-docker-layout" onchange="saveDashboardSetting('dashboard_docker_layout', this.value)">
-                        <option value="classic" data-i18n="layout-classic">Classic</option>
-                        <option value="fullwidth" data-i18n="layout-fullwidth">Full-width Panel</option>
-                        <option value="accordion" data-i18n="layout-accordion">Accordion</option>
-                        <option value="inset" data-i18n="layout-inset">Inset Panel</option>
-                        <option value="embossed" data-i18n="layout-embossed">Embossed</option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="fv3-docker-nonclassic fv3-setting-sub">
-                <td><label for="dashboard-docker-folder-label" data-i18n="dashboard-docker-folder-label">Show folder name in panel</label></td>
-                <td>
-                    <input class="basic-switch" id="dashboard-docker-folder-label" type="checkbox" style="display: none;" />
-                </td>
-            </tr>
-            <tr class="fv3-docker-nonclassic fv3-setting-sub">
-                <td><label for="dashboard-docker-expand-toggle" data-i18n="dashboard-docker-expand-toggle">Quick collapse</label></td>
-                <td>
-                    <input class="basic-switch" id="dashboard-docker-expand-toggle" type="checkbox" style="display: none;" />
-                </td>
-            </tr>
-            <tr>
-                <td><label for="dashboard-docker-greyscale" data-i18n="dashboard-docker-greyscale">Greyscale collapsed folders</label></td>
-                <td>
-                    <input class="basic-switch" id="dashboard-docker-greyscale" type="checkbox" style="display: none;" />
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2"><strong data-i18n="dashboard-vm-heading">VM</strong></td>
-            </tr>
-            <tr>
-                <td><label for="dashboard-vm-layout" data-i18n="dashboard-vm-layout">Style</label></td>
-                <td>
-                    <select id="dashboard-vm-layout" onchange="saveDashboardSetting('dashboard_vm_layout', this.value)">
-                        <option value="classic" data-i18n="layout-classic">Classic</option>
-                        <option value="fullwidth" data-i18n="layout-fullwidth">Full-width Panel</option>
-                        <option value="accordion" data-i18n="layout-accordion">Accordion</option>
-                        <option value="inset" data-i18n="layout-inset">Inset Panel</option>
-                        <option value="embossed" data-i18n="layout-embossed">Embossed</option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="fv3-vm-nonclassic fv3-setting-sub">
-                <td><label for="dashboard-vm-folder-label" data-i18n="dashboard-vm-folder-label">Show folder name in panel</label></td>
-                <td>
-                    <input class="basic-switch" id="dashboard-vm-folder-label" type="checkbox" style="display: none;" />
-                </td>
-            </tr>
-            <tr class="fv3-vm-nonclassic fv3-setting-sub">
-                <td><label for="dashboard-vm-expand-toggle" data-i18n="dashboard-vm-expand-toggle">Quick collapse</label></td>
-                <td>
-                    <input class="basic-switch" id="dashboard-vm-expand-toggle" type="checkbox" style="display: none;" />
-                </td>
-            </tr>
-            <tr>
-                <td><label for="dashboard-vm-greyscale" data-i18n="dashboard-vm-greyscale">Greyscale collapsed folders</label></td>
-                <td>
-                    <input class="basic-switch" id="dashboard-vm-greyscale" type="checkbox" style="display: none;" />
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<hr>
+<details class="fv3-section" open>
+    <summary data-i18n="dashboard-settings">Dashboard Configuration</summary>
+    <dl class="fv3-settings">
+        <dt><label for="dashboard-animation" data-i18n="dashboard-animation">Expand/collapse animation</label></dt>
+        <dd><input class="basic-switch" id="dashboard-animation" type="checkbox" style="display: none;" /></dd>
 
-<h2 data-i18n="customizations">Customizations</h2>
-<button data-i18n="file-manager" onclick="fileManager()">Open File Manager</button>
+        <dt class="fv3-section-heading" data-i18n="dashboard-docker-heading">Docker</dt>
+        <dd></dd>
 
+        <dt><label for="dashboard-docker-layout" data-i18n="dashboard-docker-layout">Style</label></dt>
+        <dd>
+            <select id="dashboard-docker-layout" onchange="saveDashboardSetting('dashboard_docker_layout', this.value)">
+                <option value="classic" data-i18n="layout-classic">Classic</option>
+                <option value="fullwidth" data-i18n="layout-fullwidth">Full-width Panel</option>
+                <option value="accordion" data-i18n="layout-accordion">Accordion</option>
+                <option value="inset" data-i18n="layout-inset">Inset Panel</option>
+                <option value="embossed" data-i18n="layout-embossed">Embossed</option>
+            </select>
+        </dd>
 
-<h2 data-i18n="docker">Docker</h2>
-<div class="folder-table">
-    <button data-i18n="[html]export-all" onclick="downloadDocker()"><i class="fa fa-download" aria-hidden="true"></i> Export all</button>
-    <button data-i18n="[html]import-all" onclick="importDocker()"><i class="fa fa-upload" aria-hidden="true"></i> Import</button>
-    <button data-i18n="[html]clear-all" onclick="clearDocker()"><i class="fa fa-ban" aria-hidden="true"></i> Clear</button>
-    <table>
-        <thead>
-            <tr>
-                <th data-i18n="el-id">
-                    ID
-                </th>
-                <th data-i18n="el-name">
-                    Name
-                </th>
-                <th data-i18n="el-actions">
-                    Actions
-                </th>
-            </tr>
-        </thead>
-        <tbody id="docker">
-            
-        </tbody>
-    </table>
-</div>
-<hr>
+        <dt class="fv3-docker-nonclassic fv3-setting-sub"><label for="dashboard-docker-folder-label" data-i18n="dashboard-docker-folder-label">Show folder name in panel</label></dt>
+        <dd class="fv3-docker-nonclassic"><input class="basic-switch" id="dashboard-docker-folder-label" type="checkbox" style="display: none;" /></dd>
 
-<h2 data-i18n="vms">VMs</h2>
-<div class="folder-table">
-    <button data-i18n="[html]export-all" onclick="downloadVm()"><i class="fa fa-download" aria-hidden="true"></i> Export all</button>
-    <button data-i18n="[html]import-all" onclick="importVm()"><i class="fa fa-upload" aria-hidden="true"></i> Import</button>
-    <button data-i18n="[html]clear-all" onclick="clearVm()"><i class="fa fa-ban" aria-hidden="true"></i> Clear</button>
-    <table>
-        <thead>
-            <tr>
-                <th data-i18n="el-id">
-                    ID
-                </th>
-                <th data-i18n="el-name">
-                    Name
-                </th>
-                <th data-i18n="el-actions">
-                    Actions
-                </th>
-            </tr>
-        </thead>
-        <tbody id="vms">
-    
-        </tbody>
-    </table>
-</div>
-<hr>
+        <dt class="fv3-docker-nonclassic fv3-setting-sub"><label for="dashboard-docker-expand-toggle" data-i18n="dashboard-docker-expand-toggle">Quick collapse</label></dt>
+        <dd class="fv3-docker-nonclassic"><input class="basic-switch" id="dashboard-docker-expand-toggle" type="checkbox" style="display: none;" /></dd>
+
+        <dt><label for="dashboard-docker-greyscale" data-i18n="dashboard-docker-greyscale">Greyscale collapsed folders</label></dt>
+        <dd><input class="basic-switch" id="dashboard-docker-greyscale" type="checkbox" style="display: none;" /></dd>
+
+        <dt class="fv3-section-heading" data-i18n="dashboard-vm-heading">VM</dt>
+        <dd></dd>
+
+        <dt><label for="dashboard-vm-layout" data-i18n="dashboard-vm-layout">Style</label></dt>
+        <dd>
+            <select id="dashboard-vm-layout" onchange="saveDashboardSetting('dashboard_vm_layout', this.value)">
+                <option value="classic" data-i18n="layout-classic">Classic</option>
+                <option value="fullwidth" data-i18n="layout-fullwidth">Full-width Panel</option>
+                <option value="accordion" data-i18n="layout-accordion">Accordion</option>
+                <option value="inset" data-i18n="layout-inset">Inset Panel</option>
+                <option value="embossed" data-i18n="layout-embossed">Embossed</option>
+            </select>
+        </dd>
+
+        <dt class="fv3-vm-nonclassic fv3-setting-sub"><label for="dashboard-vm-folder-label" data-i18n="dashboard-vm-folder-label">Show folder name in panel</label></dt>
+        <dd class="fv3-vm-nonclassic"><input class="basic-switch" id="dashboard-vm-folder-label" type="checkbox" style="display: none;" /></dd>
+
+        <dt class="fv3-vm-nonclassic fv3-setting-sub"><label for="dashboard-vm-expand-toggle" data-i18n="dashboard-vm-expand-toggle">Quick collapse</label></dt>
+        <dd class="fv3-vm-nonclassic"><input class="basic-switch" id="dashboard-vm-expand-toggle" type="checkbox" style="display: none;" /></dd>
+
+        <dt><label for="dashboard-vm-greyscale" data-i18n="dashboard-vm-greyscale">Greyscale collapsed folders</label></dt>
+        <dd><input class="basic-switch" id="dashboard-vm-greyscale" type="checkbox" style="display: none;" /></dd>
+    </dl>
+</details>
+
+<details class="fv3-section">
+    <summary data-i18n="folder-defaults">Folder Defaults</summary>
+    <dl class="fv3-settings">
+        <dt class="fv3-section-heading" data-i18n="folder-defaults-info">Default settings for new folders and any folder set to "Use default"</dt>
+        <dd></dd>
+
+        <dt><label for="default-preview" data-i18n="preview">Preview</label></dt>
+        <dd>
+            <select id="default-preview" onchange="saveDashboardSetting('default_preview', this.value)">
+                <option value="0" data-i18n="preview-option-0">None</option>
+                <option value="1" data-i18n="preview-option-1">Icon and label</option>
+                <option value="2" data-i18n="preview-option-2">Only icon</option>
+                <option value="3" data-i18n="preview-option-3">Only label</option>
+                <option value="4" data-i18n="preview-option-4">List</option>
+            </select>
+        </dd>
+
+        <dt><label for="default-overflow" data-i18n="overflow">Overflow</label></dt>
+        <dd>
+            <select id="default-overflow" onchange="saveDashboardSetting('default_overflow', this.value)">
+                <option value="default" data-i18n="overflow-default">Default</option>
+                <option value="scroll" data-i18n="overflow-scroll">Scroll</option>
+                <option value="expand" data-i18n="overflow-expand">Expand</option>
+            </select>
+        </dd>
+
+        <dt><label for="default-preview-hover" data-i18n="preview-hover">Show preview only on hover</label></dt>
+        <dd><input class="basic-switch" id="default-preview-hover" type="checkbox" style="display: none;" /></dd>
+
+        <dt><label for="default-preview-grayscale" data-i18n="preview-grayscale">Preview icon grayscale</label></dt>
+        <dd><input class="basic-switch" id="default-preview-grayscale" type="checkbox" style="display: none;" /></dd>
+
+        <dt><label for="default-preview-webui" data-i18n="preview-webui">Show WebUI icon in preview</label></dt>
+        <dd><input class="basic-switch" id="default-preview-webui" type="checkbox" style="display: none;" /></dd>
+
+        <dt><label for="default-preview-logs" data-i18n="preview-logs">Show logs icon in preview</label></dt>
+        <dd><input class="basic-switch" id="default-preview-logs" type="checkbox" style="display: none;" /></dd>
+
+        <dt><label for="default-preview-console" data-i18n="preview-console">Show console icon in preview</label></dt>
+        <dd><input class="basic-switch" id="default-preview-console" type="checkbox" style="display: none;" /></dd>
+
+        <dt><label for="default-preview-update" data-i18n="preview-update">Orange text on update</label></dt>
+        <dd><input class="basic-switch" id="default-preview-update" type="checkbox" style="display: none;" /></dd>
+
+        <dt><label for="default-preview-vertical-bars" data-i18n="preview-vertical-bars">Preview vertical bars</label></dt>
+        <dd>
+            <input class="basic-switch" id="default-preview-vertical-bars" type="checkbox" style="display: none;" />
+            <div class="fv3-color-row" id="fv3-bars-color-row" style="display:none; margin-top:6px;">
+                <label data-i18n="bars-color">Color:</label>
+                <input type="color" id="default-vertical-bars-color" style="height:28px; vertical-align:middle;">
+                <input type="text" id="default-vertical-bars-color-text" style="width:80px;" placeholder="#000000">
+            </div>
+        </dd>
+
+        <dt><label for="default-preview-border" data-i18n="border">Show preview border</label></dt>
+        <dd>
+            <input class="basic-switch" id="default-preview-border" type="checkbox" style="display: none;" />
+            <div class="fv3-color-row" id="fv3-border-color-row" style="display:none; margin-top:6px;">
+                <label data-i18n="border-color">Color:</label>
+                <input type="color" id="default-border-color" style="height:28px; vertical-align:middle;">
+                <input type="text" id="default-border-color-text" style="width:80px;" placeholder="#000000">
+            </div>
+        </dd>
+
+        <dt><label for="default-row-separator" data-i18n="row-separator">Row separator (expand mode)</label></dt>
+        <dd>
+            <input class="basic-switch" id="default-row-separator" type="checkbox" style="display: none;" />
+            <div class="fv3-color-row" id="fv3-separator-color-row" style="display:none; margin-top:6px;">
+                <label data-i18n="separator-color">Color:</label>
+                <input type="color" id="default-separator-color" style="height:28px; vertical-align:middle;">
+                <input type="text" id="default-separator-color-text" style="width:80px;" placeholder="#808080">
+            </div>
+        </dd>
+
+        <dt><label for="default-preview-text-width" data-i18n="preview-text-width">Preview text width</label></dt>
+        <dd><input type="text" id="default-preview-text-width" placeholder="e.g. 80px, 6rem (blank = no limit)" style="max-width:200px;"></dd>
+
+        <dt class="fv3-section-heading" data-i18n="docker-settings">Docker-specific</dt>
+        <dd></dd>
+
+        <dt><label for="default-context" data-i18n="context">Preview context</label></dt>
+        <dd>
+            <select id="default-context" onchange="saveDashboardSetting('default_context', this.value)">
+                <option value="0" data-i18n="context-option-0">None</option>
+                <option value="1" data-i18n="context-option-1">Default</option>
+                <option value="2" data-i18n="context-option-2">Advanced</option>
+            </select>
+        </dd>
+
+        <dt><label for="default-update-column" data-i18n="update-column">Hide update column</label></dt>
+        <dd><input class="basic-switch" id="default-update-column" type="checkbox" style="display: none;" /></dd>
+    </dl>
+
+    <div style="padding: 0 16px; margin: 1rem 0;">
+        <button id="fv3-apply-defaults" style="margin-bottom: 1rem;"><i class="fa fa-magic" aria-hidden="true"></i> <span data-i18n="apply-defaults">Apply Defaults to All Folders</span></button>
+    </div>
+
+    <div class="fv3-section-heading" style="padding: 0 16px; margin-top: 0.5rem;">
+        <span data-i18n="docker">Docker Folders</span> <span id="fv3-docker-count" class="fv3-folder-count"></span>
+    </div>
+    <div class="folder-table" style="padding: 0 16px 8px;">
+        <table>
+            <thead>
+                <tr>
+                    <th data-i18n="el-id">ID</th>
+                    <th data-i18n="el-name">Name</th>
+                    <th data-i18n="el-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="docker"></tbody>
+        </table>
+    </div>
+
+    <div class="fv3-section-heading" style="padding: 0 16px; margin-top: 1rem;">
+        <span data-i18n="vms">VM Folders</span> <span id="fv3-vm-count" class="fv3-folder-count"></span>
+    </div>
+    <div class="folder-table" style="padding: 0 16px 16px;">
+        <table>
+            <thead>
+                <tr>
+                    <th data-i18n="el-id">ID</th>
+                    <th data-i18n="el-name">Name</th>
+                    <th data-i18n="el-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="vms"></tbody>
+        </table>
+    </div>
+</details>
+
+<details class="fv3-section">
+    <summary data-i18n="backup-restore">Import / Export (Backup)</summary>
+    <div class="fv3-backup-section">
+        <p data-i18n="backup-help">Export all folder configurations as a backup, or import from a previous export. You can also browse the config directory directly.</p>
+        <div class="fv3-backup-actions">
+            <button onclick="downloadDocker(); downloadVm();"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-all-folders">Export All Folders</span></button>
+            <button onclick="downloadDocker()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-docker">Export Docker</span></button>
+            <button onclick="downloadVm()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-vm">Export VM</span></button>
+        </div>
+        <div class="fv3-backup-actions" style="margin-top: 8px;">
+            <button onclick="importDocker()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-docker-folders">Import Docker Folders</span></button>
+            <button onclick="importVm()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-vm-folders">Import VM Folders</span></button>
+        </div>
+        <div class="fv3-backup-actions" style="margin-top: 8px;">
+            <button onclick="clearDocker()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-docker">Clear Docker Folders</span></button>
+            <button onclick="clearVm()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-vm">Clear VM Folders</span></button>
+            <button onclick="fileManager()"><i class="fa fa-folder-open" aria-hidden="true"></i> <span data-i18n="file-manager">Open File Manager</span></button>
+        </div>
+    </div>
+</details>
+
+<details class="fv3-section">
+    <summary data-i18n="css-tool">Custom CSS</summary>
+    <div id="fv3-csstool">
+        <div class="fv3-csstool-tiers">
+            <button class="fv3-tier-btn fv3-tier-active" data-tier="themes" data-i18n="css-themes">Themes</button>
+            <button class="fv3-tier-btn" data-tier="variables" data-i18n="css-variables">Variables</button>
+            <button class="fv3-tier-btn" data-tier="presets" data-i18n="css-presets">Presets</button>
+            <button class="fv3-tier-btn" data-tier="advanced" data-i18n="css-advanced">Advanced CSS</button>
+        </div>
+
+        <div class="fv3-tier-panel" id="fv3-tier-themes">
+            <p data-i18n="css-themes-help">Import community CSS themes from GitHub. Only one theme can be active at a time. CSS variables from the Variables tab are always applied on top.</p>
+            <div class="fv3-theme-import">
+                <input type="text" id="fv3-theme-repo" placeholder="owner/repo (e.g. masterwishx/folder.view.custom.css)">
+                <button id="fv3-theme-import-btn" data-i18n="css-theme-import">Import from GitHub</button>
+            </div>
+            <div id="fv3-theme-list"></div>
+        </div>
+
+        <div class="fv3-tier-panel" id="fv3-tier-variables" style="display:none">
+            <div class="fv3-subtabs">
+                <button class="fv3-subtab fv3-subtab-active" data-scope="global" data-i18n="css-global">Global</button>
+                <button class="fv3-subtab" data-scope="dashboard" data-i18n="css-dashboard-scope">Dashboard</button>
+                <button class="fv3-subtab" data-scope="docker" data-i18n="css-docker-scope">Docker</button>
+                <button class="fv3-subtab" data-scope="vm" data-i18n="css-vm-scope">VM</button>
+            </div>
+            <div id="fv3-var-list"></div>
+        </div>
+
+        <div class="fv3-tier-panel" id="fv3-tier-presets" style="display:none">
+            <div class="fv3-preset-grid" id="fv3-preset-grid"></div>
+        </div>
+
+        <div class="fv3-tier-panel" id="fv3-tier-advanced" style="display:none">
+            <p data-i18n="css-advanced-help">Add custom CSS rules. Variables from the Variables tab are applied first.</p>
+            <textarea id="fv3-custom-css" rows="12" spellcheck="false" placeholder=".folder-name-sub { font-weight: bold; }"></textarea>
+        </div>
+
+        <div class="fv3-csstool-actions">
+            <button id="fv3-css-save" data-i18n="css-save">Save</button>
+            <button id="fv3-css-reset" data-i18n="css-reset">Reset to Defaults</button>
+            <button id="fv3-css-export" data-i18n="css-export">Export Config</button>
+            <button id="fv3-css-import-btn" data-i18n="css-import">Import Config</button>
+            <input type="file" id="fv3-css-import" style="display:none" accept=".json">
+        </div>
+    </div>
+</details>
 
 <script src="<?=autov('/plugins/folder.view3/scripts/folderview3.js')?>"></script>
+<script src="<?=autov('/plugins/folder.view3/scripts/csstool.js')?>"></script>
 
 <input type="file" style="display: none;" accept=".json">
 <input type="file" style="display: none;" accept=".css">

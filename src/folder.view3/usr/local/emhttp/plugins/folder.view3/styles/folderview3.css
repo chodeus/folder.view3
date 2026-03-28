@@ -1,3 +1,101 @@
+/* Collapsible sections */
+.fv3-section {
+    margin-bottom: 4px;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fv3-section > summary {
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 1.15rem;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--fv3-surface-tint, rgba(128,128,128,0.08));
+    border-bottom: 1px solid transparent;
+    user-select: none;
+}
+
+.fv3-section[open] > summary {
+    border-bottom-color: var(--fv3-border, rgba(128,128,128,0.3));
+}
+
+.fv3-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.fv3-section > summary::before {
+    content: '\f054';
+    font-family: FontAwesome;
+    font-size: 0.75em;
+    transition: transform 0.15s;
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+}
+
+.fv3-section[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.fv3-section > summary:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.15));
+}
+
+.fv3-section > :not(summary) {
+    padding: 0 16px;
+}
+
+.fv3-section > .folder-table,
+.fv3-section > .fv3-backup-section,
+.fv3-section > #fv3-csstool {
+    padding: 16px;
+}
+
+/* Backup section */
+.fv3-backup-section p {
+    margin: 0 0 1rem;
+    opacity: 0.8;
+}
+
+.fv3-backup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.fv3-folder-count {
+    font-weight: 400;
+    opacity: 0.6;
+    font-size: 0.9em;
+}
+
+.fv3-color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fv3-color-row label {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.fv3-color-row input[type="text"] {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
+    padding: .3rem;
+    color: inherit;
+    font-family: monospace;
+    font-size: 0.9rem;
+    outline: none;
+}
+
 .custom-css {
     display: flex;
     flex-direction: row;
@@ -46,28 +144,67 @@
     overflow: visible;
 }
 
-.folder-table-settings {
-    display: table;
+.fv3-settings {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .5rem;
+    padding: 1rem 0;
+    margin: 0;
+    align-items: baseline;
 }
 
-.folder-table-settings td:first-child {
-    padding-right: 20px;
+.fv3-settings dt {
+    font-weight: 600;
+    text-align: left;
     white-space: nowrap;
 }
 
-.folder-table-settings select {
-    width: 200px;
+.fv3-settings dd {
+    margin: 0;
 }
 
-.fv3-setting-sub td:first-child label {
-    padding-left: 40px;
-}
-
-.folder-table-settings td[colspan="2"] strong {
-    display: inline-block;
-    margin-top: 10px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid rgba(128,128,128,0.3);
+.fv3-settings select {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
+    padding: .5rem;
+    min-height: 2rem;
+    line-height: 2rem;
+    font-size: 1.1rem;
+    color: inherit;
+    outline: none;
     width: 100%;
+    max-width: 300px;
+}
+
+.fv3-settings select:focus {
+    background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
+}
+
+.fv3-section-heading {
+    grid-column: 1 / -1;
+    font-weight: 600;
     font-size: 1.1em;
+    margin-top: .5rem;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+}
+
+.fv3-setting-sub label {
+    padding-left: 20px;
+}
+
+@media (min-width: 769px) {
+    .fv3-settings {
+        grid-template-columns: 35% 1fr;
+        gap: 1rem 2rem;
+    }
+    .fv3-settings dt {
+        text-align: right;
+    }
+    .fv3-settings dd {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
 }

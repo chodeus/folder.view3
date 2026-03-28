@@ -126,6 +126,76 @@ table.sortable td .switch-button-background {
     color: var(--fv3-dialog-text, hsl(0 0% 95%));
 }
 
+/* Collapsible sections */
+.fv3-section {
+    margin-bottom: 4px;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fv3-section > summary {
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 1.15rem;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--fv3-surface-tint, rgba(128,128,128,0.08));
+    border-bottom: 1px solid transparent;
+    user-select: none;
+}
+
+.fv3-section[open] > summary {
+    border-bottom-color: var(--fv3-border, rgba(128,128,128,0.3));
+}
+
+.fv3-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.fv3-section > summary::before {
+    content: '\f054';
+    font-family: FontAwesome;
+    font-size: 0.75em;
+    transition: transform 0.15s;
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+}
+
+.fv3-section[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.fv3-section > summary:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.15));
+}
+
+.fv3-section > :not(summary) {
+    padding: 0 16px;
+}
+
+/* Form inputs - transparent with bottom-border (matches Unraid 7 native) */
+.canvas form input[type="text"],
+.canvas form select {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
+    padding: .5rem;
+    min-height: 2rem;
+    line-height: 2rem;
+    color: inherit;
+    outline: none;
+}
+
+.canvas form input[type="text"]:focus,
+.canvas form select:focus {
+    background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
+}
+
 /* Fix tooltip bullet points - remove list markers and align with headings */
 .canvas form > ul,
 .canvas form ul {

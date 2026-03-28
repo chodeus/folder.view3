@@ -284,19 +284,19 @@
 
 /* ===== Collapse toggle button ===== */
 .fv3-expanded-tab {
-    position: relative;
+    display: inline-flex;
+    align-items: center;
 }
 
 button.fv3-collapse-toggle {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+    position: static;
     min-width: 0;
     width: 18px;
     height: 18px;
     max-width: 18px;
     padding: 0;
-    margin: 0;
+    margin: 0 0 0 10px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -322,19 +322,6 @@ button.fv3-collapse-toggle:hover {
     line-height: 1;
     font-size: inherit;
     padding-left: 1px;
-}
-
-.fv3-layout-accordion button.fv3-collapse-toggle,
-.fv3-layout-embossed button.fv3-collapse-toggle {
-    position: static;
-    transform: none;
-    margin: 0 0 0 10px;
-    vertical-align: middle;
-}
-
-.fv3-layout-fullwidth button.fv3-collapse-toggle,
-.fv3-layout-inset button.fv3-collapse-toggle {
-    margin: 0;
 }
 
 .fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer,

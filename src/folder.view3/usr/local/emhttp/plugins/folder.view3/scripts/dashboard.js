@@ -1482,23 +1482,15 @@ const fv3InjectCollapseToggles = () => {
         const inner = tab.querySelector('span.inner');
         tab.classList.toggle('fv3-expanded-tab', expanded && enabled && !isClassic);
         outer.classList.toggle('fv3-collapse-enabled', isFullwidth && enabled);
-        if (expanded && enabled && !isClassic && !isFullwidth) {
+        if (expanded && enabled && !isClassic) {
             if (inner) {
                 inner.style.width = 'auto';
                 inner.style.whiteSpace = 'nowrap';
-            }
-            if (!isInset) {
-                tab.style.display = 'inline-flex';
-                tab.style.alignItems = 'center';
             }
         } else {
             if (inner) {
                 inner.style.width = '';
                 inner.style.whiteSpace = '';
-            }
-            if (!isInset) {
-                tab.style.display = '';
-                tab.style.alignItems = '';
             }
         }
         if (!enabled || !expanded || isClassic) {
@@ -1524,51 +1516,7 @@ const fv3InjectCollapseToggles = () => {
             if (inner) inner.after(btn);
         }
     });
-    requestAnimationFrame(() => {
-        fv3PositionChevrons();
-        fv3UpdateInsetBorders();
-    });
-};
-
-let fv3ChevronRetry = null;
-const fv3PositionChevrons = () => {
-    let hasZero = false;
-    document.querySelectorAll('.fv3-layout-inset .fv3-collapse-toggle').forEach(btn => {
-        const tab = btn.closest('span.outer');
-        if (!tab || !tab.offsetWidth || !tab.offsetHeight) { hasZero = true; return; }
-        const appname = tab.querySelector('.fv3-folder-appname');
-        const state = tab.querySelector('.state');
-        if (!appname) return;
-        const tabRect = tab.getBoundingClientRect();
-        const nameRect = appname.getBoundingClientRect();
-        const stateRect = state?.getBoundingClientRect();
-        const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
-        btn.style.left = (contentRight + 10) + 'px';
-        btn.style.right = 'auto';
-        btn.style.top = (tab.offsetHeight / 2) + 'px';
-        btn.style.transform = 'translateY(-50%)';
-    });
-    document.querySelectorAll('.fv3-layout-fullwidth .fv3-collapse-toggle').forEach(btn => {
-        const tab = btn.closest('span.outer');
-        if (!tab || !tab.offsetWidth || !tab.offsetHeight) { hasZero = true; return; }
-        const inner = tab.querySelector('span.inner');
-        const appname = tab.querySelector('.fv3-folder-appname');
-        const state = tab.querySelector('.state');
-        if (!appname) return;
-        const tabRect = tab.getBoundingClientRect();
-        const nameRect = appname.getBoundingClientRect();
-        const stateRect = state?.getBoundingClientRect();
-        const contentRight = Math.max(nameRect.right, stateRect?.right || 0) - tabRect.left;
-        btn.style.left = (contentRight + 10) + 'px';
-        btn.style.right = 'auto';
-        const vCenter = inner ? inner.offsetTop + inner.offsetHeight / 2 : tab.offsetHeight / 2;
-        btn.style.top = vCenter + 'px';
-        btn.style.transform = 'translateY(-50%)';
-    });
-    if (hasZero) {
-        if (fv3ChevronRetry) clearTimeout(fv3ChevronRetry);
-        fv3ChevronRetry = setTimeout(() => { fv3ChevronRetry = null; fv3PositionChevrons(); fv3UpdateInsetBorders(); }, 200);
-    }
+    requestAnimationFrame(() => fv3UpdateInsetBorders());
 };
 
 const fv3UpdateGreyscale = () => {
@@ -1720,14 +1668,12 @@ const fv3FullwidthReflow = (onlyType) => {
     fv3FullwidthRaf = requestAnimationFrame(() => {
         fv3FullwidthRaf = null;
         fv3FullwidthReflowSync(onlyType);
-        requestAnimationFrame(() => fv3PositionChevrons());
     });
 };
 
 const fv3InsetObserver = new ResizeObserver(() => {
     fv3UpdateInsetBorders();
     fv3FullwidthReflow();
-    requestAnimationFrame(() => fv3PositionChevrons());
 });
 fv3InsetObserver.observe(document.documentElement);
 
@@ -1789,7 +1735,6 @@ const fv3OnFilterChange = (type) => {
         fv3AutoWidthTiles();
         fv3UpdateInsetBorders();
         requestAnimationFrame(() => {
-            fv3PositionChevrons();
             document.documentElement.style.paddingRight = '0.25px';
             fv3InsetObserver.observe(document.documentElement);
             requestAnimationFrame(() => { document.documentElement.style.paddingRight = ''; });

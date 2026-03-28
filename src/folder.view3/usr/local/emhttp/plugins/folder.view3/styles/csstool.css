@@ -1,0 +1,307 @@
+/* CSS Tool — tier navigation */
+.fv3-csstool-tiers {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--fv3-border, rgba(128,128,128,0.3));
+}
+
+.fv3-tier-btn {
+    padding: 8px 20px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    background: transparent;
+    color: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s, border-color 0.15s;
+}
+
+.fv3-tier-btn:hover {
+    opacity: 0.85;
+}
+
+.fv3-tier-btn.fv3-tier-active {
+    opacity: 1;
+    border-bottom-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+/* Sub-tabs (page scope) */
+.fv3-subtabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 1rem;
+}
+
+.fv3-subtab {
+    padding: 5px 14px;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.fv3-subtab:hover {
+    opacity: 0.85;
+}
+
+.fv3-subtab.fv3-subtab-active {
+    opacity: 1;
+    background: var(--fv3-surface-tint, rgba(128,128,128,0.08));
+    border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+/* Theme manager */
+.fv3-theme-import {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+    align-items: center;
+}
+
+.fv3-theme-import input[type="text"] {
+    flex: 1;
+    max-width: 400px;
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
+    padding: .5rem;
+    color: inherit;
+    font-size: 1rem;
+    outline: none;
+}
+
+.fv3-theme-import input[type="text"]:focus {
+    background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
+}
+
+.fv3-theme-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.fv3-theme-card.fv3-theme-disabled {
+    opacity: 0.5;
+}
+
+.fv3-theme-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.fv3-theme-name {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.fv3-theme-status {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
+.fv3-theme-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.fv3-theme-actions button {
+    min-width: 0;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+}
+
+#fv3-theme-list:empty::after {
+    content: 'No themes installed. Import one from GitHub above.';
+    display: block;
+    opacity: 0.5;
+    padding: 1rem 0;
+    font-style: italic;
+}
+
+/* Variable rows */
+.fv3-var-group-heading {
+    font-weight: 600;
+    font-size: 1.05em;
+    margin: 1.2rem 0 0.6rem;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+}
+
+.fv3-var-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0.8rem;
+    align-items: center;
+    padding: 6px 0;
+}
+
+.fv3-var-label {
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fv3-var-label code {
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+.fv3-var-inputs {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.fv3-var-inputs input[type="color"] {
+    width: 40px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.fv3-var-inputs input[type="text"] {
+    width: 140px;
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
+    padding: .4rem;
+    color: inherit;
+    font-family: monospace;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.fv3-var-inputs input[type="text"]:focus {
+    background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
+}
+
+.fv3-var-inputs input[type="range"] {
+    width: 120px;
+}
+
+.fv3-var-inputs input[type="number"] {
+    width: 70px;
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
+    padding: .4rem;
+    color: inherit;
+    font-family: monospace;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.fv3-var-reset {
+    background: transparent;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 3px;
+    color: inherit;
+    cursor: pointer;
+    padding: 3px 8px;
+    font-size: 0.8rem;
+    opacity: 0.5;
+}
+
+.fv3-var-reset:hover {
+    opacity: 1;
+}
+
+/* Presets grid */
+.fv3-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.fv3-preset-card {
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 6px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.fv3-preset-card:hover {
+    border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+.fv3-preset-card.fv3-preset-active {
+    border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+    border-width: 2px;
+}
+
+.fv3-preset-name {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.fv3-preset-swatches {
+    display: flex;
+    gap: 4px;
+    height: 20px;
+}
+
+.fv3-preset-swatch {
+    flex: 1;
+    border-radius: 3px;
+}
+
+/* Advanced CSS textarea */
+#fv3-custom-css {
+    width: 100%;
+    min-height: 200px;
+    background-color: transparent;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    padding: .8rem;
+    color: inherit;
+    font-family: monospace;
+    font-size: 0.9rem;
+    resize: vertical;
+    outline: none;
+    tab-size: 4;
+}
+
+#fv3-custom-css:focus {
+    border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+/* Action bar */
+.fv3-csstool-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+}
+
+/* Responsive */
+@media (max-width: 769px) {
+    .fv3-var-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+    .fv3-csstool-tiers {
+        flex-wrap: wrap;
+    }
+    .fv3-subtabs {
+        flex-wrap: wrap;
+    }
+}

@@ -70,17 +70,24 @@ const populateTable = async () => {
     dockerTable.empty();
     vmsTable.empty();
 
-    for (const id of orderFolderIds(dockers, currentDockerContainerOrder)) {
+    const dockerIds = orderFolderIds(dockers, currentDockerContainerOrder);
+    for (const id of dockerIds) {
         const folder = dockers[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadDocker('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
-    for (const id of orderFolderIds(vms, currentVmOrder)) {
+    const vmIds = orderFolderIds(vms, currentVmOrder);
+    for (const id of vmIds) {
         const folder = vms[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadVm('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
         vmsTable.append($(fld));
     }
+
+    const dockerCount = document.getElementById('fv3-docker-count');
+    const vmCount = document.getElementById('fv3-vm-count');
+    if (dockerCount) dockerCount.textContent = `(${dockerIds.length})`;
+    if (vmCount) vmCount.textContent = `(${vmIds.length})`;
 };
 
 populateTable();
@@ -356,6 +363,49 @@ const loadDashboardSettings = async () => {
             fv3InitToggle(id, key);
         }
         fv3ToggleNonClassicSettings();
+
+        if (settings.default_preview) {
+            $('select#default-preview').val(settings.default_preview);
+        }
+        if (settings.default_overflow) {
+            $('select#default-overflow').val(settings.default_overflow);
+        }
+        const defaultToggleMap = {
+            'default-preview-hover': 'default_preview_hover',
+            'default-preview-grayscale': 'default_preview_grayscale',
+            'default-preview-webui': 'default_preview_webui',
+            'default-preview-logs': 'default_preview_logs',
+            'default-preview-console': 'default_preview_console',
+            'default-preview-update': 'default_preview_update',
+            'default-preview-vertical-bars': 'default_preview_vertical_bars',
+            'default-preview-border': 'default_preview_border',
+            'default-row-separator': 'default_row_separator',
+            'default-update-column': 'default_update_column'
+        };
+        for (const [id, key] of Object.entries(defaultToggleMap)) {
+            if (settings[key] === 'yes') {
+                $(`#${id}`).prop('checked', true);
+            }
+            fv3InitToggle(id, key);
+        }
+        if (settings.default_context) $('select#default-context').val(settings.default_context);
+
+        const colorFields = [
+            { toggleId: 'default-preview-vertical-bars', rowId: 'fv3-bars-color-row', colorId: 'default-vertical-bars-color', textId: 'default-vertical-bars-color-text', key: 'default_vertical_bars_color' },
+            { toggleId: 'default-preview-border', rowId: 'fv3-border-color-row', colorId: 'default-border-color', textId: 'default-border-color-text', key: 'default_border_color' },
+            { toggleId: 'default-row-separator', rowId: 'fv3-separator-color-row', colorId: 'default-separator-color', textId: 'default-separator-color-text', key: 'default_separator_color' }
+        ];
+        colorFields.forEach(cf => {
+            const val = settings[cf.key] || '';
+            if (val) { $(`#${cf.colorId}`).val(val); $(`#${cf.textId}`).val(val); }
+            if ($(`#${cf.toggleId}`).is(':checked')) $(`#${cf.rowId}`).show();
+            $(`#${cf.toggleId}`).on('change', function() { $(`#${cf.rowId}`).toggle(this.checked); });
+            $(`#${cf.colorId}`).on('input', function() { $(`#${cf.textId}`).val(this.value); saveFreeformSetting(cf.key, this.value); });
+            $(`#${cf.textId}`).on('change', function() { $(`#${cf.colorId}`).val(this.value); saveFreeformSetting(cf.key, this.value); });
+        });
+
+        if (settings.default_preview_text_width) $(`#default-preview-text-width`).val(settings.default_preview_text_width);
+        $(`#default-preview-text-width`).on('change', function() { saveFreeformSetting('default_preview_text_width', this.value); });
     } catch (e) {
         console.error('Failed to load dashboard settings:', e);
     }
@@ -393,5 +443,54 @@ const saveDashboardSetting = async (key, value) => {
         console.error('Failed to save dashboard setting:', e);
     }
 };
+
+const saveFreeformSetting = async (key, value) => {
+    try {
+        await $.post('/plugins/folder.view3/server/update_settings.php', { key, value }).promise();
+    } catch (e) {
+        console.error('Failed to save freeform setting:', e);
+    }
+};
+
+$('#fv3-apply-defaults').on('click', function() {
+    swal({
+        title: 'Apply Defaults?',
+        text: 'This will update all existing folders to use the current default settings. Per-folder overrides will be replaced.',
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Apply'
+    }, async (confirmed) => {
+        if (!confirmed) return;
+        const settings = fv3SafeParse(await $.get('/plugins/folder.view3/server/read_settings.php').promise(), {});
+        const defaultMap = {
+            preview: settings.default_preview || '1',
+            preview_hover: settings.default_preview_hover === 'yes',
+            preview_grayscale: settings.default_preview_grayscale === 'yes',
+            preview_webui: settings.default_preview_webui === 'yes',
+            preview_logs: settings.default_preview_logs === 'yes',
+            preview_console: settings.default_preview_console === 'yes',
+            preview_update: settings.default_preview_update === 'yes',
+            preview_vertical_bars: settings.default_preview_vertical_bars === 'yes',
+            preview_vertical_bars_color: settings.default_vertical_bars_color || '',
+            preview_border: settings.default_preview_border === 'yes',
+            preview_border_color: settings.default_border_color || '',
+            preview_row_separator: settings.default_row_separator === 'yes',
+            preview_row_separator_color: settings.default_separator_color || '',
+            preview_text_width: settings.default_preview_text_width || '',
+            preview_overflow: settings.default_overflow === 'scroll' ? '2' : settings.default_overflow === 'expand' ? '1' : '0',
+            context: settings.default_context || '1',
+            update_column: settings.default_update_column === 'yes'
+        };
+        for (const [type, folders] of [['docker', dockers], ['vm', vms]]) {
+            for (const [id, folder] of Object.entries(folders)) {
+                Object.assign(folder, defaultMap);
+                await $.post('/plugins/folder.view3/server/update.php', {
+                    type, id, content: JSON.stringify(folder)
+                }).promise();
+            }
+        }
+        swal({ title: 'Done', text: 'Defaults applied to all folders.', type: 'success', timer: 1500 });
+    });
+});
 
 loadDashboardSettings();
