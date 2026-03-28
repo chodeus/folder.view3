@@ -491,8 +491,8 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
             if (nowAdvanced !== lastAdvanced) {
                 lastAdvanced = nowAdvanced;
                 clearTimeout(recalcTimer);
-                recalcTimer = setTimeout(recalc, 150);
+                recalcTimer = setTimeout(recalc, 300);
             }
-        }, 50);
+        }, 100);
     }, true);
 };
