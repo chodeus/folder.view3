@@ -266,7 +266,7 @@
 
 .fv3-layout-embossed .folder-showcase-outer:not([expanded="true"]) .fv3-folder-appname {
     display: inline-block;
-    max-width: 120px;
+    max-width: var(--fv3-appname-max-width, 120px);
     overflow: hidden;
     text-overflow: clip;
     white-space: nowrap;
@@ -304,15 +304,15 @@ button.fv3-collapse-toggle {
     line-height: 1;
     font-size: 10px;
     background: transparent;
-    border: 2px solid #ff8c2f;
+    border: 2px solid var(--fv3-toggle-color, #ff8c2f);
     border-radius: 3px;
-    color: #ff8c2f;
+    color: var(--fv3-toggle-color, #ff8c2f);
     cursor: pointer;
 }
 
 button.fv3-collapse-toggle:hover {
-    border-color: #ffad5c;
-    color: #ffad5c;
+    border-color: var(--fv3-toggle-hover-color, #ffad5c);
+    color: var(--fv3-toggle-hover-color, #ffad5c);
 }
 
 .fv3-collapse-toggle i.fa {
@@ -367,7 +367,7 @@ td.fv3-layout-classic {
 
 .fv3-layout-inset .folder-showcase-outer:not([expanded="true"]) .fv3-folder-appname {
     display: inline-block;
-    max-width: 120px;
+    max-width: var(--fv3-appname-max-width, 120px);
     overflow: hidden;
     text-overflow: clip;
     white-space: nowrap;
@@ -376,7 +376,7 @@ td.fv3-layout-classic {
 
 .fv3-layout-classic .fv3-folder-appname {
     display: inline-block;
-    max-width: 120px;
+    max-width: var(--fv3-appname-max-width, 120px);
     overflow: hidden;
     text-overflow: clip;
     white-space: nowrap;

@@ -52,18 +52,20 @@ mytheme.docker.css.disabled
 Custom files load **after** the plugin's built-in CSS, so your rules naturally override defaults. No `!important` should be needed for most overrides — use CSS variables where possible.
 
 ```
-1. customEvents.js (shared utilities)
-2. Custom JS files (your scripts)
-3. Plugin JS (docker.js / vm.js / dashboard.js)
-4. Plugin CSS (docker.css / vm.css / dashboard.css)
-5. Custom CSS files (your styles — loaded last, highest priority)
+1. customEvents.js (shared utilities: escapeHtml, CSRF, event bus)
+2. shared.js (shared functions: debug, API, row separators, preview)
+3. Custom JS files (your scripts)
+4. Plugin JS (docker.js / vm.js / dashboard.js)
+5. folder-common.css (shared CSS variables and rules)
+6. Plugin CSS (docker.css / vm.css / dashboard.css)
+7. Custom CSS files (your styles — loaded last, highest priority)
 ```
 
 ---
 
 ## CSS Variables Reference
 
-Override these in your custom CSS by redefining them in `:root`. All are defined in both `docker.css` and `vm.css`.
+Override these in your custom CSS by redefining them in `:root`. All are defined in `folder-common.css` (loaded on Docker and VM tabs).
 
 ### Layout
 
@@ -92,19 +94,33 @@ Override these in your custom CSS by redefining them in `:root`. All are defined
 | `--fv3-border` | `1px solid rgba(128, 128, 128, 0.3)` | Standard border style |
 | `--folder-view3-graph-cpu` | `#2b8da3` | CPU graph line color |
 | `--folder-view3-graph-mem` | `#5d6db6` | Memory graph line color |
+| `--fv3-accent-color` | `var(--color-orange, #f0a30a)` | Accent color for panels and borders |
+| `--fv3-toggle-color` | `#ff8c2f` | Dashboard collapse toggle button color |
+| `--fv3-toggle-hover-color` | `#ffad5c` | Dashboard collapse toggle hover color |
+| `--fv3-scrollbar-color` | `rgba(255, 140, 47, 0.5)` | Scroll overflow scrollbar thumb color |
+| `--fv3-separator-bg` | `rgba(128, 128, 128, 0.15)` | Row separator background |
+| `--fv3-panel-border` | `rgba(128, 128, 128, 0.2)` | Accordion/fullwidth panel border |
+| `--fv3-panel-bg` | `rgba(128, 128, 128, 0.08)` | Embossed inner panel background |
 
-### VM Row Backgrounds (Override Hooks)
+### Folder Appearance
 
-These are **not defined** by the plugin — they exist as CSS variable fallbacks in `vm.js` inline styles. Define them in your custom CSS to control VM table row colors:
-
-| Variable | Fallback | Description |
-|----------|----------|-------------|
-| `--fv3-row-bg` | `transparent` | Normal VM row background |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--fv3-folder-preview-bg` | `transparent` | Preview bar background color |
+| `--fv3-folder-name-bg` | `transparent` | Folder name cell background |
+| `--fv3-preview-icon-size` | `32px` | Container icon size in preview |
+| `--fv3-folder-icon-size` | `48px` | Folder icon size |
+| `--fv3-appname-max-width` | `120px` | Max width of container names on dashboard |
+| `--fv3-row-bg` | `transparent` | VM row background |
 | `--fv3-row-alt-bg` | Unraid's `--dynamix-tablesorter-tbody-row-alt-bg-color` | Alternating VM row background |
 
 **Example override:**
 ```css
 :root {
+    --fv3-accent-color: #e74c3c;
+    --fv3-toggle-color: #e74c3c;
+    --fv3-toggle-hover-color: #ff6b6b;
+    --fv3-folder-preview-bg: rgba(0, 0, 0, 0.05);
     --fv3-row-bg: #191818;
     --fv3-row-alt-bg: #212121;
 }
@@ -466,6 +482,15 @@ These community themes serve as working examples:
 
 The plugin's built-in stylesheets for reference:
 
-- [docker.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/docker.css)
-- [vm.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/vm.css)
-- [dashboard.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css)
+- [folder-common.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/folder-common.css) — shared variables and rules (Docker + VM)
+- [docker.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/docker.css) — Docker-specific (tooltips, context menu)
+- [vm.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/vm.css) — VM-specific
+- [dashboard.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css) — Dashboard layouts
+
+## CSS Template
+
+A starter template for custom themes is available at [examples/custom-template.css](examples/custom-template.css). Copy it to `/boot/config/plugins/folder.view3/styles/` on your Unraid server and rename it following the naming convention above.
+
+## Debug Mode
+
+Type **fv3debug** on any FolderView3 page to toggle debug logging. When enabled, the browser console shows folder creation, API calls, organizer sync, and stats updates with `[FV3]` prefix. State persists in localStorage across page loads.

@@ -1,0 +1,202 @@
+/*
+ * FolderView3 Custom CSS Template
+ *
+ * HOW TO USE:
+ * 1. Copy this file to /boot/config/plugins/folder.view3/styles/ on your Unraid server
+ * 2. Rename following the pattern: mytheme.docker-vm-dashboard.css
+ *    (choose which tabs: docker, vm, dashboard — chain with hyphens)
+ * 3. Uncomment and modify the sections you want to customize
+ * 4. Refresh the Unraid page to see changes
+ *
+ * To disable without deleting: rename to mytheme.docker-vm-dashboard.css.disabled
+ *
+ * TIPS:
+ * - Override variables in :root — they cascade to all elements
+ * - Use inherit, currentColor, rgba() for theme compatibility (dark + light)
+ * - Avoid !important — use CSS specificity instead
+ * - Test on both Docker/VM tabs AND the Dashboard (different DOM structures)
+ */
+
+
+/* ==========================================================================
+   COLOR VARIABLES
+   Override these in :root to change colors globally.
+   Full reference: https://github.com/chodeus/folder.view3/tree/develop/dev
+   ========================================================================== */
+
+/*
+:root {
+    --folder-view3-graph-cpu: #2b8da3;
+    --folder-view3-graph-mem: #5d6db6;
+
+    --fv3-accent-color: var(--color-orange, #f0a30a);
+    --fv3-surface-tint: rgba(128, 128, 128, 0.1);
+    --fv3-hover-bg: rgba(128, 128, 128, 0.2);
+    --fv3-border: 1px solid rgba(128, 128, 128, 0.3);
+
+    --fv3-folder-preview-bg: transparent;
+    --fv3-folder-name-bg: transparent;
+    --fv3-row-bg: transparent;
+    --fv3-separator-bg: rgba(128, 128, 128, 0.15);
+    --fv3-scrollbar-color: rgba(255, 140, 47, 0.5);
+    --fv3-toggle-color: #ff8c2f;
+    --fv3-toggle-hover-color: #ffad5c;
+    --fv3-panel-border: rgba(128, 128, 128, 0.2);
+    --fv3-panel-bg: rgba(128, 128, 128, 0.08);
+}
+*/
+
+
+/* ==========================================================================
+   LAYOUT VARIABLES
+   Adjust dimensions of folder UI elements.
+   ========================================================================== */
+
+/*
+:root {
+    --fv3-folder-preview-height: 3.5em;
+    --fv3-folder-preview-radius: 4px;
+    --fv3-folder-icon-spacing: 4px;
+    --fv3-folder-preview-wrapper-margin: 10px;
+    --fv3-preview-icon-size: 32px;
+    --fv3-folder-icon-size: 48px;
+    --fv3-appname-max-width: 120px;
+}
+*/
+
+
+/* ==========================================================================
+   FOLDER ROW STYLING (Docker & VM tabs)
+   These selectors target the folder rows in the container/VM tables.
+   ========================================================================== */
+
+/*
+.folder-name-sub .folder-appname {
+    font-weight: bold;
+}
+
+.folder-preview {
+    background: var(--fv3-folder-preview-bg);
+}
+
+.folder-element {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+.folder-dropdown {
+    color: inherit;
+}
+*/
+
+
+/* ==========================================================================
+   DASHBOARD LAYOUTS
+   Style the different dashboard layout modes.
+   Scope selectors to the layout class for targeted styling.
+   ========================================================================== */
+
+/* --- Accordion --- */
+/*
+.fv3-layout-accordion .folder-showcase:not(:empty) {
+    border-color: var(--fv3-panel-border);
+    border-left-color: var(--fv3-accent-color);
+}
+*/
+
+/* --- Embossed --- */
+/*
+.fv3-layout-embossed {
+    --fv3-embossed-border: rgba(128, 128, 128, 0.3);
+    --fv3-embossed-accent: var(--color-orange, #f0a30a);
+    --fv3-embossed-inner-border: rgba(128, 128, 128, 0.2);
+    --fv3-embossed-inner-bg: rgba(128, 128, 128, 0.08);
+}
+*/
+
+/* --- Inset (SVG borders) --- */
+/*
+.fv3-layout-inset {
+    --fv3-inset-border-color: rgba(128, 128, 128, 0.3);
+    --fv3-inset-fill: none;
+    --fv3-inset-showcase-border: rgba(128, 128, 128, 0.2);
+    --fv3-inset-showcase-fill: none;
+    --fv3-inset-bg: transparent;
+    --fv3-showcase-bg: transparent;
+}
+*/
+
+/* --- Fullwidth Panel --- */
+/*
+.fv3-fullwidth-panel {
+    border-color: var(--fv3-panel-border);
+    border-left-color: var(--fv3-accent-color);
+}
+*/
+
+/* --- Collapse Toggle Button --- */
+/*
+button.fv3-collapse-toggle {
+    border-color: var(--fv3-toggle-color);
+    color: var(--fv3-toggle-color);
+}
+button.fv3-collapse-toggle:hover {
+    border-color: var(--fv3-toggle-hover-color);
+    color: var(--fv3-toggle-hover-color);
+}
+*/
+
+/* --- Dashboard folder name/state --- */
+/*
+.folder-showcase-outer[expanded="true"] .fv3-folder-appname {
+    font-weight: bold;
+}
+.fv3-child-appname-text {
+    font-weight: bold;
+}
+*/
+
+
+/* ==========================================================================
+   ADVANCED PREVIEW TOOLTIP (Docker tab only)
+   The popup that appears when clicking a folder in advanced view.
+   ========================================================================== */
+
+/*
+:root {
+    --fv3-tooltip-min-width: 700px;
+    --fv3-tooltip-max-height: 80vh;
+    --fv3-tooltip-action-pane-width: 220px;
+    --tooltip-spacing: 5px;
+}
+
+.preview-outbox {
+    border-radius: 8px;
+}
+*/
+
+
+/* ==========================================================================
+   ROW SEPARATORS
+   Horizontal lines between rows of icons in the expand overflow mode.
+   ========================================================================== */
+
+/*
+.fv3-row-separator {
+    background-color: var(--fv3-separator-bg);
+}
+*/
+
+
+/* ==========================================================================
+   MOBILE / RESPONSIVE
+   Adjustments for smaller screens. Use @media queries.
+   ========================================================================== */
+
+/*
+@media (max-width: 768px) {
+    :root {
+        --fv3-folder-preview-height: 2.5em;
+        --fv3-preview-icon-size: 24px;
+    }
+}
+*/

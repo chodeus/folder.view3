@@ -1,6 +1,6 @@
 <?php
-    define('FV3_DEBUG_MODE', false); // << SET TO true TO ENABLE LOGGING TO FILE >>
-    $fv3_debug_log_file = "/tmp/folder_view3_php_debug.log"; 
+    define('FV3_DEBUG_MODE', file_exists('/tmp/fv3_debug_enabled'));
+    $fv3_debug_log_file = "/tmp/folder_view3_php_debug.log";
 
     function fv3_debug_log($message) {
         if (FV3_DEBUG_MODE) {
