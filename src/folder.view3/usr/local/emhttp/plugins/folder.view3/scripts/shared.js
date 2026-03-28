@@ -347,7 +347,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 fv3UpdateRowSeparators(globalFolders, id);
             }
         };
-        requestAnimationFrame(() => requestAnimationFrame(checkExpand));
+        setTimeout(() => requestAnimationFrame(checkExpand), 150);
         const ro = new ResizeObserver(() => requestAnimationFrame(checkExpand));
         ro.observe(el);
         fv3Cleanups.push(() => ro.disconnect());
@@ -385,12 +385,12 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
 
     let lastAdvanced = $.cookie(cookieName) == 'advanced';
     document.addEventListener('click', () => {
-        requestAnimationFrame(() => {
+        setTimeout(() => {
             const nowAdvanced = $.cookie(cookieName) == 'advanced';
             if (nowAdvanced !== lastAdvanced) {
                 lastAdvanced = nowAdvanced;
                 requestAnimationFrame(recalc);
             }
-        });
+        }, 50);
     });
 };
