@@ -332,28 +332,23 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
         if (folder.settings.preview_row_separator) {
             $preview.addClass('fv3-has-separators');
         }
-        requestAnimationFrame(() => {
-            el.classList.remove('fv3-overflow-expand');
-            el.style.height = '';
-            if (el.scrollWidth > el.clientWidth) {
-                el.classList.add('fv3-overflow-expand');
+        const checkExpand = () => {
+            const wrappers = el.querySelectorAll('.folder-preview-wrapper');
+            if (wrappers.length < 2) {
+                el.classList.remove('fv3-overflow-expand');
+                return;
+            }
+            el.classList.add('fv3-overflow-expand');
+            const needsExpand = wrappers[0].offsetTop !== wrappers[wrappers.length - 1].offsetTop;
+            if (!needsExpand) {
+                el.classList.remove('fv3-overflow-expand');
             }
             if (folder.settings.preview_row_separator) {
-                requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
+                fv3UpdateRowSeparators(globalFolders, id);
             }
-        });
-        const ro = new ResizeObserver(() => {
-            el.classList.remove('fv3-overflow-expand');
-            el.style.height = '';
-            requestAnimationFrame(() => {
-                if (el.scrollWidth > el.clientWidth) {
-                    el.classList.add('fv3-overflow-expand');
-                }
-                if (folder.settings.preview_row_separator) {
-                    requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
-                }
-            });
-        });
+        };
+        requestAnimationFrame(checkExpand);
+        const ro = new ResizeObserver(() => requestAnimationFrame(checkExpand));
         ro.observe(el);
         fv3Cleanups.push(() => ro.disconnect());
     } else if (folder.settings.preview_overflow === 2) {
@@ -390,12 +385,12 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
 
     let lastAdvanced = $.cookie(cookieName) == 'advanced';
     document.addEventListener('click', () => {
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             const nowAdvanced = $.cookie(cookieName) == 'advanced';
             if (nowAdvanced !== lastAdvanced) {
                 lastAdvanced = nowAdvanced;
-                setTimeout(recalc, 300);
+                requestAnimationFrame(recalc);
             }
-        }, 100);
+        });
     });
 };

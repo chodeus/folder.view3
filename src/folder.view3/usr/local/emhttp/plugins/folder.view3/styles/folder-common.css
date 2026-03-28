@@ -127,10 +127,8 @@ td.folder-name .folder-outer {
 
 .folder-preview.fv3-overflow-scroll {
     overflow-x: auto;
+    overflow-x: overlay;
     overflow-y: hidden;
-    padding-top: 6px;
-    padding-bottom: 6px;
-    box-sizing: border-box;
 }
 
 .folder-preview.fv3-overflow-scroll .folder-preview-wrapper {
