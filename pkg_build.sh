@@ -27,22 +27,27 @@ else
 fi
 
 # Set version suffix based on branch
-if [ "$branch" = "develop" ]; then
-    version="${version}-develop${SUFFIX_NUM}"
-elif [ "$branch" = "beta" ]; then
-    version="${version}-beta${SUFFIX_NUM}"
+if [ "$branch" = "develop" ] || [ "$branch" = "beta" ]; then
+    if [ -z "$SUFFIX_NUM" ]; then
+        # Auto-increment: count existing archives for this date+branch
+        existing=$(ls $CWD/archive/folder.view3-${version}-${branch}*.txz 2>/dev/null | wc -l)
+        SUFFIX_NUM=$((existing + 1))
+    fi
+    version="${version}-${branch}${SUFFIX_NUM}"
 elif [ "$branch" != "main" ]; then
     echo "Warning: unrecognized branch '$branch', defaulting to main"
     branch="main"
 fi
 
 filename="$CWD/archive/folder.view3-$version.txz"
-dayversion=$(ls $CWD/archive/folder.view3-$version*.txz 2>/dev/null | wc -l)
 
-if [ $dayversion -gt 0 ]
-then
-    version="$version.$dayversion"
-    filename="$CWD/archive/folder.view3-$version.txz"
+# Collision detection for main branch (date-based only)
+if [ "$branch" = "main" ]; then
+    dayversion=$(ls $CWD/archive/folder.view3-$version*.txz 2>/dev/null | wc -l)
+    if [ $dayversion -gt 0 ]; then
+        version="$version.$dayversion"
+        filename="$CWD/archive/folder.view3-$version.txz"
+    fi
 fi
 
 mkdir -p $tmpdir
