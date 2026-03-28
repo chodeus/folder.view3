@@ -143,11 +143,9 @@ td.folder-name .folder-outer {
 }
 
 .folder-preview-wrapper {
-    float: left;
-    height: 100%;
     margin-left: var(--fv3-folder-preview-wrapper-margin);
     margin-right: var(--fv3-folder-preview-wrapper-margin);
-    margin-top: 7px;
+    align-self: center;
     flex-shrink: 0;
 }
 

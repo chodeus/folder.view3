@@ -878,18 +878,12 @@ const fv3SyncPreviewHeights = () => {
     const isAdvanced = $.cookie('vm_listview_mode') == 'advanced';
     document.querySelectorAll('tr.folder div.folder-preview:not(.fv3-overflow-expand)').forEach(el => {
         el.style.height = '';
-        el.querySelectorAll('.folder-preview-wrapper').forEach(w => { w.style.marginTop = ''; });
         const cpuCell = el.closest('tr').querySelector('td.folder-advanced');
         if (isAdvanced && cpuCell && cpuCell.offsetHeight > 0) {
             const targetHeight = cpuCell.offsetHeight - 10;
             const defaultHeight = el.offsetHeight;
             if (targetHeight > defaultHeight) {
                 el.style.height = targetHeight + 'px';
-                const extra = targetHeight - defaultHeight;
-                const newMargin = 7 + extra / 2;
-                el.querySelectorAll('.folder-preview-wrapper').forEach(w => {
-                    w.style.marginTop = newMargin + 'px';
-                });
             }
         }
     });
