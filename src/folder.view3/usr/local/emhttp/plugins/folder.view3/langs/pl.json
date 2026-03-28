@@ -35,6 +35,7 @@
     "restart": "Restartuj",
     "hibernate": "Hibernuj",
     "force-stop": "Wymuś zatrzymanie",
+    "reset": "Resetuj",
     "logs": "Logi",
     "edit": "Edytuj",
     "remove": "Usuń",

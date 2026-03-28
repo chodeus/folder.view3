@@ -8,6 +8,7 @@
     --fv3-folder-preview-radius: 4px;
     --fv3-folder-icon-spacing: 4px;
     --fv3-folder-preview-wrapper-margin: 10px;
+    --fv3-preview-icon-size: 32px;
 
     /* Tooltip dimensions */
     --fv3-tooltip-min-width: 700px;
@@ -76,7 +77,7 @@ td.folder-name .folder-outer {
     height: var(--fv3-folder-preview-height);
     overflow: hidden;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
 }
 
@@ -85,9 +86,15 @@ td.folder-name .folder-outer {
     min-height: var(--fv3-folder-preview-height);
     max-height: none;
     overflow: visible;
-    padding-bottom: 7px;
+    flex-wrap: wrap;
+    padding-top: 6px;
+    padding-bottom: 6px;
     row-gap: 7px;
     position: relative;
+}
+
+.folder-preview.fv3-overflow-expand.fv3-has-separators {
+    row-gap: 13px;
 }
 
 .fv3-row-separator {
@@ -100,13 +107,13 @@ td.folder-name .folder-outer {
 }
 
 .folder-preview.fv3-overflow-scroll {
-    flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
+    padding-top: 6px;
+    box-sizing: border-box;
 }
 
 .folder-preview.fv3-overflow-scroll .folder-preview-wrapper {
-    flex-shrink: 0;
     float: none;
 }
 
@@ -128,12 +135,20 @@ td.folder-name .folder-outer {
     background: transparent;
 }
 
+@supports not selector(::-webkit-scrollbar) {
+    .folder-preview.fv3-overflow-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+    }
+}
+
 .folder-preview-wrapper {
     float: left;
     height: 100%;
     margin-left: var(--fv3-folder-preview-wrapper-margin);
     margin-right: var(--fv3-folder-preview-wrapper-margin);
     margin-top: 7px;
+    flex-shrink: 0;
 }
 
 .folder-preview-wrapper .inner > span.appname {
@@ -144,25 +159,21 @@ td.folder-name .folder-outer {
 }
 
 .folder-preview-divider:not(:last-child) {
-    float: left;
-    height: 80%;
+    height: var(--fv3-preview-icon-size);
     width: 0;
     border-right: 1px solid;
     margin-left: 0;
-    margin-top: -6px;
+    align-self: center;
 }
 
 .folder-preview.fv3-overflow-scroll .folder-preview-divider:not(:last-child) {
-    float: none;
-    height: 36px;
-    margin-top: 5px;
-    align-self: flex-start;
+    height: var(--fv3-preview-icon-size);
+    align-self: center;
 }
 
 .folder-preview.fv3-overflow-expand .folder-preview-divider:not(:last-child) {
-    height: 36px;
-    margin-top: 7px;
-    align-self: flex-start;
+    height: var(--fv3-preview-icon-size);
+    align-self: center;
 }
 
 .folder-element-custom-btn {
@@ -511,16 +522,6 @@ div.folder-preview-4 span.outer {
 @media (max-width: 768px) {
     .folder-preview:not(.fv3-overflow-expand):not(.fv3-overflow-scroll) {
         padding-bottom: 3px;
-    }
-
-    .folder-preview:not(.fv3-overflow-scroll):not(.fv3-overflow-expand) .folder-preview-divider:not(:last-child) {
-        margin-top: -3px;
-    }
-
-    .folder-preview.fv3-overflow-expand .folder-preview-divider:not(:last-child) {
-        height: 42px;
-        margin-top: 7px;
-        align-self: flex-start;
     }
 }
 

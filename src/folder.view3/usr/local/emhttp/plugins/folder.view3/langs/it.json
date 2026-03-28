@@ -35,6 +35,7 @@
     "restart": "Riavvia",
     "hibernate": "Iberna",
     "force-stop": "Forza fermata",
+    "reset": "Ripristina",
     "logs": "Registri",
     "edit": "Modifica",
     "remove": "Rimuovi",
