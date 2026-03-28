@@ -130,7 +130,6 @@ td.folder-name .folder-outer {
 }
 
 .folder-preview.fv3-overflow-scroll .folder-preview-wrapper {
-    flex-shrink: 0;
     float: none;
 }
 
@@ -156,6 +155,7 @@ td.folder-name .folder-outer {
     margin-left: var(--fv3-folder-preview-wrapper-margin);
     margin-right: var(--fv3-folder-preview-wrapper-margin);
     align-self: center;
+    flex-shrink: 0;
 }
 
 .folder-preview-divider:not(:last-child) {
