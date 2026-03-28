@@ -322,8 +322,6 @@ fv3DetectApi();
 
 // --- End Phase 6 ---
 
-window.fv3ExpandCheckers = [];
-
 window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     const $preview = $(`tr.folder-id-${id} div.folder-preview`);
     const el = $preview[0];
@@ -334,85 +332,38 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
         if (folder.settings.preview_row_separator) {
             $preview.addClass('fv3-has-separators');
         }
-        const checkExpand = () => {
-            const wrappers = el.querySelectorAll('.folder-preview-wrapper');
-            if (wrappers.length < 2) {
-                el.classList.remove('fv3-overflow-expand');
-                return;
+        const drawSeparators = () => {
+            if (folder.settings.preview_row_separator) {
+                fv3UpdateRowSeparators(globalFolders, id);
             }
-            el.classList.add('fv3-overflow-expand');
-            requestAnimationFrame(() => {
-                const needsExpand = wrappers[0].offsetTop !== wrappers[wrappers.length - 1].offsetTop;
-                if (!needsExpand) {
-                    el.classList.remove('fv3-overflow-expand');
-                }
-                if (folder.settings.preview_row_separator) {
-                    fv3UpdateRowSeparators(globalFolders, id);
-                }
-            });
         };
-        fv3ExpandCheckers.push(checkExpand);
-        const imgs = el.querySelectorAll('img');
-        const allLoaded = () => Array.from(imgs).every(img => img.complete);
-        if (allLoaded()) {
-            requestAnimationFrame(checkExpand);
-        } else {
-            imgs.forEach(img => {
-                if (!img.complete) {
-                    img.addEventListener('load', () => {
-                        if (allLoaded()) requestAnimationFrame(checkExpand);
-                    }, { once: true });
-                    img.addEventListener('error', () => {
-                        if (allLoaded()) requestAnimationFrame(checkExpand);
-                    }, { once: true });
-                }
-            });
-            setTimeout(checkExpand, 500);
-        }
-        const ro = new ResizeObserver(() => requestAnimationFrame(checkExpand));
+        const ro = new ResizeObserver(() => requestAnimationFrame(drawSeparators));
         ro.observe(el);
         fv3Cleanups.push(() => ro.disconnect());
     } else if (folder.settings.preview_overflow === 2) {
         $preview.addClass('fv3-overflow-scroll');
-        requestAnimationFrame(() => {
-            if (el.scrollWidth <= el.clientWidth) {
-                $preview.removeClass('fv3-overflow-scroll');
-            }
-        });
-        const ro = new ResizeObserver(() => {
-            el.classList.add('fv3-overflow-scroll');
-            requestAnimationFrame(() => {
-                if (el.scrollWidth <= el.clientWidth) {
-                    el.classList.remove('fv3-overflow-scroll');
-                }
-            });
-        });
-        ro.observe(el);
-        fv3Cleanups.push(() => ro.disconnect());
     }
 };
 
 window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
-    let resizeTimer;
+    let recalcTimer;
     const recalc = () => {
         fv3SyncPreviewHeights(cookieName);
-        fv3ExpandCheckers.forEach(fn => fn());
         fv3UpdateRowSeparators(folderMapGetter());
     };
 
     window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(recalc, 150);
+        clearTimeout(recalcTimer);
+        recalcTimer = setTimeout(recalc, 150);
     });
 
-    let lastAdvanced = $.cookie(cookieName) == 'advanced';
-    document.addEventListener('click', () => {
-        setTimeout(() => {
-            const nowAdvanced = $.cookie(cookieName) == 'advanced';
-            if (nowAdvanced !== lastAdvanced) {
-                lastAdvanced = nowAdvanced;
-                setTimeout(recalc, 100);
-            }
-        }, 50);
-    });
+    const firstRow = document.querySelector('tr.folder');
+    if (firstRow) {
+        const ro = new ResizeObserver(() => {
+            clearTimeout(recalcTimer);
+            recalcTimer = setTimeout(recalc, 50);
+        });
+        ro.observe(firstRow);
+        fv3Cleanups.push(() => ro.disconnect());
+    }
 };
