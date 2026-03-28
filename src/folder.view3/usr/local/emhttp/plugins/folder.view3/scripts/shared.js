@@ -332,16 +332,46 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
         if (folder.settings.preview_row_separator) {
             $preview.addClass('fv3-has-separators');
         }
-        const drawSeparators = () => {
-            if (folder.settings.preview_row_separator) {
-                fv3UpdateRowSeparators(globalFolders, id);
+        const checkExpand = () => {
+            if (el.classList.contains('fv3-overflow-expand')) {
+                const wrappers = el.querySelectorAll('.folder-preview-wrapper');
+                if (wrappers.length < 2) return;
+                if (wrappers[0].offsetTop === wrappers[wrappers.length - 1].offsetTop) {
+                    el.classList.remove('fv3-overflow-expand');
+                } else if (folder.settings.preview_row_separator) {
+                    fv3UpdateRowSeparators(globalFolders, id);
+                }
+            } else if (el.scrollWidth > el.clientWidth) {
+                el.classList.add('fv3-overflow-expand');
             }
         };
-        const ro = new ResizeObserver(() => requestAnimationFrame(drawSeparators));
+        requestAnimationFrame(checkExpand);
+        el.querySelectorAll('img').forEach(img => {
+            if (!img.complete) {
+                img.addEventListener('load', () => requestAnimationFrame(checkExpand), { once: true });
+                img.addEventListener('error', () => requestAnimationFrame(checkExpand), { once: true });
+            }
+        });
+        const ro = new ResizeObserver(() => requestAnimationFrame(checkExpand));
         ro.observe(el);
         fv3Cleanups.push(() => ro.disconnect());
     } else if (folder.settings.preview_overflow === 2) {
         $preview.addClass('fv3-overflow-scroll');
+        requestAnimationFrame(() => {
+            if (el.scrollWidth <= el.clientWidth) {
+                el.classList.remove('fv3-overflow-scroll');
+            }
+        });
+        const ro = new ResizeObserver(() => {
+            el.classList.add('fv3-overflow-scroll');
+            requestAnimationFrame(() => {
+                if (el.scrollWidth <= el.clientWidth) {
+                    el.classList.remove('fv3-overflow-scroll');
+                }
+            });
+        });
+        ro.observe(el);
+        fv3Cleanups.push(() => ro.disconnect());
     }
 };
 
@@ -357,13 +387,13 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
         recalcTimer = setTimeout(recalc, 150);
     });
 
-    const firstRow = document.querySelector('tr.folder');
-    if (firstRow) {
+    const firstPreview = document.querySelector('tr.folder .folder-preview');
+    if (firstPreview) {
         const ro = new ResizeObserver(() => {
             clearTimeout(recalcTimer);
             recalcTimer = setTimeout(recalc, 50);
         });
-        ro.observe(firstRow);
+        ro.observe(firstPreview);
         fv3Cleanups.push(() => ro.disconnect());
     }
 };
