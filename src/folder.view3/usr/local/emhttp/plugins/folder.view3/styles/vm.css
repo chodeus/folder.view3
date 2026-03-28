@@ -112,6 +112,15 @@ td.folder-name .folder-outer {
     box-sizing: border-box;
 }
 
+@media (max-width: 768px) {
+    .folder-preview.fv3-overflow-scroll {
+        padding-top: 0;
+    }
+    .folder-preview-wrapper .inner {
+        line-height: 1.1;
+    }
+}
+
 .folder-preview.fv3-overflow-scroll .folder-preview-wrapper {
     float: none;
 }
