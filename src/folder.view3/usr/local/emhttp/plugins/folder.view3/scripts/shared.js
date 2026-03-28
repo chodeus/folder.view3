@@ -61,6 +61,86 @@ window.addEventListener('beforeunload', () => {
     fv3Cleanups.forEach(fn => { try { fn(); } catch(e) {} });
 });
 
+window.fv3EditFolder = (type, basePath, id) => {
+    location.href = basePath + '?type=' + type + '&id=' + id;
+};
+
+window.fv3CreateFolderBtn = (type, basePath) => {
+    location.href = basePath + '?type=' + type;
+};
+
+window.fv3RmFolder = (type, globalFolders, loadlist, id) => {
+    swal({
+        title: $.i18n('are-you-sure'),
+        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders[id].name)}`,
+        type: 'warning',
+        html: true,
+        showCancelButton: true,
+        confirmButtonText: $.i18n('yes-delete'),
+        cancelButtonText: $.i18n('cancel'),
+        showLoaderOnConfirm: true
+    },
+    async (c) => {
+        if (!c) { setTimeout(loadlist, 0); return; }
+        $('div.spinner.fixed').show('slow');
+        await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
+        setTimeout(loadlist, 500);
+    });
+};
+
+window.fv3DropDownButton = (eventPrefix, globalFolders, id, postCallback) => {
+    folderEvents.dispatchEvent(new CustomEvent(eventPrefix + '-pre-folder-expansion', {detail: { id }}));
+    const element = $(`.dropDown-${id}`);
+    const state = element.attr('active') === "true";
+    if (state) {
+        element.children().removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        $(`tr.folder-id-${id}`).addClass('sortable');
+        $(`tr.folder-id-${id} .folder-storage`).append($(`.folder-${id}-element`));
+        element.attr('active', 'false');
+    } else {
+        element.children().removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        $(`tr.folder-id-${id}`).removeClass('sortable').removeClass('ui-sortable-handle').off().css('cursor', '');
+        $(`tr.folder-id-${id}`).after($(`.folder-${id}-element`));
+        $(`.folder-${id}-element > td > i.fa-arrows-v`).remove();
+        element.attr('active', 'true');
+    }
+    if(globalFolders[id]) {
+        globalFolders[id].status.expanded = !state;
+    }
+    folderEvents.dispatchEvent(new CustomEvent(eventPrefix + '-post-folder-expansion', {detail: { id }}));
+    if (postCallback) postCallback();
+};
+
+window.fv3DownloadDebugJSON = (filename, data) => {
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const el = document.createElement('a');
+    el.href = url;
+    el.download = filename;
+    el.style.display = 'none';
+    document.body.appendChild(el);
+    el.click();
+    document.body.removeChild(el);
+    URL.revokeObjectURL(url);
+};
+
+window.fv3RunUserScript = async (act, prom) => {
+    const args = act.script_args || '';
+    if(act.script_sync) {
+        let scriptVariables = {};
+        let rawVars = await $.post("/plugins/user.scripts/exec.php",{action:'getScriptVariables',script:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
+        rawVars.trim().split('\n').forEach((e) => { const variable = e.split('='); scriptVariables[variable[0]] = variable[1] });
+        if(scriptVariables['directPHP']) {
+            $.post("/plugins/user.scripts/exec.php",{action:'directRunScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) { openBox(data,act.name,800,1200, 'loadlist');}});
+        } else {
+            $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
+        }
+    } else {
+        const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
+        prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
+    }
+};
+
 window.fv3UpdateRowSeparators = (folderMap, folderId) => {
     const ids = folderId ? [folderId] : Object.keys(folderMap);
     ids.forEach(id => {
@@ -94,6 +174,8 @@ window.fv3UpdateRowSeparators = (folderMap, folderId) => {
     });
 };
 
+window._fv3FolderMapGetter = null;
+
 window.fv3SyncPreviewHeights = (cookieName) => {
     const isAdvanced = $.cookie(cookieName) == 'advanced';
     document.querySelectorAll('tr.folder div.folder-preview:not(.fv3-overflow-expand)').forEach(el => {
@@ -107,6 +189,10 @@ window.fv3SyncPreviewHeights = (cookieName) => {
             }
         }
     });
+    document.querySelectorAll('tr.folder .folder-preview').forEach(el => {
+        if (el._fv3CheckExpand) el._fv3CheckExpand();
+    });
+    if (_fv3FolderMapGetter) fv3UpdateRowSeparators(_fv3FolderMapGetter());
 };
 
 // --- Phase 6: Unraid 7.2+ API Integration ---
@@ -348,6 +434,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 }
             }
         };
+        el._fv3CheckExpand = checkExpand;
         requestAnimationFrame(checkExpand);
         el.querySelectorAll('img').forEach(img => {
             if (!img.complete) {
@@ -379,11 +466,9 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
 };
 
 window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
+    _fv3FolderMapGetter = folderMapGetter;
     let recalcTimer;
-    const recalc = () => {
-        fv3SyncPreviewHeights(cookieName);
-        fv3UpdateRowSeparators(folderMapGetter());
-    };
+    const recalc = () => fv3SyncPreviewHeights(cookieName);
 
     window.addEventListener('resize', () => {
         clearTimeout(recalcTimer);

@@ -34,7 +34,6 @@ const createFolders = async () => {
 
 
     if(folderDebugMode) {
-        fv3Debug('createFolders', 'folderDebugMode (existing) is TRUE. Preparing debug JSON download.');
         const debugData = JSON.stringify({
             version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
             folders,
@@ -44,18 +43,8 @@ const createFolders = async () => {
             order,
             containersInfo
         });
-        const blob = new Blob([debugData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const element = document.createElement('a');
-        element.href = url;
-        element.download = 'debug-DOCKER.json';
-        element.style.display = 'none';
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        URL.revokeObjectURL(url);
+        fv3DownloadDebugJSON('debug-DOCKER.json', debugData);
         console.log('Order:', [...order]);
-        fv3Debug('createFolders', 'Debug JSON downloaded. Order logged (existing log):', [...order]);
     }
 
     let foldersDone = {};
@@ -1087,77 +1076,9 @@ const folderAutostart = async (el) => {
     fv3Debug('folderAutostart', id, 'Exit.');
 };
 
-/**
- * Handle the dropdown expand button of folders
- * @param {string} id the id of the folder
- */
-const dropDownButton = (id) => {
-    fv3Debug('dropDownButton', id, 'Entry.');
-    fv3Debug('dropDownButton', id, 'Dispatching docker-pre-folder-expansion event.');
-    folderEvents.dispatchEvent(new CustomEvent('docker-pre-folder-expansion', {detail: { id }}));
-    const element = $(`.dropDown-${id}`);
-    const state = element.attr('active') === "true";
-    fv3Debug('dropDownButton', id, `Current state (active attribute): ${state}.`);
-    if (state) { // Is expanded, so collapse
-        element.children().removeClass('fa-chevron-up').addClass('fa-chevron-down');
-        $(`tr.folder-id-${id}`).addClass('sortable');
-        $(`tr.folder-id-${id} .folder-storage`).append($(`.folder-${id}-element`));
-        element.attr('active', 'false');
-        fv3Debug('dropDownButton', id, 'Collapsed folder. Moved elements to storage.');
-    } else { // Is collapsed, so expand
-        element.children().removeClass('fa-chevron-down').addClass('fa-chevron-up');
-        $(`tr.folder-id-${id}`).removeClass('sortable').removeClass('ui-sortable-handle').off().css('cursor', '');
-        $(`tr.folder-id-${id}`).after($(`.folder-${id}-element`));
-        $(`.folder-${id}-element > td > i.fa-arrows-v`).remove(); // Remove mover icon from children when expanded
-        element.attr('active', 'true');
-        fv3Debug('dropDownButton', id, 'Expanded folder. Moved elements after folder row.');
-    }
-    if(globalFolders[id]) {
-        globalFolders[id].status.expanded = !state;
-        fv3Debug('dropDownButton', id, `Updated globalFolders[${id}].status.expanded to ${!state}.`);
-    } else {
-        fv3DebugWarn('dropDownButton', id, `globalFolders[${id}] not found to update expanded status.`);
-    }
-    fv3Debug('dropDownButton', id, 'Dispatching docker-post-folder-expansion event.');
-    folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-expansion', {detail: { id }}));
-    fv3Debug('dropDownButton', id, 'Exit.');
-};
-
-/**
- * Removie the folder
- * @param {string} id the id of the folder
- */
-const rmFolder = (id) => {
-    fv3Debug('rmFolder', id, 'Entry.');
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        fv3Debug('rmFolder', id, `Swal callback. Confirmed: ${c}`);
-        if (!c) { setTimeout(loadlist, 0); return; } // Use timeout 0 for consistency
-        $('div.spinner.fixed').show('slow');
-        fv3Debug('rmFolder', id, 'Calling delete API.');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
-        fv3Debug('rmFolder', id, 'Delete API call finished. Reloading list.');
-        setTimeout(loadlist, 500);
-    });
-};
-
-/**
- * Redirect to the page to edit the folder
- * @param {string} id the id of the folder
- */
-const editFolder = (id) => {
-    fv3Debug('editFolder', id, 'Redirecting to edit page.');
-    location.href = "/Docker/Folder?type=docker&id=" + id;
-};
+const dropDownButton = (id) => fv3DropDownButton('docker', globalFolders, id);
+const rmFolder = (id) => fv3RmFolder('docker', globalFolders, loadlist, id);
+const editFolder = (id) => fv3EditFolder('docker', '/Docker/Folder', id);
 
 /**
  * Force update all the containers inside a folder
@@ -1359,39 +1280,8 @@ const folderCustomAction = async (id, actionIndex) => {
         });
         fv3Debug('folderCustomAction', id, `Pushed ${prom.length} standard actions to promise array.`);
 
-    } else if(act.type === 1) { // User Script
-        fv3Debug('folderCustomAction', id, `Action type 1 (User Script). Script: ${act.script}, Sync: ${act.script_sync}, Args: ${act.script_args}`);
-        const args = act.script_args || '';
-        if(act.script_sync) { // Synchronous (foreground) script
-            let scriptVariables = {};
-            fv3Debug('folderCustomAction', id, 'Sync script. Getting script variables.');
-            let rawVars = await $.post("/plugins/user.scripts/exec.php",{action:'getScriptVariables',script:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            fv3Debug('folderCustomAction', id, 'Raw script variables:', rawVars);
-            rawVars.trim().split('\n').forEach((e) => { const variable = e.split('='); scriptVariables[variable[0]] = variable[1] });
-            fv3Debug('folderCustomAction', id, 'Parsed script variables:', scriptVariables);
-
-            if(scriptVariables['directPHP']) {
-                fv3Debug('folderCustomAction', id, 'directPHP detected. Posting directRunScript.');
-                // This is a POST that then has a callback to openBox. It's not added to `prom`.
-                $.post("/plugins/user.scripts/exec.php",{action:'directRunScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {
-                    fv3Debug('folderCustomAction', id, 'directRunScript callback. Data:', data);
-                    if(data) { openBox(data,act.name,800,1200, 'loadlist'); }
-                });
-            } else {
-                fv3Debug('folderCustomAction', id, 'Not directPHP. Posting convertScript then openBox.');
-                // This is also a POST with a callback. Not added to `prom`.
-                $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {
-                     fv3Debug('folderCustomAction', id, 'convertScript callback. Data:', data);
-                    if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}
-                });
-            }
-        } else { // Asynchronous (background) script
-            fv3Debug('folderCustomAction', id, 'Async script. Posting convertScript then GET logging.htm.');
-            const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            fv3Debug('folderCustomAction', id, 'Converted script cmd:', cmd);
-            prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
-            fv3Debug('folderCustomAction', id, 'Pushed async script call to promise array.');
-        }
+    } else if(act.type === 1) {
+        await fv3RunUserScript(act, prom);
     }
 
     fv3Debug('folderCustomAction', id, `Awaiting ${prom.length} promises for custom action.`);
@@ -1747,10 +1637,7 @@ fv3Debug('init', 'globals', {
 fv3SetupResizeListeners(() => globalFolders, 'docker_listview_mode');
 
 // Add the button for creating a folder
-const createFolderBtn = () => {
-    fv3Debug('createFolderBtn', 'Clicked. Redirecting.');
-    location.href = "/Docker/Folder?type=docker"
-};
+const createFolderBtn = () => fv3CreateFolderBtn('docker', '/Docker/Folder');
 
 // This is needed because unraid don't like the folder and the number are set incorrectly, this intercept the request and change the numbers to make the order appear right, this is important for the autostart and to draw the folders
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {

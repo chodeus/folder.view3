@@ -43,16 +43,7 @@ const createFolders = async () => {
             order,
             vmInfo
         });
-        const blob = new Blob([debugData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const element = document.createElement('a');
-        element.href = url;
-        element.download = 'debug-VM.json';
-        element.style.display = 'none';
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        URL.revokeObjectURL(url);
+        fv3DownloadDebugJSON('debug-VM.json', debugData);
         console.log('Order:', [...order]);
     }
 
@@ -404,64 +395,9 @@ const folderAutostart = (el) => {
     }
 };
 
-/**
- * Handle the dropdown expand button of folders
- * @param {string} id the id of the folder
- */
-const dropDownButton = (id) => {
-    folderEvents.dispatchEvent(new CustomEvent('vm-pre-folder-expansion', {detail: { id }}));
-    const element = $(`.dropDown-${id}`);
-    const state = element.attr('active') === "true";
-    if (state) {
-        element.children().removeClass('fa-chevron-up').addClass('fa-chevron-down');
-        $(`tr.folder-id-${id}`).addClass('sortable');
-        $(`tr.folder-id-${id} .folder-storage`).append($(`.folder-${id}-element`));
-        element.attr('active', 'false');
-    } else {
-        element.children().removeClass('fa-chevron-down').addClass('fa-chevron-up');
-        $(`tr.folder-id-${id}`).removeClass('sortable').removeClass('ui-sortable-handle').off().css('cursor', '');
-        $(`tr.folder-id-${id}`).after($(`.folder-${id}-element`));
-        $(`.folder-${id}-element > td > i.fa-arrows-v`).remove();
-        element.attr('active', 'true');
-    }
-    if(globalFolders[id]) {
-        globalFolders[id].status.expanded = !state;
-    }
-    folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-expansion', {detail: { id }}));
-    applyVmZebra();
-};
-
-/**
- * Removie the folder
- * @param {string} id the id of the folder
- */
-const rmFolder = (id) => {
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        if (!c) { setTimeout(loadlist); return; }
-        $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
-        loadedFolder = false;
-        setTimeout(loadlist, 500)
-    });
-};
-
-/**
- * Redirect to the page to edit the folder
- * @param {string} id the id of the folder
- */
-const editFolder = (id) => {
-    location.href = "/VMs/Folder?type=vm&id=" + id;
-};
+const dropDownButton = (id) => fv3DropDownButton('vm', globalFolders, id, applyVmZebra);
+const rmFolder = (id) => fv3RmFolder('vm', globalFolders, loadlist, id);
+const editFolder = (id) => fv3EditFolder('vm', '/VMs/Folder', id);
 
 /**
  * 
@@ -607,20 +543,7 @@ const folderCustomAction = async (id, action) => {
             ctAction(e);
         });
     } else if(act.type === 1) {
-        const args = act.script_args || '';
-        if(act.script_sync) {
-            let scriptVariables = {}
-            let rawVars = await $.post("/plugins/user.scripts/exec.php",{action:'getScriptVariables',script:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            rawVars.trim().split('\n').forEach((e) => { const variable = e.split('='); scriptVariables[variable[0]] = variable[1] });
-            if(scriptVariables['directPHP']) {
-                $.post("/plugins/user.scripts/exec.php",{action:'directRunScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) { openBox(data,act.name,800,1200, 'loadlist');}})
-            } else {
-                $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
-            }
-        } else {
-            const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
-        }
+        await fv3RunUserScript(act, prom);
     }
 
     await Promise.all(prom);
@@ -779,7 +702,7 @@ window.loadlist = (x) => {
 fv3SetupResizeListeners(() => globalFolders, 'vm_listview_mode');
 
 // Add the button for creating a folder
-const createFolderBtn = () => { location.href = "/VMs/Folder?type=vm" };
+const createFolderBtn = () => fv3CreateFolderBtn('vm', '/VMs/Folder');
 
 
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
