@@ -117,7 +117,7 @@ const downloadDocker = async (id) => {
 };
 
 const importDocker = () => {
-    let input = $('input[type*=file]')[0];
+    let input = document.getElementById('fv3-import-docker-file');
     input.onchange = (e) => {
 
         // getting a hold of the file reference
@@ -157,7 +157,7 @@ const importDocker = () => {
 };
 
 const importVm = () => {
-    let input = $('input[type*=file]')[0];
+    let input = document.getElementById('fv3-import-vm-file');
     input.onchange = (e) => {
 
         // getting a hold of the file reference
@@ -463,7 +463,7 @@ $('#fv3-apply-defaults').on('click', function() {
         if (!confirmed) return;
         const settings = fv3SafeParse(await $.get('/plugins/folder.view3/server/read_settings.php').promise(), {});
         const defaultMap = {
-            preview: settings.default_preview || '1',
+            preview: parseInt(settings.default_preview !== undefined ? settings.default_preview : '1', 10),
             preview_hover: settings.default_preview_hover === 'yes',
             preview_grayscale: settings.default_preview_grayscale === 'yes',
             preview_webui: settings.default_preview_webui === 'yes',
@@ -477,13 +477,14 @@ $('#fv3-apply-defaults').on('click', function() {
             preview_row_separator: settings.default_row_separator === 'yes',
             preview_row_separator_color: settings.default_separator_color || '',
             preview_text_width: settings.default_preview_text_width || '',
-            preview_overflow: settings.default_overflow === 'scroll' ? '2' : settings.default_overflow === 'expand' ? '1' : '0',
-            context: settings.default_context || '1',
+            preview_overflow: settings.default_overflow === 'scroll' ? 2 : settings.default_overflow === 'expand' ? 1 : 0,
+            context: parseInt(settings.default_context !== undefined ? settings.default_context : '1', 10),
             update_column: settings.default_update_column === 'yes'
         };
         for (const [type, folders] of [['docker', dockers], ['vm', vms]]) {
             for (const [id, folder] of Object.entries(folders)) {
-                Object.assign(folder, defaultMap);
+                if (!folder.settings) folder.settings = {};
+                Object.assign(folder.settings, defaultMap);
                 await $.post('/plugins/folder.view3/server/update.php', {
                     type, id, content: JSON.stringify(folder)
                 }).promise();

@@ -290,5 +290,5 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <script src="<?=autov('/plugins/folder.view3/scripts/folderview3.js')?>"></script>
 <script src="<?=autov('/plugins/folder.view3/scripts/csstool.js')?>"></script>
 
-<input type="file" style="display: none;" accept=".json">
-<input type="file" style="display: none;" accept=".css">
+<input type="file" id="fv3-import-docker-file" style="display: none;" accept=".json">
+<input type="file" id="fv3-import-vm-file" style="display: none;" accept=".json">
