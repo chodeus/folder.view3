@@ -193,7 +193,9 @@ window.fv3SyncPreviewHeights = (cookieName) => {
         if (el._fv3CheckExpand) el._fv3CheckExpand();
     });
     if (_fv3FolderMapGetter) {
-        requestAnimationFrame(() => requestAnimationFrame(() => fv3UpdateRowSeparators(_fv3FolderMapGetter())));
+        const drawSeps = () => fv3UpdateRowSeparators(_fv3FolderMapGetter());
+        requestAnimationFrame(() => requestAnimationFrame(drawSeps));
+        setTimeout(drawSeps, 300);
     }
 };
 
