@@ -347,7 +347,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 fv3UpdateRowSeparators(globalFolders, id);
             }
         };
-        requestAnimationFrame(checkExpand);
+        requestAnimationFrame(() => requestAnimationFrame(checkExpand));
         const ro = new ResizeObserver(() => requestAnimationFrame(checkExpand));
         ro.observe(el);
         fv3Cleanups.push(() => ro.disconnect());
