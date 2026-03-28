@@ -322,6 +322,8 @@ fv3DetectApi();
 
 // --- End Phase 6 ---
 
+window.fv3ExpandCheckers = [];
+
 window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     const $preview = $(`tr.folder-id-${id} div.folder-preview`);
     const el = $preview[0];
@@ -339,15 +341,34 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 return;
             }
             el.classList.add('fv3-overflow-expand');
-            const needsExpand = wrappers[0].offsetTop !== wrappers[wrappers.length - 1].offsetTop;
-            if (!needsExpand) {
-                el.classList.remove('fv3-overflow-expand');
-            }
-            if (folder.settings.preview_row_separator) {
-                fv3UpdateRowSeparators(globalFolders, id);
-            }
+            requestAnimationFrame(() => {
+                const needsExpand = wrappers[0].offsetTop !== wrappers[wrappers.length - 1].offsetTop;
+                if (!needsExpand) {
+                    el.classList.remove('fv3-overflow-expand');
+                }
+                if (folder.settings.preview_row_separator) {
+                    fv3UpdateRowSeparators(globalFolders, id);
+                }
+            });
         };
-        setTimeout(() => requestAnimationFrame(checkExpand), 150);
+        fv3ExpandCheckers.push(checkExpand);
+        const imgs = el.querySelectorAll('img');
+        const allLoaded = () => Array.from(imgs).every(img => img.complete);
+        if (allLoaded()) {
+            requestAnimationFrame(checkExpand);
+        } else {
+            imgs.forEach(img => {
+                if (!img.complete) {
+                    img.addEventListener('load', () => {
+                        if (allLoaded()) requestAnimationFrame(checkExpand);
+                    }, { once: true });
+                    img.addEventListener('error', () => {
+                        if (allLoaded()) requestAnimationFrame(checkExpand);
+                    }, { once: true });
+                }
+            });
+            setTimeout(checkExpand, 500);
+        }
         const ro = new ResizeObserver(() => requestAnimationFrame(checkExpand));
         ro.observe(el);
         fv3Cleanups.push(() => ro.disconnect());
@@ -375,6 +396,7 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
     let resizeTimer;
     const recalc = () => {
         fv3SyncPreviewHeights(cookieName);
+        fv3ExpandCheckers.forEach(fn => fn());
         fv3UpdateRowSeparators(folderMapGetter());
     };
 
@@ -389,7 +411,7 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
             const nowAdvanced = $.cookie(cookieName) == 'advanced';
             if (nowAdvanced !== lastAdvanced) {
                 lastAdvanced = nowAdvanced;
-                requestAnimationFrame(recalc);
+                setTimeout(recalc, 100);
             }
         }, 50);
     });
