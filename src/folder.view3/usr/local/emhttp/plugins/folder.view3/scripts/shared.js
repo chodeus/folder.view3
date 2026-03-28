@@ -192,6 +192,9 @@ window.fv3SyncPreviewHeights = (cookieName) => {
     document.querySelectorAll('tr.folder .folder-preview').forEach(el => {
         if (el._fv3CheckExpand) el._fv3CheckExpand();
     });
+    if (_fv3FolderMapGetter) {
+        requestAnimationFrame(() => requestAnimationFrame(() => fv3UpdateRowSeparators(_fv3FolderMapGetter())));
+    }
 };
 
 // --- Phase 6: Unraid 7.2+ API Integration ---
@@ -423,14 +426,9 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 if (wrappers.length < 2) return;
                 if (wrappers[0].offsetTop === wrappers[wrappers.length - 1].offsetTop) {
                     el.classList.remove('fv3-overflow-expand');
-                } else if (folder.settings.preview_row_separator) {
-                    fv3UpdateRowSeparators(globalFolders, id);
                 }
             } else if (el.scrollWidth > el.clientWidth) {
                 el.classList.add('fv3-overflow-expand');
-                if (folder.settings.preview_row_separator) {
-                    requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
-                }
             }
         };
         el._fv3CheckExpand = checkExpand;
