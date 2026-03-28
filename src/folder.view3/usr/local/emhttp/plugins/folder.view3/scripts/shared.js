@@ -330,13 +330,16 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     if (folder.settings.preview_overflow === 1) {
         $preview.addClass('fv3-overflow-expand');
         if (folder.settings.preview_row_separator) {
-            requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
+            $preview.addClass('fv3-has-separators');
         }
         requestAnimationFrame(() => {
             el.classList.remove('fv3-overflow-expand');
             el.style.height = '';
             if (el.scrollWidth > el.clientWidth) {
                 el.classList.add('fv3-overflow-expand');
+            }
+            if (folder.settings.preview_row_separator) {
+                requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
             }
         });
         const ro = new ResizeObserver(() => {
@@ -347,7 +350,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                     el.classList.add('fv3-overflow-expand');
                 }
                 if (folder.settings.preview_row_separator) {
-                    fv3UpdateRowSeparators(globalFolders, id);
+                    requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
                 }
             });
         });

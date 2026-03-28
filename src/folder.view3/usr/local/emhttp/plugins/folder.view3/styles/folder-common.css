@@ -112,6 +112,10 @@ td.folder-name .folder-outer {
     position: relative;
 }
 
+.folder-preview.fv3-overflow-expand.fv3-has-separators {
+    row-gap: 13px;
+}
+
 .fv3-row-separator {
     position: absolute;
     left: var(--fv3-folder-preview-wrapper-margin);
