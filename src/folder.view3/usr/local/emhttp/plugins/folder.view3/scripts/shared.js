@@ -193,7 +193,7 @@ window.fv3SyncPreviewHeights = (cookieName) => {
         if (el._fv3CheckExpand) el._fv3CheckExpand();
     });
     if (_fv3FolderMapGetter) {
-        requestAnimationFrame(() => fv3UpdateRowSeparators(_fv3FolderMapGetter()));
+        requestAnimationFrame(() => requestAnimationFrame(() => fv3UpdateRowSeparators(_fv3FolderMapGetter())));
     }
 };
 
@@ -486,4 +486,15 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
     const firstCpuCell = document.querySelector('tr.folder td.folder-advanced');
     if (firstCpuCell) ro.observe(firstCpuCell);
     fv3Cleanups.push(() => ro.disconnect());
+
+    let lastAdvanced = $.cookie(cookieName) == 'advanced';
+    document.addEventListener('click', () => {
+        setTimeout(() => {
+            const nowAdvanced = $.cookie(cookieName) == 'advanced';
+            if (nowAdvanced !== lastAdvanced) {
+                lastAdvanced = nowAdvanced;
+                setTimeout(recalc, 150);
+            }
+        }, 50);
+    });
 };
