@@ -343,6 +343,9 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 }
             } else if (el.scrollWidth > el.clientWidth) {
                 el.classList.add('fv3-overflow-expand');
+                if (folder.settings.preview_row_separator) {
+                    requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
+                }
             }
         };
         requestAnimationFrame(checkExpand);
@@ -387,13 +390,13 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
         recalcTimer = setTimeout(recalc, 150);
     });
 
+    const ro = new ResizeObserver(() => {
+        clearTimeout(recalcTimer);
+        recalcTimer = setTimeout(recalc, 50);
+    });
     const firstPreview = document.querySelector('tr.folder .folder-preview');
-    if (firstPreview) {
-        const ro = new ResizeObserver(() => {
-            clearTimeout(recalcTimer);
-            recalcTimer = setTimeout(recalc, 50);
-        });
-        ro.observe(firstPreview);
-        fv3Cleanups.push(() => ro.disconnect());
-    }
+    if (firstPreview) ro.observe(firstPreview);
+    const firstCpuCell = document.querySelector('tr.folder td.folder-advanced');
+    if (firstCpuCell) ro.observe(firstCpuCell);
+    fv3Cleanups.push(() => ro.disconnect());
 };
