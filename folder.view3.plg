@@ -6,12 +6,21 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.27">
-<!ENTITY md5 "87480d4ab62293fd82e057bc38037673">
+<!ENTITY version "2026.03.28">
+<!ENTITY md5 "c466fd3df75fe0024ccecb2652141f97">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.28
+- Fix preview divider and wrapper vertical alignment
+- Fix expand mode containers overlapping on page refresh
+- Fix row separator timing on basic/advanced toggle
+- Fix default folders wrapping on narrow screens
+- Add Firefox scrollbar fallback
+- Add expand row separator gap spacing
+- Enhanced mobile UI
 
 ###2026.03.27
 - Fix multiple JS bugs

@@ -155,6 +155,15 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 85 | Mobile preview alignment — default rows get `padding-bottom: 3px` to prevent status icon clipping at bottom border. Expand dividers: 42px height, `align-self: flex-start` on mobile | `docker.css`, `vm.css` | 2026.03.27 |
 | 86 | Deduplicate PHP API requests — pending-state check prevents `loadlist()` from firing new PHP requests when previous ones haven't resolved. Unraid's `loadlist_original()` still runs for native rendering. Halves API calls per page load (8→4) | `docker.js`, `vm.js` | 2026.03.27 |
 | 87 | Fix README description — "next to" changed to "above" for Add Container/VM button | `README.md` | 2026.03.27 |
+| 88 | Fix preview divider and wrapper vertical alignment — replaced `float: left`, `height: 100%`, `margin-top: 7px` on wrappers and `margin-top: -6px` on dividers with `align-self: center` on both. Eliminates JS margin manipulation in `fv3SyncPreviewHeights` | `docker.css`, `vm.css`, `docker.js`, `vm.js` | 2026.03.28 |
+| 89 | Fix expand mode containers overlapping on page refresh — stale inline heights from `fv3SyncPreviewHeights` interfered with expand detection. Changed to `offsetTop` comparison (class ON) and `scrollWidth > clientWidth` (class OFF) for nowrap-compatible detection | `docker.js`, `vm.js` | 2026.03.28 |
+| 90 | Fix row separator timing on basic/advanced toggle — toggle click uses capture phase to bypass `stopPropagation()`, 100ms+300ms timing matches main. Separator draws debounced with `_fv3SepTimer` to prevent ghost separators from stacking draws | `docker.js`, `vm.js` | 2026.03.28 |
+| 91 | Fix default folders wrapping on narrow screens — changed base `.folder-preview` from `flex-wrap: wrap` to `nowrap`, added `flex-shrink: 0` to wrappers. Expand mode gets explicit `flex-wrap: wrap` override | `docker.css`, `vm.css` | 2026.03.28 |
+| 92 | Add Firefox scrollbar fallback — `@supports not selector(::-webkit-scrollbar)` block with `scrollbar-width: thin` for Firefox compatibility | `docker.css`, `vm.css` | 2026.03.28 |
+| 93 | Add expand row separator gap spacing — `fv3-has-separators` class applies `row-gap: 13px` (6px above + 1px separator + 6px below) when row separators are enabled, default `row-gap: 7px` otherwise | `docker.css`, `vm.css`, `docker.js`, `vm.js` | 2026.03.28 |
+| 94 | Enhanced mobile UI — removed stale `padding-bottom: 3px` mobile override (align-self handles centering), removed scroll `padding-top` on mobile (no visible scrollbar on touch), tightened `line-height: 1.1` on wrapper inner text to reduce gap between container name and status | `docker.css`, `vm.css` | 2026.03.28 |
+| 95 | Add form accessibility attributes — `name`, `for`, `autocomplete="off"` on folder editor and settings page form fields | `Folder.page`, `FolderView3.page` | 2026.03.28 |
+| 96 | Build system auto-detect branch and auto-increment version numbers — `pkg_build.sh` detects current git branch, supports `--beta`/`--develop`/`--main` overrides, auto-increments build numbers per date | `pkg_build.sh` | 2026.03.28 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 

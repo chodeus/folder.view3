@@ -35,6 +35,7 @@
     "restart": "Neustart",
     "hibernate": "Ruhezustand",
     "force-stop": "Stoppen erzwingen",
+    "reset": "Zurücksetzen",
     "logs": "Protokolle",
     "edit": "Bearbeiten",
     "remove": "Entfernen",

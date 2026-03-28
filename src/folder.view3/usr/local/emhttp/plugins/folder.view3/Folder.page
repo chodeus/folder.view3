@@ -28,7 +28,7 @@ Markdown="false"
                 <dt data-i18n="name">Name:</dt>
                 <dd>
                     <img class="img" style="visibility: hidden;">
-                    <input type="text" name="name" pattern="[^\x00-\x1F\x7F<>&quot;'\\:]+" value="" required>
+                    <input type="text" name="name" pattern="[^\x00-\x1F\x7F<>&quot;'\\:]+" value="" required autocomplete="off">
                     <div id="fv3-name-warning" style="color: #e22828; font-size: 12px; margin-top: 4px; display: none;">20 characters is the recommended maximum — longer names will be truncated/clipped.</div>
                 </dd>
             </dl>

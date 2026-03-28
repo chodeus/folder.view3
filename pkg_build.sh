@@ -5,35 +5,49 @@ tmpdir="$CWD/tmp/tmp.$((RANDOM % 1000000))"
 version=$(date +"%Y.%m.%d")
 plgfile="$CWD/folder.view3.plg"
 
-# Parse flags
-# Usage: pkg_build.sh [--beta [N]]
-#   --beta     → YYYY.MM.DD-beta (beta branch)
-#   --beta 2   → YYYY.MM.DD-beta2 (beta branch)
-#   (no flag)  → YYYY.MM.DD (main branch, stable)
-BETA=false
-BETA_NUM=""
+# Auto-detect current git branch, with optional flag override
+# Usage: pkg_build.sh [--beta [N] | --develop [N] | --main]
+#   (no flag)    → auto-detect branch from git
+#   --beta [N]   → force beta branch
+#   --develop [N]→ force develop branch
+#   --main       → force main branch (stable)
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+SUFFIX_NUM=""
+
 if [ "$1" = "--beta" ]; then
-    BETA=true
-    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then
-        BETA_NUM="$2"
-    fi
+    branch="beta"
+    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then SUFFIX_NUM="$2"; fi
+elif [ "$1" = "--develop" ]; then
+    branch="develop"
+    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then SUFFIX_NUM="$2"; fi
+elif [ "$1" = "--main" ]; then
+    branch="main"
+else
+    branch="$GIT_BRANCH"
 fi
 
-# Set branch based on build type
-if [ "$BETA" = true ]; then
-    branch="beta"
-    version="${version}-beta${BETA_NUM}"
-else
+# Set version suffix based on branch
+if [ "$branch" = "develop" ] || [ "$branch" = "beta" ]; then
+    if [ -z "$SUFFIX_NUM" ]; then
+        # Auto-increment: count existing archives for this date+branch
+        existing=$(ls $CWD/archive/folder.view3-${version}-${branch}*.txz 2>/dev/null | wc -l)
+        SUFFIX_NUM=$((existing + 1))
+    fi
+    version="${version}-${branch}${SUFFIX_NUM}"
+elif [ "$branch" != "main" ]; then
+    echo "Warning: unrecognized branch '$branch', defaulting to main"
     branch="main"
 fi
 
 filename="$CWD/archive/folder.view3-$version.txz"
-dayversion=$(ls $CWD/archive/folder.view3-$version*.txz 2>/dev/null | wc -l)
 
-if [ $dayversion -gt 0 ]
-then
-    version="$version.$dayversion"
-    filename="$CWD/archive/folder.view3-$version.txz"
+# Collision detection for main branch (date-based only)
+if [ "$branch" = "main" ]; then
+    dayversion=$(ls $CWD/archive/folder.view3-$version*.txz 2>/dev/null | wc -l)
+    if [ $dayversion -gt 0 ]; then
+        version="$version.$dayversion"
+        filename="$CWD/archive/folder.view3-$version.txz"
+    fi
 fi
 
 mkdir -p $tmpdir
@@ -43,6 +57,9 @@ cp --parents -f $(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-conf
 
 # Set permissions for Unraid (only in temp dir, not the repo)
 chmod -R 0755 $tmpdir
+
+# Touch all files so autov() generates fresh cache-busting hashes
+find $tmpdir -type f -exec touch {} +
 
 cd $tmpdir
 tar -cJf $filename *

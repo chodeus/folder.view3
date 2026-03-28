@@ -347,48 +347,50 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
     if (folder.settings.preview_overflow === 1) {
         const $expandPreview = $(`tr.folder-id-${id} div.folder-preview`);
+        const expandEl = $expandPreview[0];
         $expandPreview.addClass('fv3-overflow-expand');
         if (folder.settings.preview_row_separator) {
-            requestAnimationFrame(() => fv3UpdateRowSeparators(id));
+            $expandPreview.addClass('fv3-has-separators');
         }
-        requestAnimationFrame(() => {
-            const el = $expandPreview[0];
-            if (el && el.scrollHeight <= el.clientHeight) {
-                $expandPreview.removeClass('fv3-overflow-expand');
+        const checkExpand = () => {
+            if (expandEl.classList.contains('fv3-overflow-expand')) {
+                const wrappers = expandEl.querySelectorAll('.folder-preview-wrapper');
+                if (wrappers.length < 2) return;
+                if (wrappers[0].offsetTop === wrappers[wrappers.length - 1].offsetTop) {
+                    expandEl.classList.remove('fv3-overflow-expand');
+                }
+            } else if (expandEl.scrollWidth > expandEl.clientWidth) {
+                expandEl.classList.add('fv3-overflow-expand');
+            }
+        };
+        expandEl._fv3CheckExpand = checkExpand;
+        requestAnimationFrame(checkExpand);
+        expandEl.querySelectorAll('img').forEach(img => {
+            if (!img.complete) {
+                img.addEventListener('load', () => requestAnimationFrame(checkExpand), { once: true });
+                img.addEventListener('error', () => requestAnimationFrame(checkExpand), { once: true });
             }
         });
-        new ResizeObserver(() => {
-            const el = $expandPreview[0];
-            if (!el) return;
-            el.classList.remove('fv3-overflow-expand');
-            requestAnimationFrame(() => {
-                if (el.scrollHeight > el.clientHeight) {
-                    el.classList.add('fv3-overflow-expand');
-                }
-                if (folder.settings.preview_row_separator) {
-                    fv3UpdateRowSeparators(id);
-                }
-            });
-        }).observe($expandPreview[0]);
+        const expandRo = new ResizeObserver(() => requestAnimationFrame(checkExpand));
+        expandRo.observe(expandEl);
     } else if (folder.settings.preview_overflow === 2) {
         const $scrollPreview = $(`tr.folder-id-${id} div.folder-preview`);
+        const scrollEl = $scrollPreview[0];
         $scrollPreview.addClass('fv3-overflow-scroll');
         requestAnimationFrame(() => {
-            const el = $scrollPreview[0];
-            if (el && el.scrollWidth <= el.clientWidth) {
+            if (scrollEl.scrollWidth <= scrollEl.clientWidth) {
                 $scrollPreview.removeClass('fv3-overflow-scroll');
             }
         });
-        new ResizeObserver(() => {
-            const el = $scrollPreview[0];
-            if (!el) return;
-            el.classList.add('fv3-overflow-scroll');
+        const scrollRo = new ResizeObserver(() => {
+            scrollEl.classList.add('fv3-overflow-scroll');
             requestAnimationFrame(() => {
-                if (el.scrollWidth <= el.clientWidth) {
-                    el.classList.remove('fv3-overflow-scroll');
+                if (scrollEl.scrollWidth <= scrollEl.clientWidth) {
+                    scrollEl.classList.remove('fv3-overflow-scroll');
                 }
             });
-        }).observe($scrollPreview[0]);
+        });
+        scrollRo.observe(scrollEl);
     }
     if(folder.settings.preview_vertical_bars) {
         const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
@@ -864,11 +866,11 @@ const fv3UpdateRowSeparators = (folderId) => {
 };
 
 let fv3ResizeTimer;
+let _fv3SepTimer;
 window.addEventListener('resize', () => {
     clearTimeout(fv3ResizeTimer);
     fv3ResizeTimer = setTimeout(() => {
         fv3SyncPreviewHeights();
-        fv3UpdateRowSeparators();
     }, 150);
 });
 
@@ -876,30 +878,22 @@ const fv3SyncPreviewHeights = () => {
     const isAdvanced = $.cookie('vm_listview_mode') == 'advanced';
     document.querySelectorAll('tr.folder div.folder-preview:not(.fv3-overflow-expand)').forEach(el => {
         el.style.height = '';
-        el.querySelectorAll('.folder-preview-wrapper').forEach(w => { w.style.marginTop = ''; });
-        if (!el.classList.contains('fv3-overflow-scroll')) {
-            el.querySelectorAll('.folder-preview-divider').forEach(d => { d.style.marginTop = ''; });
-        }
         const cpuCell = el.closest('tr').querySelector('td.folder-advanced');
-        const isScroll = el.classList.contains('fv3-overflow-scroll');
         if (isAdvanced && cpuCell && cpuCell.offsetHeight > 0) {
             const targetHeight = cpuCell.offsetHeight - 10;
             const defaultHeight = el.offsetHeight;
             if (targetHeight > defaultHeight) {
                 el.style.height = targetHeight + 'px';
-                const extra = targetHeight - defaultHeight;
-                const newMargin = 7 + extra / 2;
-                el.querySelectorAll('.folder-preview-wrapper').forEach(w => {
-                    w.style.marginTop = newMargin + 'px';
-                });
-                if (!isScroll) {
-                    el.querySelectorAll('.folder-preview-divider').forEach(d => {
-                        d.style.marginTop = -newMargin + 'px';
-                    });
-                }
             }
         }
     });
+    document.querySelectorAll('tr.folder .folder-preview').forEach(el => {
+        if (el._fv3CheckExpand) el._fv3CheckExpand();
+    });
+    if (typeof fv3UpdateRowSeparators === 'function') {
+        clearTimeout(_fv3SepTimer);
+        _fv3SepTimer = setTimeout(() => fv3UpdateRowSeparators(), 300);
+    }
 };
 
 // Recalculate separators and preview heights when advanced/basic view is toggled
@@ -909,13 +903,13 @@ document.addEventListener('click', () => {
         const nowAdvanced = $.cookie('vm_listview_mode') == 'advanced';
         if (nowAdvanced !== fv3LastAdvanced) {
             fv3LastAdvanced = nowAdvanced;
-            setTimeout(() => {
+            clearTimeout(fv3ResizeTimer);
+            fv3ResizeTimer = setTimeout(() => {
                 fv3SyncPreviewHeights();
-                fv3UpdateRowSeparators();
             }, 300);
         }
     }, 100);
-});
+}, true);
 
 // Add the button for creating a folder
 const createFolderBtn = () => { location.href = "/VMs/Folder?type=vm" };
