@@ -13,6 +13,15 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.03.28
+- Fix preview divider and wrapper vertical alignment
+- Fix expand mode containers overlapping on page refresh
+- Fix row separator timing on basic/advanced toggle
+- Fix default folders wrapping on narrow screens
+- Add Firefox scrollbar fallback
+- Add expand row separator gap spacing
+- Enhanced mobile UI
+
 ###2026.03.27
 - Fix multiple JS bugs
 - Fix preview divider alignment across all overflow modes
