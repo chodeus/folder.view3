@@ -175,6 +175,7 @@ window.fv3UpdateRowSeparators = (folderMap, folderId) => {
 };
 
 window._fv3FolderMapGetter = null;
+let _fv3SepTimer;
 
 window.fv3SyncPreviewHeights = (cookieName) => {
     const isAdvanced = $.cookie(cookieName) == 'advanced';
@@ -193,9 +194,8 @@ window.fv3SyncPreviewHeights = (cookieName) => {
         if (el._fv3CheckExpand) el._fv3CheckExpand();
     });
     if (_fv3FolderMapGetter) {
-        const drawSeps = () => fv3UpdateRowSeparators(_fv3FolderMapGetter());
-        requestAnimationFrame(() => requestAnimationFrame(drawSeps));
-        setTimeout(drawSeps, 300);
+        clearTimeout(_fv3SepTimer);
+        _fv3SepTimer = setTimeout(() => fv3UpdateRowSeparators(_fv3FolderMapGetter()), 300);
     }
 };
 
@@ -490,7 +490,8 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
             const nowAdvanced = $.cookie(cookieName) == 'advanced';
             if (nowAdvanced !== lastAdvanced) {
                 lastAdvanced = nowAdvanced;
-                setTimeout(recalc, 150);
+                clearTimeout(recalcTimer);
+                recalcTimer = setTimeout(recalc, 150);
             }
         }, 50);
     }, true);
