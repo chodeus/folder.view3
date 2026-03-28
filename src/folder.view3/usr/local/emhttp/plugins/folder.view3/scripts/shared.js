@@ -192,7 +192,9 @@ window.fv3SyncPreviewHeights = (cookieName) => {
     document.querySelectorAll('tr.folder .folder-preview').forEach(el => {
         if (el._fv3CheckExpand) el._fv3CheckExpand();
     });
-    if (_fv3FolderMapGetter) fv3UpdateRowSeparators(_fv3FolderMapGetter());
+    if (_fv3FolderMapGetter) {
+        requestAnimationFrame(() => fv3UpdateRowSeparators(_fv3FolderMapGetter()));
+    }
 };
 
 // --- Phase 6: Unraid 7.2+ API Integration ---
