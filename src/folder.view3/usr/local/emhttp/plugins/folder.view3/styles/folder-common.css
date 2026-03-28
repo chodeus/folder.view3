@@ -228,6 +228,10 @@ td.folder-name .folder-outer {
 
 /* --- Mobile / Narrow Screen --- */
 @media (max-width: 768px) {
+    .folder-preview:not(.fv3-overflow-scroll):not(.fv3-overflow-expand) {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
     .folder-preview.fv3-overflow-scroll {
         padding-top: 0;
     }
