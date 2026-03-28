@@ -271,6 +271,10 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         <div class="fv3-tier-panel" id="fv3-tier-advanced" style="display:none">
             <p data-i18n="css-advanced-help">Add custom CSS rules. Variables from the Variables tab are applied first.</p>
             <textarea id="fv3-custom-css" rows="12" spellcheck="false" placeholder=".folder-name-sub { font-weight: bold; }"></textarea>
+            <div id="fv3-css-url-warning" class="fv3-css-warning" style="display:none">
+                <i class="fa fa-exclamation-triangle"></i>
+                <span data-i18n="css-url-warning">Your CSS contains url() references which will load external resources. Verify these URLs are trusted before saving.</span>
+            </div>
         </div>
 
         <div class="fv3-csstool-actions">

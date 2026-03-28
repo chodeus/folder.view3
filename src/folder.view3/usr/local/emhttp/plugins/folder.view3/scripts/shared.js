@@ -55,6 +55,49 @@ window.fv3SafeParseWithRecovery = (raw, storageKey, fallback) => {
     }
 };
 
+// Global folder defaults — loaded once, used as fallback for per-folder settings
+window.fv3FolderDefaults = null;
+window.fv3LoadFolderDefaults = async () => {
+    if (fv3FolderDefaults !== null) return fv3FolderDefaults;
+    try {
+        const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
+        const settings = await resp.json();
+        fv3FolderDefaults = {
+            preview: parseInt(settings.default_preview !== undefined ? settings.default_preview : '1', 10),
+            preview_hover: settings.default_preview_hover === 'yes',
+            preview_grayscale: settings.default_preview_grayscale === 'yes',
+            preview_webui: settings.default_preview_webui === 'yes',
+            preview_logs: settings.default_preview_logs === 'yes',
+            preview_console: settings.default_preview_console === 'yes',
+            preview_update: settings.default_preview_update === 'yes',
+            preview_vertical_bars: settings.default_preview_vertical_bars === 'yes',
+            preview_vertical_bars_color: settings.default_vertical_bars_color || '',
+            preview_border: settings.default_preview_border === 'yes',
+            preview_border_color: settings.default_border_color || '',
+            preview_row_separator: settings.default_row_separator === 'yes',
+            preview_row_separator_color: settings.default_separator_color || '',
+            preview_text_width: settings.default_preview_text_width || '',
+            preview_overflow: settings.default_overflow === 'scroll' ? 2 : settings.default_overflow === 'expand' ? 1 : 0,
+            context: parseInt(settings.default_context !== undefined ? settings.default_context : '1', 10),
+            update_column: settings.default_update_column === 'yes'
+        };
+    } catch (e) {
+        fv3FolderDefaults = {};
+    }
+    return fv3FolderDefaults;
+};
+
+window.fv3ApplyDefaults = (folder) => {
+    if (!fv3FolderDefaults || !folder.settings) return;
+    var keys = Object.keys(fv3FolderDefaults);
+    for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        if (folder.settings[k] === undefined || folder.settings[k] === null || folder.settings[k] === '') {
+            folder.settings[k] = fv3FolderDefaults[k];
+        }
+    }
+};
+
 // Resource cleanup — prevents SSE/WebSocket leaks on page navigation
 window.fv3Cleanups = [];
 window.addEventListener('beforeunload', () => {

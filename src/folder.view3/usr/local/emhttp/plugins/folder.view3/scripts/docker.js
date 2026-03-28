@@ -3,6 +3,7 @@
  */
 const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
+    await fv3LoadFolderDefaults();
     const prom = await Promise.all(folderReq);
     fv3Debug('createFolders', 'Promises resolved', prom);
 
@@ -12,6 +13,7 @@ const createFolders = async () => {
     let order = Object.values(fv3SafeParse(prom[3], {}));
 
     fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
+    Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
     fv3Debug('createFolders', 'unraidOrder', JSON.parse(JSON.stringify(unraidOrder)));
     fv3Debug('createFolders', 'order (UI)', JSON.parse(JSON.stringify(order)));

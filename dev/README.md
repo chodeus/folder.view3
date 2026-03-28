@@ -491,6 +491,42 @@ The plugin's built-in stylesheets for reference:
 
 A starter template for custom themes is available at [examples/custom-template.css](examples/custom-template.css). Copy it to `/boot/config/plugins/folder.view3/styles/` on your Unraid server and rename it following the naming convention above.
 
+## CSS Tool & Theme Manager
+
+The FolderView3 settings page includes a built-in CSS Tool with:
+
+- **Themes** — Import community CSS themes from GitHub (`owner/repo`). One theme active at a time. Automatic update checking via GitHub API SHA comparison.
+- **Variables** — Edit all 27 CSS variables with color pickers and sliders. Per-page scope (Global/Dashboard/Docker/VM).
+- **Presets** — One-click preset themes (Default, Compact, Blue Accent, Muted).
+- **Advanced CSS** — Free-form CSS textarea for custom rules.
+
+### Generated CSS File
+
+The CSS Tool generates `_fv3-generated.docker-vm-dashboard.css` in the styles directory. It loads before user CSS (underscore prefix sorts first) and contains:
+- `:root {}` block with overridden variable values
+- Custom CSS from the Advanced tab
+
+### Theme File Convention
+
+Imported themes are stored as subdirectories in `/boot/config/plugins/folder.view3/styles/`:
+- `masterwishx/` — active theme folder
+- `masterwishx.disabled/` — disabled theme (`.disabled` suffix)
+- `.fv3-source` — JSON file inside theme folder with repo URL and file SHAs for update checking
+
+### PHP Endpoints (CSS Tool)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `read_css_config.php` | GET | Read CSS config |
+| `read_css_defaults.php` | GET | Get all variable defaults |
+| `update_css_config.php` | POST | Save CSS config + generate CSS |
+| `list_themes.php` | GET | List installed themes |
+| `toggle_theme.php` | POST | Enable/disable theme |
+| `import_theme.php` | POST | Import from GitHub |
+| `delete_theme.php` | POST | Delete theme |
+| `export_all.php` | GET | Full backup (all configs + CSS) |
+| `import_all.php` | POST | Restore full backup |
+
 ## Debug Mode
 
 Type **fv3debug** on any FolderView3 page to toggle debug logging. When enabled, the browser console shows folder creation, API calls, organizer sync, and stats updates with `[FV3]` prefix. State persists in localStorage across page loads.

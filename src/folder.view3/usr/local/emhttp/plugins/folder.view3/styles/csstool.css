@@ -122,12 +122,58 @@
     font-size: 0.85rem;
 }
 
+.fv3-theme-update-status {
+    font-size: 0.85rem;
+    margin-top: 2px;
+}
+
+.fv3-update-available i,
+.fv3-update-available span {
+    color: #3b82f6;
+}
+
+.fv3-update-current i,
+.fv3-update-current span {
+    color: #4ecca3;
+}
+
 #fv3-theme-list:empty::after {
     content: 'No themes installed. Import one from GitHub above.';
     display: block;
     opacity: 0.5;
     padding: 1rem 0;
     font-style: italic;
+}
+
+/* Directory picker */
+.fv3-dir-picker {
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    padding: 12px;
+    margin: 1rem 0;
+    background: var(--fv3-surface-tint, rgba(128,128,128,0.08));
+}
+
+.fv3-dir-picker-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.fv3-dir-picker-option {
+    display: block;
+    padding: 6px 4px;
+    cursor: pointer;
+}
+
+.fv3-dir-picker-option:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.15));
+    border-radius: 3px;
+}
+
+.fv3-dir-picker-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
 }
 
 /* Variable rows */
@@ -280,6 +326,27 @@
 
 #fv3-custom-css:focus {
     border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+/* Warnings */
+.fv3-css-warning {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.3);
+    font-size: 0.9rem;
+    color: inherit;
+}
+
+.fv3-css-warning i {
+    color: #ffaa00;
+    margin-right: 6px;
+}
+
+.fv3-css-warning code {
+    font-size: 0.85em;
+    opacity: 0.8;
 }
 
 /* Action bar */

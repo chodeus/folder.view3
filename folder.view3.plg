@@ -6,12 +6,20 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/develop/&name;.plg">
-<!ENTITY version "2026.03.28-develop27">
-<!ENTITY md5 "4225c5f4a8c04d7eb3870889c3f835cf">
+<!ENTITY version "2026.03.28-develop28">
+<!ENTITY md5 "bdbba2bbc558adb1c1978da429830e76">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.28
+- Settings page modernization with collapsible sections
+- CSS Tool with theme manager, variables, presets
+- Global folder defaults with Apply to All
+- Full backup export/import
+- CSS-only dashboard chevron positioning
+- Security hardening (Content-Type headers, CSS sanitization)
 
 ###2026.03.27
 - Fix multiple JS bugs

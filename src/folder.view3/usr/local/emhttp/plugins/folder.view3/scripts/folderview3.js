@@ -493,8 +493,22 @@ $('#fv3-apply-defaults').on('click', function() {
     });
 });
 
-const fv3ExportAll = () => {
-    window.location.href = '/plugins/folder.view3/server/export_all.php';
+const fv3ExportAll = async () => {
+    try {
+        const resp = await fetch('/plugins/folder.view3/server/export_all.php', { credentials: 'same-origin' });
+        const data = await resp.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'fv3-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (data.css_skipped) {
+            swal({ title: 'Partial Export', text: data.css_skipped_reason || 'Custom CSS files were too large and were excluded. Export them manually via File Manager.', type: 'warning' });
+        }
+    } catch (e) {
+        swal({ title: 'Error', text: 'Export failed: ' + e.message, type: 'error' });
+    }
 };
 window.fv3ExportAll = fv3ExportAll;
 
@@ -514,6 +528,7 @@ $('#fv3-import-all').on('change', function() {
             if (parsed.settings && Object.keys(parsed.settings).length) items.push('settings');
             if (parsed.css_config && Object.keys(parsed.css_config).length) items.push('CSS config');
             if (parsed.custom_styles && Object.keys(parsed.custom_styles).length) items.push(Object.keys(parsed.custom_styles).length + ' custom CSS files');
+            if (parsed.css_skipped) items.push('(custom CSS excluded — too large)');
             swal({
                 title: 'Import Backup?',
                 text: 'This will overwrite current config with: ' + items.join(', ') + '.' + (parsed.exported ? '\nExported: ' + parsed.exported : ''),
@@ -523,7 +538,7 @@ $('#fv3-import-all').on('change', function() {
             }, async (confirmed) => {
                 if (!confirmed) return;
                 const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
-                const result = fv3SafeParse(resp, {});
+                const result = (typeof resp === 'object') ? resp : fv3SafeParse(resp, {});
                 if (result.error) {
                     swal({ title: 'Error', text: result.error, type: 'error' });
                 } else {

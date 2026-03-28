@@ -2,6 +2,7 @@
  * Handles the creation of all folders
  */
 const createFolders = async () => {
+    await fv3LoadFolderDefaults();
     // ########################################
     // ##########       DOCKER       ##########
     // ########################################
@@ -15,7 +16,8 @@ const createFolders = async () => {
         let order = Object.values(fv3SafeParse(prom[3], {}));
 
         fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
-    
+        Object.values(folders).forEach(f => fv3ApplyDefaults(f));
+
         let newOnes = order.filter(x => !unraidOrder.includes(x));
 
         for (let index = 0; index < unraidOrder.length; index++) {
@@ -125,7 +127,8 @@ const createFolders = async () => {
         let order = Object.values(fv3SafeParse(prom[3], {}));
 
         fv3ResolveRenamedContainers(folders, vmInfo, 'vm');
-    
+        Object.values(folders).forEach(f => fv3ApplyDefaults(f));
+
         let newOnes = order.filter(x => !unraidOrder.includes(x));
 
         for (let index = 0; index < unraidOrder.length; index++) {

@@ -127,6 +127,31 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         updateForm();
         updateRegex(form.regex);
         updateIcon(form.icon);
+    } else {
+        try {
+            const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
+            const s = await resp.json();
+            const form = $('div.canvas > form')[0];
+            if (s.default_preview) form.preview.value = s.default_preview;
+            if (s.default_preview_hover === 'yes') form.preview_hover.checked = true;
+            if (s.default_preview_update === 'yes') form.preview_update.checked = true;
+            if (s.default_preview_grayscale === 'yes') form.preview_grayscale.checked = true;
+            if (s.default_preview_webui === 'yes') form.preview_webui.checked = true;
+            if (s.default_preview_logs === 'yes') form.preview_logs.checked = true;
+            if (s.default_preview_console === 'yes') form.preview_console.checked = true;
+            if (s.default_preview_vertical_bars === 'yes') form.preview_vertical_bars.checked = true;
+            if (s.default_vertical_bars_color) form.preview_vertical_bars_color.value = s.default_vertical_bars_color;
+            if (s.default_preview_border === 'yes') form.preview_border.checked = true;
+            if (s.default_border_color) form.preview_border_color.value = s.default_border_color;
+            if (s.default_row_separator === 'yes') form.preview_row_separator.checked = true;
+            if (s.default_separator_color) form.preview_row_separator_color.value = s.default_separator_color;
+            if (s.default_preview_text_width) form.preview_text_width.value = s.default_preview_text_width;
+            if (s.default_overflow === 'expand') form.preview_overflow.value = '1';
+            else if (s.default_overflow === 'scroll') form.preview_overflow.value = '2';
+            if (s.default_context) form.context.value = s.default_context;
+            if (s.default_update_column === 'yes') form.update_column.checked = true;
+            updateForm();
+        } catch (e) {}
     }
 
     // create the *cool* unraid button for the autostart

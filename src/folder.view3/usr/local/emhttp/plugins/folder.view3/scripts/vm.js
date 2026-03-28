@@ -14,6 +14,7 @@ const applyVmZebra = () => {
  * Handles the creation of all folders
  */
 const createFolders = async () => {
+    await fv3LoadFolderDefaults();
     const prom = await Promise.all(folderReq);
     let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
     const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
@@ -21,7 +22,8 @@ const createFolders = async () => {
     let order = Object.values(fv3SafeParse(prom[3], {}));
 
     fv3ResolveRenamedContainers(folders, vmInfo, 'vm');
-    
+    Object.values(folders).forEach(f => fv3ApplyDefaults(f));
+
 
     
     let newOnes = order.filter(x => !unraidOrder.includes(x));

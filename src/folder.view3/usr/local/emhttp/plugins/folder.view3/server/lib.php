@@ -387,11 +387,21 @@
                 $disabled = (bool) preg_match('/\.disabled$/', $entry);
                 $name = preg_replace('/\.disabled$/', '', $entry);
             }
+            $source = null;
+            if (is_dir($path)) {
+                $srcFile = $path . '/.fv3-source';
+                if (file_exists($srcFile)) {
+                    $raw = trim(file_get_contents($srcFile));
+                    $parsed = json_decode($raw, true);
+                    $source = is_array($parsed) ? $parsed : ['repo' => $raw];
+                }
+            }
             $themes[] = [
                 'name' => $name,
                 'entry' => $entry,
                 'isDir' => is_dir($path),
-                'enabled' => !$disabled
+                'enabled' => !$disabled,
+                'source' => $source
             ];
         }
         return $themes;
@@ -422,36 +432,56 @@
         }
     }
 
-    function importTheme(string $repoUrl) : array {
+    function importTheme(string $repoUrl, string $subPath = '') : array {
         global $configDir;
         $stylesDir = "$configDir/styles";
         if (!preg_match('#^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$#', $repoUrl)) {
             return ['error' => 'Invalid repo format. Use owner/repo.'];
         }
-        $apiUrl = "https://api.github.com/repos/$repoUrl/contents/";
         $ctx = stream_context_create(['http' => [
             'header' => "User-Agent: FolderView3\r\n",
             'timeout' => 15
         ]]);
-        $raw = @file_get_contents($apiUrl, false, $ctx);
+        $apiBase = "https://api.github.com/repos/$repoUrl/contents/";
+        $fetchPath = $subPath !== '' ? $apiBase . rawurlencode($subPath) : $apiBase;
+        $raw = @file_get_contents($fetchPath, false, $ctx);
         if ($raw === false) return ['error' => 'Failed to fetch repo contents.'];
         $contents = json_decode($raw, true);
         if (!is_array($contents)) return ['error' => 'Invalid GitHub API response.'];
-        $cssFiles = array_filter($contents, fn($f) => isset($f['name']) && preg_match('/\.css$/i', $f['name']) && $f['type'] === 'file');
-        if (empty($cssFiles)) return ['error' => 'No CSS files found in repo root.'];
-        $repoName = explode('/', $repoUrl)[1];
-        $repoNameDisabled = $repoName . '.disabled';
-        $themeDir = "$stylesDir/$repoName";
-        $themeDirDisabled = "$stylesDir/$repoNameDisabled";
-        $wasDisabled = false;
-        if (is_dir($themeDirDisabled)) {
-            $themeDir = $themeDirDisabled;
-            $wasDisabled = true;
+        $cssFiles = [];
+        foreach ($contents as $f) {
+            if (!isset($f['name']) || $f['type'] !== 'file') continue;
+            if (preg_match('/\.css$/i', $f['name'])) $cssFiles[] = $f;
         }
+        if ($subPath === '') {
+            $dirs = array_filter($contents, fn($f) => isset($f['name']) && $f['type'] === 'dir');
+            foreach ($dirs as $dir) {
+                $subRaw = @file_get_contents($apiBase . rawurlencode($dir['name']), false, $ctx);
+                if ($subRaw === false) continue;
+                $subContents = json_decode($subRaw, true);
+                if (!is_array($subContents)) continue;
+                foreach ($subContents as $sf) {
+                    if (isset($sf['name']) && $sf['type'] === 'file' && preg_match('/\.css$/i', $sf['name'])) {
+                        $sf['_subdir'] = $dir['name'];
+                        $cssFiles[] = $sf;
+                    }
+                }
+            }
+        }
+        if (empty($cssFiles)) return ['error' => 'No CSS files found.'];
+        $themeName = $subPath !== '' ? preg_replace('/[^a-zA-Z0-9._-]/', '-', $subPath) : explode('/', $repoUrl)[1];
+        $themeDir = "$stylesDir/$themeName";
+        $themeDirDisabled = "$stylesDir/$themeName.disabled";
+        if (is_dir($themeDirDisabled)) $themeDir = $themeDirDisabled;
         if (is_dir($themeDir)) {
-            foreach (scandir($themeDir) as $old) {
-                if ($old === '.' || $old === '..') continue;
-                @unlink("$themeDir/$old");
+            $items = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($themeDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($items as $item) {
+                if ($item->getFilename() === '.fv3-source') continue;
+                if ($item->isDir()) @rmdir($item->getRealPath());
+                else @unlink($item->getRealPath());
             }
         } else {
             @mkdir($themeDir, 0770, true);
@@ -460,15 +490,60 @@
         foreach ($cssFiles as $file) {
             if (!isset($file['download_url'])) continue;
             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
+            $subdir = $file['_subdir'] ?? '';
+            $targetDir = $themeDir;
+            if ($subdir !== '') {
+                $safeDir = preg_replace('/[^a-zA-Z0-9._-]/', '-', $subdir);
+                $targetDir = "$themeDir/$safeDir";
+                if (!is_dir($targetDir)) @mkdir($targetDir, 0770, true);
+            }
             $css = @file_get_contents($file['download_url'], false, $ctx);
             if ($css !== false) {
-                file_put_contents("$themeDir/$safeName", $css);
-                @chmod("$themeDir/$safeName", 0660);
-                $downloaded[] = $safeName;
+                file_put_contents("$targetDir/$safeName", $css);
+                @chmod("$targetDir/$safeName", 0660);
+                $downloaded[] = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
             }
         }
         if (empty($downloaded)) return ['error' => 'Failed to download any CSS files.'];
-        return ['success' => true, 'name' => $repoName, 'files' => $downloaded];
+        $warnings = [];
+        $patterns = [
+            'url(' => '/url\s*\(/i',
+            '@import' => '/@import\b/i',
+            'expression(' => '/expression\s*\(/i',
+            'javascript:' => '/javascript\s*:/i'
+        ];
+        foreach ($downloaded as $relPath) {
+            $filePath = "$themeDir/$relPath";
+            if (!file_exists($filePath)) continue;
+            $lines = file($filePath, FILE_IGNORE_NEW_LINES);
+            foreach ($lines as $lineNum => $line) {
+                foreach ($patterns as $label => $regex) {
+                    if (preg_match($regex, $line)) {
+                        $trimmed = trim($line);
+                        if (strlen($trimmed) > 120) $trimmed = substr($trimmed, 0, 120) . '...';
+                        $warnings[] = [
+                            'file' => $relPath,
+                            'line' => $lineNum + 1,
+                            'type' => $label,
+                            'code' => $trimmed
+                        ];
+                    }
+                }
+            }
+        }
+        $sourceData = ['repo' => $repoUrl, 'path' => $subPath, 'files' => []];
+        foreach ($cssFiles as $file) {
+            if (!isset($file['sha'])) continue;
+            $subdir = $file['_subdir'] ?? '';
+            $key = $subdir !== '' ? $subdir . '/' . $file['name'] : $file['name'];
+            $sourceData['files'][$key] = $file['sha'];
+        }
+        $sourceData['updated'] = date('c');
+        file_put_contents("$themeDir/.fv3-source", json_encode($sourceData));
+        @chmod("$themeDir/.fv3-source", 0660);
+        $result = ['success' => true, 'name' => $themeName, 'files' => $downloaded];
+        if (!empty($warnings)) $result['warnings'] = $warnings;
+        return $result;
     }
 
     function deleteTheme(string $entry) : void {
@@ -499,13 +574,14 @@
             'fv3_export_version' => 1,
             'plugin_version' => trim(@file_get_contents("$configDir/version") ?: ''),
             'exported' => date('c'),
-            'docker' => json_decode(@file_get_contents("$configDir/docker.json") ?: '{}', true) ?: [],
-            'vm' => json_decode(@file_get_contents("$configDir/vm.json") ?: '{}', true) ?: [],
-            'settings' => json_decode(@file_get_contents("$configDir/settings.json") ?: '{}', true) ?: [],
-            'css_config' => json_decode(@file_get_contents("$configDir/css-config.json") ?: '{}', true) ?: [],
+            'docker' => json_decode(@file_get_contents("$configDir/docker.json") ?: '{}', true) ?? [],
+            'vm' => json_decode(@file_get_contents("$configDir/vm.json") ?: '{}', true) ?? [],
+            'settings' => json_decode(@file_get_contents("$configDir/settings.json") ?: '{}', true) ?? [],
+            'css_config' => json_decode(@file_get_contents("$configDir/css-config.json") ?: '{}', true) ?? [],
             'custom_styles' => []
         ];
         $stylesDir = "$configDir/styles";
+        $cssSize = 0;
         if (is_dir($stylesDir)) {
             $items = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($stylesDir, RecursiveDirectoryIterator::SKIP_DOTS),
@@ -515,9 +591,16 @@
                 if ($item->isFile() && preg_match('/\.css$/i', $item->getFilename())) {
                     if (preg_match('/^_fv3-generated\./', $item->getFilename())) continue;
                     $relPath = substr($item->getRealPath(), strlen(realpath($stylesDir)) + 1);
-                    $bundle['custom_styles'][$relPath] = file_get_contents($item->getRealPath());
+                    $content = file_get_contents($item->getRealPath());
+                    $cssSize += strlen($content);
+                    $bundle['custom_styles'][$relPath] = $content;
                 }
             }
+        }
+        if ($cssSize > 2097152) {
+            $bundle['custom_styles'] = [];
+            $bundle['css_skipped'] = true;
+            $bundle['css_skipped_reason'] = 'Custom CSS files exceeded 2MB — export them manually via File Manager.';
         }
         return $bundle;
     }
@@ -533,7 +616,9 @@
             if (!isset($bundle[$key]) || !is_array($bundle[$key])) continue;
             $filename = $key === 'css_config' ? 'css-config.json' : "$key.json";
             $path = "$configDir/$filename";
-            file_put_contents($path, json_encode($bundle[$key], JSON_PRETTY_PRINT));
+            $flags = JSON_PRETTY_PRINT;
+            if (empty($bundle[$key])) $flags |= JSON_FORCE_OBJECT;
+            file_put_contents($path, json_encode($bundle[$key], $flags));
             @chmod($path, 0660);
             $restored[] = $filename;
         }
@@ -611,7 +696,6 @@
             if (!in_array($k, $allowedKeys, true)) { unset($config[$k]); }
         }
         if (isset($config['custom_css']) && is_string($config['custom_css'])) {
-            $config['custom_css'] = preg_replace('/!\s*important/i', '', $config['custom_css']);
             $config['custom_css'] = preg_replace('/@import\b/i', '', $config['custom_css']);
             $config['custom_css'] = preg_replace('/expression\s*\(/i', '', $config['custom_css']);
             $config['custom_css'] = preg_replace('/javascript\s*:/i', '', $config['custom_css']);
@@ -652,7 +736,6 @@
                 if ($value === $defaults[$varName]) continue;
                 $safeVar = preg_replace('/[^a-zA-Z0-9-]/', '', $varName);
                 $safeVal = str_replace([';', '{', '}', '<', '>'], '', $value);
-                $safeVal = preg_replace('/url\s*\(/i', '', $safeVal);
                 $safeVal = preg_replace('/expression\s*\(/i', '', $safeVal);
                 $safeVal = preg_replace('/@import\b/i', '', $safeVal);
                 $css .= "    --{$safeVar}: {$safeVal};\n";

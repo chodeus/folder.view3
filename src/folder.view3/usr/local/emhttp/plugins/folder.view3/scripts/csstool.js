@@ -321,12 +321,58 @@
                 Object.entries(cssConfig.global || {}).forEach(([k, v]) => {
                     document.documentElement.style.setProperty('--' + k, v);
                 });
-                swal({ title: 'Imported', text: 'Config loaded. Click Save to persist.', type: 'info', timer: 2000 });
+                const hasUrl = imported.custom_css && /url\s*\(/i.test(imported.custom_css);
+                swal({ title: 'Imported', text: 'Config loaded. Click Save to persist.' + (hasUrl ? '\n\nNote: url() references will be stripped on save for security.' : ''), type: hasUrl ? 'warning' : 'info', timer: hasUrl ? 0 : 2000 });
             } catch (err) {
                 swal({ title: 'Error', text: 'Invalid config file', type: 'error' });
             }
         };
         reader.readAsText(file);
+    }
+
+    async function checkThemeUpdates(themes, container) {
+        for (const theme of themes.filter(t => t.isDir && t.source?.repo && t.source?.files)) {
+            const checkEl = container.querySelector('.fv3-theme-card .fv3-update-check[data-theme="' + theme.name + '"]');
+            if (!checkEl) continue;
+            try {
+                const apiBase = 'https://api.github.com/repos/' + theme.source.repo + '/contents/';
+                const subPath = theme.source.path || '';
+                const fetchUrl = subPath ? apiBase + encodeURIComponent(subPath) : apiBase;
+                const resp = await fetch(fetchUrl, { headers: { 'User-Agent': 'FolderView3' } });
+                if (!resp.ok) { checkEl.innerHTML = '<span style="opacity:0.4">check failed</span>'; continue; }
+                const files = await resp.json();
+                const remoteShas = {};
+                files.filter(f => f.type === 'file' && /\.css$/i.test(f.name)).forEach(f => {
+                    remoteShas[f.name] = f.sha;
+                });
+                if (!subPath) {
+                    const dirs = files.filter(f => f.type === 'dir');
+                    for (const dir of dirs) {
+                        try {
+                            const subResp = await fetch(apiBase + encodeURIComponent(dir.name), { headers: { 'User-Agent': 'FolderView3' } });
+                            if (!subResp.ok) continue;
+                            const subFiles = await subResp.json();
+                            subFiles.filter(f => f.type === 'file' && /\.css$/i.test(f.name)).forEach(f => { remoteShas[dir.name + '/' + f.name] = f.sha; });
+                        } catch (e) {}
+                    }
+                }
+                const localShas = theme.source.files || {};
+                let hasUpdate = false;
+                for (const [name, sha] of Object.entries(remoteShas)) {
+                    if (!localShas[name] || localShas[name] !== sha) { hasUpdate = true; break; }
+                }
+                if (hasUpdate) {
+                    checkEl.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="apply-update" style="color:#3b82f6">update ready</span></span>';
+                    const card = checkEl.closest('.fv3-theme-card');
+                    const updateBtn = card?.querySelector('.fv3-theme-update');
+                    if (updateBtn) updateBtn.style.display = '';
+                } else {
+                    checkEl.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">up-to-date</span></span>';
+                }
+            } catch (e) {
+                checkEl.innerHTML = '<span style="opacity:0.4">offline</span>';
+            }
+        }
     }
 
     async function loadThemes() {
@@ -359,16 +405,22 @@
             themes.filter(t => t.isDir).forEach(theme => {
                 const card = document.createElement('div');
                 card.className = 'fv3-theme-card' + (theme.enabled ? '' : ' fv3-theme-disabled');
+                const repo = theme.source?.repo || '';
                 card.innerHTML = `
                     <div class="fv3-theme-info">
                         <div class="fv3-theme-name">${escapeAttr(theme.name)}</div>
-                        <div class="fv3-theme-status">${theme.enabled ? 'Active' : 'Disabled'}</div>
+                        <div class="fv3-theme-status">
+                            ${theme.enabled ? 'Active' : 'Disabled'}${repo ? ' — ' + escapeAttr(repo) : ''}
+                        </div>
+                        <div class="fv3-theme-update-status">
+                            ${repo ? '<span class="fv3-update-check" data-theme="' + escapeAttr(theme.name) + '"><i class="fa fa-circle-o-notch fa-spin" style="opacity:0.4"></i></span>' : ''}
+                        </div>
                     </div>
                     <div class="fv3-theme-actions">
                         ${theme.enabled
                             ? '<button class="fv3-theme-disable">Disable</button>'
                             : '<button class="fv3-theme-activate">Activate</button>'}
-                        <button class="fv3-theme-update" title="Re-download from GitHub"><i class="fa fa-refresh"></i></button>
+                        <button class="fv3-theme-update" title="Update from GitHub" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">apply update</span></button>
                         <button class="fv3-theme-delete" title="Delete"><i class="fa fa-trash"></i></button>
                     </div>`;
                 card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
@@ -380,11 +432,15 @@
                     loadThemes();
                 });
                 card.querySelector('.fv3-theme-update')?.addEventListener('click', async () => {
-                    const repo = prompt('Confirm GitHub repo (owner/repo):', theme.name);
-                    if (!repo) return;
-                    const result = await postFormJson(API + '/import_theme.php', { repo });
+                    const repo = theme.source?.repo || '';
+                    const path = theme.source?.path || '';
+                    if (!repo) { swal({ title: 'Error', text: 'No source repo recorded. Re-import manually.', type: 'error' }); return; }
+                    const updateBtn = card.querySelector('.fv3-theme-update');
+                    if (updateBtn) updateBtn.disabled = true;
+                    const result = await postFormJson(API + '/import_theme.php', { repo, path });
+                    if (updateBtn) updateBtn.disabled = false;
                     if (result.error) { swal({ title: 'Error', text: result.error, type: 'error' }); }
-                    else { swal({ title: 'Updated', text: `Downloaded ${result.files.length} file(s).`, type: 'success', timer: 2000 }); loadThemes(); }
+                    else { swal({ title: 'Updated', text: 'Downloaded ' + result.files.length + ' file(s).', type: 'success', timer: 2000 }); loadThemes(); }
                 });
                 card.querySelector('.fv3-theme-delete')?.addEventListener('click', () => {
                     swal({ title: 'Delete theme?', text: `Remove "${theme.name}" permanently?`, type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, async (ok) => {
@@ -395,6 +451,7 @@
                 });
                 container.appendChild(card);
             });
+            checkThemeUpdates(themes, container);
         } catch (e) {
             container.innerHTML = '<p style="opacity:0.5">Failed to load themes.</p>';
         }
@@ -405,14 +462,89 @@
         const repo = input?.value?.trim();
         if (!repo) { swal({ title: 'Error', text: 'Enter a GitHub repo (owner/repo)', type: 'error' }); return; }
         const btn = document.getElementById('fv3-theme-import-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Checking repo...'; }
+        try {
+            const resp = await fetch('https://api.github.com/repos/' + repo + '/contents/', { headers: { 'User-Agent': 'FolderView3' } });
+            if (!resp.ok) { swal({ title: 'Error', text: 'Could not reach repo. Check the URL.', type: 'error' }); return; }
+            const contents = await resp.json();
+            const dirs = contents.filter(f => f.type === 'dir');
+            const rootCss = contents.filter(f => f.type === 'file' && /\.css$/i.test(f.name));
+            if (dirs.length > 0 && rootCss.length === 0) {
+                if (btn) { btn.disabled = false; btn.textContent = 'Import from GitHub'; }
+                const dirNames = dirs.map(d => d.name);
+                showDirPicker(repo, dirNames);
+                return;
+            }
+            await doImport(repo, '');
+        } catch (e) {
+            swal({ title: 'Error', text: 'Failed to fetch repo: ' + e.message, type: 'error' });
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Import from GitHub'; }
+        }
+    }
+
+    function showDirPicker(repo, dirNames) {
+        const existing = document.getElementById('fv3-dir-picker');
+        if (existing) existing.remove();
+        const picker = document.createElement('div');
+        picker.id = 'fv3-dir-picker';
+        picker.className = 'fv3-dir-picker';
+        picker.innerHTML = '<div class="fv3-dir-picker-title">This repo has multiple directories. Select which to import:</div>';
+        dirNames.forEach(name => {
+            const label = document.createElement('label');
+            label.className = 'fv3-dir-picker-option';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = name;
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + name));
+            picker.appendChild(label);
+        });
+        const actions = document.createElement('div');
+        actions.className = 'fv3-dir-picker-actions';
+        const importBtn = document.createElement('button');
+        importBtn.textContent = 'Import Selected';
+        importBtn.addEventListener('click', async () => {
+            const selected = Array.from(picker.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+            if (selected.length === 0) { swal({ title: 'Error', text: 'Select at least one directory.', type: 'error' }); return; }
+            picker.remove();
+            for (const path of selected) {
+                await doImport(repo, path);
+            }
+        });
+        const cancel = document.createElement('button');
+        cancel.textContent = 'Cancel';
+        cancel.style.opacity = '0.6';
+        cancel.addEventListener('click', () => picker.remove());
+        actions.appendChild(importBtn);
+        actions.appendChild(cancel);
+        picker.appendChild(actions);
+        document.getElementById('fv3-tier-themes')?.appendChild(picker);
+    }
+
+    async function doImport(repo, path) {
+        const input = document.getElementById('fv3-theme-repo');
+        const btn = document.getElementById('fv3-theme-import-btn');
         if (btn) { btn.disabled = true; btn.textContent = 'Importing...'; }
-        const result = await postFormJson(API + '/import_theme.php', { repo });
+        const result = await postFormJson(API + '/import_theme.php', { repo, path });
         if (btn) { btn.disabled = false; btn.textContent = 'Import from GitHub'; }
         if (result.error) {
             swal({ title: 'Error', text: result.error, type: 'error' });
         } else {
             if (input) input.value = '';
-            swal({ title: 'Imported', text: `"${result.name}" — ${result.files.length} CSS file(s) downloaded.`, type: 'success', timer: 2500 });
+            let msg = '"' + result.name + '" \u2014 ' + result.files.length + ' CSS file(s) downloaded.';
+            let type = 'success';
+            let timer = 2500;
+            if (result.warnings && result.warnings.length) {
+                msg += '\n\nSecurity notice \u2014 the following were found in the imported CSS:\n\n';
+                result.warnings.forEach(function(w) {
+                    msg += w.file + ':' + w.line + ' [' + w.type + ']\n  ' + w.code + '\n\n';
+                });
+                msg += 'These are allowed but please verify they are expected. If unsure, delete the theme.';
+                type = 'warning';
+                timer = 0;
+            }
+            swal({ title: type === 'warning' ? 'Imported with Warnings' : 'Imported', text: msg, type: type, timer: timer });
             loadThemes();
         }
     }
@@ -451,6 +583,14 @@
                 renderVariables();
             });
         });
+
+        const cssTextarea = document.getElementById('fv3-custom-css');
+        const urlWarning = document.getElementById('fv3-css-url-warning');
+        if (cssTextarea && urlWarning) {
+            cssTextarea.addEventListener('input', () => {
+                urlWarning.style.display = /url\s*\(/i.test(cssTextarea.value) ? '' : 'none';
+            });
+        }
 
         document.getElementById('fv3-css-save')?.addEventListener('click', saveConfig);
         document.getElementById('fv3-css-reset')?.addEventListener('click', resetConfig);
