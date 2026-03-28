@@ -496,5 +496,5 @@ window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
                 setTimeout(recalc, 150);
             }
         }, 50);
-    });
+    }, true);
 };
