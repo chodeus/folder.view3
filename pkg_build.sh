@@ -5,36 +5,34 @@ tmpdir="$CWD/tmp/tmp.$((RANDOM % 1000000))"
 version=$(date +"%Y.%m.%d")
 plgfile="$CWD/folder.view3.plg"
 
-# Parse flags
-# Usage: pkg_build.sh [--beta [N]] [--develop [N]]
-#   --beta       → YYYY.MM.DD-beta (beta branch)
-#   --beta 2     → YYYY.MM.DD-beta2 (beta branch)
-#   --develop    → YYYY.MM.DD-develop (develop branch)
-#   --develop 2  → YYYY.MM.DD-develop2 (develop branch)
-#   (no flag)    → YYYY.MM.DD (main branch, stable)
-BETA=false
-DEVELOP=false
+# Auto-detect current git branch, with optional flag override
+# Usage: pkg_build.sh [--beta [N] | --develop [N] | --main]
+#   (no flag)    → auto-detect branch from git
+#   --beta [N]   → force beta branch
+#   --develop [N]→ force develop branch
+#   --main       → force main branch (stable)
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 SUFFIX_NUM=""
+
 if [ "$1" = "--beta" ]; then
-    BETA=true
-    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then
-        SUFFIX_NUM="$2"
-    fi
+    branch="beta"
+    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then SUFFIX_NUM="$2"; fi
 elif [ "$1" = "--develop" ]; then
-    DEVELOP=true
-    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then
-        SUFFIX_NUM="$2"
-    fi
+    branch="develop"
+    if [ -n "$2" ] && [ "$2" -eq "$2" ] 2>/dev/null; then SUFFIX_NUM="$2"; fi
+elif [ "$1" = "--main" ]; then
+    branch="main"
+else
+    branch="$GIT_BRANCH"
 fi
 
-# Set branch based on build type
-if [ "$DEVELOP" = true ]; then
-    branch="develop"
+# Set version suffix based on branch
+if [ "$branch" = "develop" ]; then
     version="${version}-develop${SUFFIX_NUM}"
-elif [ "$BETA" = true ]; then
-    branch="beta"
+elif [ "$branch" = "beta" ]; then
     version="${version}-beta${SUFFIX_NUM}"
-else
+elif [ "$branch" != "main" ]; then
+    echo "Warning: unrecognized branch '$branch', defaulting to main"
     branch="main"
 fi
 
