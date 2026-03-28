@@ -343,14 +343,18 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         }
         requestAnimationFrame(() => {
             const el = $expandPreview[0];
-            if (el && el.scrollHeight <= el.clientHeight) {
-                $expandPreview.removeClass('fv3-overflow-expand');
+            if (!el) return;
+            el.classList.remove('fv3-overflow-expand');
+            el.style.height = '';
+            if (el.scrollHeight > el.clientHeight) {
+                el.classList.add('fv3-overflow-expand');
             }
         });
         new ResizeObserver(() => {
             const el = $expandPreview[0];
             if (!el) return;
             el.classList.remove('fv3-overflow-expand');
+            el.style.height = '';
             requestAnimationFrame(() => {
                 if (el.scrollHeight > el.clientHeight) {
                     el.classList.add('fv3-overflow-expand');

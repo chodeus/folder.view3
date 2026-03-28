@@ -98,27 +98,12 @@ window.fv3SyncPreviewHeights = (cookieName) => {
     const isAdvanced = $.cookie(cookieName) == 'advanced';
     document.querySelectorAll('tr.folder div.folder-preview:not(.fv3-overflow-expand)').forEach(el => {
         el.style.height = '';
-        el.querySelectorAll('.folder-preview-wrapper').forEach(w => { w.style.marginTop = ''; });
-        if (!el.classList.contains('fv3-overflow-scroll')) {
-            el.querySelectorAll('.folder-preview-divider').forEach(d => { d.style.marginTop = ''; });
-        }
         const cpuCell = el.closest('tr').querySelector('td.folder-advanced');
-        const isScroll = el.classList.contains('fv3-overflow-scroll');
         if (isAdvanced && cpuCell && cpuCell.offsetHeight > 0) {
             const targetHeight = cpuCell.offsetHeight - 10;
             const defaultHeight = el.offsetHeight;
             if (targetHeight > defaultHeight) {
                 el.style.height = targetHeight + 'px';
-                const extra = targetHeight - defaultHeight;
-                const newMargin = 7 + extra / 2;
-                el.querySelectorAll('.folder-preview-wrapper').forEach(w => {
-                    w.style.marginTop = newMargin + 'px';
-                });
-                if (!isScroll) {
-                    el.querySelectorAll('.folder-preview-divider').forEach(d => {
-                        d.style.marginTop = -newMargin + 'px';
-                    });
-                }
             }
         }
     });

@@ -149,33 +149,27 @@ td.folder-name .folder-outer {
 }
 
 .folder-preview-wrapper {
-    float: left;
-    height: 100%;
     margin-left: var(--fv3-folder-preview-wrapper-margin);
     margin-right: var(--fv3-folder-preview-wrapper-margin);
-    margin-top: 7px;
+    align-self: center;
 }
 
 .folder-preview-divider:not(:last-child) {
-    float: left;
-    height: 80%;
+    height: var(--fv3-preview-icon-size);
     width: 0;
     border-right: 1px solid;
     margin-left: 0;
-    margin-top: -6px;
+    align-self: center;
 }
 
 .folder-preview.fv3-overflow-scroll .folder-preview-divider:not(:last-child) {
-    float: none;
-    height: 36px;
-    margin-top: 5px;
-    align-self: flex-start;
+    height: var(--fv3-preview-icon-size);
+    align-self: center;
 }
 
 .folder-preview.fv3-overflow-expand .folder-preview-divider:not(:last-child) {
-    height: 36px;
-    margin-top: 7px;
-    align-self: flex-start;
+    height: var(--fv3-preview-icon-size);
+    align-self: center;
 }
 
 .folder-element .ct-name {
@@ -194,10 +188,12 @@ td.folder-name .folder-outer {
     margin-left: 0.5em;
 }
 
-/* --- Firefox Scrollbar --- */
-.folder-preview.fv3-overflow-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: var(--fv3-scrollbar-color) transparent;
+/* --- Firefox Scrollbar (gated to avoid disabling WebKit hover scrollbar in Chrome 121+) --- */
+@supports not selector(::-webkit-scrollbar) {
+    .folder-preview.fv3-overflow-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: var(--fv3-scrollbar-color) transparent;
+    }
 }
 
 /* --- Touch Devices --- */
@@ -230,13 +226,4 @@ td.folder-name .folder-outer {
         padding-bottom: 3px;
     }
 
-    .folder-preview:not(.fv3-overflow-scroll):not(.fv3-overflow-expand) .folder-preview-divider:not(:last-child) {
-        margin-top: -3px;
-    }
-
-    .folder-preview.fv3-overflow-expand .folder-preview-divider:not(:last-child) {
-        height: 42px;
-        margin-top: 7px;
-        align-self: flex-start;
-    }
 }
