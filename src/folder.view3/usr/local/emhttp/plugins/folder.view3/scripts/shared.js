@@ -61,6 +61,29 @@ window.addEventListener('beforeunload', () => {
     fv3Cleanups.forEach(fn => { try { fn(); } catch(e) {} });
 });
 
+// Runtime error banner — only fires on genuine failures, never on expected fallbacks
+var _fv3BannerShown = {};
+window.fv3ShowBanner = (message, level) => {
+    if (_fv3BannerShown[message]) return;
+    _fv3BannerShown[message] = true;
+    var banner = document.createElement('div');
+    banner.className = 'fv3-banner fv3-banner-' + (level || 'warn');
+    var text = document.createElement('span');
+    text.textContent = message;
+    banner.appendChild(text);
+    if (level !== 'error') {
+        var close = document.createElement('span');
+        close.className = 'fv3-banner-close';
+        close.textContent = '\u00d7';
+        close.onclick = function() { banner.remove(); delete _fv3BannerShown[message]; };
+        banner.appendChild(close);
+        setTimeout(function() { if (banner.parentNode) banner.remove(); delete _fv3BannerShown[message]; }, 15000);
+    }
+    var target = document.getElementById('docker_list') || document.getElementById('vm_list') || document.querySelector('.dashboard_vm') || document.body;
+    target.parentNode.insertBefore(banner, target);
+    fv3Error('Banner', message);
+};
+
 window.fv3EditFolder = (type, basePath, id) => {
     location.href = basePath + '?type=' + type + '&id=' + id;
 };
@@ -249,7 +272,7 @@ window.fv3GraphQL = async (query, variables) => {
 
 // Action name mapping: FV3 → GraphQL
 var fv3DockerActionMap = {
-    start: 'start', stop: 'stop', pause: 'pause', resume: 'unpause'
+    start: 'start', stop: 'stop', restart: 'restart', pause: 'pause', resume: 'unpause'
 };
 var fv3VmActionMap = {
     'domain-start': 'start', 'domain-stop': 'stop', 'domain-pause': 'pause',
@@ -280,28 +303,32 @@ window.fv3ContainerAction = async (type, id, action) => {
 
 window.fv3DockerAction = (action, containerId, fullId) => {
     var gqlAction = fv3DockerActionMap[action];
+    var phpFallback = () => $.post(eventURL, { action: action, container: containerId }, null, 'json').promise()
+        .fail(() => fv3ShowBanner('Could not ' + action + ' container. Check your server connection.'));
     if (fv3ApiAvailable && gqlAction && fullId) {
         return fv3GraphQL('mutation($id: PrefixedID!) { docker { ' + gqlAction + '(id: $id) { id } } }', { id: fullId })
             .then(() => { fv3Debug('API', 'Docker', gqlAction, containerId, 'OK'); return { success: true }; })
             .catch((e) => {
                 fv3DebugWarn('API', 'Docker GraphQL failed, falling back:', e.message);
-                return $.post(eventURL, { action: action, container: containerId }, null, 'json').promise();
+                return phpFallback();
             });
     }
-    return $.post(eventURL, { action: action, container: containerId }, null, 'json').promise();
+    return phpFallback();
 };
 
 window.fv3VmAction = (action, uuid) => {
     var gqlAction = fv3VmActionMap[action];
+    var phpFallback = () => $.post('/plugins/dynamix.vm.manager/include/VMajax.php', { action: action, uuid: uuid }, null, 'json').promise()
+        .fail(() => fv3ShowBanner('Could not ' + action.replace('domain-', '') + ' VM. Check your server connection.'));
     if (fv3ApiAvailable && gqlAction) {
         return fv3GraphQL('mutation($id: PrefixedID!) { vm { ' + gqlAction + '(id: $id) } }', { id: uuid })
             .then(() => { fv3Debug('API', 'VM', gqlAction, uuid, 'OK'); return { success: true }; })
             .catch((e) => {
                 fv3DebugWarn('API', 'VM GraphQL failed, falling back:', e.message);
-                return $.post('/plugins/dynamix.vm.manager/include/VMajax.php', { action: action, uuid: uuid }, null, 'json').promise();
+                return phpFallback();
             });
     }
-    return $.post('/plugins/dynamix.vm.manager/include/VMajax.php', { action: action, uuid: uuid }, null, 'json').promise();
+    return phpFallback();
 };
 
 window.fv3CheckUpdates = async () => {
@@ -319,6 +346,74 @@ window.fv3CheckUpdates = async () => {
     } catch (e) {
         fv3Debug('API', 'Update check failed:', e.message);
         return {};
+    }
+};
+
+// One-way sync: FV3 Docker folders → Unraid native organizer (7.2+)
+window.fv3OrganizerSyncDone = false;
+
+window.fv3SyncOrganizer = async (folders) => {
+    if (!fv3ApiAvailable || fv3OrganizerSyncDone) return;
+    fv3OrganizerSyncDone = true;
+
+    try {
+        var data = await fv3GraphQL(
+            '{ docker { organizer { views { id flatEntries { id type name childrenIds } } } } }'
+        );
+        var views = data && data.docker && data.docker.organizer && data.docker.organizer.views;
+        if (!views || !views.length) { fv3Debug('OrgSync', 'No organizer views, skipping'); return; }
+
+        var entries = views[0].flatEntries || [];
+        var orgFolders = {};
+        var orgEntries = {};
+        for (var i = 0; i < entries.length; i++) {
+            var e = entries[i];
+            if (e.type === 'folder' || e.type === 'group') {
+                if (!orgFolders[e.name]) orgFolders[e.name] = e;
+            } else {
+                orgEntries[e.name] = e.id;
+            }
+        }
+
+        var seen = {};
+        var created = 0, updated = 0;
+
+        for (var fv3Id in folders) {
+            var folder = folders[fv3Id];
+            var name = folder.name;
+            if (!name || seen[name]) continue;
+            seen[name] = true;
+
+            var containerNames = folder.containers ? Object.keys(folder.containers) : [];
+            var childIds = containerNames.map(function(n) { return orgEntries[n]; }).filter(Boolean);
+
+            var existing = orgFolders[name];
+            if (existing) {
+                var cur = {};
+                (existing.childrenIds || []).forEach(function(id) { cur[id] = true; });
+                var want = {};
+                childIds.forEach(function(id) { want[id] = true; });
+                var curKeys = Object.keys(cur);
+                var wantKeys = Object.keys(want);
+                if (curKeys.length !== wantKeys.length || !wantKeys.every(function(id) { return cur[id]; })) {
+                    await fv3GraphQL(
+                        'mutation($fid: String!, $cids: [String!]!) { setDockerFolderChildren(folderId: $fid, childrenIds: $cids) { version } }',
+                        { fid: existing.id, cids: childIds }
+                    );
+                    updated++;
+                }
+            } else {
+                await fv3GraphQL(
+                    'mutation($n: String!, $ids: [String!]) { createDockerFolderWithItems(name: $n, sourceEntryIds: $ids) { version } }',
+                    { n: name, ids: childIds }
+                );
+                created++;
+            }
+        }
+
+        if (created || updated) fv3Debug('OrgSync', 'Done:', { created: created, updated: updated });
+    } catch (e) {
+        fv3DebugWarn('OrgSync', 'Sync failed (non-fatal):', e.message);
     }
 };
 

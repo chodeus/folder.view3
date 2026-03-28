@@ -28,24 +28,12 @@ const createFolders = async () => {
         if(folderDebugMode) {
             const debugData = JSON.stringify({
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
-                folders,
-                unraidOrder,
+                folders, unraidOrder,
                 originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
-                newOnes,
-                order,
-                containersInfo
+                newOnes, order, containersInfo
             });
-            const blob = new Blob([debugData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const element = document.createElement('a');
-            element.href = url;
-            element.download = 'debug-DASHBOARD-DOCKER.json';
-            element.style.display = 'none';
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
-            URL.revokeObjectURL(url);
-            console.log('Docker Order:', [...order]);
+            fv3DownloadDebugJSON('debug-DASHBOARD-DOCKER.json', debugData);
+            fv3Debug('dashboard', 'Docker Order:', [...order]);
         }
     
         let foldersDone = {};
@@ -119,6 +107,8 @@ const createFolders = async () => {
             }
         });
 
+        fv3SyncOrganizer(globalFolders.docker || {});
+
     }
 
 
@@ -148,24 +138,12 @@ const createFolders = async () => {
         if(folderDebugMode) {
             const debugData = JSON.stringify({
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
-                folders,
-                unraidOrder,
+                folders, unraidOrder,
                 originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), []),
-                newOnes,
-                order,
-                vmInfo
+                newOnes, order, vmInfo
             });
-            const blob = new Blob([debugData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const element = document.createElement('a');
-            element.href = url;
-            element.download = 'debug-DASHBOARD-VM.json';
-            element.style.display = 'none';
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
-            URL.revokeObjectURL(url);
-            console.log('VM Order:', [...order]);
+            fv3DownloadDebugJSON('debug-DASHBOARD-VM.json', debugData);
+            fv3Debug('dashboard', 'VM Order:', [...order]);
         }
     
         let foldersDone = {};
@@ -344,7 +322,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
             }
 
             if(folderDebugMode) {
-                console.log(`Docker ${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
+                fv3Debug('dashboard', `Docker ${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
             }
 
             // set the status of the folder
@@ -537,7 +515,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
             $(`tbody#vm_view span#folder-id-${id}`).siblings('div.folder-storage').append($vmEl.addClass(`folder-${id}-element`).addClass(`folder-element-vm`).addClass(`${ct.autostart ? 'autostart' : ''}`));
 
             if(folderDebugMode) {
-                console.log(`VM ${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
+                fv3Debug('dashboard', `VM ${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
             }
             
             // set the status of the folder
@@ -1878,20 +1856,20 @@ let folderReq = {
 window.loadlist_original = loadlist;
 window.loadlist = (x) => {
     loadedFolder = false;
-    if($('tbody#docker_view').length > 0) { 
+    if($('tbody#docker_view').length > 0) {
         folderReq.docker = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner('Could not load Docker folder data. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()
         ];
     }
 
     if($('tbody#vm_view').length > 0) {
         folderReq.vm = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner('Could not load VM folder data. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
         ];
     }

@@ -44,7 +44,7 @@ const createFolders = async () => {
             vmInfo
         });
         fv3DownloadDebugJSON('debug-VM.json', debugData);
-        console.log('Order:', [...order]);
+        fv3Debug('vm', 'Order:', [...order]);
     }
 
     let foldersDone = {};
@@ -259,7 +259,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             });
 
             if(folderDebugMode) {
-                console.log(`${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
+                fv3Debug('vm', `${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
             }
             
             const isHiddenFromPreview = (folder.hidden_preview || []).includes(container);
@@ -689,9 +689,9 @@ window.loadlist = (x) => {
         fv3FolderReqPending = true;
         loadedFolder = false;
         folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });

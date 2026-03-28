@@ -30,6 +30,7 @@
     --fv3-folder-name-bg: transparent;
     --fv3-row-bg: transparent;
     --fv3-toggle-color: #ff8c2f;
+    --fv3-toggle-hover-color: #ffad5c;
     --fv3-appname-max-width: 120px;
     --fv3-scrollbar-color: rgba(255, 140, 47, 0.5);
 
@@ -39,6 +40,42 @@
     --fv3-tab-active-border: rgba(128, 128, 128, 0.3);
     --fv3-panel-border: rgba(128, 128, 128, 0.2);
     --fv3-panel-bg: rgba(128, 128, 128, 0.08);
+}
+
+/* --- Error Banners --- */
+.fv3-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.fv3-banner-warn {
+    background: rgba(240, 163, 10, 0.15);
+    border: 1px solid rgba(240, 163, 10, 0.4);
+    color: inherit;
+}
+
+.fv3-banner-error {
+    background: rgba(204, 0, 0, 0.12);
+    border: 1px solid rgba(204, 0, 0, 0.35);
+    color: inherit;
+}
+
+.fv3-banner-close {
+    cursor: pointer;
+    margin-left: 12px;
+    font-size: 16px;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.fv3-banner-close:hover {
+    opacity: 1;
 }
 
 /* --- General Folder Styles --- */

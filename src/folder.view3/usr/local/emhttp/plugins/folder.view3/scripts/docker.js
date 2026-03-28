@@ -44,7 +44,7 @@ const createFolders = async () => {
             containersInfo
         });
         fv3DownloadDebugJSON('debug-DOCKER.json', debugData);
-        console.log('Order:', [...order]);
+        fv3Debug('createFolders', 'Order:', [...order]);
     }
 
     let foldersDone = {};
@@ -156,6 +156,8 @@ const createFolders = async () => {
             }
         }
     });
+
+    fv3SyncOrganizer(globalFolders);
 
     folderDebugMode = false;
 
@@ -1451,11 +1453,12 @@ window.loadlist = () => {
     if (!fv3FolderReqPending) {
         fv3FolderReqPending = true;
         loadedFolder = false;
+        fv3OrganizerSyncDone = false;
         fv3Debug('Patched loadlist', 'Set loadedFolder to false.');
         folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
