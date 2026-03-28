@@ -456,3 +456,33 @@ table.dashboard tr:last-child > td {
         min-height: 36px;
     }
 }
+
+/* Incognito mode toggle (dashboard — inline next to All Apps/VMs toggle) */
+.fv3-incognito-btn {
+    min-width: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0 0 0 8px;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.fv3-incognito-btn:hover {
+    opacity: 0.7;
+}
+
+.fv3-incognito-btn.fv3-incognito-active {
+    opacity: 1;
+    color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+    border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}

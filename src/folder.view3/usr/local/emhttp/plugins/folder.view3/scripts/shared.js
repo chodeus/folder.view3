@@ -104,6 +104,175 @@ window.addEventListener('beforeunload', () => {
     fv3Cleanups.forEach(fn => { try { fn(); } catch(e) {} });
 });
 
+// Incognito mode — obfuscates container/VM/folder names and icons for screenshots
+window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
+(function() {
+    var nameMap = {};
+    var nameCounter = { container: 0, vm: 0, folder: 0 };
+
+    function getAnon(realName, type) {
+        if (!realName || !realName.trim()) return realName;
+        var key = type + ':' + realName;
+        if (nameMap[key]) return nameMap[key];
+        nameCounter[type] = (nameCounter[type] || 0) + 1;
+        var label = type === 'folder' ? 'Folder' : type === 'vm' ? 'VM' : 'Container';
+        nameMap[key] = label + ' ' + nameCounter[type];
+        return nameMap[key];
+    }
+
+    function scrubText(text, knownNames) {
+        var result = text;
+        for (var i = 0; i < knownNames.length; i++) {
+            if (knownNames[i] && result.indexOf(knownNames[i]) !== -1) {
+                result = result.split(knownNames[i]).join(getAnon(knownNames[i], 'container'));
+            }
+        }
+        return result;
+    }
+
+    window.fv3IncognitoApply = function() {
+        if (!fv3Incognito) return;
+        document.body.classList.add('fv3-incognito');
+        var knownNames = [];
+
+        document.querySelectorAll('.folder-name .folder-inner, .fv3-folder-appname, .folder-appname').forEach(function(el) {
+            var name = el.textContent.trim();
+            if (name) knownNames.push(name);
+            el.setAttribute('data-fv3-real', name);
+            el.textContent = getAnon(name, el.closest('.folder-name, [class*="folder-docker"], [class*="folder-vm"]') ? 'folder' : 'container');
+        });
+
+        document.querySelectorAll('.appname, .appname a, td.ct-name > span > a, td.vm-name span.inner a').forEach(function(el) {
+            var name = el.textContent.trim();
+            if (name) knownNames.push(name);
+            el.setAttribute('data-fv3-real', name);
+            el.textContent = getAnon(name, el.closest('.vm-name') ? 'vm' : 'container');
+        });
+
+        document.querySelectorAll('.folder-preview [data-name], .folder-preview .folder-element span').forEach(function(el) {
+            var name = (el.getAttribute('data-name') || el.textContent || '').trim();
+            if (name) {
+                el.setAttribute('data-fv3-real', name);
+                el.textContent = getAnon(name, 'container');
+            }
+        });
+
+        document.querySelectorAll('img.img, .folder-img-docker img, .folder-img-vm img, td.ct-name img, td.vm-name img').forEach(function(el) {
+            el.setAttribute('data-fv3-real-src', el.src);
+            el.style.filter = 'blur(8px) brightness(0.7)';
+        });
+
+        document.querySelectorAll('.Docker_Image, .docker-image, [class*="image-name"]').forEach(function(el) {
+            el.setAttribute('data-fv3-real', el.textContent);
+            el.textContent = 'image/hidden';
+        });
+
+        document.querySelectorAll('a[href*="://"]').forEach(function(el) {
+            var href = el.getAttribute('href') || '';
+            if (el.closest('.fv3-incognito-skip')) return;
+            for (var i = 0; i < knownNames.length; i++) {
+                if (href.indexOf(knownNames[i].toLowerCase()) !== -1 || (el.textContent && el.textContent.indexOf(knownNames[i]) !== -1)) {
+                    el.setAttribute('data-fv3-real', el.textContent);
+                    el.setAttribute('data-fv3-real-href', href);
+                    el.textContent = 'WebUI';
+                    el.setAttribute('href', '#');
+                    break;
+                }
+            }
+        });
+
+        document.querySelectorAll('.tailscale-ip, [class*="tailscale"]').forEach(function(el) {
+            el.setAttribute('data-fv3-real', el.textContent);
+            el.textContent = '100.x.x.x';
+        });
+
+        document.querySelectorAll('.info-section td, .tooltip-content, .preview-outbox .status-info').forEach(function(el) {
+            var html = el.innerHTML;
+            var changed = scrubText(html, knownNames);
+            if (changed !== html) {
+                el.setAttribute('data-fv3-real-html', html);
+                el.innerHTML = changed;
+            }
+        });
+    };
+
+    window.fv3IncognitoRemove = function() {
+        document.body.classList.remove('fv3-incognito');
+        document.querySelectorAll('[data-fv3-real]').forEach(function(el) {
+            el.textContent = el.getAttribute('data-fv3-real');
+            el.removeAttribute('data-fv3-real');
+        });
+        document.querySelectorAll('[data-fv3-real-src]').forEach(function(el) {
+            el.src = el.getAttribute('data-fv3-real-src');
+            el.style.filter = '';
+            el.removeAttribute('data-fv3-real-src');
+        });
+        document.querySelectorAll('[data-fv3-real-href]').forEach(function(el) {
+            el.setAttribute('href', el.getAttribute('data-fv3-real-href'));
+            el.removeAttribute('data-fv3-real-href');
+        });
+        document.querySelectorAll('[data-fv3-real-html]').forEach(function(el) {
+            el.innerHTML = el.getAttribute('data-fv3-real-html');
+            el.removeAttribute('data-fv3-real-html');
+        });
+        nameMap = {};
+        nameCounter = { container: 0, vm: 0, folder: 0 };
+    };
+
+    window.fv3IncognitoToggle = function() {
+        fv3Incognito = !fv3Incognito;
+        localStorage.setItem('fv3-incognito', fv3Incognito);
+        if (fv3Incognito) fv3IncognitoApply();
+        else fv3IncognitoRemove();
+        var btn = document.getElementById('fv3-incognito-btn');
+        if (btn) btn.classList.toggle('fv3-incognito-active', fv3Incognito);
+    };
+
+    function createBtn() {
+        var btn = document.createElement('button');
+        btn.id = 'fv3-incognito-btn';
+        btn.className = 'fv3-incognito-btn' + (fv3Incognito ? ' fv3-incognito-active' : '');
+        btn.title = 'Incognito Mode — hide container/VM names for screenshots';
+        btn.innerHTML = '<i class="fa fa-eye-slash"></i>';
+        btn.addEventListener('click', fv3IncognitoToggle);
+        return btn;
+    }
+
+    function injectToggle() {
+        if (document.getElementById('fv3-incognito-btn')) return;
+
+        var appsToggle = document.querySelector('input#apps');
+        if (appsToggle) {
+            var label = appsToggle.closest('label') || appsToggle.parentNode;
+            label.parentNode.insertBefore(createBtn(), label.nextSibling);
+            if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
+            return;
+        }
+
+        var table = document.querySelector('table#docker_containers, table#kvm_table');
+        if (table) {
+            table.parentNode.insertBefore(createBtn(), table);
+            if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
+            return;
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(injectToggle, 100); });
+    } else {
+        setTimeout(injectToggle, 100);
+    }
+
+    if (typeof folderEvents !== 'undefined') {
+        folderEvents.addEventListener('docker-post-folders-creation', function() {
+            if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
+        });
+        folderEvents.addEventListener('vm-post-folders-creation', function() {
+            if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
+        });
+    }
+})();
+
 // Runtime error banner — only fires on genuine failures, never on expected fallbacks
 var _fv3BannerShown = {};
 window.fv3ShowBanner = (message, level) => {
