@@ -95,7 +95,7 @@ td.folder-name .folder-outer {
     height: var(--fv3-folder-preview-height);
     overflow: hidden;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     background: var(--fv3-folder-preview-bg);
 }
@@ -105,7 +105,9 @@ td.folder-name .folder-outer {
     min-height: var(--fv3-folder-preview-height);
     max-height: none;
     overflow: visible;
-    padding-bottom: 7px;
+    flex-wrap: wrap;
+    padding-top: 6px;
+    padding-bottom: 6px;
     row-gap: 7px;
     position: relative;
 }
@@ -120,9 +122,11 @@ td.folder-name .folder-outer {
 }
 
 .folder-preview.fv3-overflow-scroll {
-    flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    box-sizing: border-box;
 }
 
 .folder-preview.fv3-overflow-scroll .folder-preview-wrapper {
