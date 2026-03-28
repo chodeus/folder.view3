@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/develop/&name;.plg">
-<!ENTITY version "2026.03.28-develop26">
-<!ENTITY md5 "5a2f746190ca37d89c656622dedf07bb">
+<!ENTITY version "2026.03.28-develop27">
+<!ENTITY md5 "4225c5f4a8c04d7eb3870889c3f835cf">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">

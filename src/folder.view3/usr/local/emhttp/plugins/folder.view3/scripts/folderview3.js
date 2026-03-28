@@ -493,4 +493,50 @@ $('#fv3-apply-defaults').on('click', function() {
     });
 });
 
+const fv3ExportAll = () => {
+    window.location.href = '/plugins/folder.view3/server/export_all.php';
+};
+window.fv3ExportAll = fv3ExportAll;
+
+$('#fv3-import-all-btn').on('click', () => $('#fv3-import-all').click());
+$('#fv3-import-all').on('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    this.value = '';
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            if (!parsed.fv3_export_version) { swal({ title: 'Error', text: 'Not a valid FV3 backup file.', type: 'error' }); return; }
+            const items = [];
+            if (parsed.docker && Object.keys(parsed.docker).length) items.push(Object.keys(parsed.docker).length + ' Docker folders');
+            if (parsed.vm && Object.keys(parsed.vm).length) items.push(Object.keys(parsed.vm).length + ' VM folders');
+            if (parsed.settings && Object.keys(parsed.settings).length) items.push('settings');
+            if (parsed.css_config && Object.keys(parsed.css_config).length) items.push('CSS config');
+            if (parsed.custom_styles && Object.keys(parsed.custom_styles).length) items.push(Object.keys(parsed.custom_styles).length + ' custom CSS files');
+            swal({
+                title: 'Import Backup?',
+                text: 'This will overwrite current config with: ' + items.join(', ') + '.' + (parsed.exported ? '\nExported: ' + parsed.exported : ''),
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Import'
+            }, async (confirmed) => {
+                if (!confirmed) return;
+                const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
+                const result = fv3SafeParse(resp, {});
+                if (result.error) {
+                    swal({ title: 'Error', text: result.error, type: 'error' });
+                } else {
+                    swal({ title: 'Restored', text: (result.restored || []).length + ' items restored. Reload to see changes.', type: 'success' });
+                    populateTable();
+                    loadDashboardSettings();
+                }
+            });
+        } catch (err) {
+            swal({ title: 'Error', text: 'Invalid JSON file.', type: 'error' });
+        }
+    };
+    reader.readAsText(file);
+});
+
 loadDashboardSettings();

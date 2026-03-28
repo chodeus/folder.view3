@@ -232,5 +232,11 @@
     "folder-containers": "Containers / VMs",
     "css-themes": "Themes",
     "css-themes-help": "Import community CSS themes from GitHub. One theme active at a time. CSS variables always apply on top.",
-    "css-theme-import": "Import from GitHub"
+    "css-theme-import": "Import from GitHub",
+    "backup-full": "Full Backup (everything)",
+    "export-everything": "Export Everything",
+    "import-everything": "Import Everything",
+    "backup-full-hint": "Includes all folders, settings, CSS config, and custom themes in one file.",
+    "backup-individual": "Individual Export / Import",
+    "backup-danger": "Danger Zone"
 }

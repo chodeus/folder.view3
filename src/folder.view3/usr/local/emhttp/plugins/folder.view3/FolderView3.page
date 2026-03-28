@@ -206,20 +206,31 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <details class="fv3-section">
     <summary data-i18n="backup-restore">Import / Export (Backup)</summary>
     <div class="fv3-backup-section">
-        <p data-i18n="backup-help">Export all folder configurations as a backup, or import from a previous export. You can also browse the config directory directly.</p>
-        <div class="fv3-backup-actions">
-            <button onclick="downloadDocker(); downloadVm();"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-all-folders">Export All Folders</span></button>
-            <button onclick="downloadDocker()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-docker">Export Docker</span></button>
-            <button onclick="downloadVm()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-vm">Export VM</span></button>
+        <div class="fv3-backup-group">
+            <div class="fv3-backup-group-label" data-i18n="backup-full">Full Backup (everything)</div>
+            <div class="fv3-backup-actions">
+                <button onclick="fv3ExportAll()"><i class="fa fa-archive" aria-hidden="true"></i> <span data-i18n="export-everything">Export Everything</span></button>
+                <button id="fv3-import-all-btn"><i class="fa fa-archive" aria-hidden="true"></i> <span data-i18n="import-everything">Import Everything</span></button>
+                <input type="file" id="fv3-import-all" style="display:none" accept=".json">
+            </div>
+            <p class="fv3-backup-hint" data-i18n="backup-full-hint">Includes all folders, settings, CSS config, and custom themes in one file.</p>
         </div>
-        <div class="fv3-backup-actions" style="margin-top: 8px;">
-            <button onclick="importDocker()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-docker-folders">Import Docker Folders</span></button>
-            <button onclick="importVm()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-vm-folders">Import VM Folders</span></button>
+        <div class="fv3-backup-group">
+            <div class="fv3-backup-group-label" data-i18n="backup-individual">Individual Export / Import</div>
+            <div class="fv3-backup-actions">
+                <button onclick="downloadDocker()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-docker">Export Docker</span></button>
+                <button onclick="downloadVm()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-vm">Export VM</span></button>
+                <button onclick="importDocker()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-docker-folders">Import Docker</span></button>
+                <button onclick="importVm()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-vm-folders">Import VM</span></button>
+            </div>
         </div>
-        <div class="fv3-backup-actions" style="margin-top: 8px;">
-            <button onclick="clearDocker()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-docker">Clear Docker Folders</span></button>
-            <button onclick="clearVm()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-vm">Clear VM Folders</span></button>
-            <button onclick="fileManager()"><i class="fa fa-folder-open" aria-hidden="true"></i> <span data-i18n="file-manager">Open File Manager</span></button>
+        <div class="fv3-backup-group">
+            <div class="fv3-backup-group-label" data-i18n="backup-danger">Danger Zone</div>
+            <div class="fv3-backup-actions">
+                <button onclick="clearDocker()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-docker">Clear Docker Folders</span></button>
+                <button onclick="clearVm()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-vm">Clear VM Folders</span></button>
+                <button onclick="fileManager()"><i class="fa fa-folder-open" aria-hidden="true"></i> <span data-i18n="file-manager">File Manager</span></button>
+            </div>
         </div>
     </div>
 </details>

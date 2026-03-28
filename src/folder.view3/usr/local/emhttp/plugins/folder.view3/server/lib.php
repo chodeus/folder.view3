@@ -493,6 +493,74 @@
         }
     }
 
+    function exportAll() : array {
+        global $configDir;
+        $bundle = [
+            'fv3_export_version' => 1,
+            'plugin_version' => trim(@file_get_contents("$configDir/version") ?: ''),
+            'exported' => date('c'),
+            'docker' => json_decode(@file_get_contents("$configDir/docker.json") ?: '{}', true) ?: [],
+            'vm' => json_decode(@file_get_contents("$configDir/vm.json") ?: '{}', true) ?: [],
+            'settings' => json_decode(@file_get_contents("$configDir/settings.json") ?: '{}', true) ?: [],
+            'css_config' => json_decode(@file_get_contents("$configDir/css-config.json") ?: '{}', true) ?: [],
+            'custom_styles' => []
+        ];
+        $stylesDir = "$configDir/styles";
+        if (is_dir($stylesDir)) {
+            $items = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($stylesDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+            foreach ($items as $item) {
+                if ($item->isFile() && preg_match('/\.css$/i', $item->getFilename())) {
+                    if (preg_match('/^_fv3-generated\./', $item->getFilename())) continue;
+                    $relPath = substr($item->getRealPath(), strlen(realpath($stylesDir)) + 1);
+                    $bundle['custom_styles'][$relPath] = file_get_contents($item->getRealPath());
+                }
+            }
+        }
+        return $bundle;
+    }
+
+    function importAll(string $json) : array {
+        global $configDir;
+        if (strlen($json) > 5242880) return ['error' => 'Bundle too large (5MB max)'];
+        $bundle = json_decode($json, true);
+        if (!$bundle || !isset($bundle['fv3_export_version'])) return ['error' => 'Invalid FV3 export file'];
+        $restored = [];
+        if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
+        foreach (['docker', 'vm', 'settings', 'css_config'] as $key) {
+            if (!isset($bundle[$key]) || !is_array($bundle[$key])) continue;
+            $filename = $key === 'css_config' ? 'css-config.json' : "$key.json";
+            $path = "$configDir/$filename";
+            file_put_contents($path, json_encode($bundle[$key], JSON_PRETTY_PRINT));
+            @chmod($path, 0660);
+            $restored[] = $filename;
+        }
+        if (isset($bundle['custom_styles']) && is_array($bundle['custom_styles'])) {
+            $stylesDir = "$configDir/styles";
+            if (!is_dir($stylesDir)) @mkdir($stylesDir, 0770, true);
+            $baseReal = realpath($stylesDir);
+            foreach ($bundle['custom_styles'] as $relPath => $content) {
+                if (!is_string($content) || !is_string($relPath)) continue;
+                if (!preg_match('/\.css$/i', $relPath)) continue;
+                if (preg_match('/\.\./', $relPath)) continue;
+                $fullPath = "$stylesDir/$relPath";
+                $dir = dirname($fullPath);
+                if (!is_dir($dir)) @mkdir($dir, 0770, true);
+                $dirReal = realpath($dir);
+                if ($dirReal === false || strpos($dirReal, $baseReal) !== 0) continue;
+                file_put_contents($fullPath, $content);
+                @chmod($fullPath, 0660);
+                $restored[] = "styles/$relPath";
+            }
+        }
+        if (isset($bundle['css_config']) && is_array($bundle['css_config'])) {
+            generateCssFile($bundle['css_config']);
+        }
+        return ['success' => true, 'restored' => $restored];
+    }
+
     function readCssConfig() : string {
         global $configDir;
         $path = "$configDir/css-config.json";

@@ -57,9 +57,20 @@
 }
 
 /* Backup section */
-.fv3-backup-section p {
-    margin: 0 0 1rem;
-    opacity: 0.8;
+.fv3-backup-group {
+    margin-bottom: 1.2rem;
+}
+
+.fv3-backup-group-label {
+    font-weight: 600;
+    font-size: 1em;
+    margin-bottom: 6px;
+}
+
+.fv3-backup-hint {
+    margin: 4px 0 0;
+    font-size: 0.85em;
+    opacity: 0.6;
 }
 
 .fv3-backup-actions {
