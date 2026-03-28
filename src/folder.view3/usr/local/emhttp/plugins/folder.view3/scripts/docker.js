@@ -955,7 +955,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             if (!el) return;
             el.classList.remove('fv3-overflow-expand');
             el.style.height = '';
-            if (el.scrollHeight > el.clientHeight) {
+            if (el.scrollWidth > el.clientWidth) {
                 el.classList.add('fv3-overflow-expand');
             }
         });
@@ -965,7 +965,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             el.classList.remove('fv3-overflow-expand');
             el.style.height = '';
             requestAnimationFrame(() => {
-                if (el.scrollHeight > el.clientHeight) {
+                if (el.scrollWidth > el.clientWidth) {
                     el.classList.add('fv3-overflow-expand');
                 }
                 if (folder.settings.preview_row_separator) {
