@@ -322,6 +322,57 @@ fv3DetectApi();
 
 // --- End Phase 6 ---
 
+window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
+    const $preview = $(`tr.folder-id-${id} div.folder-preview`);
+    const el = $preview[0];
+    if (!el) return;
+
+    if (folder.settings.preview_overflow === 1) {
+        $preview.addClass('fv3-overflow-expand');
+        if (folder.settings.preview_row_separator) {
+            requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
+        }
+        requestAnimationFrame(() => {
+            el.classList.remove('fv3-overflow-expand');
+            el.style.height = '';
+            if (el.scrollWidth > el.clientWidth) {
+                el.classList.add('fv3-overflow-expand');
+            }
+        });
+        const ro = new ResizeObserver(() => {
+            el.classList.remove('fv3-overflow-expand');
+            el.style.height = '';
+            requestAnimationFrame(() => {
+                if (el.scrollWidth > el.clientWidth) {
+                    el.classList.add('fv3-overflow-expand');
+                }
+                if (folder.settings.preview_row_separator) {
+                    fv3UpdateRowSeparators(globalFolders, id);
+                }
+            });
+        });
+        ro.observe(el);
+        fv3Cleanups.push(() => ro.disconnect());
+    } else if (folder.settings.preview_overflow === 2) {
+        $preview.addClass('fv3-overflow-scroll');
+        requestAnimationFrame(() => {
+            if (el.scrollWidth <= el.clientWidth) {
+                $preview.removeClass('fv3-overflow-scroll');
+            }
+        });
+        const ro = new ResizeObserver(() => {
+            el.classList.add('fv3-overflow-scroll');
+            requestAnimationFrame(() => {
+                if (el.scrollWidth <= el.clientWidth) {
+                    el.classList.remove('fv3-overflow-scroll');
+                }
+            });
+        });
+        ro.observe(el);
+        fv3Cleanups.push(() => ro.disconnect());
+    }
+};
+
 window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
     let resizeTimer;
     const recalc = () => {

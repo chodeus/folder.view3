@@ -335,55 +335,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     // wrap the preview with a div
     $(`tr.folder-id-${id} div.folder-preview > span`).wrap('<div class="folder-preview-wrapper"></div>');
 
-    if (folder.settings.preview_overflow === 1) {
-        const $expandPreview = $(`tr.folder-id-${id} div.folder-preview`);
-        $expandPreview.addClass('fv3-overflow-expand');
-        if (folder.settings.preview_row_separator) {
-            requestAnimationFrame(() => fv3UpdateRowSeparators(globalFolders, id));
-        }
-        requestAnimationFrame(() => {
-            const el = $expandPreview[0];
-            if (!el) return;
-            el.classList.remove('fv3-overflow-expand');
-            el.style.height = '';
-            if (el.scrollWidth > el.clientWidth) {
-                el.classList.add('fv3-overflow-expand');
-            }
-        });
-        new ResizeObserver(() => {
-            const el = $expandPreview[0];
-            if (!el) return;
-            el.classList.remove('fv3-overflow-expand');
-            el.style.height = '';
-            requestAnimationFrame(() => {
-                if (el.scrollWidth > el.clientWidth) {
-                    el.classList.add('fv3-overflow-expand');
-                }
-                if (folder.settings.preview_row_separator) {
-                    fv3UpdateRowSeparators(globalFolders, id);
-                }
-            });
-        }).observe($expandPreview[0]);
-    } else if (folder.settings.preview_overflow === 2) {
-        const $scrollPreview = $(`tr.folder-id-${id} div.folder-preview`);
-        $scrollPreview.addClass('fv3-overflow-scroll');
-        requestAnimationFrame(() => {
-            const el = $scrollPreview[0];
-            if (el && el.scrollWidth <= el.clientWidth) {
-                $scrollPreview.removeClass('fv3-overflow-scroll');
-            }
-        });
-        new ResizeObserver(() => {
-            const el = $scrollPreview[0];
-            if (!el) return;
-            el.classList.add('fv3-overflow-scroll');
-            requestAnimationFrame(() => {
-                if (el.scrollWidth <= el.clientWidth) {
-                    el.classList.remove('fv3-overflow-scroll');
-                }
-            });
-        }).observe($scrollPreview[0]);
-    }
+    fv3SetupPreviewMode(folder, id, globalFolders);
     if(folder.settings.preview_vertical_bars) {
         const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
         $(`tr.folder-id-${id} div.folder-preview > div`).not(':last').after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
