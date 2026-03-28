@@ -16,7 +16,12 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 - **Bulk actions** — start, stop, restart, pause all containers in a folder
 - **Autostart sync** — container autostart order stays aligned with folder layout
 - **Compose & 3rd Party awareness** — handles Docker Compose and 3rd party containers
+- **CSS Tool** — built-in theme manager with GitHub import, variable editor, presets, and advanced CSS
+- **Theme update checker** — detects when imported GitHub themes have updates, Docker-style indicators
+- **Folder defaults** — set global defaults for preview, overflow, context, and more — apply to all folders in one click
+- **Full backup/restore** — export everything (folders, settings, CSS config, themes) to a single JSON file
 - **Custom CSS/JS extensions** — full theming support with 40+ CSS variables
+- **Security warnings** — CSS imports are scanned for external URLs and flagged for user review
 - **7 languages** — English, German, Spanish, French, Italian, Polish, Chinese
 - **Debug mode** — type `fv3debug` on any page to toggle console logging
 
@@ -56,6 +61,23 @@ After installation, an **Add Folder** button appears at the bottom of the Docker
        labels:
          folder.view3: "MyFolder"
    ```
+
+## Settings Page
+
+The plugin settings page (**Settings > FolderView3**) is organized into collapsible sections:
+
+- **Dashboard Configuration** — layout style, animation, greyscale, collapse toggles
+- **Folder Defaults** — global defaults for preview mode, overflow, context, icons, borders, separators. New folders inherit these automatically. "Apply Defaults to All" updates every existing folder.
+- **Import / Export (Backup)** — full backup (everything in one JSON), individual Docker/VM export/import, danger zone (clear all)
+- **Custom CSS** — four tabs:
+  - **Themes** — import community CSS from GitHub, enable/disable, one-click updates with change detection
+  - **Variables** — edit 27 CSS variables with color pickers and sliders, scoped per page
+  - **Presets** — one-click theme presets (Default, Compact, Blue Accent, Muted)
+  - **Advanced CSS** — free-form CSS editor with live preview
+
+### Importing Community Themes
+
+Enter a GitHub repo (e.g. `masterwishx/folder.view.custom.css`) in the Themes tab. If the repo has multiple directories, a picker lets you select which to import. Imported themes show update status — green checkmark for up-to-date, blue cloud when updates are available.
 
 ## Custom CSS/JS
 

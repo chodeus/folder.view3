@@ -527,6 +527,60 @@ Imported themes are stored as subdirectories in `/boot/config/plugins/folder.vie
 | `export_all.php` | GET | Full backup (all configs + CSS) |
 | `import_all.php` | POST | Restore full backup |
 
+## Folder Defaults System
+
+Global defaults are stored in `settings.json` with keys like `default_preview`, `default_overflow`, `default_preview_hover`, etc. When rendering, `fv3ApplyDefaults()` in `shared.js` merges defaults into any folder whose settings are unset. New folders created via Folder.page are pre-filled from these defaults.
+
+The "Apply Defaults to All Folders" button on the settings page reads current defaults and writes them to every existing folder config.
+
+## Theme Manager
+
+### Import Flow
+1. User enters `owner/repo` → JS fetches GitHub Contents API
+2. If repo has subdirectories with CSS (e.g. masterwishx, hernandito) → directory picker shown with checkboxes for multi-select
+3. Selected directories are imported individually, each becomes its own theme folder
+4. `.fv3-source` JSON file stored in theme folder: `{ "repo": "owner/repo", "path": "subdir", "files": { "file.css": "sha" }, "updated": "ISO date" }`
+
+### Update Checking
+On settings page load, each theme's SHAs are compared against GitHub API. Status shown per-theme:
+- Spinner while checking
+- Green checkmark + "up-to-date" if all SHAs match
+- Blue cloud + "update ready" if any file changed
+
+### Security Warnings
+On every import/update, downloaded CSS files are scanned for:
+- `url()` — external resource loading
+- `@import` — external stylesheet loading
+- `expression()` — IE script execution
+- `javascript:` — script execution
+
+If found, a SweetAlert shows each flagged line with file:line:code. User decides whether to keep or delete. Only `@import`, `expression()`, and `javascript:` are stripped from the CSS Tool's Advanced CSS textarea — `url()` and `!important` are allowed everywhere.
+
+### PHP Endpoints (Theme Manager)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `list_themes.php` | GET | Scan styles dir, return themes with source data |
+| `toggle_theme.php` | POST | Enable/disable (rename with `.disabled`), exclusive mode |
+| `import_theme.php` | POST | Fetch from GitHub API, supports `path` param for subdirs |
+| `delete_theme.php` | POST | Recursive delete, `_fv3-generated` protected |
+
+### Full Backup
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `export_all.php` | GET | Returns JSON bundle: docker/vm folders, settings, CSS config, custom styles |
+| `import_all.php` | POST | Restores bundle with path traversal prevention |
+
+Custom styles over 2MB are excluded from export with a warning. The bundle format:
+```json
+{
+    "fv3_export_version": 1,
+    "docker": {}, "vm": {}, "settings": {}, "css_config": {},
+    "custom_styles": { "theme-dir/file.css": "/* css content */" }
+}
+```
+
 ## Debug Mode
 
 Type **fv3debug** on any FolderView3 page to toggle debug logging. When enabled, the browser console shows folder creation, API calls, organizer sync, and stats updates with `[FV3]` prefix. State persists in localStorage across page loads.
