@@ -37,6 +37,7 @@
         'fv3-embossed-inner-border': { type: 'text', group: 'colors', label: 'Embossed inner', desc: 'Embossed layout inner panel border\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
         'fv3-preview-icon-size': { type: 'dimension', group: 'dimensions', label: 'Preview icon size', desc: 'Size of container/VM icons in folder preview\nRange: 16px – 64px', min: 16, max: 64, unit: 'px' },
         'fv3-folder-icon-size': { type: 'dimension', group: 'dimensions', label: 'Folder icon size', desc: 'Size of the folder icon in the row\nRange: 24px – 96px', min: 24, max: 96, unit: 'px' },
+        'fv3-chevron-size': { type: 'dimension', group: 'dimensions', label: 'Chevron button size', desc: 'Font size of the folder expand/collapse chevron\nRange: 8px – 24px', pages: ['docker', 'vm'], min: 8, max: 24, unit: 'px' },
         'fv3-appname-max-width': { type: 'dimension', group: 'dimensions', label: 'App name max width', desc: 'Maximum width before container names truncate\nRange: 60px – 300px', pages: ['docker', 'vm'], min: 60, max: 300, unit: 'px' }
     };
 
@@ -125,7 +126,7 @@
     const toggleStyles = [
         { id: 'default', label: 'Unraid Default', desc: 'Standard Unraid toggle switch' },
         { id: 'flat', label: 'Flat', desc: 'Flat minimal with square knob' },
-        { id: 'ios', label: 'iOS', desc: 'Rounded pill with circular knob' },
+        { id: 'rounded', label: 'Pill Small', desc: 'Small rounded pill with circular knob' },
         { id: 'material', label: 'Material', desc: 'Thin track with floating circle' },
         { id: 'pill', label: 'Pill', desc: 'Wide rounded with sliding circle' }
     ];
@@ -179,7 +180,7 @@
     function applyToggleStyle(style) {
         if (style === 'default') {
             document.querySelectorAll('.fv3-toggle').forEach(function(el) {
-                el.classList.remove('fv3-toggle', 'fv3-toggle-ios', 'fv3-toggle-material', 'fv3-toggle-pill');
+                el.classList.remove('fv3-toggle', 'fv3-toggle-rounded', 'fv3-toggle-material', 'fv3-toggle-pill');
                 el.classList.add('basic-switch');
                 el.style.display = 'none';
             });
@@ -202,7 +203,7 @@
                 if (el.previousElementSibling && el.previousElementSibling.classList.contains('switch-button-label')) el.remove();
             });
             document.querySelectorAll('.fv3-toggle').forEach(function(el) {
-                el.classList.remove('fv3-toggle-ios', 'fv3-toggle-material', 'fv3-toggle-pill');
+                el.classList.remove('fv3-toggle-rounded', 'fv3-toggle-material', 'fv3-toggle-pill');
                 if (style && style !== 'flat') {
                     el.classList.add('fv3-toggle-' + style);
                 }

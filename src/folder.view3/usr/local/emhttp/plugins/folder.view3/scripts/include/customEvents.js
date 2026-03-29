@@ -86,6 +86,31 @@ window.fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
     catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
 });
 
+window.fv3ApplyToggleStyle = window.fv3ApplyToggleStyle || ((style) => {
+    if (!style || style === 'default') return;
+    document.querySelectorAll('.fv3-toggle').forEach(el => {
+        el.classList.remove('fv3-toggle-rounded', 'fv3-toggle-material', 'fv3-toggle-pill');
+        if (style !== 'flat') el.classList.add('fv3-toggle-' + style);
+    });
+});
+
+window._fv3ToggleStyle = null;
+window.fv3LoadToggleStyle = window.fv3LoadToggleStyle || (() => {
+    if (window._fv3ToggleStyle) { window.fv3ApplyToggleStyle(window._fv3ToggleStyle); return; }
+    fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(config => {
+            window._fv3ToggleStyle = config.toggle_style || 'default';
+            window.fv3ApplyToggleStyle(window._fv3ToggleStyle);
+        })
+        .catch(() => {});
+});
+
+if (window.folderEvents) {
+    window.folderEvents.addEventListener('docker-post-folders-creation', () => window.fv3LoadToggleStyle());
+    window.folderEvents.addEventListener('vm-post-folders-creation', () => window.fv3LoadToggleStyle());
+}
+
 if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
     $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
         if (options.type?.toUpperCase() === 'POST' && options.url?.includes('/plugins/folder.view3/')) {

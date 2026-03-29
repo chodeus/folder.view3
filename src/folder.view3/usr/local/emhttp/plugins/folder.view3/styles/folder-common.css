@@ -36,6 +36,7 @@
 
     /* Themeable element colors (overridden by per-folder settings when set) */
     --fv3-chevron-color: inherit;
+    --fv3-chevron-size: 14px;
     --fv3-preview-border-color: currentColor;
     --fv3-vertical-bars-color: currentColor;
     --fv3-separator-color: rgba(128, 128, 128, 0.5);
@@ -128,6 +129,8 @@ td.folder-name .folder-outer {
     margin-left: auto;
     flex-shrink: 0;
     color: var(--fv3-chevron-color);
+    border-color: var(--fv3-chevron-color);
+    font-size: var(--fv3-chevron-size);
 }
 
 .folder-storage {

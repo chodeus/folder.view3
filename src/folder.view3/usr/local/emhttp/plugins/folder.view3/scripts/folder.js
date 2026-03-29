@@ -572,3 +572,15 @@ if (nameInput && nameWarning) {
     });
     if (nameInput.value.length > 20) nameWarning.style.display = 'block';
 }
+
+fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(config => {
+        const style = config.toggle_style || 'default';
+        if (style === 'default') return;
+        document.querySelectorAll('.fv3-toggle').forEach(el => {
+            el.classList.remove('fv3-toggle-rounded', 'fv3-toggle-material', 'fv3-toggle-pill');
+            if (style !== 'flat') el.classList.add('fv3-toggle-' + style);
+        });
+    })
+    .catch(() => {});

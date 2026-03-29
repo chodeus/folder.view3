@@ -44,11 +44,11 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </select>
         </dd>
 
-        <dt class="fv3-docker-nonclassic fv3-setting-sub"><label for="dashboard-docker-folder-label" data-i18n="dashboard-docker-folder-label">Show folder name in panel</label></dt>
-        <dd class="fv3-docker-nonclassic"><input class="fv3-toggle" id="dashboard-docker-folder-label" type="checkbox" /></dd>
+        <dt class="fv3-docker-nonclassic fv3-setting-sub" style="display:none"><label for="dashboard-docker-folder-label" data-i18n="dashboard-docker-folder-label">Show folder name in panel</label></dt>
+        <dd class="fv3-docker-nonclassic" style="display:none"><input class="fv3-toggle" id="dashboard-docker-folder-label" type="checkbox" /></dd>
 
-        <dt class="fv3-docker-nonclassic fv3-setting-sub"><label for="dashboard-docker-expand-toggle" data-i18n="dashboard-docker-expand-toggle">Quick collapse</label></dt>
-        <dd class="fv3-docker-nonclassic"><input class="fv3-toggle" id="dashboard-docker-expand-toggle" type="checkbox" /></dd>
+        <dt class="fv3-docker-nonclassic fv3-setting-sub" style="display:none"><label for="dashboard-docker-expand-toggle" data-i18n="dashboard-docker-expand-toggle">Quick collapse</label></dt>
+        <dd class="fv3-docker-nonclassic" style="display:none"><input class="fv3-toggle" id="dashboard-docker-expand-toggle" type="checkbox" /></dd>
 
         <dt><label for="dashboard-docker-greyscale" data-i18n="dashboard-docker-greyscale">Greyscale collapsed folders</label></dt>
         <dd><input class="fv3-toggle" id="dashboard-docker-greyscale" type="checkbox" /></dd>
@@ -66,11 +66,11 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </select>
         </dd>
 
-        <dt class="fv3-vm-nonclassic fv3-setting-sub"><label for="dashboard-vm-folder-label" data-i18n="dashboard-vm-folder-label">Show folder name in panel</label></dt>
-        <dd class="fv3-vm-nonclassic"><input class="fv3-toggle" id="dashboard-vm-folder-label" type="checkbox" /></dd>
+        <dt class="fv3-vm-nonclassic fv3-setting-sub" style="display:none"><label for="dashboard-vm-folder-label" data-i18n="dashboard-vm-folder-label">Show folder name in panel</label></dt>
+        <dd class="fv3-vm-nonclassic" style="display:none"><input class="fv3-toggle" id="dashboard-vm-folder-label" type="checkbox" /></dd>
 
-        <dt class="fv3-vm-nonclassic fv3-setting-sub"><label for="dashboard-vm-expand-toggle" data-i18n="dashboard-vm-expand-toggle">Quick collapse</label></dt>
-        <dd class="fv3-vm-nonclassic"><input class="fv3-toggle" id="dashboard-vm-expand-toggle" type="checkbox" /></dd>
+        <dt class="fv3-vm-nonclassic fv3-setting-sub" style="display:none"><label for="dashboard-vm-expand-toggle" data-i18n="dashboard-vm-expand-toggle">Quick collapse</label></dt>
+        <dd class="fv3-vm-nonclassic" style="display:none"><input class="fv3-toggle" id="dashboard-vm-expand-toggle" type="checkbox" /></dd>
 
         <dt><label for="dashboard-vm-greyscale" data-i18n="dashboard-vm-greyscale">Greyscale collapsed folders</label></dt>
         <dd><input class="fv3-toggle" id="dashboard-vm-greyscale" type="checkbox" /></dd>
@@ -183,7 +183,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 
 <div class="fv3-page-panel" id="fv3-panel-backup" style="display:none">
     <div class="fv3-backup-section">
-        <div class="fv3-backup-group">
+        <div class="fv3-backup-group fv3-backup-highlight">
             <div class="fv3-backup-group-label" data-i18n="backup-full">Full Backup (everything)</div>
             <div class="fv3-backup-actions">
                 <button onclick="fv3ExportAll()"><i class="fa fa-archive" aria-hidden="true"></i> <span data-i18n="export-everything">Export Everything</span></button>
@@ -192,7 +192,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </div>
             <p class="fv3-backup-hint" data-i18n="backup-full-hint">Includes all folders, settings, CSS config, and custom themes in one file.</p>
         </div>
-        <div class="fv3-backup-group">
+        <div class="fv3-backup-group fv3-backup-danger">
             <div class="fv3-backup-group-label" data-i18n="backup-danger">Danger Zone</div>
             <div class="fv3-backup-actions">
                 <button onclick="clearDocker()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-docker">Clear Docker Folders</span></button>

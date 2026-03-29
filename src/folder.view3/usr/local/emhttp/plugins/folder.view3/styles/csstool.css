@@ -34,7 +34,7 @@
 
 .fv3-customize-col-right #fv3-custom-css {
     width: 100%;
-    min-height: 300px;
+    min-height: 600px;
     resize: vertical;
 }
 
@@ -250,29 +250,30 @@
 }
 
 .fv3-var-row {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 0.8rem;
+    display: flex;
     align-items: center;
-    padding: 6px 0;
+    gap: 0.8rem;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(128,128,128,0.1);
 }
 
 .fv3-var-label {
+    flex: 1;
     font-size: 0.95rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .fv3-var-label code {
-    font-size: 0.85em;
-    opacity: 0.7;
+    display: block;
+    font-size: 0.8em;
+    opacity: 0.5;
 }
 
 .fv3-var-inputs {
     display: flex;
     gap: 6px;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .fv3-var-swatch,
@@ -400,7 +401,7 @@
 /* Advanced CSS textarea */
 #fv3-custom-css {
     width: 100%;
-    min-height: 400px;
+    min-height: 800px;
     background-color: transparent;
     border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
     border-radius: 4px;
@@ -451,8 +452,7 @@
 /* Responsive */
 @media (max-width: 769px) {
     .fv3-var-row {
-        grid-template-columns: 1fr;
-        gap: 4px;
+        flex-wrap: wrap;
     }
     .fv3-csstool-tiers {
         flex-wrap: wrap;

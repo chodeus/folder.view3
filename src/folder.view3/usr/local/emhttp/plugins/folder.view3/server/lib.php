@@ -735,7 +735,12 @@
             'fv3-inset-showcase-border' => 'rgba(128, 128, 128, 0.2)',
             'fv3-embossed-border' => 'rgba(128, 128, 128, 0.3)',
             'fv3-embossed-accent' => 'var(--color-orange, #f0a30a)',
-            'fv3-embossed-inner-border' => 'rgba(128, 128, 128, 0.2)'
+            'fv3-embossed-inner-border' => 'rgba(128, 128, 128, 0.2)',
+            'fv3-chevron-color' => 'inherit',
+            'fv3-chevron-size' => '14px',
+            'fv3-preview-border-color' => 'currentColor',
+            'fv3-vertical-bars-color' => 'currentColor',
+            'fv3-separator-color' => 'rgba(128, 128, 128, 0.5)'
         ];
     }
 
@@ -744,7 +749,7 @@
         if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
         $config = json_decode($json, true);
         if ($config === null) { http_response_code(400); echo 'Invalid JSON'; exit; }
-        $allowedKeys = ['preset', 'global', 'dashboard', 'docker', 'vm', 'custom_css'];
+        $allowedKeys = ['preset', 'global', 'dashboard', 'docker', 'vm', 'custom_css', 'toggle_style', 'custom_presets', 'user_notes'];
         foreach (array_keys($config) as $k) {
             if (!in_array($k, $allowedKeys, true)) { unset($config[$k]); }
         }
