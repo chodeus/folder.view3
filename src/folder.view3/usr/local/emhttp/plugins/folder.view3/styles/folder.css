@@ -1,28 +1,26 @@
-/* ===== Grid-based folder settings layout ===== */
+/* ===== Folder settings layout (float-based for independent row widths) ===== */
 .fv3-folder-settings {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.6rem 1rem;
     max-width: 700px;
-    margin: 0 auto;
-    padding: 0;
-    margin-top: 5px;
-    margin-bottom: 10px;
-    align-items: center;
+    margin: 5px auto 10px;
+    overflow: hidden;
 }
 
 .fv3-folder-settings dt {
-    font-weight: 600;
+    float: left;
+    clear: both;
     text-align: right;
+    width: 220px;
+    font-weight: 600;
     white-space: nowrap;
+    padding: 0.4rem 0;
 }
 
 .fv3-folder-settings dd {
-    margin: 0;
+    margin-left: 235px;
+    padding: 0.3rem 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-start;
     gap: 0.5rem;
 }
 
@@ -37,8 +35,7 @@
     line-height: 2rem;
     color: inherit;
     outline: none;
-    flex: 1;
-    min-width: 0;
+    width: 350px;
 }
 
 .fv3-folder-settings input[type="text"]:focus,
@@ -55,7 +52,8 @@
 
 /* Order table spans full width */
 .fv3-folder-settings .fv3-order-dd {
-    grid-column: 1 / -1;
+    margin-left: 0;
+    clear: both;
 }
 
 /* Color reset button */

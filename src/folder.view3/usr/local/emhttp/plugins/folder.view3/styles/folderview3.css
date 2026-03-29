@@ -281,24 +281,25 @@
 }
 
 .fv3-settings {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.8rem 2rem;
-    padding: 1rem 0;
-    margin: 0;
     max-width: 600px;
     margin: 0 auto;
-    align-items: center;
+    padding: 1rem 0;
+    overflow: hidden;
 }
 
 .fv3-settings dt {
+    float: left;
+    clear: both;
+    text-align: right;
+    width: 220px;
     font-weight: 600;
-    text-align: left;
     white-space: nowrap;
+    padding: 0.4rem 0;
 }
 
 .fv3-settings dd {
-    margin: 0;
+    margin-left: 235px;
+    padding: 0.3rem 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -323,8 +324,7 @@
     font-size: 1.1rem;
     color: inherit;
     outline: none;
-    width: 100%;
-    max-width: 300px;
+    width: 300px;
 }
 
 .fv3-settings select:focus {
@@ -424,7 +424,9 @@
 }
 
 .fv3-section-heading {
-    grid-column: 1 / -1;
+    clear: both;
+    float: none;
+    width: auto;
     font-weight: 700;
     font-size: 1.2em;
     margin-top: 1rem;
