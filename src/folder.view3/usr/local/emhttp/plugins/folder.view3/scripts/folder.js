@@ -312,6 +312,8 @@ const updateList = () => {
     $('.sortable').on('dragover', sortTable).on('dragenter', (e) => { e.preventDefault(); });
 
     $('.item').on('dragstart', (e) => { e.target.classList.add("dragging") }).on('dragend', (e) => { e.target.classList.remove("dragging") });
+
+    fv3ApplyToggleStyle();
 };
 
 const syncHidePreview = ($row) => {
@@ -320,8 +322,7 @@ const syncHidePreview = ($row) => {
     const $td = $row.find('td:nth-child(3)');
     if (isIncluded) {
         if (!$td.find('input.preview-switch').length) {
-            $td.html(`<input class="preview-switch fv3-toggle" type="checkbox" value="${escapeHtml($cb.val())}">`);
-
+            $td.html(`<input class="preview-switch fv3-toggle${fv3ToggleStyleClass ? ' ' + fv3ToggleStyleClass : ''}" type="checkbox" value="${escapeHtml($cb.val())}">`);
         }
     } else {
         $td.empty();
@@ -573,14 +574,22 @@ if (nameInput && nameWarning) {
     if (nameInput.value.length > 20) nameWarning.style.display = 'block';
 }
 
+let fv3ToggleStyleClass = '';
+const fv3ApplyToggleStyle = () => {
+    if (!fv3ToggleStyleClass) return;
+    document.querySelectorAll('.fv3-toggle').forEach(el => {
+        el.classList.remove('fv3-toggle-rounded', 'fv3-toggle-material', 'fv3-toggle-pill');
+        if (fv3ToggleStyleClass) el.classList.add(fv3ToggleStyleClass);
+    });
+};
+
 fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })
     .then(r => r.json())
     .then(config => {
         const style = config.toggle_style || 'default';
-        if (style === 'default') return;
-        document.querySelectorAll('.fv3-toggle').forEach(el => {
-            el.classList.remove('fv3-toggle-rounded', 'fv3-toggle-material', 'fv3-toggle-pill');
-            if (style !== 'flat') el.classList.add('fv3-toggle-' + style);
-        });
+        if (style !== 'default' && style !== 'flat') {
+            fv3ToggleStyleClass = 'fv3-toggle-' + style;
+        }
+        fv3ApplyToggleStyle();
     })
     .catch(() => {});

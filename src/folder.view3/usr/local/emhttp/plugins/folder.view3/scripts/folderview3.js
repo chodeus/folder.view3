@@ -571,10 +571,16 @@ $('#fv3-import-all').on('change', function() {
 });
 
 // Page-level tab switching
+const fv3SettingDefaults = {
+    dashboard_docker_layout: 'classic', dashboard_vm_layout: 'classic',
+    default_preview: '1', default_overflow: 'default', default_context: '1'
+};
+
 const fv3IsSettingsDirty = () => {
     const current = fv3CollectSettings();
     for (const [key, value] of Object.entries(current)) {
-        if ((fv3LoadedSettings[key] ?? '') !== value) return true;
+        const loaded = fv3LoadedSettings[key] ?? fv3SettingDefaults[key] ?? (value === 'yes' || value === 'no' ? 'no' : '');
+        if (loaded !== value) return true;
     }
     return false;
 };
