@@ -109,8 +109,16 @@ window.addEventListener('beforeunload', () => {
 });
 
 // Incognito mode — obfuscates container/VM/folder names and icons for screenshots
-window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
+// Page-specific: Docker and VM have independent incognito state
+window.fv3Incognito = false;
 (function() {
+    function detectPage() {
+        if (document.querySelector('#docker_containers, .ToggleViewMode')) return 'docker';
+        if (document.querySelector('#kvm_table')) return 'vm';
+        if (document.querySelector('.Dashboard')) return 'dashboard';
+        return 'other';
+    }
+    window.fv3IncognitoPage = 'other';
     var nameMap = {};
     var nameCounter = { container: 0, vm: 0, folder: 0 };
 
@@ -140,6 +148,7 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
         var knownNames = [];
 
         document.querySelectorAll('.folder-appname, .fv3-folder-appname').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real')) return;
             var name = el.textContent.trim();
             if (name) knownNames.push(name);
             el.setAttribute('data-fv3-real', name);
@@ -149,10 +158,20 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
         document.querySelectorAll('.appname').forEach(function(el) {
             var link = el.querySelector('a');
             var target = link || el;
+            if (target.hasAttribute('data-fv3-real')) return;
             var name = target.textContent.trim();
             if (name) knownNames.push(name);
             target.setAttribute('data-fv3-real', name);
             target.textContent = getAnon(name, 'container');
+        });
+
+        document.querySelectorAll('td.vm-name:not(.folder-name) + td').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real')) return;
+            var text = el.textContent.trim();
+            if (text) {
+                el.setAttribute('data-fv3-real', text);
+                el.textContent = '';
+            }
         });
 
         document.querySelectorAll('td.vm-name:not(.folder-name) span.inner a').forEach(function(el) {
@@ -236,7 +255,7 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
 
     window.fv3IncognitoToggle = function() {
         fv3Incognito = !fv3Incognito;
-        localStorage.setItem('fv3-incognito', fv3Incognito);
+        localStorage.setItem('fv3-incognito-' + fv3IncognitoPage, fv3Incognito);
         if (fv3Incognito) fv3IncognitoApply();
         else fv3IncognitoRemove();
         var btn = document.getElementById('fv3-incognito-btn');
@@ -256,9 +275,17 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
     function injectToggle() {
         if (document.getElementById('fv3-incognito-btn')) return;
 
+        fv3IncognitoPage = detectPage();
+        fv3Incognito = localStorage.getItem('fv3-incognito-' + fv3IncognitoPage) === 'true';
+
         var toggleView = document.querySelector('.ToggleViewMode');
         if (toggleView) {
-            toggleView.parentNode.insertBefore(createBtn(), toggleView.parentNode.firstChild);
+            var title = toggleView.parentNode.querySelector(':scope > .title');
+            if (title) {
+                title.after(createBtn());
+            } else {
+                toggleView.parentNode.insertBefore(createBtn(), toggleView);
+            }
             if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
             return;
         }
