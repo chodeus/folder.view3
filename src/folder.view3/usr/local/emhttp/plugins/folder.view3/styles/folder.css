@@ -9,14 +9,14 @@
     float: left;
     clear: both;
     text-align: right;
-    width: 220px;
+    width: auto;
     font-weight: 600;
     white-space: nowrap;
     padding: 0.4rem 0;
 }
 
 .fv3-folder-settings dd {
-    margin-left: 235px;
+    margin-left: 0;
     padding: 0.3rem 0;
     display: flex;
     flex-wrap: wrap;
