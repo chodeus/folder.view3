@@ -13,6 +13,11 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.03.29
+- Fix JSON double-parse causing empty folders after Content-Type header addition
+- Fix incognito mode destroying folder name DOM structure
+- Move incognito toggle inline with page header controls
+
 ###2026.03.28
 - Settings page modernization with collapsible sections
 - CSS Tool with theme manager, variables, presets
