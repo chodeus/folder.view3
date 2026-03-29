@@ -406,7 +406,7 @@ const fv3CollectSettings = () => {
         settings[key] = $(`#${id}`).is(':checked') ? 'yes' : 'no';
     }
     fv3ColorFields.forEach(cf => {
-        settings[cf.key] = $(`#${cf.textId}`).val() || $(`#${cf.colorId}`).val() || '';
+        settings[cf.key] = $(`#${cf.textId}`).val() || '';
     });
     settings.default_preview_text_width = $(`#default-preview-text-width`).val() || '';
     return settings;
