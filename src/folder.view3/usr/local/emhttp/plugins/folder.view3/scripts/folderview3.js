@@ -573,7 +573,7 @@ $('#fv3-import-all').on('change', function() {
 // Page-level tab switching
 const fv3SettingDefaults = {
     dashboard_docker_layout: 'classic', dashboard_vm_layout: 'classic',
-    default_preview: '1', default_overflow: 'default', default_context: '1'
+    default_preview: '0', default_overflow: 'default', default_context: '0'
 };
 
 const fv3IsSettingsDirty = () => {

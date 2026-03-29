@@ -281,28 +281,27 @@
 }
 
 .fv3-settings {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 0.6rem 1rem;
     max-width: 600px;
     margin: 0 auto;
     padding: 1rem 0;
-    overflow: hidden;
+    align-items: center;
+    justify-content: center;
 }
 
 .fv3-settings dt {
-    float: left;
-    clear: both;
-    text-align: right;
-    width: auto;
     font-weight: 600;
+    text-align: right;
     white-space: nowrap;
-    padding: 0.4rem 0;
 }
 
 .fv3-settings dd {
-    margin-left: 0;
-    padding: 0.3rem 0;
+    margin: 0;
     display: flex;
     flex-wrap: wrap;
-    align-items: left;
+    align-items: center;
     gap: 0.5rem;
 }
 
@@ -424,9 +423,7 @@
 }
 
 .fv3-section-heading {
-    clear: both;
-    float: none;
-    width: auto;
+    grid-column: 1 / -1;
     font-weight: 700;
     font-size: 1.2em;
     margin-top: 1rem;
