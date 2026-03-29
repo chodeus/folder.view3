@@ -13,6 +13,40 @@
     margin: 0 0 1rem;
 }
 
+/* Two-column layout: variables left, custom CSS right */
+.fv3-customize-columns {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+}
+
+.fv3-customize-col-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.fv3-customize-col-right {
+    flex: 1;
+    min-width: 0;
+    position: sticky;
+    top: 0;
+}
+
+.fv3-customize-col-right #fv3-custom-css {
+    width: 100%;
+    min-height: 500px;
+    resize: vertical;
+}
+
+@media (max-width: 1024px) {
+    .fv3-customize-columns {
+        flex-direction: column;
+    }
+    .fv3-customize-col-right {
+        position: static;
+    }
+}
+
 /* CSS Tool — tier navigation */
 .fv3-csstool-tiers {
     display: flex;

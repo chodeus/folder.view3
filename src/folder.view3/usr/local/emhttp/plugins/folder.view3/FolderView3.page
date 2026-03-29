@@ -274,24 +274,24 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                 <div id="fv3-toggle-picker" class="fv3-toggle-picker"></div>
             </div>
 
-            <div class="fv3-customize-section">
-                <div class="fv3-section-heading">Variables</div>
-                <div class="fv3-subtabs">
-                    <button class="fv3-subtab fv3-subtab-active" data-scope="global" data-i18n="css-global">Global</button>
-                    <button class="fv3-subtab" data-scope="dashboard" data-i18n="css-dashboard-scope">Dashboard</button>
-                    <button class="fv3-subtab" data-scope="docker" data-i18n="css-docker-scope">Docker</button>
-                    <button class="fv3-subtab" data-scope="vm" data-i18n="css-vm-scope">VM</button>
+            <div class="fv3-customize-columns">
+                <div class="fv3-customize-col-left">
+                    <div class="fv3-section-heading">Variables</div>
+                    <div class="fv3-subtabs">
+                        <button class="fv3-subtab fv3-subtab-active" data-scope="global" data-i18n="css-global">Global</button>
+                        <button class="fv3-subtab" data-scope="dashboard" data-i18n="css-dashboard-scope">Dashboard</button>
+                        <button class="fv3-subtab" data-scope="docker" data-i18n="css-docker-scope">Docker</button>
+                        <button class="fv3-subtab" data-scope="vm" data-i18n="css-vm-scope">VM</button>
+                    </div>
+                    <div id="fv3-var-list"></div>
                 </div>
-                <div id="fv3-var-list"></div>
-            </div>
-
-            <div class="fv3-customize-section">
-                <div class="fv3-section-heading">Advanced CSS</div>
-                <p class="fv3-customize-hint">Add custom CSS rules. Variables above are applied first.</p>
-                <textarea id="fv3-custom-css" rows="12" spellcheck="false" placeholder=".folder-name-sub { font-weight: bold; }"></textarea>
-                <div id="fv3-css-url-warning" class="fv3-css-warning" style="display:none">
-                    <i class="fa fa-exclamation-triangle"></i>
-                    <span data-i18n="css-url-warning">Your CSS contains url() references which will load external resources. Verify these URLs are trusted before saving.</span>
+                <div class="fv3-customize-col-right">
+                    <div class="fv3-section-heading">Custom CSS</div>
+                    <textarea id="fv3-custom-css" spellcheck="false" placeholder=".folder-name-sub { font-weight: bold; }"></textarea>
+                    <div id="fv3-css-url-warning" class="fv3-css-warning" style="display:none">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <span data-i18n="css-url-warning">Your CSS contains url() references. Verify these URLs are trusted before saving.</span>
+                    </div>
                 </div>
             </div>
         </div>

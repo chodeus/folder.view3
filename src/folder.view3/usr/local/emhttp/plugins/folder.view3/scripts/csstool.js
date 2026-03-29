@@ -7,33 +7,33 @@
     let dirty = false;
 
     const varMeta = {
-        'folder-view3-graph-cpu': { type: 'color', group: 'colors', label: 'Graph CPU color', desc: 'CPU usage graph line color' },
-        'folder-view3-graph-mem': { type: 'color', group: 'colors', label: 'Graph memory color', desc: 'Memory usage graph line color' },
-        'fv3-accent-color': { type: 'text', group: 'colors', label: 'Accent color', desc: 'Active tabs, highlights, active toggle border' },
-        'fv3-toggle-color': { type: 'color', group: 'colors', label: 'Toggle button color', desc: 'Folder chevron dropdown button color' },
-        'fv3-toggle-hover-color': { type: 'color', group: 'colors', label: 'Toggle hover color', desc: 'Chevron button color on hover' },
-        'fv3-separator-bg': { type: 'text', group: 'colors', label: 'Row separator', desc: 'Divider line between preview rows in expand mode' },
-        'fv3-surface-tint': { type: 'text', group: 'colors', label: 'Surface tint', desc: 'Subtle background tint on section headers and panels' },
-        'fv3-hover-bg': { type: 'text', group: 'colors', label: 'Hover background', desc: 'Background highlight when hovering rows and buttons' },
-        'fv3-border': { type: 'text', group: 'colors', label: 'Border', desc: 'General border color used throughout the plugin' },
-        'fv3-panel-border': { type: 'text', group: 'colors', label: 'Panel border', desc: 'Fullwidth/accordion expanded panel border' },
-        'fv3-panel-bg': { type: 'text', group: 'colors', label: 'Panel background', desc: 'Fullwidth/accordion expanded panel background' },
-        'fv3-tab-active-bg': { type: 'text', group: 'colors', label: 'Active tab bg', desc: 'Dashboard tab background when selected' },
-        'fv3-tab-active-border': { type: 'text', group: 'colors', label: 'Active tab border', desc: 'Dashboard tab border when selected' },
-        'fv3-scrollbar-color': { type: 'text', group: 'colors', label: 'Scrollbar color', desc: 'Scrollbar thumb in scroll-overflow folders' },
-        'fv3-folder-preview-bg': { type: 'text', group: 'colors', label: 'Preview background', desc: 'Background of the folder preview area' },
-        'fv3-folder-name-bg': { type: 'text', group: 'colors', label: 'Folder name bg', desc: 'Background behind the folder name text' },
-        'fv3-row-bg': { type: 'text', group: 'colors', label: 'Row background', desc: 'Alternating folder row background color' },
-        'fv3-inset-fill': { type: 'text', group: 'colors', label: 'Inset fill', desc: 'Inset layout panel fill color' },
-        'fv3-inset-border-color': { type: 'text', group: 'colors', label: 'Inset border', desc: 'Inset layout panel border color' },
-        'fv3-inset-showcase-fill': { type: 'text', group: 'colors', label: 'Inset showcase', desc: 'Inset showcase area fill' },
-        'fv3-inset-showcase-border': { type: 'text', group: 'colors', label: 'Inset showcase border', desc: 'Inset showcase area border' },
-        'fv3-embossed-border': { type: 'text', group: 'colors', label: 'Embossed border', desc: 'Embossed layout outer border' },
-        'fv3-embossed-accent': { type: 'text', group: 'colors', label: 'Embossed accent', desc: 'Embossed layout accent highlight' },
-        'fv3-embossed-inner-border': { type: 'text', group: 'colors', label: 'Embossed inner', desc: 'Embossed layout inner panel border' },
-        'fv3-preview-icon-size': { type: 'dimension', group: 'dimensions', label: 'Preview icon size', desc: 'Size of container/VM icons in folder preview', min: 16, max: 64, unit: 'px' },
-        'fv3-folder-icon-size': { type: 'dimension', group: 'dimensions', label: 'Folder icon size', desc: 'Size of the folder icon in the row', min: 24, max: 96, unit: 'px' },
-        'fv3-appname-max-width': { type: 'dimension', group: 'dimensions', label: 'App name max width', desc: 'Maximum width before container names truncate', min: 60, max: 300, unit: 'px' }
+        'folder-view3-graph-cpu': { type: 'color', group: 'colors', label: 'Graph CPU color', desc: 'CPU usage graph line color\nFormat: #hex' },
+        'folder-view3-graph-mem': { type: 'color', group: 'colors', label: 'Graph memory color', desc: 'Memory usage graph line color\nFormat: #hex' },
+        'fv3-accent-color': { type: 'text', group: 'colors', label: 'Accent color', desc: 'Active tabs, highlights, active toggle border\nFormat: #hex, rgba(), var(--name), color name' },
+        'fv3-toggle-color': { type: 'color', group: 'colors', label: 'Toggle button color', desc: 'Folder chevron dropdown button color\nFormat: #hex' },
+        'fv3-toggle-hover-color': { type: 'color', group: 'colors', label: 'Toggle hover color', desc: 'Chevron button color on hover\nFormat: #hex' },
+        'fv3-separator-bg': { type: 'text', group: 'colors', label: 'Row separator', desc: 'Divider line between preview rows in expand mode\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-surface-tint': { type: 'text', group: 'colors', label: 'Surface tint', desc: 'Subtle background tint on section headers and panels\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-hover-bg': { type: 'text', group: 'colors', label: 'Hover background', desc: 'Background highlight when hovering rows and buttons\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-border': { type: 'text', group: 'colors', label: 'Border', desc: 'General border color used throughout the plugin\nFormat: 1px solid rgba(r,g,b,a) or 1px solid #hex' },
+        'fv3-panel-border': { type: 'text', group: 'colors', label: 'Panel border', desc: 'Fullwidth/accordion expanded panel border\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-panel-bg': { type: 'text', group: 'colors', label: 'Panel background', desc: 'Fullwidth/accordion expanded panel background\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-tab-active-bg': { type: 'text', group: 'colors', label: 'Active tab bg', desc: 'Dashboard tab background when selected\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-tab-active-border': { type: 'text', group: 'colors', label: 'Active tab border', desc: 'Dashboard tab border when selected\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-scrollbar-color': { type: 'text', group: 'colors', label: 'Scrollbar color', desc: 'Scrollbar thumb in scroll-overflow folders\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-folder-preview-bg': { type: 'text', group: 'colors', label: 'Preview background', desc: 'Background of the folder preview area\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-folder-name-bg': { type: 'text', group: 'colors', label: 'Folder name bg', desc: 'Background behind the folder name text\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-row-bg': { type: 'text', group: 'colors', label: 'Row background', desc: 'Alternating folder row background color\nFormat: rgba(r,g,b,a), #hex, or transparent' },
+        'fv3-inset-fill': { type: 'text', group: 'colors', label: 'Inset fill', desc: 'Inset layout panel fill color\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-inset-border-color': { type: 'text', group: 'colors', label: 'Inset border', desc: 'Inset layout panel border color\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-inset-showcase-fill': { type: 'text', group: 'colors', label: 'Inset showcase', desc: 'Inset showcase area fill\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-inset-showcase-border': { type: 'text', group: 'colors', label: 'Inset showcase border', desc: 'Inset showcase area border\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-embossed-border': { type: 'text', group: 'colors', label: 'Embossed border', desc: 'Embossed layout outer border\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-embossed-accent': { type: 'text', group: 'colors', label: 'Embossed accent', desc: 'Embossed layout accent highlight\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-embossed-inner-border': { type: 'text', group: 'colors', label: 'Embossed inner', desc: 'Embossed layout inner panel border\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-preview-icon-size': { type: 'dimension', group: 'dimensions', label: 'Preview icon size', desc: 'Size of container/VM icons in folder preview\nRange: 16px – 64px', min: 16, max: 64, unit: 'px' },
+        'fv3-folder-icon-size': { type: 'dimension', group: 'dimensions', label: 'Folder icon size', desc: 'Size of the folder icon in the row\nRange: 24px – 96px', min: 24, max: 96, unit: 'px' },
+        'fv3-appname-max-width': { type: 'dimension', group: 'dimensions', label: 'App name max width', desc: 'Maximum width before container names truncate\nRange: 60px – 300px', min: 60, max: 300, unit: 'px' }
     };
 
     const presets = [
@@ -107,7 +107,7 @@
         var container = document.getElementById('fv3-toggle-picker');
         if (!container) return;
         container.innerHTML = '';
-        var current = cssConfig.toggle_style || 'flat';
+        var current = cssConfig.toggle_style || 'default';
 
         toggleStyles.forEach(function(style) {
             var card = document.createElement('div');
@@ -384,7 +384,7 @@
         renderVariables();
         renderPresets();
         renderTogglePicker();
-        applyToggleStyle(cssConfig.toggle_style || 'flat');
+        applyToggleStyle(cssConfig.toggle_style || 'default');
         const customCss = document.getElementById('fv3-custom-css');
         if (customCss && cssConfig.custom_css) customCss.value = cssConfig.custom_css;
     }
@@ -750,9 +750,24 @@
 
         const cssTextarea = document.getElementById('fv3-custom-css');
         const urlWarning = document.getElementById('fv3-css-url-warning');
-        if (cssTextarea && urlWarning) {
+        if (cssTextarea) {
+            var liveTimer = null;
             cssTextarea.addEventListener('input', () => {
-                urlWarning.style.display = /url\s*\(/i.test(cssTextarea.value) ? '' : 'none';
+                dirty = true;
+                if (urlWarning) urlWarning.style.display = /url\s*\(/i.test(cssTextarea.value) ? '' : 'none';
+                clearTimeout(liveTimer);
+                liveTimer = setTimeout(() => {
+                    var matches = cssTextarea.value.match(/--([a-zA-Z0-9-]+)\s*:\s*([^;}\n]+)/g);
+                    if (matches) {
+                        matches.forEach(function(m) {
+                            var parts = m.match(/--([a-zA-Z0-9-]+)\s*:\s*(.+)/);
+                            if (parts && varMeta[parts[1]]) {
+                                document.documentElement.style.setProperty('--' + parts[1], parts[2].trim());
+                            }
+                        });
+                        renderVariables();
+                    }
+                }, 300);
             });
         }
 
