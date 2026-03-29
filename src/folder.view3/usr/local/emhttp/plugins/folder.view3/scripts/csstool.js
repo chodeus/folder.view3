@@ -163,12 +163,22 @@
                 inputs.appendChild(range);
                 inputs.appendChild(num);
             } else {
+                if (meta.group === 'colors') {
+                    const swatch = document.createElement('span');
+                    swatch.className = 'fv3-var-swatch';
+                    swatch.style.background = currentVal || cssDefaults[varName] || 'transparent';
+                    inputs.appendChild(swatch);
+                }
                 const text = document.createElement('input');
                 text.type = 'text';
                 text.value = currentVal;
                 text.placeholder = cssDefaults[varName] || '';
                 text.style.width = '200px';
-                text.addEventListener('input', () => setVal(varName, text.value));
+                text.addEventListener('input', () => {
+                    setVal(varName, text.value);
+                    var sw = inputs.querySelector('.fv3-var-swatch');
+                    if (sw) sw.style.background = text.value || 'transparent';
+                });
                 inputs.appendChild(text);
             }
 

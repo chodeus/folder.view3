@@ -211,6 +211,15 @@
     align-items: center;
 }
 
+.fv3-var-swatch {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
 .fv3-var-inputs input[type="color"] {
     width: 40px;
     height: 30px;

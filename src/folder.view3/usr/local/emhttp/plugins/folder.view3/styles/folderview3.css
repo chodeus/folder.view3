@@ -159,6 +159,55 @@
     box-sizing: border-box;
 }
 
+.fv3-folder-table-wrap {
+    max-width: 900px;
+    margin: 0 auto 1rem;
+}
+
+.fv3-folder-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.fv3-folder-table th {
+    padding: 0.6em 1em;
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.7;
+    text-align: left;
+    border-bottom: 2px solid var(--fv3-border, rgba(128,128,128,0.3));
+}
+
+.fv3-folder-table td {
+    padding: 0.7em 1em;
+    border-bottom: 1px solid var(--fv3-border, rgba(128,128,128,0.15));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fv3-folder-table td:last-child {
+    overflow: visible;
+    text-align: right;
+}
+
+.fv3-folder-table th:last-child {
+    text-align: right;
+}
+
+.fv3-folder-table tbody tr:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.06));
+}
+
+.fv3-folder-table-actions {
+    text-align: right;
+    padding: 0.5rem 0;
+}
+
+/* Legacy folder-table (keep for backwards compat) */
 .folder-table {
     display: flex;
     flex-direction: row;
@@ -198,7 +247,8 @@
     gap: .5rem;
     padding: 1rem 0;
     margin: 0;
-    align-items: baseline;
+    max-width: 600px;
+    align-items: center;
 }
 
 .fv3-settings dt {
@@ -244,11 +294,8 @@
 
 @media (min-width: 769px) {
     .fv3-settings {
-        grid-template-columns: 35% 1fr;
-        gap: 1rem 2rem;
-    }
-    .fv3-settings dt {
-        text-align: left;
+        grid-template-columns: auto 1fr;
+        gap: 0.8rem 2rem;
     }
     .fv3-settings dd {
         display: flex;

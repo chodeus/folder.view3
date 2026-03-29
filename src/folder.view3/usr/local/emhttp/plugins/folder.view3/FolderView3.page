@@ -175,11 +175,11 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         <button id="fv3-apply-defaults" style="margin-bottom: 1rem;"><i class="fa fa-magic" aria-hidden="true"></i> <span data-i18n="apply-defaults">Apply Defaults to All Folders</span></button>
     </div>
 
-    <div class="fv3-section-heading" style="padding: 0 16px; margin-top: 0.5rem;">
+    <div class="fv3-section-heading" style="margin-top: 0.5rem;">
         <span data-i18n="docker">Docker Folders</span> <span id="fv3-docker-count" class="fv3-folder-count"></span>
     </div>
-    <div class="folder-table" style="padding: 0 16px 8px;">
-        <table>
+    <div class="fv3-folder-table-wrap">
+        <table class="fv3-folder-table">
             <thead>
                 <tr>
                     <th data-i18n="el-id">ID</th>
@@ -189,13 +189,16 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </thead>
             <tbody id="docker"></tbody>
         </table>
+        <div class="fv3-folder-table-actions">
+            <button onclick="downloadDocker()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-docker">Export All</span></button>
+        </div>
     </div>
 
-    <div class="fv3-section-heading" style="padding: 0 16px; margin-top: 1rem;">
+    <div class="fv3-section-heading" style="margin-top: 1rem;">
         <span data-i18n="vms">VM Folders</span> <span id="fv3-vm-count" class="fv3-folder-count"></span>
     </div>
-    <div class="folder-table" style="padding: 0 16px 16px;">
-        <table>
+    <div class="fv3-folder-table-wrap">
+        <table class="fv3-folder-table">
             <thead>
                 <tr>
                     <th data-i18n="el-id">ID</th>
@@ -205,6 +208,9 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </thead>
             <tbody id="vms"></tbody>
         </table>
+        <div class="fv3-folder-table-actions">
+            <button onclick="downloadVm()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-vm">Export All</span></button>
+        </div>
     </div>
 </div>
 

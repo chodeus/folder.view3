@@ -557,10 +557,9 @@ $('#fv3-import-all').on('change', function() {
 });
 
 // Page-level tab switching
-(function() {
+window.fv3SwitchTab = (function() {
     var tabs = document.querySelectorAll('.fv3-page-tab');
     var panels = document.querySelectorAll('.fv3-page-panel');
-    var savedTab = localStorage.getItem('fv3-settings-tab') || 'dashboard';
 
     function switchTab(tabName) {
         tabs.forEach(function(t) {
@@ -576,7 +575,11 @@ $('#fv3-import-all').on('change', function() {
         t.addEventListener('click', function() { switchTab(this.getAttribute('data-tab')); });
     });
 
-    if (tabs.length) switchTab(savedTab);
+    return switchTab;
 })();
 
+// Show all panels during init so switchButton can measure elements
+document.querySelectorAll('.fv3-page-panel').forEach(function(p) { p.style.display = ''; });
 loadDashboardSettings();
+// Now apply saved tab (hides inactive panels)
+fv3SwitchTab(localStorage.getItem('fv3-settings-tab') || 'dashboard');
