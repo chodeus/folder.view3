@@ -97,7 +97,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 
         <dt><label for="default-overflow" data-i18n="overflow">Overflow</label></dt>
         <dd>
-            <select id="default-overflow" onchange="saveDashboardSetting('default_overflow', this.value)">
+            <select id="default-overflow" onchange="saveDashboardSetting('default_overflow', this.value); $('.fv3-expand-only').css('display', this.value === 'expand' ? '' : 'none')">
                 <option value="default" data-i18n="overflow-default">Default</option>
                 <option value="scroll" data-i18n="overflow-scroll">Scroll</option>
                 <option value="expand" data-i18n="overflow-expand">Expand</option>
@@ -142,8 +142,8 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </div>
         </dd>
 
-        <dt><label for="default-row-separator" data-i18n="row-separator">Row separator (expand mode)</label></dt>
-        <dd>
+        <dt class="fv3-expand-only"><label for="default-row-separator" data-i18n="row-separator">Row separator (expand mode)</label></dt>
+        <dd class="fv3-expand-only">
             <input class="fv3-toggle" id="default-row-separator" type="checkbox" />
             <div class="fv3-color-row" id="fv3-separator-color-row" style="display:none; margin-top:6px;">
                 <label data-i18n="separator-color">Color:</label>
@@ -171,47 +171,10 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         <dd><input class="fv3-toggle" id="default-update-column" type="checkbox" /></dd>
     </dl>
 
-    <div style="padding: 0 16px; margin: 1rem 0;">
+    <div style="max-width: 600px; margin: 1rem auto;">
         <button id="fv3-apply-defaults" style="margin-bottom: 1rem;"><i class="fa fa-magic" aria-hidden="true"></i> <span data-i18n="apply-defaults">Apply Defaults to All Folders</span></button>
     </div>
 
-    <div class="fv3-section-heading" style="margin-top: 0.5rem;">
-        <span data-i18n="docker">Docker Folders</span> <span id="fv3-docker-count" class="fv3-folder-count"></span>
-    </div>
-    <div class="fv3-folder-table-wrap">
-        <table class="fv3-folder-table">
-            <thead>
-                <tr>
-                    <th data-i18n="el-id">ID</th>
-                    <th data-i18n="el-name">Name</th>
-                    <th data-i18n="el-actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="docker"></tbody>
-        </table>
-        <div class="fv3-folder-table-actions">
-            <button onclick="downloadDocker()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-docker">Export All</span></button>
-        </div>
-    </div>
-
-    <div class="fv3-section-heading" style="margin-top: 1rem;">
-        <span data-i18n="vms">VM Folders</span> <span id="fv3-vm-count" class="fv3-folder-count"></span>
-    </div>
-    <div class="fv3-folder-table-wrap">
-        <table class="fv3-folder-table">
-            <thead>
-                <tr>
-                    <th data-i18n="el-id">ID</th>
-                    <th data-i18n="el-name">Name</th>
-                    <th data-i18n="el-actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="vms"></tbody>
-        </table>
-        <div class="fv3-folder-table-actions">
-            <button onclick="downloadVm()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-vm">Export All</span></button>
-        </div>
-    </div>
 </div>
 
 <div class="fv3-page-panel" id="fv3-panel-backup" style="display:none">
@@ -226,20 +189,51 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <p class="fv3-backup-hint" data-i18n="backup-full-hint">Includes all folders, settings, CSS config, and custom themes in one file.</p>
         </div>
         <div class="fv3-backup-group">
-            <div class="fv3-backup-group-label" data-i18n="backup-individual">Individual Export / Import</div>
-            <div class="fv3-backup-actions">
-                <button onclick="downloadDocker()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-docker">Export Docker</span></button>
-                <button onclick="downloadVm()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-vm">Export VM</span></button>
-                <button onclick="importDocker()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-docker-folders">Import Docker</span></button>
-                <button onclick="importVm()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-vm-folders">Import VM</span></button>
-            </div>
-        </div>
-        <div class="fv3-backup-group">
             <div class="fv3-backup-group-label" data-i18n="backup-danger">Danger Zone</div>
             <div class="fv3-backup-actions">
                 <button onclick="clearDocker()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-docker">Clear Docker Folders</span></button>
                 <button onclick="clearVm()"><i class="fa fa-ban" aria-hidden="true"></i> <span data-i18n="clear-vm">Clear VM Folders</span></button>
                 <button onclick="fileManager()"><i class="fa fa-folder-open" aria-hidden="true"></i> <span data-i18n="file-manager">File Manager</span></button>
+            </div>
+        </div>
+
+        <div class="fv3-section-heading" style="margin-top: 1rem;">
+            <span data-i18n="docker">Docker Folders</span> <span id="fv3-docker-count" class="fv3-folder-count"></span>
+        </div>
+        <div class="fv3-folder-table-wrap">
+            <table class="fv3-folder-table">
+                <thead>
+                    <tr>
+                        <th data-i18n="el-id">ID</th>
+                        <th data-i18n="el-name">Name</th>
+                        <th data-i18n="el-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="docker"></tbody>
+            </table>
+            <div class="fv3-folder-table-actions">
+                <button onclick="downloadDocker()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-docker">Export Docker</span></button>
+                <button onclick="importDocker()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-docker-folders">Import Docker</span></button>
+            </div>
+        </div>
+
+        <div class="fv3-section-heading" style="margin-top: 1rem;">
+            <span data-i18n="vms">VM Folders</span> <span id="fv3-vm-count" class="fv3-folder-count"></span>
+        </div>
+        <div class="fv3-folder-table-wrap">
+            <table class="fv3-folder-table">
+                <thead>
+                    <tr>
+                        <th data-i18n="el-id">ID</th>
+                        <th data-i18n="el-name">Name</th>
+                        <th data-i18n="el-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="vms"></tbody>
+            </table>
+            <div class="fv3-folder-table-actions">
+                <button onclick="downloadVm()"><i class="fa fa-download" aria-hidden="true"></i> <span data-i18n="export-vm">Export VM</span></button>
+                <button onclick="importVm()"><i class="fa fa-upload" aria-hidden="true"></i> <span data-i18n="import-vm-folders">Import VM</span></button>
             </div>
         </div>
     </div>
@@ -292,6 +286,8 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                         <i class="fa fa-exclamation-triangle"></i>
                         <span data-i18n="css-url-warning">Your CSS contains url() references. Verify these URLs are trusted before saving.</span>
                     </div>
+                    <div class="fv3-section-heading" style="margin-top: 1.5rem;">User Notes</div>
+                    <textarea id="fv3-user-notes" spellcheck="false" placeholder="Save snippets, CSS experiments, or notes..."></textarea>
                 </div>
             </div>
         </div>

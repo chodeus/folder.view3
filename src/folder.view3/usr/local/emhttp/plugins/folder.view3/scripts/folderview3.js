@@ -368,6 +368,9 @@ const loadDashboardSettings = async () => {
         }
         if (settings.default_overflow) {
             $('select#default-overflow').val(settings.default_overflow);
+            $('.fv3-expand-only').css('display', settings.default_overflow === 'expand' ? '' : 'none');
+        } else {
+            $('.fv3-expand-only').css('display', 'none');
         }
         const defaultToggleMap = {
             'default-preview-hover': 'default_preview_hover',

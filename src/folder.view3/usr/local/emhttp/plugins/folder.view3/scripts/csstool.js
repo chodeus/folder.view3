@@ -7,33 +7,33 @@
     let dirty = false;
 
     const varMeta = {
-        'folder-view3-graph-cpu': { type: 'color', group: 'colors', label: 'Graph CPU color', desc: 'CPU usage graph line color\nFormat: #hex' },
-        'folder-view3-graph-mem': { type: 'color', group: 'colors', label: 'Graph memory color', desc: 'Memory usage graph line color\nFormat: #hex' },
+        'folder-view3-graph-cpu': { type: 'color', group: 'colors', label: 'Graph CPU color', desc: 'CPU usage graph line color\nFormat: #hex', pages: ['docker'] },
+        'folder-view3-graph-mem': { type: 'color', group: 'colors', label: 'Graph memory color', desc: 'Memory usage graph line color\nFormat: #hex', pages: ['docker'] },
         'fv3-accent-color': { type: 'text', group: 'colors', label: 'Accent color', desc: 'Active tabs, highlights, active toggle border\nFormat: #hex, rgba(), var(--name), color name' },
         'fv3-toggle-color': { type: 'color', group: 'colors', label: 'Toggle button color', desc: 'Folder chevron dropdown button color\nFormat: #hex' },
         'fv3-toggle-hover-color': { type: 'color', group: 'colors', label: 'Toggle hover color', desc: 'Chevron button color on hover\nFormat: #hex' },
-        'fv3-separator-bg': { type: 'text', group: 'colors', label: 'Row separator', desc: 'Divider line between preview rows in expand mode\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-separator-bg': { type: 'text', group: 'colors', label: 'Row separator', desc: 'Divider line between preview rows in expand mode\nFormat: rgba(r,g,b,a) or #hex', pages: ['docker', 'vm'] },
         'fv3-surface-tint': { type: 'text', group: 'colors', label: 'Surface tint', desc: 'Subtle background tint on section headers and panels\nFormat: rgba(r,g,b,a) or #hex' },
         'fv3-hover-bg': { type: 'text', group: 'colors', label: 'Hover background', desc: 'Background highlight when hovering rows and buttons\nFormat: rgba(r,g,b,a) or #hex' },
         'fv3-border': { type: 'text', group: 'colors', label: 'Border', desc: 'General border color used throughout the plugin\nFormat: 1px solid rgba(r,g,b,a) or 1px solid #hex' },
-        'fv3-panel-border': { type: 'text', group: 'colors', label: 'Panel border', desc: 'Fullwidth/accordion expanded panel border\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-panel-bg': { type: 'text', group: 'colors', label: 'Panel background', desc: 'Fullwidth/accordion expanded panel background\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-tab-active-bg': { type: 'text', group: 'colors', label: 'Active tab bg', desc: 'Dashboard tab background when selected\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-tab-active-border': { type: 'text', group: 'colors', label: 'Active tab border', desc: 'Dashboard tab border when selected\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-scrollbar-color': { type: 'text', group: 'colors', label: 'Scrollbar color', desc: 'Scrollbar thumb in scroll-overflow folders\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-panel-border': { type: 'text', group: 'colors', label: 'Panel border', desc: 'Fullwidth/accordion expanded panel border\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-panel-bg': { type: 'text', group: 'colors', label: 'Panel background', desc: 'Fullwidth/accordion expanded panel background\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-tab-active-bg': { type: 'text', group: 'colors', label: 'Active tab bg', desc: 'Dashboard expanded tab background\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-tab-active-border': { type: 'text', group: 'colors', label: 'Active tab border', desc: 'Dashboard expanded tab border\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-scrollbar-color': { type: 'text', group: 'colors', label: 'Scrollbar color', desc: 'Scrollbar thumb in scroll-overflow folders\nFormat: rgba(r,g,b,a) or #hex', pages: ['docker', 'vm'] },
         'fv3-folder-preview-bg': { type: 'text', group: 'colors', label: 'Preview background', desc: 'Background of the folder preview area\nFormat: rgba(r,g,b,a) or #hex' },
         'fv3-folder-name-bg': { type: 'text', group: 'colors', label: 'Folder name bg', desc: 'Background behind the folder name text\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-row-bg': { type: 'text', group: 'colors', label: 'Row background', desc: 'Alternating folder row background color\nFormat: rgba(r,g,b,a), #hex, or transparent' },
-        'fv3-inset-fill': { type: 'text', group: 'colors', label: 'Inset fill', desc: 'Inset layout panel fill color\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-inset-border-color': { type: 'text', group: 'colors', label: 'Inset border', desc: 'Inset layout panel border color\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-inset-showcase-fill': { type: 'text', group: 'colors', label: 'Inset showcase', desc: 'Inset showcase area fill\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-inset-showcase-border': { type: 'text', group: 'colors', label: 'Inset showcase border', desc: 'Inset showcase area border\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-embossed-border': { type: 'text', group: 'colors', label: 'Embossed border', desc: 'Embossed layout outer border\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-embossed-accent': { type: 'text', group: 'colors', label: 'Embossed accent', desc: 'Embossed layout accent highlight\nFormat: rgba(r,g,b,a) or #hex' },
-        'fv3-embossed-inner-border': { type: 'text', group: 'colors', label: 'Embossed inner', desc: 'Embossed layout inner panel border\nFormat: rgba(r,g,b,a) or #hex' },
+        'fv3-row-bg': { type: 'text', group: 'colors', label: 'Row background', desc: 'Alternating folder row background color\nFormat: rgba(r,g,b,a), #hex, or transparent', pages: ['docker', 'vm'] },
+        'fv3-inset-fill': { type: 'text', group: 'colors', label: 'Inset fill', desc: 'Inset layout panel fill color\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-inset-border-color': { type: 'text', group: 'colors', label: 'Inset border', desc: 'Inset layout panel border color\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-inset-showcase-fill': { type: 'text', group: 'colors', label: 'Inset showcase', desc: 'Inset showcase area fill\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-inset-showcase-border': { type: 'text', group: 'colors', label: 'Inset showcase border', desc: 'Inset showcase area border\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-embossed-border': { type: 'text', group: 'colors', label: 'Embossed border', desc: 'Embossed layout outer border\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-embossed-accent': { type: 'text', group: 'colors', label: 'Embossed accent', desc: 'Embossed layout accent highlight\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
+        'fv3-embossed-inner-border': { type: 'text', group: 'colors', label: 'Embossed inner', desc: 'Embossed layout inner panel border\nFormat: rgba(r,g,b,a) or #hex', pages: ['dashboard'] },
         'fv3-preview-icon-size': { type: 'dimension', group: 'dimensions', label: 'Preview icon size', desc: 'Size of container/VM icons in folder preview\nRange: 16px – 64px', min: 16, max: 64, unit: 'px' },
         'fv3-folder-icon-size': { type: 'dimension', group: 'dimensions', label: 'Folder icon size', desc: 'Size of the folder icon in the row\nRange: 24px – 96px', min: 24, max: 96, unit: 'px' },
-        'fv3-appname-max-width': { type: 'dimension', group: 'dimensions', label: 'App name max width', desc: 'Maximum width before container names truncate\nRange: 60px – 300px', min: 60, max: 300, unit: 'px' }
+        'fv3-appname-max-width': { type: 'dimension', group: 'dimensions', label: 'App name max width', desc: 'Maximum width before container names truncate\nRange: 60px – 300px', pages: ['docker', 'vm'], min: 60, max: 300, unit: 'px' }
     };
 
     const presets = [
@@ -118,26 +118,18 @@
             preview.className = 'fv3-toggle-option-preview';
 
             if (style.id === 'default') {
-                preview.innerHTML = '<div style="display:flex;align-items:center;gap:8px">' +
-                    '<div style="width:25px;height:11px;background:#555;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#aaa;border-radius:2px;position:absolute;left:-1px"></div></div>' +
-                    '<span style="font-size:10px;opacity:0.5">Off</span>' +
+                preview.innerHTML =
+                    '<div style="display:inline-flex;align-items:center;gap:4px;margin-right:8px">' +
+                    '<div style="width:25px;height:11px;background:#555;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#999;border-radius:2px;position:absolute;left:-1px"></div></div>' +
+                    '<span style="font-size:10px;opacity:0.5">Off</span></div>' +
+                    '<div style="display:inline-flex;align-items:center;gap:4px">' +
                     '<div style="width:25px;height:11px;background:#486dba;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#e8e8e8;border-radius:2px;position:absolute;left:14px"></div></div>' +
-                    '<span style="font-size:10px;opacity:0.5">On</span>' +
-                    '</div>';
+                    '<span style="font-size:10px;opacity:0.5">On</span></div>';
             } else {
-                var off = document.createElement('input');
-                off.type = 'checkbox';
-                off.className = 'fv3-toggle' + (style.id !== 'flat' ? ' fv3-toggle-' + style.id : '');
-                off.disabled = true;
-                off.style.pointerEvents = 'none';
-                var on = document.createElement('input');
-                on.type = 'checkbox';
-                on.className = off.className;
-                on.checked = true;
-                on.disabled = true;
-                on.style.pointerEvents = 'none';
-                preview.appendChild(off);
-                preview.appendChild(on);
+                var cls = 'fv3-toggle-preview fv3-toggle-preview-' + style.id;
+                preview.innerHTML =
+                    '<span class="' + cls + '"></span>' +
+                    '<span class="' + cls + ' checked"></span>';
             }
             card.appendChild(preview);
 
@@ -198,6 +190,7 @@
         let lastGroup = '';
 
         Object.entries(varMeta).forEach(([varName, meta]) => {
+            if (currentScope !== 'global' && meta.pages && !meta.pages.includes(currentScope)) return;
             if (meta.group !== lastGroup) {
                 lastGroup = meta.group;
                 const heading = document.createElement('div');
@@ -387,11 +380,15 @@
         applyToggleStyle(cssConfig.toggle_style || 'default');
         const customCss = document.getElementById('fv3-custom-css');
         if (customCss && cssConfig.custom_css) customCss.value = cssConfig.custom_css;
+        const userNotes = document.getElementById('fv3-user-notes');
+        if (userNotes && cssConfig.user_notes) userNotes.value = cssConfig.user_notes;
     }
 
     async function saveConfig() {
         const customCss = document.getElementById('fv3-custom-css');
         if (customCss) cssConfig.custom_css = customCss.value;
+        const userNotes = document.getElementById('fv3-user-notes');
+        if (userNotes) cssConfig.user_notes = userNotes.value;
         try {
             const resp = await fetch(API + '/update_css_config.php', {
                 method: 'POST',
@@ -786,8 +783,11 @@
         document.getElementById('fv3-theme-import-btn')?.addEventListener('click', importTheme);
         document.getElementById('fv3-theme-repo')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); importTheme(); } });
 
-        window.addEventListener('beforeunload', (e) => {
-            if (dirty) { e.preventDefault(); e.returnValue = ''; }
+        window.addEventListener('beforeunload', function(e) {
+            if (!dirty) return;
+            e.preventDefault();
+            e.returnValue = '';
+            dirty = false;
         });
 
         loadConfig();

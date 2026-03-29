@@ -34,8 +34,23 @@
 
 .fv3-customize-col-right #fv3-custom-css {
     width: 100%;
-    min-height: 500px;
+    min-height: 300px;
     resize: vertical;
+}
+
+.fv3-customize-col-right #fv3-user-notes {
+    width: 100%;
+    min-height: 150px;
+    resize: vertical;
+    font-family: monospace;
+    font-size: 0.9rem;
+    tab-size: 4;
+    background: transparent;
+    color: inherit;
+    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
+    border-radius: 4px;
+    padding: 10px;
+    outline: none;
 }
 
 @media (max-width: 1024px) {
@@ -260,23 +275,18 @@
     align-items: center;
 }
 
-.fv3-var-swatch {
+.fv3-var-swatch,
+.fv3-var-inputs input[type="color"] {
     display: inline-block;
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
     border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
     border-radius: 4px;
     flex-shrink: 0;
-}
-
-.fv3-var-inputs input[type="color"] {
-    width: 40px;
-    height: 30px;
     padding: 2px;
-    border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
-    border-radius: 4px;
     background: transparent;
     cursor: pointer;
+    vertical-align: middle;
 }
 
 .fv3-var-inputs input[type="text"] {

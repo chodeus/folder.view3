@@ -1,8 +1,7 @@
 /* Container/VM order table */
 table.sortable {
-    width: 100%;
-    max-width: 800px;
-    margin: 1rem auto;
+    width: 600px;
+    margin: 0;
     table-layout: fixed;
     border-collapse: collapse;
 }
@@ -285,32 +284,29 @@ table.sortable td .fv3-toggle {
 .fv3-toggle.fv3-toggle-pill:checked { background: var(--fv3-accent-color, #f0a30a); }
 .fv3-toggle.fv3-toggle-pill:checked::before { background: #fff; transform: translateX(30px); }
 
-/* Left-align labels */
+/* Tighter label-input layout */
 .canvas form dt {
-    text-align: left;
+    text-align: right;
+    width: 30%;
 }
 
-/* Order section - display label above full-width table */
-.canvas form > .basic.order-section {
-    width: 100%;
-    padding: 0 1em;
-    box-sizing: border-box;
+.canvas form dd {
+    margin-left: 32%;
 }
 
+/* Order section - table centered on page with label beside it */
 .canvas form > .basic.order-section dl {
-    display: flex;
-    flex-direction: column;
-}
-
-.canvas form > .basic.order-section dt {
-    margin-bottom: 1em;
-    float: none;
-    width: auto;
-    text-align: left;
+    position: relative;
 }
 
 .canvas form > .basic.order-section dd {
     margin-left: 0;
     width: 100%;
     float: none;
+    display: flex;
+    justify-content: center;
+}
+
+.canvas form > .basic.order-section dt {
+    position: absolute;
 }
