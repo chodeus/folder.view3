@@ -316,6 +316,27 @@
     border-width: 2px;
 }
 
+.fv3-preset-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.fv3-preset-delete {
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: 0.3;
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 0.85em;
+}
+
+.fv3-preset-delete:hover {
+    opacity: 1;
+    color: var(--color-red, #e53e3e);
+}
+
 .fv3-preset-name {
     font-weight: 600;
     margin-bottom: 8px;

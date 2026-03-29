@@ -200,50 +200,76 @@
         });
     }
 
+    function getAllPresets() {
+        return presets.concat(cssConfig.custom_presets || []);
+    }
+
+    function renderPresetCard(grid, preset, isCustom) {
+        var currentPreset = cssConfig.preset || 'Default';
+        var card = document.createElement('div');
+        card.className = 'fv3-preset-card' + (preset.name === currentPreset ? ' fv3-preset-active' : '');
+
+        var header = document.createElement('div');
+        header.className = 'fv3-preset-header';
+        var name = document.createElement('div');
+        name.className = 'fv3-preset-name';
+        name.textContent = preset.name;
+        header.appendChild(name);
+
+        if (isCustom) {
+            var del = document.createElement('button');
+            del.className = 'fv3-preset-delete';
+            del.innerHTML = '<i class="fa fa-trash"></i>';
+            del.title = 'Delete preset';
+            del.addEventListener('click', function(e) {
+                e.stopPropagation();
+                swal({ title: 'Delete "' + preset.name + '"?', type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, function(ok) {
+                    if (!ok) return;
+                    cssConfig.custom_presets = (cssConfig.custom_presets || []).filter(function(p) { return p.name !== preset.name; });
+                    if (cssConfig.preset === preset.name) cssConfig.preset = 'Default';
+                    dirty = true;
+                    renderPresets();
+                });
+            });
+            header.appendChild(del);
+        }
+        card.appendChild(header);
+
+        var swatches = document.createElement('div');
+        swatches.className = 'fv3-preset-swatches';
+        [
+            preset.values['fv3-accent-color'] || cssDefaults['fv3-accent-color'] || '#f0a30a',
+            preset.values['fv3-toggle-color'] || cssDefaults['fv3-toggle-color'] || '#ff8c2f',
+            preset.values['folder-view3-graph-cpu'] || cssDefaults['folder-view3-graph-cpu'] || '#2b8da3',
+            preset.values['folder-view3-graph-mem'] || cssDefaults['folder-view3-graph-mem'] || '#b56a28'
+        ].forEach(function(c) {
+            var swatch = document.createElement('div');
+            swatch.className = 'fv3-preset-swatch';
+            swatch.style.background = c;
+            swatches.appendChild(swatch);
+        });
+        card.appendChild(swatches);
+
+        card.addEventListener('click', function() {
+            cssConfig.preset = preset.name;
+            cssConfig.global = Object.assign({}, cssConfig.global || {}, preset.values);
+            dirty = true;
+            Object.entries(preset.values).forEach(function(entry) {
+                document.documentElement.style.setProperty('--' + entry[0], entry[1]);
+            });
+            renderPresets();
+            renderVariables();
+        });
+
+        grid.appendChild(card);
+    }
+
     function renderPresets() {
-        const grid = document.getElementById('fv3-preset-grid');
+        var grid = document.getElementById('fv3-preset-grid');
         if (!grid) return;
         grid.innerHTML = '';
-        const currentPreset = cssConfig.preset || 'Default';
-
-        presets.forEach(preset => {
-            const card = document.createElement('div');
-            card.className = 'fv3-preset-card' + (preset.name === currentPreset ? ' fv3-preset-active' : '');
-
-            const name = document.createElement('div');
-            name.className = 'fv3-preset-name';
-            name.textContent = preset.name;
-            card.appendChild(name);
-
-            const swatches = document.createElement('div');
-            swatches.className = 'fv3-preset-swatches';
-            const colors = [
-                preset.values['fv3-accent-color'] || cssDefaults['fv3-accent-color'] || '#f0a30a',
-                preset.values['fv3-toggle-color'] || cssDefaults['fv3-toggle-color'] || '#ff8c2f',
-                preset.values['folder-view3-graph-cpu'] || cssDefaults['folder-view3-graph-cpu'] || '#2b8da3',
-                preset.values['folder-view3-graph-mem'] || cssDefaults['folder-view3-graph-mem'] || '#b56a28'
-            ];
-            colors.forEach(c => {
-                const swatch = document.createElement('div');
-                swatch.className = 'fv3-preset-swatch';
-                swatch.style.background = c;
-                swatches.appendChild(swatch);
-            });
-            card.appendChild(swatches);
-
-            card.addEventListener('click', () => {
-                cssConfig.preset = preset.name;
-                cssConfig.global = { ...(cssConfig.global || {}), ...preset.values };
-                dirty = true;
-                Object.entries(preset.values).forEach(([k, v]) => {
-                    document.documentElement.style.setProperty('--' + k, v);
-                });
-                renderPresets();
-                renderVariables();
-            });
-
-            grid.appendChild(card);
-        });
+        presets.forEach(function(p) { renderPresetCard(grid, p, false); });
+        (cssConfig.custom_presets || []).forEach(function(p) { renderPresetCard(grid, p, true); });
     }
 
     async function loadConfig() {
@@ -317,27 +343,32 @@
         URL.revokeObjectURL(a.href);
     }
 
-    function exportPreset() {
-        var defaultName = (cssConfig.preset || 'Custom') + ' Export';
+    function savePreset() {
+        var defaultName = (cssConfig.preset || 'Custom') + ' Copy';
         swal({
-            title: 'Export Preset',
+            title: 'Save Preset',
             text: 'Enter a name for your preset:',
             type: 'input',
             inputValue: defaultName,
             showCancelButton: true,
-            confirmButtonText: 'Export'
+            confirmButtonText: 'Save'
         }, function(name) {
             if (!name) return;
-            var presetData = { name: name, values: {} };
+            var values = {};
             Object.entries(cssConfig.global || {}).forEach(function(entry) {
-                if (varMeta[entry[0]]) presetData.values[entry[0]] = entry[1];
+                if (varMeta[entry[0]]) values[entry[0]] = entry[1];
             });
-            var blob = new Blob([JSON.stringify(presetData, null, 2)], { type: 'application/json' });
-            var a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'fv3-preset-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
-            a.click();
-            URL.revokeObjectURL(a.href);
+            if (!cssConfig.custom_presets) cssConfig.custom_presets = [];
+            var existing = cssConfig.custom_presets.findIndex(function(p) { return p.name === name; });
+            if (existing >= 0) {
+                cssConfig.custom_presets[existing].values = values;
+            } else {
+                cssConfig.custom_presets.push({ name: name, values: values });
+            }
+            cssConfig.preset = name;
+            dirty = true;
+            renderPresets();
+            swal({ title: 'Saved', text: 'Preset "' + name + '" saved. Click Save to persist.', type: 'success', timer: 2000 });
         });
     }
 
@@ -629,7 +660,7 @@
 
         document.getElementById('fv3-css-save')?.addEventListener('click', saveConfig);
         document.getElementById('fv3-css-reset')?.addEventListener('click', resetConfig);
-        document.getElementById('fv3-css-export-preset')?.addEventListener('click', exportPreset);
+        document.getElementById('fv3-css-save-preset')?.addEventListener('click', savePreset);
         document.getElementById('fv3-css-export')?.addEventListener('click', exportConfig);
         document.getElementById('fv3-css-import-btn')?.addEventListener('click', () => {
             document.getElementById('fv3-css-import')?.click();

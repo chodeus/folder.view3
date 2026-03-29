@@ -293,7 +293,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         <div class="fv3-csstool-actions">
             <button id="fv3-css-save" data-i18n="css-save">Save</button>
             <button id="fv3-css-reset" data-i18n="css-reset">Reset to Defaults</button>
-            <button id="fv3-css-export-preset"><i class="fa fa-download"></i> Export Preset</button>
+            <button id="fv3-css-save-preset"><i class="fa fa-save"></i> Save Preset</button>
             <button id="fv3-css-export" data-i18n="css-export">Export Config</button>
             <button id="fv3-css-import-btn" data-i18n="css-import">Import Config</button>
             <input type="file" id="fv3-css-import" style="display:none" accept=".json">
