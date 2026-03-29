@@ -155,8 +155,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         } catch (e) {}
     }
 
-    // create the *cool* unraid button for the autostart
-    $('input.basic-switch').switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on')});
+    // basic-switch toggles now use pure CSS (.fv3-toggle class)
 
     // iterate over the folders
     for (const [folderId, value] of Object.entries(folders)) {
@@ -281,26 +280,22 @@ const updateList = () => {
     // append the selected elements
     for (const el of selected) {
         const isHidden = hiddenPreview.includes(el.Name);
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td><input class="preview-switch" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-toggle" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-toggle" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
     }
 
     // append the rest of the elements
     for (const el of choose) {
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-toggle" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
     }
 
     // prepend the selected regex element
     for (const el of selectedRegex) {
         const isHidden = hiddenPreview.includes(el.Name);
-        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td><input class="preview-switch" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
+        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-toggle" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-toggle" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
     }
 
-    // create the *cool* unraid button for the autostart
-    $('table.sortable > tbody > tr > td > input.container-switch').switchButton({ show_labels: false });
-    $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().find('*').css('opacity', '0.5').css('cursor', 'default').off().end().end().each(function() { this.checked = !this.checked; });
-
-    // create the hide preview toggle for included containers
-    $('input.preview-switch').switchButton({ show_labels: false });
+    // container toggles use pure CSS (.fv3-toggle class)
+    $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().css('opacity', '0.5').css('cursor', 'default');
 
     // sync hide preview toggle when included state changes
     $('table.sortable').off('change', 'input.container-switch').on('change', 'input.container-switch', function() {
@@ -324,8 +319,8 @@ const syncHidePreview = ($row) => {
     const $td = $row.find('td:nth-child(3)');
     if (isIncluded) {
         if (!$td.find('input.preview-switch').length) {
-            $td.html(`<input class="preview-switch" type="checkbox" value="${escapeHtml($cb.val())}" style="display:none;">`);
-            $td.find('input.preview-switch').switchButton({ show_labels: false });
+            $td.html(`<input class="preview-switch fv3-toggle" type="checkbox" value="${escapeHtml($cb.val())}">`);
+
         }
     } else {
         $td.empty();
@@ -491,8 +486,7 @@ const customAction = (action = undefined) => {
     dialog.find('[name="action_type"]').val(config.type);
     dialog.find('[constraint*=\'action-type-\']').hide();
     dialog.find(`[constraint*=\'action-type-${config.type}\']`).show();
-    dialog.find('input.basic-switch-sync').prop("checked", config.script_sync || false);
-    dialog.find('input.basic-switch-sync').switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on')});
+    dialog.find('input.basic-switch-sync').addClass('fv3-toggle').prop("checked", config.script_sync || false);
     if(config.type === 0) {
         dialog.find('[name="action_standard"]').val(config.action);
         dialog.find('[constraint*=\'action-standard-\']').hide();

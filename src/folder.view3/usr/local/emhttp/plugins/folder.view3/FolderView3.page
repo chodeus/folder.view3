@@ -9,8 +9,6 @@ Markdown="false"
 require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 ?>
 
-<script src="<?=autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
-<link type="text/css" rel="stylesheet" href="<?=autov('/webGui/styles/jquery.switchbutton.css')?>">
 <script>
     folderi18n = () => {
         $('body').i18n();
@@ -29,7 +27,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <div class="fv3-page-panel" id="fv3-panel-dashboard">
     <dl class="fv3-settings">
         <dt><label for="dashboard-animation" data-i18n="dashboard-animation">Expand/collapse animation</label></dt>
-        <dd><input class="basic-switch" id="dashboard-animation" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="dashboard-animation" type="checkbox" /></dd>
 
         <dt class="fv3-section-heading" data-i18n="dashboard-docker-heading">Docker</dt>
         <dd></dd>
@@ -46,13 +44,13 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </dd>
 
         <dt class="fv3-docker-nonclassic fv3-setting-sub"><label for="dashboard-docker-folder-label" data-i18n="dashboard-docker-folder-label">Show folder name in panel</label></dt>
-        <dd class="fv3-docker-nonclassic"><input class="basic-switch" id="dashboard-docker-folder-label" type="checkbox" style="display: none;" /></dd>
+        <dd class="fv3-docker-nonclassic"><input class="fv3-toggle" id="dashboard-docker-folder-label" type="checkbox" /></dd>
 
         <dt class="fv3-docker-nonclassic fv3-setting-sub"><label for="dashboard-docker-expand-toggle" data-i18n="dashboard-docker-expand-toggle">Quick collapse</label></dt>
-        <dd class="fv3-docker-nonclassic"><input class="basic-switch" id="dashboard-docker-expand-toggle" type="checkbox" style="display: none;" /></dd>
+        <dd class="fv3-docker-nonclassic"><input class="fv3-toggle" id="dashboard-docker-expand-toggle" type="checkbox" /></dd>
 
         <dt><label for="dashboard-docker-greyscale" data-i18n="dashboard-docker-greyscale">Greyscale collapsed folders</label></dt>
-        <dd><input class="basic-switch" id="dashboard-docker-greyscale" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="dashboard-docker-greyscale" type="checkbox" /></dd>
 
         <dt class="fv3-section-heading" data-i18n="dashboard-vm-heading">VM</dt>
         <dd></dd>
@@ -69,13 +67,13 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </dd>
 
         <dt class="fv3-vm-nonclassic fv3-setting-sub"><label for="dashboard-vm-folder-label" data-i18n="dashboard-vm-folder-label">Show folder name in panel</label></dt>
-        <dd class="fv3-vm-nonclassic"><input class="basic-switch" id="dashboard-vm-folder-label" type="checkbox" style="display: none;" /></dd>
+        <dd class="fv3-vm-nonclassic"><input class="fv3-toggle" id="dashboard-vm-folder-label" type="checkbox" /></dd>
 
         <dt class="fv3-vm-nonclassic fv3-setting-sub"><label for="dashboard-vm-expand-toggle" data-i18n="dashboard-vm-expand-toggle">Quick collapse</label></dt>
-        <dd class="fv3-vm-nonclassic"><input class="basic-switch" id="dashboard-vm-expand-toggle" type="checkbox" style="display: none;" /></dd>
+        <dd class="fv3-vm-nonclassic"><input class="fv3-toggle" id="dashboard-vm-expand-toggle" type="checkbox" /></dd>
 
         <dt><label for="dashboard-vm-greyscale" data-i18n="dashboard-vm-greyscale">Greyscale collapsed folders</label></dt>
-        <dd><input class="basic-switch" id="dashboard-vm-greyscale" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="dashboard-vm-greyscale" type="checkbox" /></dd>
     </dl>
 </div>
 
@@ -105,26 +103,26 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </dd>
 
         <dt><label for="default-preview-hover" data-i18n="preview-hover">Show preview only on hover</label></dt>
-        <dd><input class="basic-switch" id="default-preview-hover" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="default-preview-hover" type="checkbox" /></dd>
 
         <dt><label for="default-preview-grayscale" data-i18n="preview-grayscale">Preview icon grayscale</label></dt>
-        <dd><input class="basic-switch" id="default-preview-grayscale" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="default-preview-grayscale" type="checkbox" /></dd>
 
         <dt><label for="default-preview-webui" data-i18n="preview-webui">Show WebUI icon in preview</label></dt>
-        <dd><input class="basic-switch" id="default-preview-webui" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="default-preview-webui" type="checkbox" /></dd>
 
         <dt><label for="default-preview-logs" data-i18n="preview-logs">Show logs icon in preview</label></dt>
-        <dd><input class="basic-switch" id="default-preview-logs" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="default-preview-logs" type="checkbox" /></dd>
 
         <dt><label for="default-preview-console" data-i18n="preview-console">Show console icon in preview</label></dt>
-        <dd><input class="basic-switch" id="default-preview-console" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="default-preview-console" type="checkbox" /></dd>
 
         <dt><label for="default-preview-update" data-i18n="preview-update">Orange text on update</label></dt>
-        <dd><input class="basic-switch" id="default-preview-update" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="default-preview-update" type="checkbox" /></dd>
 
         <dt><label for="default-preview-vertical-bars" data-i18n="preview-vertical-bars">Preview vertical bars</label></dt>
         <dd>
-            <input class="basic-switch" id="default-preview-vertical-bars" type="checkbox" style="display: none;" />
+            <input class="fv3-toggle" id="default-preview-vertical-bars" type="checkbox" />
             <div class="fv3-color-row" id="fv3-bars-color-row" style="display:none; margin-top:6px;">
                 <label data-i18n="bars-color">Color:</label>
                 <input type="color" id="default-vertical-bars-color" style="height:28px; vertical-align:middle;">
@@ -134,7 +132,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 
         <dt><label for="default-preview-border" data-i18n="border">Show preview border</label></dt>
         <dd>
-            <input class="basic-switch" id="default-preview-border" type="checkbox" style="display: none;" />
+            <input class="fv3-toggle" id="default-preview-border" type="checkbox" />
             <div class="fv3-color-row" id="fv3-border-color-row" style="display:none; margin-top:6px;">
                 <label data-i18n="border-color">Color:</label>
                 <input type="color" id="default-border-color" style="height:28px; vertical-align:middle;">
@@ -144,7 +142,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 
         <dt><label for="default-row-separator" data-i18n="row-separator">Row separator (expand mode)</label></dt>
         <dd>
-            <input class="basic-switch" id="default-row-separator" type="checkbox" style="display: none;" />
+            <input class="fv3-toggle" id="default-row-separator" type="checkbox" />
             <div class="fv3-color-row" id="fv3-separator-color-row" style="display:none; margin-top:6px;">
                 <label data-i18n="separator-color">Color:</label>
                 <input type="color" id="default-separator-color" style="height:28px; vertical-align:middle;">
@@ -168,7 +166,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </dd>
 
         <dt><label for="default-update-column" data-i18n="update-column">Hide update column</label></dt>
-        <dd><input class="basic-switch" id="default-update-column" type="checkbox" style="display: none;" /></dd>
+        <dd><input class="fv3-toggle" id="default-update-column" type="checkbox" /></dd>
     </dl>
 
     <div style="padding: 0 16px; margin: 1rem 0;">

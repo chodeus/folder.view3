@@ -64,7 +64,7 @@ Markdown="false"
                     <dt data-i18n="folder-webui">Folder WebUI:</dt>
                     <dd>
                         <img class="img" style="visibility: hidden;">
-                        <input class="basic-switch" name="folder_webui" type="checkbox" style="display: none;" onchange="updateForm()" />
+                        <input class="fv3-toggle" name="folder_webui" type="checkbox" onchange="updateForm()" />
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
@@ -138,7 +138,7 @@ Markdown="false"
                         <dl>
                             <dt data-i18n="preview-hover">Show preview only on hover:</dt>
                             <dd>
-                                <input class="basic-switch" name="preview_hover" type="checkbox" style="display: none;" />
+                                <input class="fv3-toggle" name="preview_hover" type="checkbox" />
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
@@ -151,7 +151,7 @@ Markdown="false"
                         <dl>
                             <dt data-i18n="preview-update">Orange text on update:</dt>
                             <dd>
-                                <input class="basic-switch" name="preview_update" type="checkbox" style="display: none;" />
+                                <input class="fv3-toggle" name="preview_update" type="checkbox" />
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
@@ -179,7 +179,7 @@ Markdown="false"
                         <dl>
                             <dt data-i18n="preview-grayscale">Preview icon grayscale:</dt>
                             <dd>
-                                <input class="basic-switch" name="preview_grayscale" type="checkbox" style="display: none;" />
+                                <input class="fv3-toggle" name="preview_grayscale" type="checkbox" />
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
@@ -192,7 +192,7 @@ Markdown="false"
                         <dl>
                             <dt data-i18n="preview-webui">Add preview open WebUI:</dt>
                             <dd>
-                                <input class="basic-switch" name="preview_webui" type="checkbox" style="display: none;" />
+                                <input class="fv3-toggle" name="preview_webui" type="checkbox" />
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
@@ -205,7 +205,7 @@ Markdown="false"
                         <dl>
                             <dt data-i18n="preview-logs">Add preview open logs:</dt>
                             <dd>
-                                <input class="basic-switch" name="preview_logs" type="checkbox" style="display: none;" />
+                                <input class="fv3-toggle" name="preview_logs" type="checkbox" />
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
@@ -218,7 +218,7 @@ Markdown="false"
                         <dl>
                             <dt data-i18n="preview-console">Add preview open console:</dt>
                             <dd>
-                                <input class="basic-switch" name="preview_console" type="checkbox" style="display: none;" />
+                                <input class="fv3-toggle" name="preview_console" type="checkbox" />
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
@@ -231,7 +231,7 @@ Markdown="false"
                         <dl>
                             <dt data-i18n="preview-vertical-bars">Preview vertical bars:</dt>
                             <dd>
-                                <input class="basic-switch" name="preview_vertical_bars" type="checkbox" style="display: none;" onchange="updateForm()" />
+                                <input class="fv3-toggle" name="preview_vertical_bars" type="checkbox" onchange="updateForm()" />
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
@@ -266,7 +266,7 @@ Markdown="false"
                         <dl>
                             <dt data-i18n="border">Show preview border:</dt>
                             <dd>
-                                <input class="basic-switch" name="preview_border" type="checkbox" style="display: none;" onchange="updateForm()" />
+                                <input class="fv3-toggle" name="preview_border" type="checkbox" onchange="updateForm()" />
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
@@ -324,7 +324,7 @@ Markdown="false"
                                 <dl>
                                     <dt data-i18n="row-separator">Row separator:</dt>
                                     <dd>
-                                        <input class="basic-switch" name="preview_row_separator" type="checkbox" style="display: none;" onchange="updateForm()" />
+                                        <input class="fv3-toggle" name="preview_row_separator" type="checkbox" onchange="updateForm()" />
                                     </dd>
                                 </dl>
                                 <blockquote class="inline_help">
@@ -436,7 +436,7 @@ Markdown="false"
                 <dl>
                     <dt data-i18n="update-column">Hide update column:</dt>
                     <dd>
-                        <input class="basic-switch" name="update_column" type="checkbox" style="display: none;" />
+                        <input class="fv3-toggle" name="update_column" type="checkbox" />
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
@@ -447,7 +447,7 @@ Markdown="false"
                 <dl>
                     <dt data-i18n="override-default-actions">Override default actions:</dt>
                     <dd>
-                        <input class="basic-switch" name="override_default_actions" type="checkbox" style="display: none;" />
+                        <input class="fv3-toggle" name="override_default_actions" type="checkbox" />
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
@@ -458,7 +458,7 @@ Markdown="false"
                 <dl>
                     <dt data-i18n="default-action">Hide default action button:</dt>
                     <dd>
-                        <input class="basic-switch" name="default_action" type="checkbox" style="display: none;" />
+                        <input class="fv3-toggle" name="default_action" type="checkbox" />
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
@@ -469,7 +469,7 @@ Markdown="false"
                 <dl>
                     <dt data-i18n="expand-tab">Expanded on Docker/VM tab:</dt>
                     <dd>
-                        <input class="basic-switch" name="expand_tab" type="checkbox" style="display: none;" />
+                        <input class="fv3-toggle" name="expand_tab" type="checkbox" />
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
@@ -480,7 +480,7 @@ Markdown="false"
                 <dl>
                     <dt data-i18n="expand-dashboard">Expanded on Dashboard tab:</dt>
                     <dd>
-                        <input class="basic-switch" name="expand_dashboard" type="checkbox" style="display: none;" />
+                        <input class="fv3-toggle" name="expand_dashboard" type="checkbox" />
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
@@ -635,7 +635,7 @@ Markdown="false"
         <dl>
             <dt data-i18n="custom-actions-script-sync">Sync:</dt>
             <dd>
-            <input class="basic-switch-sync" name="action_script_sync" type="checkbox" style="display: none;" />
+            <input class="basic-switch-sync" name="action_script_sync" type="checkbox" />
             </dd>
         </dl>
     </div>

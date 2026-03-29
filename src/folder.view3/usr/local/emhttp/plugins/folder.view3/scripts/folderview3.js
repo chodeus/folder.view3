@@ -328,9 +328,7 @@ const fileManager = async (type) => {
 let fv3SuppressToggle = false;
 
 const fv3InitToggle = (id, settingKey) => {
-    const $cb = $(`#${id}`);
-    $cb.switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
-    $cb.on('change', function() {
+    $(`#${id}`).on('change', function() {
         if (fv3SuppressToggle) return;
         saveDashboardSetting(settingKey, this.checked ? 'yes' : 'no');
     });
@@ -423,8 +421,8 @@ const fv3ResetNonClassicSettings = async (type) => {
     const id = type === 'docker' ? 'dashboard-docker' : 'dashboard-vm';
     const key = type === 'docker' ? 'dashboard_docker' : 'dashboard_vm';
     fv3SuppressToggle = true;
-    $(`#${id}-folder-label`).prop('checked', false).switchButton('option', 'checked', false);
-    $(`#${id}-expand-toggle`).prop('checked', false).switchButton('option', 'checked', false);
+    $(`#${id}-folder-label`).prop('checked', false);
+    $(`#${id}-expand-toggle`).prop('checked', false);
     fv3SuppressToggle = false;
     await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_folder_label`, value: 'no' }).promise();
     await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_expand_toggle`, value: 'no' }).promise();
@@ -578,8 +576,5 @@ window.fv3SwitchTab = (function() {
     return switchTab;
 })();
 
-// Show all panels during init so switchButton can measure elements
-document.querySelectorAll('.fv3-page-panel').forEach(function(p) { p.style.display = ''; });
 loadDashboardSettings();
-// Now apply saved tab (hides inactive panels)
 fv3SwitchTab(localStorage.getItem('fv3-settings-tab') || 'dashboard');
