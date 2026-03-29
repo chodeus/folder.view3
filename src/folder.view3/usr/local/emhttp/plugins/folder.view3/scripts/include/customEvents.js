@@ -87,7 +87,11 @@ window.fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
 });
 
 window.fv3ApplyToggleStyle = window.fv3ApplyToggleStyle || ((style) => {
-    if (!style || style === 'default') return;
+    if (!style || style === 'default') {
+        document.body.removeAttribute('data-fv3-toggle');
+        return;
+    }
+    document.body.setAttribute('data-fv3-toggle', style);
     document.querySelectorAll('.fv3-toggle').forEach(el => {
         el.classList.remove('fv3-toggle-rounded', 'fv3-toggle-material', 'fv3-toggle-pill');
         if (style !== 'flat') el.classList.add('fv3-toggle-' + style);

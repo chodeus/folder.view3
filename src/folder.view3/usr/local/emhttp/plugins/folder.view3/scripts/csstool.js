@@ -291,7 +291,6 @@
                 text.type = 'text';
                 text.value = currentVal;
                 text.placeholder = cssDefaults[varName] || '';
-                text.style.width = '200px';
                 text.addEventListener('input', () => {
                     setVal(varName, text.value);
                     var sw = inputs.querySelector('.fv3-var-swatch');
@@ -369,7 +368,11 @@
 
         card.addEventListener('click', function() {
             cssConfig.preset = preset.name;
-            cssConfig.global = Object.assign({}, cssConfig.global || {}, preset.values);
+            var oldGlobal = cssConfig.global || {};
+            Object.keys(oldGlobal).forEach(function(k) {
+                document.documentElement.style.removeProperty('--' + k);
+            });
+            cssConfig.global = Object.assign({}, preset.values);
             dirty = true;
             Object.entries(preset.values).forEach(function(entry) {
                 document.documentElement.style.setProperty('--' + entry[0], entry[1]);

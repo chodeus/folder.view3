@@ -284,7 +284,12 @@ table.sortable td .fv3-toggle {
 .fv3-toggle.fv3-toggle-pill:checked { background: var(--fv3-accent-color, #f0a30a); }
 .fv3-toggle.fv3-toggle-pill:checked::before { background: #fff; transform: translateX(30px); }
 
-/* Tighter label-input layout */
+/* Constrain form width and tighten layout */
+.canvas form {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
 .canvas form dt {
     text-align: right;
     width: 30%;

@@ -274,13 +274,15 @@
     gap: 6px;
     align-items: center;
     flex-shrink: 0;
+    width: 250px;
+    justify-content: flex-end;
 }
 
 .fv3-var-swatch,
 .fv3-var-inputs input[type="color"] {
     display: inline-block;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
     border-radius: 4px;
     flex-shrink: 0;
@@ -291,7 +293,8 @@
 }
 
 .fv3-var-inputs input[type="text"] {
-    width: 140px;
+    flex: 1;
+    min-width: 0;
     background-color: transparent;
     border: none;
     border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
