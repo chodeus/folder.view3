@@ -1,4 +1,41 @@
-/* Collapsible sections */
+/* Page-level tabs */
+.fv3-page-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--fv3-border, rgba(128,128,128,0.3));
+    gap: 0;
+    margin-bottom: 0;
+}
+
+.fv3-page-tab {
+    padding: 10px 24px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    background: transparent;
+    color: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0.6;
+    white-space: nowrap;
+}
+
+.fv3-page-tab:hover {
+    opacity: 0.85;
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.08));
+}
+
+.fv3-page-tab-active {
+    opacity: 1;
+    border-bottom-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+    color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+.fv3-page-panel {
+    padding: 16px;
+}
+
+/* Collapsible sections (Folder.page) */
 .fv3-section {
     margin-bottom: 4px;
     border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
@@ -211,7 +248,7 @@
         gap: 1rem 2rem;
     }
     .fv3-settings dt {
-        text-align: right;
+        text-align: left;
     }
     .fv3-settings dd {
         display: flex;

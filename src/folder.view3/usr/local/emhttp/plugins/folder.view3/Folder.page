@@ -10,8 +10,8 @@ Markdown="false"
     }
 </script>
 <? require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php') ?>
-<script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
-<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
+<script src="<?=autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+<link type="text/css" rel="stylesheet" href="<?=autov('/webGui/styles/jquery.switchbutton.css')?>">
 <link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.ui.css')?>">
 <link type="text/css" rel="stylesheet" href="<?autov('/plugins/folder.view3/styles/folder.css')?>">
 <?php if (file_exists("/usr/local/emhttp/plugins/dynamix.docker.manager/styles/style-{$display['theme']}.css")): ?>

@@ -277,6 +277,17 @@ td.folder-name .folder-outer {
     }
 }
 
+/* Docker: ToggleViewMode becomes flex row when incognito button is inside */
+.ToggleViewMode:has(.fv3-incognito-btn) {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.ToggleViewMode:has(.fv3-incognito-btn) > span {
+    margin-left: auto;
+}
+
 /* Incognito mode toggle button */
 .fv3-incognito-btn {
     min-width: 0;

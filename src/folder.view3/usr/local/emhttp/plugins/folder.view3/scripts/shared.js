@@ -280,12 +280,7 @@ window.fv3Incognito = false;
 
         var toggleView = document.querySelector('.ToggleViewMode');
         if (toggleView) {
-            var title = toggleView.parentNode.querySelector(':scope > .title');
-            if (title) {
-                title.after(createBtn());
-            } else {
-                toggleView.parentNode.insertBefore(createBtn(), toggleView);
-            }
+            toggleView.insertBefore(createBtn(), toggleView.firstChild);
             if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
             return;
         }

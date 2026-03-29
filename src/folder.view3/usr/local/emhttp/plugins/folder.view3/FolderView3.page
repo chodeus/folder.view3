@@ -19,8 +19,14 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <link rel="stylesheet" href="<?=autov('/plugins/folder.view3/styles/folderview3.css')?>">
 <link rel="stylesheet" href="<?=autov('/plugins/folder.view3/styles/csstool.css')?>">
 
-<details class="fv3-section" open>
-    <summary data-i18n="dashboard-settings">Dashboard Configuration</summary>
+<div class="fv3-page-tabs">
+    <button class="fv3-page-tab fv3-page-tab-active" data-tab="dashboard" data-i18n="dashboard-settings">Dashboard</button>
+    <button class="fv3-page-tab" data-tab="defaults" data-i18n="folder-defaults">Defaults</button>
+    <button class="fv3-page-tab" data-tab="backup" data-i18n="backup-restore">Backup</button>
+    <button class="fv3-page-tab" data-tab="css" data-i18n="css-tool">CSS</button>
+</div>
+
+<div class="fv3-page-panel" id="fv3-panel-dashboard">
     <dl class="fv3-settings">
         <dt><label for="dashboard-animation" data-i18n="dashboard-animation">Expand/collapse animation</label></dt>
         <dd><input class="basic-switch" id="dashboard-animation" type="checkbox" style="display: none;" /></dd>
@@ -71,10 +77,9 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         <dt><label for="dashboard-vm-greyscale" data-i18n="dashboard-vm-greyscale">Greyscale collapsed folders</label></dt>
         <dd><input class="basic-switch" id="dashboard-vm-greyscale" type="checkbox" style="display: none;" /></dd>
     </dl>
-</details>
+</div>
 
-<details class="fv3-section">
-    <summary data-i18n="folder-defaults">Folder Defaults</summary>
+<div class="fv3-page-panel" id="fv3-panel-defaults" style="display:none">
     <dl class="fv3-settings">
         <dt class="fv3-section-heading" data-i18n="folder-defaults-info">Default settings for new folders and any folder set to "Use default"</dt>
         <dd></dd>
@@ -201,10 +206,9 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <tbody id="vms"></tbody>
         </table>
     </div>
-</details>
+</div>
 
-<details class="fv3-section">
-    <summary data-i18n="backup-restore">Import / Export (Backup)</summary>
+<div class="fv3-page-panel" id="fv3-panel-backup" style="display:none">
     <div class="fv3-backup-section">
         <div class="fv3-backup-group">
             <div class="fv3-backup-group-label" data-i18n="backup-full">Full Backup (everything)</div>
@@ -233,10 +237,9 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </div>
         </div>
     </div>
-</details>
+</div>
 
-<details class="fv3-section">
-    <summary data-i18n="css-tool">Custom CSS</summary>
+<div class="fv3-page-panel" id="fv3-panel-css" style="display:none">
     <div id="fv3-csstool">
         <div class="fv3-csstool-tiers">
             <button class="fv3-tier-btn fv3-tier-active" data-tier="themes" data-i18n="css-themes">Themes</button>
@@ -285,7 +288,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <input type="file" id="fv3-css-import" style="display:none" accept=".json">
         </div>
     </div>
-</details>
+</div>
 
 <script src="<?=autov('/plugins/folder.view3/scripts/folderview3.js')?>"></script>
 <script src="<?=autov('/plugins/folder.view3/scripts/csstool.js')?>"></script>

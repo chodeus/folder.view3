@@ -1,9 +1,5 @@
 /* FolderView3 Docker-specific styles */
 
-.title {
-    margin-bottom: 0;
-}
-
 .folder-update-text {
     white-space: nowrap;
 }

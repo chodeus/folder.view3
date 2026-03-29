@@ -415,8 +415,8 @@ const loadDashboardSettings = async () => {
 const fv3ToggleNonClassicSettings = () => {
     const docker = $('select#dashboard-docker-layout').val();
     const vm = $('select#dashboard-vm-layout').val();
-    $('.fv3-docker-nonclassic').toggle(docker !== 'classic');
-    $('.fv3-vm-nonclassic').toggle(vm !== 'classic');
+    $('.fv3-docker-nonclassic').css('display', docker !== 'classic' ? '' : 'none');
+    $('.fv3-vm-nonclassic').css('display', vm !== 'classic' ? '' : 'none');
 };
 
 const fv3ResetNonClassicSettings = async (type) => {
@@ -555,5 +555,28 @@ $('#fv3-import-all').on('change', function() {
     };
     reader.readAsText(file);
 });
+
+// Page-level tab switching
+(function() {
+    var tabs = document.querySelectorAll('.fv3-page-tab');
+    var panels = document.querySelectorAll('.fv3-page-panel');
+    var savedTab = localStorage.getItem('fv3-settings-tab') || 'dashboard';
+
+    function switchTab(tabName) {
+        tabs.forEach(function(t) {
+            t.classList.toggle('fv3-page-tab-active', t.getAttribute('data-tab') === tabName);
+        });
+        panels.forEach(function(p) {
+            p.style.display = p.id === 'fv3-panel-' + tabName ? '' : 'none';
+        });
+        localStorage.setItem('fv3-settings-tab', tabName);
+    }
+
+    tabs.forEach(function(t) {
+        t.addEventListener('click', function() { switchTab(this.getAttribute('data-tab')); });
+    });
+
+    if (tabs.length) switchTab(savedTab);
+})();
 
 loadDashboardSettings();
