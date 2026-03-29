@@ -297,11 +297,6 @@ td.folder-name .folder-outer {
     vertical-align: middle;
 }
 
-/* VM page: inside th header cell */
-#kvm_table th .fv3-incognito-btn {
-    margin: 0 0 0 8px;
-}
-
 .fv3-incognito-btn:hover {
     opacity: 0.7;
 }

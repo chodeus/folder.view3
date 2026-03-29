@@ -1,5 +1,9 @@
 /* FolderView3 VM-specific styles */
 
+.tab-content.content:has(#kvm_table) {
+    padding-top: 0;
+}
+
 .folder-appname-id {
     display: none;
 }

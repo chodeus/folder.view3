@@ -146,14 +146,25 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
             el.textContent = getAnon(name, 'folder');
         });
 
-        document.querySelectorAll('.appname, .appname a, td.ct-name > span > a, td.vm-name span.inner a').forEach(function(el) {
+        document.querySelectorAll('.appname').forEach(function(el) {
+            var link = el.querySelector('a');
+            var target = link || el;
+            var name = target.textContent.trim();
+            if (name) knownNames.push(name);
+            target.setAttribute('data-fv3-real', name);
+            target.textContent = getAnon(name, 'container');
+        });
+
+        document.querySelectorAll('td.vm-name:not(.folder-name) span.inner a').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real')) return;
             var name = el.textContent.trim();
             if (name) knownNames.push(name);
             el.setAttribute('data-fv3-real', name);
-            el.textContent = getAnon(name, el.closest('.vm-name') ? 'vm' : 'container');
+            el.textContent = getAnon(name, 'vm');
         });
 
-        document.querySelectorAll('.folder-preview [data-name], .folder-preview .folder-element span').forEach(function(el) {
+        document.querySelectorAll('.folder-preview [data-name], .folder-preview .folder-element span, .folder-preview span.inner a').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real')) return;
             var name = (el.getAttribute('data-name') || el.textContent || '').trim();
             if (name) {
                 el.setAttribute('data-fv3-real', name);
@@ -236,7 +247,7 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
         var btn = document.createElement('button');
         btn.id = 'fv3-incognito-btn';
         btn.className = 'fv3-incognito-btn' + (fv3Incognito ? ' fv3-incognito-active' : '');
-        btn.title = 'Incognito Mode — hide container/VM names for screenshots';
+        btn.title = 'Incognito Mode';
         btn.innerHTML = '<i class="fa fa-eye-slash"></i>';
         btn.addEventListener('click', fv3IncognitoToggle);
         return btn;
@@ -247,14 +258,7 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
 
         var toggleView = document.querySelector('.ToggleViewMode');
         if (toggleView) {
-            toggleView.parentNode.insertBefore(createBtn(), toggleView);
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
-            return;
-        }
-
-        var vmHeader = document.querySelector('#kvm_table > thead > tr > th:first-child');
-        if (vmHeader) {
-            vmHeader.appendChild(createBtn());
+            toggleView.parentNode.insertBefore(createBtn(), toggleView.parentNode.firstChild);
             if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
             return;
         }
