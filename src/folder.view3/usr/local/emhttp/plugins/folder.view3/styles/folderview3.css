@@ -282,13 +282,12 @@
 
 .fv3-settings {
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: auto 1fr;
     gap: 0.6rem 1rem;
     max-width: 600px;
     margin: 0 auto;
     padding: 1rem 0;
     align-items: center;
-    justify-content: center;
 }
 
 .fv3-settings dt {
@@ -299,10 +298,6 @@
 
 .fv3-settings dd {
     margin: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
 }
 
 .fv3-settings dd .switch-button-label {

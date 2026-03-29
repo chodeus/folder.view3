@@ -20,7 +20,7 @@
     padding: 0.3rem 0;
     display: flex;
     flex-wrap: wrap;
-    align-items: left;
+    align-items: flex-start;
     gap: 0.5rem;
 }
 
@@ -295,3 +295,86 @@ table.sortable td .fv3-toggle {
 .fv3-toggle.fv3-toggle-pill::before { width: 20px; height: 20px; left: 3px; top: 3px; background: #888; border-radius: 50%; z-index: 1; }
 .fv3-toggle.fv3-toggle-pill:checked { background: var(--fv3-accent-color, #f0a30a); }
 .fv3-toggle.fv3-toggle-pill:checked::before { background: #fff; transform: translateX(30px); }
+
+/* ===== Mobile / Narrow Screen ===== */
+@media (max-width: 768px) {
+    .fv3-folder-settings {
+        max-width: 100%;
+        margin: 5px 0 10px;
+    }
+
+    /* Keep float so toggles stay inline with labels, just left-align */
+    .fv3-folder-settings dt {
+        text-align: left;
+    }
+
+    /* Text inputs and selects: full width forces them to wrap below the label */
+    .fv3-folder-settings input[type="text"],
+    .fv3-folder-settings input[type="number"],
+    .fv3-folder-settings select {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .fv3-section > :not(summary) {
+        padding: 0 10px;
+    }
+
+    table.sortable th,
+    table.sortable td {
+        padding: 0.6em 0.5em;
+    }
+
+    table.sortable th:first-child,
+    table.sortable td:first-child {
+        width: 50%;
+    }
+
+    table.sortable th:nth-child(2),
+    table.sortable td:nth-child(2) {
+        width: 25%;
+    }
+
+    table.sortable th:last-child,
+    table.sortable td:last-child {
+        width: 25%;
+    }
+
+    .item img {
+        width: 28px;
+        height: 28px;
+        margin-right: 6px;
+    }
+}
+
+/* ===== Touch Devices ===== */
+@media (hover: none) {
+    .fv3-toggle {
+        width: 48px;
+        height: 28px;
+    }
+
+    .fv3-toggle::before {
+        width: 22px;
+        height: 22px;
+    }
+
+    .fv3-toggle:checked::before {
+        transform: translateX(20px);
+    }
+
+    .fv3-toggle.fv3-toggle-rounded {
+        width: 52px;
+        height: 30px;
+    }
+
+    .fv3-toggle.fv3-toggle-rounded::before {
+        width: 24px;
+        height: 24px;
+    }
+
+    .fv3-toggle.fv3-toggle-rounded:checked::before {
+        transform: translateX(22px);
+    }
+}

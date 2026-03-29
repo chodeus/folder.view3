@@ -29,10 +29,7 @@
     --fv3-folder-icon-size: 48px;
     --fv3-folder-name-bg: transparent;
     --fv3-row-bg: transparent;
-    --fv3-toggle-color: #ff8c2f;
-    --fv3-toggle-hover-color: #ffad5c;
     --fv3-appname-max-width: 120px;
-    --fv3-scrollbar-color: rgba(255, 140, 47, 0.5);
 
     /* Themeable element colors (overridden by per-folder settings when set) */
     --fv3-chevron-color: inherit;
@@ -129,18 +126,31 @@ td.folder-name .folder-outer {
     margin-left: auto;
     flex-shrink: 0;
     color: var(--fv3-chevron-color);
-    border-color: var(--fv3-chevron-color);
+    border-color: var(--fv3-toggle-color, var(--button-border));
+    background: var(--fv3-toggle-color, var(--button-background));
     font-size: var(--fv3-chevron-size);
 }
 
 .folder-dropdown:hover {
-    color: var(--fv3-toggle-hover-color);
-    border-color: var(--fv3-toggle-hover-color);
+    border-color: var(--fv3-toggle-hover-color, var(--button-border));
+    background: var(--fv3-toggle-hover-color, var(--button-background));
 }
 
-/* Unraid native switch — accent color override */
+/* FV3 "Add Folder" button */
+.fv3-add-folder-btn {
+    border-color: var(--fv3-toggle-color, var(--button-border));
+    background: var(--fv3-toggle-color, var(--button-background));
+    color: var(--fv3-chevron-color, inherit);
+}
+
+.fv3-add-folder-btn:hover {
+    border-color: var(--fv3-toggle-hover-color, var(--button-border));
+    background: var(--fv3-toggle-hover-color, var(--button-background));
+}
+
+/* Unraid native switch — accent color override (only when preset sets toggle color) */
 tr.folder .switch-button-background.checked {
-    background: var(--fv3-toggle-color) linear-gradient(to bottom, var(--fv3-toggle-color), var(--fv3-toggle-color));
+    background: var(--fv3-toggle-color, var(--color-orange, #ff8c2f)) linear-gradient(to bottom, var(--fv3-toggle-color, var(--color-orange, #ff8c2f)), var(--fv3-toggle-color, var(--color-orange, #ff8c2f)));
 }
 
 /* Restyle ALL Unraid switches when toggle style is set */
@@ -237,6 +247,11 @@ body[data-fv3-toggle="pill"] .switch-button-background.checked .switch-button-bu
     background: #fff;
 }
 
+body[data-fv3-toggle] .switch-button-background {
+    display: block;
+    margin: 0 auto;
+}
+
 body[data-fv3-toggle] .switch-button-label {
     display: none;
 }
@@ -303,7 +318,7 @@ body[data-fv3-toggle] .switch-button-label {
 }
 
 .folder-preview.fv3-overflow-scroll:hover::-webkit-scrollbar-thumb {
-    background: var(--fv3-scrollbar-color);
+    background: var(--fv3-scrollbar-color, rgba(128, 128, 128, 0.5));
 }
 
 .folder-preview.fv3-overflow-scroll::-webkit-scrollbar-track {
@@ -355,7 +370,7 @@ body[data-fv3-toggle] .switch-button-label {
 @supports not selector(::-webkit-scrollbar) {
     .folder-preview.fv3-overflow-scroll {
         scrollbar-width: thin;
-        scrollbar-color: var(--fv3-scrollbar-color) transparent;
+        scrollbar-color: var(--fv3-scrollbar-color, rgba(128, 128, 128, 0.5)) transparent;
     }
 }
 
@@ -366,7 +381,7 @@ body[data-fv3-toggle] .switch-button-label {
     }
 
     .folder-preview.fv3-overflow-scroll::-webkit-scrollbar-thumb {
-        background: var(--fv3-scrollbar-color);
+        background: var(--fv3-scrollbar-color, rgba(128, 128, 128, 0.5));
     }
 
     .folder-dropdown {

@@ -354,11 +354,14 @@
 
         var swatches = document.createElement('div');
         swatches.className = 'fv3-preset-swatches';
+        var themeAccent = getComputedStyle(document.documentElement).getPropertyValue('--color-orange').trim() || '#f0a30a';
+        var themeGraphCpu = getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu').trim() || '#2b8da3';
+        var themeGraphMem = getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem').trim() || '#5d6db6';
         [
-            preset.values['fv3-accent-color'] || cssDefaults['fv3-accent-color'] || '#f0a30a',
-            preset.values['fv3-toggle-color'] || cssDefaults['fv3-toggle-color'] || '#ff8c2f',
-            preset.values['folder-view3-graph-cpu'] || cssDefaults['folder-view3-graph-cpu'] || '#2b8da3',
-            preset.values['folder-view3-graph-mem'] || cssDefaults['folder-view3-graph-mem'] || '#b56a28'
+            preset.values['fv3-accent-color'] || cssDefaults['fv3-accent-color'] || themeAccent,
+            preset.values['fv3-toggle-color'] || cssDefaults['fv3-toggle-color'] || themeAccent,
+            preset.values['folder-view3-graph-cpu'] || cssDefaults['folder-view3-graph-cpu'] || themeGraphCpu,
+            preset.values['folder-view3-graph-mem'] || cssDefaults['folder-view3-graph-mem'] || themeGraphMem
         ].forEach(function(c) {
             var swatch = document.createElement('div');
             swatch.className = 'fv3-preset-swatch';
