@@ -1,30 +1,46 @@
-/* Container order table - responsive for all screen sizes */
+/* Container/VM order table */
 table.sortable {
     width: 100%;
-    margin: 0 auto;
+    max-width: 800px;
+    margin: 1rem auto;
     table-layout: fixed;
+    border-collapse: collapse;
 }
 
-table.sortable th,
+table.sortable th {
+    padding: 0.6em 1em;
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.7;
+    border-bottom: 2px solid var(--fv3-border, rgba(128,128,128,0.3));
+}
+
 table.sortable td {
-    padding: 0.5em;
+    padding: 0.8em 1em;
+    border-bottom: 1px solid var(--fv3-border, rgba(128,128,128,0.15));
+}
+
+table.sortable tbody tr:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.06));
 }
 
 table.sortable th:first-child,
 table.sortable td:first-child {
-    width: 60%;
+    width: 55%;
     text-align: left;
 }
 
 table.sortable th:nth-child(2),
 table.sortable td:nth-child(2) {
-    width: 20%;
+    width: 22%;
     text-align: center;
 }
 
 table.sortable th:last-child,
 table.sortable td:last-child {
-    width: 20%;
+    width: 23%;
     text-align: center;
 }
 
@@ -34,16 +50,24 @@ table.sortable td .switch-button-background {
 }
 
 .item {
-    height: 5em;
-    border-bottom: 1px solid;
+    height: 4em;
 }
 
 .item img {
     pointer-events: none;
+    width: 36px;
+    height: 36px;
+    vertical-align: middle;
+    margin-right: 8px;
+    border-radius: 4px;
 }
 
 .sortable > tbody > .item[draggable="true"] {
-    cursor: default;
+    cursor: grab;
+}
+
+.sortable > tbody > .item[draggable="true"]:active {
+    cursor: grabbing;
 }
 
 .dragging {
@@ -223,6 +247,11 @@ table.sortable td .switch-button-background {
     flex-direction: row;
     align-items: center;
     gap: 0.5em;
+}
+
+/* Left-align labels */
+.canvas form dt {
+    text-align: left;
 }
 
 /* Order section - display label above full-width table */
