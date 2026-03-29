@@ -118,7 +118,12 @@
             preview.className = 'fv3-toggle-option-preview';
 
             if (style.id === 'default') {
-                preview.innerHTML = '<div style="display:flex;align-items:center;gap:4px"><div style="width:25px;height:11px;background:#555;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#999;border-radius:2px;position:absolute;left:-1px"></div></div><span style="font-size:10px;opacity:0.6">Off</span></div>';
+                preview.innerHTML = '<div style="display:flex;align-items:center;gap:8px">' +
+                    '<div style="width:25px;height:11px;background:#555;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#aaa;border-radius:2px;position:absolute;left:-1px"></div></div>' +
+                    '<span style="font-size:10px;opacity:0.5">Off</span>' +
+                    '<div style="width:25px;height:11px;background:#486dba;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#e8e8e8;border-radius:2px;position:absolute;left:14px"></div></div>' +
+                    '<span style="font-size:10px;opacity:0.5">On</span>' +
+                    '</div>';
             } else {
                 var off = document.createElement('input');
                 off.type = 'checkbox';
