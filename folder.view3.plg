@@ -14,7 +14,7 @@
     <CHANGES>
 
 ###2026.03.30
-- Fix preview overflow causing table expansion in Firefox/Edge
+- Fix preview overflow causing table expansion for users with a large number of containers in a folder
 
 ###2026.03.28.1
 - Mobile: auto-scroll default preview to show hidden containers
