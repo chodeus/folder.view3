@@ -95,6 +95,72 @@
         return /^#[0-9a-fA-F]{3,8}$/.test(val);
     }
 
+    const toggleStyles = [
+        { id: 'default', label: 'Unraid Default', desc: 'Standard Unraid toggle switch' },
+        { id: 'flat', label: 'Flat', desc: 'Flat minimal with square knob' },
+        { id: 'ios', label: 'iOS', desc: 'Rounded pill with circular knob' },
+        { id: 'material', label: 'Material', desc: 'Thin track with floating circle' },
+        { id: 'pill', label: 'Pill', desc: 'Wide rounded with sliding circle' }
+    ];
+
+    function renderTogglePicker() {
+        var container = document.getElementById('fv3-toggle-picker');
+        if (!container) return;
+        container.innerHTML = '';
+        var current = cssConfig.toggle_style || 'flat';
+
+        toggleStyles.forEach(function(style) {
+            var card = document.createElement('div');
+            card.className = 'fv3-toggle-option' + (style.id === current ? ' active' : '');
+            card.title = style.desc;
+
+            var preview = document.createElement('div');
+            preview.className = 'fv3-toggle-option-preview';
+
+            if (style.id === 'default') {
+                preview.innerHTML = '<div style="display:flex;align-items:center;gap:4px"><div style="width:25px;height:11px;background:#555;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#999;border-radius:2px;position:absolute;left:-1px"></div></div><span style="font-size:10px;opacity:0.6">Off</span></div>';
+            } else {
+                var off = document.createElement('input');
+                off.type = 'checkbox';
+                off.className = 'fv3-toggle' + (style.id !== 'flat' ? ' fv3-toggle-' + style.id : '');
+                off.disabled = true;
+                off.style.pointerEvents = 'none';
+                var on = document.createElement('input');
+                on.type = 'checkbox';
+                on.className = off.className;
+                on.checked = true;
+                on.disabled = true;
+                on.style.pointerEvents = 'none';
+                preview.appendChild(off);
+                preview.appendChild(on);
+            }
+            card.appendChild(preview);
+
+            var label = document.createElement('div');
+            label.className = 'fv3-toggle-option-label';
+            label.textContent = style.label;
+            card.appendChild(label);
+
+            card.addEventListener('click', function() {
+                cssConfig.toggle_style = style.id;
+                dirty = true;
+                applyToggleStyle(style.id);
+                renderTogglePicker();
+            });
+
+            container.appendChild(card);
+        });
+    }
+
+    function applyToggleStyle(style) {
+        document.querySelectorAll('.fv3-toggle').forEach(function(el) {
+            el.classList.remove('fv3-toggle-ios', 'fv3-toggle-material', 'fv3-toggle-pill');
+            if (style && style !== 'flat' && style !== 'default') {
+                el.classList.add('fv3-toggle-' + style);
+            }
+        });
+    }
+
     function renderVariables() {
         const container = document.getElementById('fv3-var-list');
         if (!container) return;
@@ -287,6 +353,8 @@
         }
         renderVariables();
         renderPresets();
+        renderTogglePicker();
+        applyToggleStyle(cssConfig.toggle_style || 'flat');
         const customCss = document.getElementById('fv3-custom-css');
         if (customCss && cssConfig.custom_css) customCss.value = cssConfig.custom_css;
     }

@@ -267,6 +267,12 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </div>
 
             <div class="fv3-customize-section">
+                <div class="fv3-section-heading">Toggle Style</div>
+                <p class="fv3-customize-hint">Choose how toggle switches appear on FolderView3 pages.</p>
+                <div id="fv3-toggle-picker" class="fv3-toggle-picker"></div>
+            </div>
+
+            <div class="fv3-customize-section">
                 <div class="fv3-section-heading">Variables</div>
                 <div class="fv3-subtabs">
                     <button class="fv3-subtab fv3-subtab-active" data-scope="global" data-i18n="css-global">Global</button>
