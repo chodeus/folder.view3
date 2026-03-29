@@ -38,6 +38,10 @@ window.fv3Error = function(context, error) {
 })();
 
 window.fv3SafeParseWithRecovery = (raw, storageKey, fallback) => {
+    if (raw !== null && typeof raw === 'object') {
+        try { localStorage.setItem('fv3-' + storageKey, JSON.stringify(raw)); } catch(e) {}
+        return raw;
+    }
     try {
         const parsed = JSON.parse(raw);
         try { localStorage.setItem('fv3-' + storageKey, raw); } catch(e) {}
@@ -135,11 +139,11 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
         document.body.classList.add('fv3-incognito');
         var knownNames = [];
 
-        document.querySelectorAll('.folder-name .folder-inner, .fv3-folder-appname, .folder-appname').forEach(function(el) {
+        document.querySelectorAll('.folder-appname, .fv3-folder-appname').forEach(function(el) {
             var name = el.textContent.trim();
             if (name) knownNames.push(name);
             el.setAttribute('data-fv3-real', name);
-            el.textContent = getAnon(name, el.closest('.folder-name, [class*="folder-docker"], [class*="folder-vm"]') ? 'folder' : 'container');
+            el.textContent = getAnon(name, 'folder');
         });
 
         document.querySelectorAll('.appname, .appname a, td.ct-name > span > a, td.vm-name span.inner a').forEach(function(el) {
@@ -241,10 +245,16 @@ window.fv3Incognito = localStorage.getItem('fv3-incognito') === 'true';
     function injectToggle() {
         if (document.getElementById('fv3-incognito-btn')) return;
 
-        var appsToggle = document.querySelector('input#apps');
-        if (appsToggle) {
-            var label = appsToggle.closest('label') || appsToggle.parentNode;
-            label.parentNode.insertBefore(createBtn(), label.nextSibling);
+        var toggleView = document.querySelector('.ToggleViewMode');
+        if (toggleView) {
+            toggleView.parentNode.insertBefore(createBtn(), toggleView);
+            if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
+            return;
+        }
+
+        var vmHeader = document.querySelector('#kvm_table > thead > tr > th:first-child');
+        if (vmHeader) {
+            vmHeader.appendChild(createBtn());
             if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
             return;
         }

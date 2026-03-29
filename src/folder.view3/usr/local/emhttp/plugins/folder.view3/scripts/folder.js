@@ -4,6 +4,7 @@ const escapeHtml = (str) => {
 };
 
 const fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
+    if (raw !== null && typeof raw === 'object') return raw;
     try { return JSON.parse(raw); }
     catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
 });
