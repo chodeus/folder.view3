@@ -111,6 +111,8 @@
     "row-separator-tooltip": "Shows a faint horizontal line between rows when the preview expands to multiple lines.",
     "separator-color": "Separator color:",
     "separator-color-tooltip": "Set the color of the row separator line.<br>The <i class=\"fa fa-repeat\" aria-hidden=\"true\"></i> button will reset to the current font color.",
+    "lock-colors": "Lock colors:",
+    "lock-colors-tooltip": "When enabled, this folder's border, vertical bar, and separator colors cannot be overridden by CSS presets or custom CSS.<br>When disabled (default), CSS presets and custom CSS can override these colors.",
     "update-column": "Hide update column:",
     "update-column-tooltip": "Will <b>NUKE</b> the update column for this folder.",
     "expand-tab": "Expanded on Docker/VM tab:",

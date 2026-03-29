@@ -111,6 +111,8 @@
     "row-separator-tooltip": "Zeigt eine feine horizontale Linie zwischen den Zeilen, wenn die Vorschau auf mehrere Zeilen erweitert wird.",
     "separator-color": "Trennlinienfarbe:",
     "separator-color-tooltip": "Legt die Farbe der Zeilentrennlinie fest.<br>Die <i class=\"fa fa-repeat\" aria-hidden=\"true\"></i> Taste setzt auf die aktuelle Schriftfarbe zurück.",
+    "lock-colors": "Lock colors:",
+    "lock-colors-tooltip": "When enabled, this folder's border, vertical bar, and separator colors cannot be overridden by CSS presets or custom CSS.<br>When disabled (default), CSS presets and custom CSS can override these colors.",
     "update-column": "Aktualisierungsspalte ausblenden:",
     "update-column-tooltip": "Wird die Aktualisierungsspalte für diesen Ordner <b>LÖSCHEN</b>.",
     "expand-tab": "Im Docker/VM-Reiter aufklappen:",

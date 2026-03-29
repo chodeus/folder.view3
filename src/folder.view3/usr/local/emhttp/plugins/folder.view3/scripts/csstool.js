@@ -12,7 +12,11 @@
         'fv3-accent-color': { type: 'text', group: 'colors', label: 'Accent color', desc: 'Active tabs, highlights, active toggle border\nFormat: #hex, rgba(), var(--name), color name' },
         'fv3-toggle-color': { type: 'color', group: 'colors', label: 'Toggle button color', desc: 'Folder chevron dropdown button color\nFormat: #hex' },
         'fv3-toggle-hover-color': { type: 'color', group: 'colors', label: 'Toggle hover color', desc: 'Chevron button color on hover\nFormat: #hex' },
-        'fv3-separator-bg': { type: 'text', group: 'colors', label: 'Row separator', desc: 'Divider line between preview rows in expand mode\nFormat: rgba(r,g,b,a) or #hex', pages: ['docker', 'vm'] },
+        'fv3-chevron-color': { type: 'text', group: 'colors', label: 'Chevron color', desc: 'Folder expand/collapse chevron color\nFormat: #hex, rgba(), inherit', pages: ['docker', 'vm'] },
+        'fv3-preview-border-color': { type: 'text', group: 'colors', label: 'Preview border', desc: 'Default preview area border color (overridden by per-folder setting)\nFormat: #hex, rgba(), currentColor', pages: ['docker', 'vm'] },
+        'fv3-vertical-bars-color': { type: 'text', group: 'colors', label: 'Vertical bars', desc: 'Default vertical divider bar color (overridden by per-folder setting)\nFormat: #hex, rgba(), currentColor', pages: ['docker', 'vm'] },
+        'fv3-separator-color': { type: 'text', group: 'colors', label: 'Separator color', desc: 'Default row separator color in expand mode (overridden by per-folder setting)\nFormat: #hex, rgba()', pages: ['docker', 'vm'] },
+        'fv3-separator-bg': { type: 'text', group: 'colors', label: 'Row separator bg', desc: 'Row separator background in expand mode (legacy)\nFormat: rgba(r,g,b,a) or #hex', pages: ['docker', 'vm'] },
         'fv3-surface-tint': { type: 'text', group: 'colors', label: 'Surface tint', desc: 'Subtle background tint on section headers and panels\nFormat: rgba(r,g,b,a) or #hex' },
         'fv3-hover-bg': { type: 'text', group: 'colors', label: 'Hover background', desc: 'Background highlight when hovering rows and buttons\nFormat: rgba(r,g,b,a) or #hex' },
         'fv3-border': { type: 'text', group: 'colors', label: 'Border', desc: 'General border color used throughout the plugin\nFormat: 1px solid rgba(r,g,b,a) or 1px solid #hex' },
@@ -56,8 +60,27 @@
                 'fv3-toggle-color': '#3b82f6',
                 'fv3-toggle-hover-color': '#60a5fa',
                 'fv3-embossed-accent': '#3b82f6',
+                'fv3-chevron-color': '#3b82f6',
+                'fv3-preview-border-color': '#3b82f6',
+                'fv3-vertical-bars-color': 'rgba(59,130,246,0.4)',
+                'fv3-separator-color': 'rgba(59,130,246,0.3)',
                 'folder-view3-graph-cpu': '#3b82f6',
                 'folder-view3-graph-mem': '#8b5cf6'
+            }
+        },
+        {
+            name: 'Green Accent',
+            values: {
+                'fv3-accent-color': '#22c55e',
+                'fv3-toggle-color': '#22c55e',
+                'fv3-toggle-hover-color': '#4ade80',
+                'fv3-embossed-accent': '#22c55e',
+                'fv3-chevron-color': '#22c55e',
+                'fv3-preview-border-color': '#22c55e',
+                'fv3-vertical-bars-color': 'rgba(34,197,94,0.4)',
+                'fv3-separator-color': 'rgba(34,197,94,0.3)',
+                'folder-view3-graph-cpu': '#22c55e',
+                'folder-view3-graph-mem': '#06b6d4'
             }
         },
         {
@@ -67,11 +90,15 @@
                 'fv3-toggle-color': '#9ca3af',
                 'fv3-toggle-hover-color': '#d1d5db',
                 'fv3-embossed-accent': '#9ca3af',
-                'folder-view3-graph-cpu': '#6b7280',
-                'folder-view3-graph-mem': '#9ca3af',
+                'fv3-chevron-color': '#9ca3af',
+                'fv3-preview-border-color': '#9ca3af',
+                'fv3-vertical-bars-color': 'rgba(156,163,175,0.3)',
+                'fv3-separator-color': 'rgba(156,163,175,0.2)',
                 'fv3-separator-bg': 'rgba(128,128,128,0.1)',
                 'fv3-panel-border': 'rgba(128,128,128,0.15)',
-                'fv3-panel-bg': 'rgba(128,128,128,0.05)'
+                'fv3-panel-bg': 'rgba(128,128,128,0.05)',
+                'folder-view3-graph-cpu': '#6b7280',
+                'folder-view3-graph-mem': '#9ca3af'
             }
         }
     ];

@@ -340,6 +340,59 @@
         @chmod($path, 0660);
     }
 
+    function updateSettingsBatch(array $settings) : void {
+        global $configDir;
+        $allowed = [
+            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+            'dashboard_animation'            => ['yes', 'no'],
+            'dashboard_docker_expand_toggle' => ['yes', 'no'],
+            'dashboard_docker_greyscale'     => ['yes', 'no'],
+            'dashboard_docker_folder_label'  => ['yes', 'no'],
+            'dashboard_vm_expand_toggle'     => ['yes', 'no'],
+            'dashboard_vm_greyscale'         => ['yes', 'no'],
+            'dashboard_vm_folder_label'      => ['yes', 'no'],
+            'default_preview'          => ['0', '1', '2', '3', '4'],
+            'default_preview_hover'    => ['yes', 'no'],
+            'default_preview_grayscale'=> ['yes', 'no'],
+            'default_preview_webui'    => ['yes', 'no'],
+            'default_preview_logs'     => ['yes', 'no'],
+            'default_preview_console'  => ['yes', 'no'],
+            'default_preview_update'   => ['yes', 'no'],
+            'default_preview_vertical_bars' => ['yes', 'no'],
+            'default_preview_border'   => ['yes', 'no'],
+            'default_row_separator'    => ['yes', 'no'],
+            'default_overflow'         => ['default', 'scroll', 'expand'],
+            'default_context'          => ['0', '1', '2'],
+            'default_update_column'    => ['yes', 'no']
+        ];
+        $freeform = ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width'];
+        $path = "$configDir/settings.json";
+        $fp = fopen($path, 'c+');
+        if (!$fp) { http_response_code(500); exit; }
+        flock($fp, LOCK_EX);
+        $raw = stream_get_contents($fp);
+        $data = json_decode($raw, true) ?: [];
+        foreach ($settings as $key => $value) {
+            $key = (string)$key;
+            $value = (string)$value;
+            if (isset($allowed[$key])) {
+                if (in_array($value, $allowed[$key], true)) $data[$key] = $value;
+            } elseif (in_array($key, $freeform, true)) {
+                if (strlen($value) > 50) continue;
+                $value = preg_replace('/[<>"\'\\\\]/', '', $value);
+                if ($value === '') { unset($data[$key]); } else { $data[$key] = $value; }
+            }
+        }
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($data));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        @chmod($path, 0660);
+    }
+
     function updateSettingsFreeform(string $key, string $value) : void {
         global $configDir;
         $allowedFreeform = [

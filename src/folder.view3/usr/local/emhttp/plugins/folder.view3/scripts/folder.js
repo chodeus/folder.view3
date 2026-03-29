@@ -104,6 +104,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         form.preview_border.checked = currFolder.settings.preview_border || false;
         form.preview_border_color.value = currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
         form.preview_vertical_bars_color.value = currFolder.settings.preview_vertical_bars_color || currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
+        form.lock_colors.checked = currFolder.settings.lock_colors || false;
         form.update_column.checked = currFolder.settings.update_column || false;
         form.default_action.checked = currFolder.settings.default_action || false;
         form.expand_tab.checked = currFolder.settings.expand_tab;
@@ -378,6 +379,7 @@ const submitForm = async (e) => {
             preview_border: e.preview_border.checked,
             preview_border_color: e.preview_border_color.value.toString(),
             preview_vertical_bars_color: e.preview_vertical_bars_color.value.toString(),
+            lock_colors: e.lock_colors.checked,
             update_column: e.update_column.checked,
             default_action: e.default_action.checked,
             expand_tab: e.expand_tab.checked,

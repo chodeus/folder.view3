@@ -34,6 +34,12 @@
     --fv3-appname-max-width: 120px;
     --fv3-scrollbar-color: rgba(255, 140, 47, 0.5);
 
+    /* Themeable element colors (overridden by per-folder settings when set) */
+    --fv3-chevron-color: inherit;
+    --fv3-preview-border-color: currentColor;
+    --fv3-vertical-bars-color: currentColor;
+    --fv3-separator-color: rgba(128, 128, 128, 0.5);
+
     /* Internal aliases (replacing hardcoded grays) */
     --fv3-separator-bg: rgba(128, 128, 128, 0.15);
     --fv3-tab-active-bg: rgba(128, 128, 128, 0.15);
@@ -121,6 +127,7 @@ td.folder-name .folder-outer {
     margin: 0;
     margin-left: auto;
     flex-shrink: 0;
+    color: var(--fv3-chevron-color);
 }
 
 .folder-storage {
@@ -159,7 +166,7 @@ td.folder-name .folder-outer {
     left: var(--fv3-folder-preview-wrapper-margin);
     right: var(--fv3-folder-preview-wrapper-margin);
     height: 1px;
-    background: var(--fv3-separator-bg);
+    background: var(--fv3-separator-color);
     pointer-events: none;
 }
 
@@ -202,7 +209,7 @@ td.folder-name .folder-outer {
 .folder-preview-divider:not(:last-child) {
     height: var(--fv3-preview-icon-size);
     width: 0;
-    border-right: 1px solid;
+    border-right: 1px solid var(--fv3-vertical-bars-color);
     margin-left: 0;
     align-self: center;
 }

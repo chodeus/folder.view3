@@ -356,6 +356,22 @@ Markdown="false"
                         </li>
                     </ul>
                 </li>
+                <li constraint="preview-1 preview-2 preview-3 preview-4">
+                    <div class="basic">
+                        <dl>
+                            <dt data-i18n="lock-colors">Lock colors:</dt>
+                            <dd>
+                                <input class="fv3-toggle" name="lock_colors" type="checkbox" />
+                            </dd>
+                        </dl>
+                        <blockquote class="inline_help">
+                            <p data-i18n="[html]lock-colors-tooltip">
+                                When enabled, this folder's border, vertical bar, and separator colors cannot be overridden by CSS presets or custom CSS.
+                                <br>When disabled (default), CSS presets and custom CSS can override these colors.
+                            </p>
+                        </blockquote>
+                    </div>
+                </li>
                 <li constraint="docker preview-1 preview-2 preview-3 preview-4">
                     <div class="basic">
                         <dl>

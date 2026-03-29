@@ -111,6 +111,8 @@
     "row-separator-tooltip": "Affiche une fine ligne horizontale entre les lignes lorsque l'aperçu s'étend sur plusieurs lignes.",
     "separator-color": "Couleur du séparateur :",
     "separator-color-tooltip": "Définit la couleur de la ligne de séparation des lignes.<br>Le bouton <i class=\"fa fa-repeat\" aria-hidden=\"true\"></i> réinitialisera à la couleur de police actuelle.",
+    "lock-colors": "Lock colors:",
+    "lock-colors-tooltip": "When enabled, this folder's border, vertical bar, and separator colors cannot be overridden by CSS presets or custom CSS.<br>When disabled (default), CSS presets and custom CSS can override these colors.",
     "update-column": "Cacher la colonne de mise à jour :",
     "update-column-tooltip": "Cachera le colonne de mise à jour pour ce dossier.",
     "expand-tab": "Déployé sur l'onglet Docker/VM :",

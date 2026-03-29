@@ -111,6 +111,8 @@
     "row-separator-tooltip": "Wyświetla delikatną linię poziomą między wierszami, gdy podgląd rozszerza się na wiele wierszy.",
     "separator-color": "Kolor separatora:",
     "separator-color-tooltip": "Ustaw kolor linii separatora wierszy.<br>Przycisk <i class=\"fa fa-repeat\" aria-hidden=\"true\"></i> przywróci bieżący kolor czcionki.",
+    "lock-colors": "Lock colors:",
+    "lock-colors-tooltip": "When enabled, this folder's border, vertical bar, and separator colors cannot be overridden by CSS presets or custom CSS.<br>When disabled (default), CSS presets and custom CSS can override these colors.",
     "update-column": "Ukryj kolumnę aktualizacji:",
     "update-column-tooltip": "Usunie kolumnę aktualizacji dla tego folderu.",
     "expand-tab": "Rozwinięty w zakładce Docker/VM:",

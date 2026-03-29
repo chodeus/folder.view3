@@ -400,7 +400,7 @@
 /* Advanced CSS textarea */
 #fv3-custom-css {
     width: 100%;
-    min-height: 200px;
+    min-height: 400px;
     background-color: transparent;
     border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
     border-radius: 4px;

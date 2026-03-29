@@ -3,6 +3,17 @@ const escapeHtml = (str) => {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
 
+const rgbToHex = (rgb) => {
+    const m = rgb.match(/\d+/g);
+    return m ? '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('') : rgb;
+};
+
+const fv3ResetColor = (colorId, textId) => {
+    const val = rgbToHex($('body').css('color'));
+    $(`#${colorId}`).val(val);
+    $(`#${textId}`).val(val);
+};
+
 const fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
     if (raw !== null && typeof raw === 'object') return raw;
     try { return JSON.parse(raw); }
@@ -325,93 +336,39 @@ const fileManager = async (type) => {
     location.href = location.pathname + '/Browse?dir=/boot/config/plugins/folder.view3';
 };
 
-let fv3SuppressToggle = false;
-
-const fv3InitToggle = (id, settingKey) => {
-    $(`#${id}`).on('change', function() {
-        if (fv3SuppressToggle) return;
-        saveDashboardSetting(settingKey, this.checked ? 'yes' : 'no');
-    });
+const fv3ToggleMap = {
+    'dashboard-animation': 'dashboard_animation',
+    'dashboard-docker-expand-toggle': 'dashboard_docker_expand_toggle',
+    'dashboard-docker-greyscale': 'dashboard_docker_greyscale',
+    'dashboard-docker-folder-label': 'dashboard_docker_folder_label',
+    'dashboard-vm-expand-toggle': 'dashboard_vm_expand_toggle',
+    'dashboard-vm-greyscale': 'dashboard_vm_greyscale',
+    'dashboard-vm-folder-label': 'dashboard_vm_folder_label',
+    'default-preview-hover': 'default_preview_hover',
+    'default-preview-grayscale': 'default_preview_grayscale',
+    'default-preview-webui': 'default_preview_webui',
+    'default-preview-logs': 'default_preview_logs',
+    'default-preview-console': 'default_preview_console',
+    'default-preview-update': 'default_preview_update',
+    'default-preview-vertical-bars': 'default_preview_vertical_bars',
+    'default-preview-border': 'default_preview_border',
+    'default-row-separator': 'default_row_separator',
+    'default-update-column': 'default_update_column'
 };
 
-const loadDashboardSettings = async () => {
-    try {
-        const settings = JSON.parse(await $.get('/plugins/folder.view3/server/read_settings.php').promise());
-        if (settings.dashboard_docker_layout) {
-            $('select#dashboard-docker-layout').val(settings.dashboard_docker_layout);
-        }
-        if (settings.dashboard_vm_layout) {
-            $('select#dashboard-vm-layout').val(settings.dashboard_vm_layout);
-        }
-        if (settings.dashboard_animation === 'yes') {
-            $('#dashboard-animation').prop('checked', true);
-        }
-        fv3InitToggle('dashboard-animation', 'dashboard_animation');
-        const toggleMap = {
-            'dashboard-docker-expand-toggle': 'dashboard_docker_expand_toggle',
-            'dashboard-docker-greyscale': 'dashboard_docker_greyscale',
-            'dashboard-docker-folder-label': 'dashboard_docker_folder_label',
-            'dashboard-vm-expand-toggle': 'dashboard_vm_expand_toggle',
-            'dashboard-vm-greyscale': 'dashboard_vm_greyscale',
-            'dashboard-vm-folder-label': 'dashboard_vm_folder_label'
-        };
-        for (const [id, key] of Object.entries(toggleMap)) {
-            if (settings[key] === 'yes') {
-                $(`#${id}`).prop('checked', true);
-            }
-            fv3InitToggle(id, key);
-        }
-        fv3ToggleNonClassicSettings();
-
-        if (settings.default_preview) {
-            $('select#default-preview').val(settings.default_preview);
-        }
-        if (settings.default_overflow) {
-            $('select#default-overflow').val(settings.default_overflow);
-            $('.fv3-expand-only').css('display', settings.default_overflow === 'expand' ? '' : 'none');
-        } else {
-            $('.fv3-expand-only').css('display', 'none');
-        }
-        const defaultToggleMap = {
-            'default-preview-hover': 'default_preview_hover',
-            'default-preview-grayscale': 'default_preview_grayscale',
-            'default-preview-webui': 'default_preview_webui',
-            'default-preview-logs': 'default_preview_logs',
-            'default-preview-console': 'default_preview_console',
-            'default-preview-update': 'default_preview_update',
-            'default-preview-vertical-bars': 'default_preview_vertical_bars',
-            'default-preview-border': 'default_preview_border',
-            'default-row-separator': 'default_row_separator',
-            'default-update-column': 'default_update_column'
-        };
-        for (const [id, key] of Object.entries(defaultToggleMap)) {
-            if (settings[key] === 'yes') {
-                $(`#${id}`).prop('checked', true);
-            }
-            fv3InitToggle(id, key);
-        }
-        if (settings.default_context) $('select#default-context').val(settings.default_context);
-
-        const colorFields = [
-            { toggleId: 'default-preview-vertical-bars', rowId: 'fv3-bars-color-row', colorId: 'default-vertical-bars-color', textId: 'default-vertical-bars-color-text', key: 'default_vertical_bars_color' },
-            { toggleId: 'default-preview-border', rowId: 'fv3-border-color-row', colorId: 'default-border-color', textId: 'default-border-color-text', key: 'default_border_color' },
-            { toggleId: 'default-row-separator', rowId: 'fv3-separator-color-row', colorId: 'default-separator-color', textId: 'default-separator-color-text', key: 'default_separator_color' }
-        ];
-        colorFields.forEach(cf => {
-            const val = settings[cf.key] || '';
-            if (val) { $(`#${cf.colorId}`).val(val); $(`#${cf.textId}`).val(val); }
-            if ($(`#${cf.toggleId}`).is(':checked')) $(`#${cf.rowId}`).show();
-            $(`#${cf.toggleId}`).on('change', function() { $(`#${cf.rowId}`).toggle(this.checked); });
-            $(`#${cf.colorId}`).on('input', function() { $(`#${cf.textId}`).val(this.value); saveFreeformSetting(cf.key, this.value); });
-            $(`#${cf.textId}`).on('change', function() { $(`#${cf.colorId}`).val(this.value); saveFreeformSetting(cf.key, this.value); });
-        });
-
-        if (settings.default_preview_text_width) $(`#default-preview-text-width`).val(settings.default_preview_text_width);
-        $(`#default-preview-text-width`).on('change', function() { saveFreeformSetting('default_preview_text_width', this.value); });
-    } catch (e) {
-        console.error('Failed to load dashboard settings:', e);
-    }
+const fv3SelectMap = {
+    'dashboard-docker-layout': 'dashboard_docker_layout',
+    'dashboard-vm-layout': 'dashboard_vm_layout',
+    'default-preview': 'default_preview',
+    'default-overflow': 'default_overflow',
+    'default-context': 'default_context'
 };
+
+const fv3ColorFields = [
+    { toggleId: 'default-preview-vertical-bars', rowId: 'fv3-bars-color-row', colorId: 'default-vertical-bars-color', textId: 'default-vertical-bars-color-text', key: 'default_vertical_bars_color' },
+    { toggleId: 'default-preview-border', rowId: 'fv3-border-color-row', colorId: 'default-border-color', textId: 'default-border-color-text', key: 'default_border_color' },
+    { toggleId: 'default-row-separator', rowId: 'fv3-separator-color-row', colorId: 'default-separator-color', textId: 'default-separator-color-text', key: 'default_separator_color' }
+];
 
 const fv3ToggleNonClassicSettings = () => {
     const docker = $('select#dashboard-docker-layout').val();
@@ -420,39 +377,95 @@ const fv3ToggleNonClassicSettings = () => {
     $('.fv3-vm-nonclassic').css('display', vm !== 'classic' ? '' : 'none');
 };
 
-const fv3ResetNonClassicSettings = async (type) => {
-    const id = type === 'docker' ? 'dashboard-docker' : 'dashboard-vm';
-    const key = type === 'docker' ? 'dashboard_docker' : 'dashboard_vm';
-    fv3SuppressToggle = true;
-    $(`#${id}-folder-label`).prop('checked', false);
-    $(`#${id}-expand-toggle`).prop('checked', false);
-    fv3SuppressToggle = false;
-    await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_folder_label`, value: 'no' }).promise();
-    await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_expand_toggle`, value: 'no' }).promise();
+const fv3ApplyFormState = (settings) => {
+    for (const [id, key] of Object.entries(fv3SelectMap)) {
+        if (settings[key]) $(`select#${id}`).val(settings[key]);
+    }
+    for (const [id, key] of Object.entries(fv3ToggleMap)) {
+        $(`#${id}`).prop('checked', settings[key] === 'yes');
+    }
+    fv3ToggleNonClassicSettings();
+    const overflow = settings.default_overflow || '';
+    $('.fv3-expand-only').css('display', overflow === 'expand' ? '' : 'none');
+    fv3ColorFields.forEach(cf => {
+        const val = settings[cf.key] || '';
+        if (val) { $(`#${cf.colorId}`).val(val); $(`#${cf.textId}`).val(val); }
+        else { $(`#${cf.colorId}`).val('#000000'); $(`#${cf.textId}`).val(''); }
+        $(`#${cf.rowId}`).css('display', $(`#${cf.toggleId}`).is(':checked') ? 'flex' : 'none');
+    });
+    if (settings.default_preview_text_width) $(`#default-preview-text-width`).val(settings.default_preview_text_width);
+    else $(`#default-preview-text-width`).val('');
 };
 
-const saveDashboardSetting = async (key, value) => {
+const fv3CollectSettings = () => {
+    const settings = {};
+    for (const [id, key] of Object.entries(fv3SelectMap)) {
+        settings[key] = $(`select#${id}`).val();
+    }
+    for (const [id, key] of Object.entries(fv3ToggleMap)) {
+        settings[key] = $(`#${id}`).is(':checked') ? 'yes' : 'no';
+    }
+    fv3ColorFields.forEach(cf => {
+        settings[cf.key] = $(`#${cf.textId}`).val() || $(`#${cf.colorId}`).val() || '';
+    });
+    settings.default_preview_text_width = $(`#default-preview-text-width`).val() || '';
+    return settings;
+};
+
+let fv3LoadedSettings = {};
+
+const loadDashboardSettings = async () => {
     try {
-        await $.post('/plugins/folder.view3/server/update_settings.php', { key, value }).promise();
-        if (key === 'dashboard_docker_layout') {
-            fv3ToggleNonClassicSettings();
-            if (value === 'classic') fv3ResetNonClassicSettings('docker');
-        } else if (key === 'dashboard_vm_layout') {
-            fv3ToggleNonClassicSettings();
-            if (value === 'classic') fv3ResetNonClassicSettings('vm');
-        }
+        const settings = JSON.parse(await $.get('/plugins/folder.view3/server/read_settings.php').promise());
+        fv3LoadedSettings = { ...settings };
+        fv3ApplyFormState(settings);
     } catch (e) {
-        console.error('Failed to save dashboard setting:', e);
+        console.error('Failed to load dashboard settings:', e);
     }
 };
 
-const saveFreeformSetting = async (key, value) => {
+const fv3SubmitSettings = async () => {
+    const current = fv3CollectSettings();
+    const changed = {};
+    for (const [key, value] of Object.entries(current)) {
+        if ((fv3LoadedSettings[key] ?? '') !== value) changed[key] = value;
+    }
+    if (changed.dashboard_docker_layout === 'classic') {
+        changed.dashboard_docker_folder_label = 'no';
+        changed.dashboard_docker_expand_toggle = 'no';
+    }
+    if (changed.dashboard_vm_layout === 'classic') {
+        changed.dashboard_vm_folder_label = 'no';
+        changed.dashboard_vm_expand_toggle = 'no';
+    }
+    if (Object.keys(changed).length === 0) return;
     try {
-        await $.post('/plugins/folder.view3/server/update_settings.php', { key, value }).promise();
+        await $.ajax({
+            url: '/plugins/folder.view3/server/update_settings_batch.php',
+            method: 'POST',
+            data: { settings: JSON.stringify(changed) }
+        }).promise();
+        fv3LoadedSettings = { ...fv3LoadedSettings, ...changed };
+        fv3ApplyFormState(fv3LoadedSettings);
     } catch (e) {
-        console.error('Failed to save freeform setting:', e);
+        console.error('Failed to save settings:', e);
     }
 };
+
+const fv3CancelSettings = () => {
+    fv3ApplyFormState(fv3LoadedSettings);
+};
+
+// UI side effects (no save, just visual)
+$('select#dashboard-docker-layout, select#dashboard-vm-layout').on('change', fv3ToggleNonClassicSettings);
+$('select#default-overflow').on('change', function() {
+    $('.fv3-expand-only').css('display', this.value === 'expand' ? '' : 'none');
+});
+fv3ColorFields.forEach(cf => {
+    $(`#${cf.toggleId}`).on('change', function() { $(`#${cf.rowId}`).css('display', this.checked ? 'flex' : 'none'); });
+    $(`#${cf.colorId}`).on('input', function() { $(`#${cf.textId}`).val(this.value); });
+    $(`#${cf.textId}`).on('change', function() { $(`#${cf.colorId}`).val(this.value); });
+});
 
 $('#fv3-apply-defaults').on('click', function() {
     swal({

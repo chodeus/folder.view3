@@ -438,7 +438,13 @@ window.fv3UpdateRowSeparators = (folderMap, folderId) => {
                 const sep = document.createElement('div');
                 sep.className = 'fv3-row-separator';
                 sep.style.top = Math.round((bottom + top) / 2) + 'px';
-                if (sepColor) sep.style.backgroundColor = sepColor;
+                if (sepColor) {
+                    if (folder.settings.lock_colors) {
+                        sep.style.backgroundColor = sepColor;
+                    } else {
+                        sep.style.setProperty('--fv3-separator-color', sepColor);
+                    }
+                }
                 preview.appendChild(sep);
             }
         }

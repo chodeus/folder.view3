@@ -268,8 +268,18 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     fv3Debug('createFolder', id, 'switchButton init deferred until autostart state is calculated.');
 
     if(folder.settings.preview_border) {
-        fv3Debug('createFolder', id, `Setting preview border color to ${folder.settings.preview_border_color}.`);
-        $(`tr.folder-id-${id}  div.folder-preview`).css('border', `solid ${folder.settings.preview_border_color} 1px`);
+        const preview = $(`tr.folder-id-${id} div.folder-preview`);
+        if (folder.settings.preview_border_color) {
+            if (folder.settings.lock_colors) {
+                preview.css('border', `solid ${folder.settings.preview_border_color} 1px`);
+            } else {
+                preview[0].style.setProperty('--fv3-preview-border-color', folder.settings.preview_border_color);
+                preview.css('border', 'solid var(--fv3-preview-border-color) 1px');
+            }
+        } else {
+            preview.css('border', 'solid var(--fv3-preview-border-color) 1px');
+        }
+        fv3Debug('createFolder', id, `Setting preview border.`);
     }
     $(`tr.folder-id-${id} div.folder-preview`).addClass(`folder-preview-${folder.settings.preview}`);
     fv3Debug('createFolder', id, `Added class folder-preview-${folder.settings.preview} to preview div.`);
@@ -939,8 +949,14 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     fv3Debug('createFolder', id, 'Wrapped preview spans with .folder-preview-wrapper.');
     fv3SetupPreviewMode(folder, id, globalFolders);
     if(folder.settings.preview_vertical_bars) {
-        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
-        $(`tr.folder-id-${id} div.folder-preview > div`).after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
+        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color || '';
+        let barStyle = '';
+        if (barsColor && folder.settings.lock_colors) {
+            barStyle = `border-color: ${barsColor};`;
+        } else if (barsColor) {
+            barStyle = `--fv3-vertical-bars-color: ${barsColor};`;
+        }
+        $(`tr.folder-id-${id} div.folder-preview > div`).after(`<div class="folder-preview-divider" style="${barStyle}"></div>`);
         fv3Debug('createFolder', id, 'Added preview_vertical_bars.');
     }
     if(folder.settings.update_column) {

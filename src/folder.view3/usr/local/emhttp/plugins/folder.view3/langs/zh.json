@@ -111,6 +111,8 @@
     "row-separator-tooltip": "当预览扩展为多行时，在行之间显示一条淡淡的水平线。",
     "separator-color": "分隔线颜色：",
     "separator-color-tooltip": "设置行分隔线的颜色。<br><i class=\"fa fa-repeat\" aria-hidden=\"true\"></i> 按钮将重置为当前字体颜色。",
+    "lock-colors": "Lock colors:",
+    "lock-colors-tooltip": "When enabled, this folder's border, vertical bar, and separator colors cannot be overridden by CSS presets or custom CSS.<br>When disabled (default), CSS presets and custom CSS can override these colors.",
     "update-column": "隐藏更新栏：",
     "update-column-tooltip": "将不显示该文件夹的更新栏。",
     "expand-tab": "默认在Docker/虚拟机页展开：",
