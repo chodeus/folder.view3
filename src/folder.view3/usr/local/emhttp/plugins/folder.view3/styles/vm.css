@@ -76,7 +76,7 @@ td.folder-name .folder-outer {
     height: var(--fv3-folder-preview-height);
     overflow: hidden;
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
 }
 
@@ -106,6 +106,7 @@ td.folder-name .folder-outer {
 }
 
 .folder-preview.fv3-overflow-scroll {
+    flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
     padding-top: 6px;

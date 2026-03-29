@@ -959,8 +959,11 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                 if (wrappers[0].offsetTop === wrappers[wrappers.length - 1].offsetTop) {
                     expandEl.classList.remove('fv3-overflow-expand');
                 }
-            } else if (expandEl.scrollWidth > expandEl.clientWidth) {
-                expandEl.classList.add('fv3-overflow-expand');
+            } else {
+                const wrappers = expandEl.querySelectorAll('.folder-preview-wrapper');
+                if (wrappers.length >= 2 && wrappers[0].offsetTop !== wrappers[wrappers.length - 1].offsetTop) {
+                    expandEl.classList.add('fv3-overflow-expand');
+                }
             }
         };
         expandEl._fv3CheckExpand = checkExpand;
@@ -991,6 +994,48 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             });
         });
         scrollRo.observe(scrollEl);
+    } else {
+        const clipEl = $(`tr.folder-id-${id} div.folder-preview`)[0];
+        if (clipEl) {
+            const clipPreview = () => {
+                const children = clipEl.children;
+                for (let i = 0; i < children.length; i++) {
+                    children[i].style.display = '';
+                }
+                if (window.matchMedia('(max-width: 768px)').matches) return;
+                let firstTop = -1;
+                let clipping = false;
+                let lastVisibleDivider = null;
+                for (let i = 0; i < children.length; i++) {
+                    const child = children[i];
+                    const isWrapper = child.classList.contains('folder-preview-wrapper');
+                    const isDivider = child.classList.contains('folder-preview-divider');
+                    if (clipping) {
+                        child.style.display = 'none';
+                        continue;
+                    }
+                    if (isWrapper) {
+                        if (firstTop < 0) firstTop = child.offsetTop;
+                        if (child.offsetTop !== firstTop) {
+                            clipping = true;
+                            child.style.display = 'none';
+                            if (lastVisibleDivider) lastVisibleDivider.style.display = 'none';
+                            continue;
+                        }
+                    }
+                    if (isDivider) lastVisibleDivider = child;
+                }
+            };
+            clipEl._fv3ClipPreview = clipPreview;
+            requestAnimationFrame(clipPreview);
+            clipEl.querySelectorAll('img').forEach(img => {
+                if (!img.complete) {
+                    img.addEventListener('load', () => requestAnimationFrame(clipPreview), { once: true });
+                }
+            });
+            const clipRo = new ResizeObserver(() => requestAnimationFrame(clipPreview));
+            clipRo.observe(clipEl);
+        }
     }
     if(folder.settings.preview_vertical_bars) {
         const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
@@ -1839,6 +1884,7 @@ const fv3SyncPreviewHeights = () => {
     });
     document.querySelectorAll('tr.folder .folder-preview').forEach(el => {
         if (el._fv3CheckExpand) el._fv3CheckExpand();
+        if (el._fv3ClipPreview) el._fv3ClipPreview();
     });
     if (typeof fv3UpdateRowSeparators === 'function') {
         clearTimeout(_fv3SepTimer);
