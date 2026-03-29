@@ -1,3 +1,18 @@
+/* CSS Tool — unified customize sections */
+.fv3-customize-section {
+    margin-bottom: 2rem;
+}
+
+.fv3-customize-section > .fv3-section-heading {
+    margin-top: 0;
+}
+
+.fv3-customize-hint {
+    font-size: 0.9em;
+    opacity: 0.6;
+    margin: 0 0 1rem;
+}
+
 /* CSS Tool — tier navigation */
 .fv3-csstool-tiers {
     display: flex;

@@ -249,13 +249,11 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
     <div id="fv3-csstool">
         <div class="fv3-csstool-tiers">
             <button class="fv3-tier-btn fv3-tier-active" data-tier="themes" data-i18n="css-themes">Themes</button>
-            <button class="fv3-tier-btn" data-tier="variables" data-i18n="css-variables">Variables</button>
-            <button class="fv3-tier-btn" data-tier="presets" data-i18n="css-presets">Presets</button>
-            <button class="fv3-tier-btn" data-tier="advanced" data-i18n="css-advanced">Advanced CSS</button>
+            <button class="fv3-tier-btn" data-tier="customize" data-i18n="css-customize">Customize</button>
         </div>
 
         <div class="fv3-tier-panel" id="fv3-tier-themes">
-            <p data-i18n="css-themes-help">Import community CSS themes from GitHub. Only one theme can be active at a time. CSS variables from the Variables tab are always applied on top.</p>
+            <p data-i18n="css-themes-help">Import community CSS themes from GitHub. Only one theme can be active at a time. CSS variables are always applied on top.</p>
             <div class="fv3-theme-import">
                 <input type="text" id="fv3-theme-repo" placeholder="owner/repo (e.g. masterwishx/folder.view.custom.css)">
                 <button id="fv3-theme-import-btn" data-i18n="css-theme-import">Import from GitHub</button>
@@ -263,32 +261,39 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <div id="fv3-theme-list"></div>
         </div>
 
-        <div class="fv3-tier-panel" id="fv3-tier-variables" style="display:none">
-            <div class="fv3-subtabs">
-                <button class="fv3-subtab fv3-subtab-active" data-scope="global" data-i18n="css-global">Global</button>
-                <button class="fv3-subtab" data-scope="dashboard" data-i18n="css-dashboard-scope">Dashboard</button>
-                <button class="fv3-subtab" data-scope="docker" data-i18n="css-docker-scope">Docker</button>
-                <button class="fv3-subtab" data-scope="vm" data-i18n="css-vm-scope">VM</button>
+        <div class="fv3-tier-panel" id="fv3-tier-customize" style="display:none">
+            <div class="fv3-customize-section">
+                <div class="fv3-section-heading">Presets</div>
+                <p class="fv3-customize-hint">Select a preset to apply its values. You can then modify individual variables below.</p>
+                <div class="fv3-preset-grid" id="fv3-preset-grid"></div>
             </div>
-            <div id="fv3-var-list"></div>
-        </div>
 
-        <div class="fv3-tier-panel" id="fv3-tier-presets" style="display:none">
-            <div class="fv3-preset-grid" id="fv3-preset-grid"></div>
-        </div>
+            <div class="fv3-customize-section">
+                <div class="fv3-section-heading">Variables</div>
+                <div class="fv3-subtabs">
+                    <button class="fv3-subtab fv3-subtab-active" data-scope="global" data-i18n="css-global">Global</button>
+                    <button class="fv3-subtab" data-scope="dashboard" data-i18n="css-dashboard-scope">Dashboard</button>
+                    <button class="fv3-subtab" data-scope="docker" data-i18n="css-docker-scope">Docker</button>
+                    <button class="fv3-subtab" data-scope="vm" data-i18n="css-vm-scope">VM</button>
+                </div>
+                <div id="fv3-var-list"></div>
+            </div>
 
-        <div class="fv3-tier-panel" id="fv3-tier-advanced" style="display:none">
-            <p data-i18n="css-advanced-help">Add custom CSS rules. Variables from the Variables tab are applied first.</p>
-            <textarea id="fv3-custom-css" rows="12" spellcheck="false" placeholder=".folder-name-sub { font-weight: bold; }"></textarea>
-            <div id="fv3-css-url-warning" class="fv3-css-warning" style="display:none">
-                <i class="fa fa-exclamation-triangle"></i>
-                <span data-i18n="css-url-warning">Your CSS contains url() references which will load external resources. Verify these URLs are trusted before saving.</span>
+            <div class="fv3-customize-section">
+                <div class="fv3-section-heading">Advanced CSS</div>
+                <p class="fv3-customize-hint">Add custom CSS rules. Variables above are applied first.</p>
+                <textarea id="fv3-custom-css" rows="12" spellcheck="false" placeholder=".folder-name-sub { font-weight: bold; }"></textarea>
+                <div id="fv3-css-url-warning" class="fv3-css-warning" style="display:none">
+                    <i class="fa fa-exclamation-triangle"></i>
+                    <span data-i18n="css-url-warning">Your CSS contains url() references which will load external resources. Verify these URLs are trusted before saving.</span>
+                </div>
             </div>
         </div>
 
         <div class="fv3-csstool-actions">
             <button id="fv3-css-save" data-i18n="css-save">Save</button>
             <button id="fv3-css-reset" data-i18n="css-reset">Reset to Defaults</button>
+            <button id="fv3-css-export-preset"><i class="fa fa-download"></i> Export Preset</button>
             <button id="fv3-css-export" data-i18n="css-export">Export Config</button>
             <button id="fv3-css-import-btn" data-i18n="css-import">Import Config</button>
             <input type="file" id="fv3-css-import" style="display:none" accept=".json">
