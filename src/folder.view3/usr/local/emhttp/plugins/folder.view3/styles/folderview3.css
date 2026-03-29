@@ -302,7 +302,7 @@
     padding: 0.3rem 0;
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: left;
     gap: 0.5rem;
 }
 
