@@ -453,7 +453,7 @@ const actionFolder = async (id, action) => {
 
     proms = await Promise.all(proms);
     errors = proms.filter(e => e.success !== true);
-    const errorMessages = errors.map(e => e.text || JSON.stringify(e));
+    const errorMessages = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
     if(errors.length > 0) {
         swal({
@@ -572,7 +572,7 @@ const addVMFolderContext = (id) => {
         opts.push(
             ...globalFolders[id].actions.map((e, i) => {
                 return {
-                    text: e.name,
+                    text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
                 }
@@ -662,7 +662,7 @@ const addVMFolderContext = (id) => {
             icon: 'fa-bars',
             subMenu: globalFolders[id].actions.map((e, i) => {
                 return {
-                    text: e.name,
+                    text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
                 }

@@ -951,7 +951,7 @@ const addDockerFolderContext = (id) => {
         opts.push(
             ...globalFolders.docker[id].actions.map((e, i) => {
                 return {
-                    text: e.name,
+                    text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
                 }
@@ -1039,7 +1039,7 @@ const addDockerFolderContext = (id) => {
             icon: 'fa-bars',
             subMenu: globalFolders.docker[id].actions.map((e, i) => {
                 return {
-                    text: e.name,
+                    text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderDockerCustomAction(id, i); }
                 }
@@ -1257,7 +1257,7 @@ const addVMFolderContext = (id) => {
         opts.push(
             ...globalFolders.vms[id].actions.map((e, i) => {
                 return {
-                    text: e.name,
+                    text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
                 }
@@ -1347,7 +1347,7 @@ const addVMFolderContext = (id) => {
             icon: 'fa-bars',
             subMenu: globalFolders.vms[id].actions.map((e, i) => {
                 return {
-                    text: e.name,
+                    text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderVMCustomAction(id, i); }
                 }
