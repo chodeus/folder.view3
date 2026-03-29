@@ -278,18 +278,23 @@
     justify-content: flex-end;
 }
 
-.fv3-var-swatch,
-.fv3-var-inputs input[type="color"] {
+.fv3-var-swatch {
     display: inline-block;
     width: 32px;
     height: 32px;
     border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
     border-radius: 4px;
     flex-shrink: 0;
-    padding: 2px;
-    background: transparent;
     cursor: pointer;
-    vertical-align: middle;
+}
+
+.fv3-var-picker-hidden {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .fv3-var-inputs input[type="text"] {

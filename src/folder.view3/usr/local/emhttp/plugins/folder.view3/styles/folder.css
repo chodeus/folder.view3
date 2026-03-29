@@ -1,7 +1,72 @@
-/* Container/VM order table */
-table.sortable {
-    width: 600px;
+/* ===== Grid-based folder settings layout ===== */
+.fv3-folder-settings {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.6rem 1.5rem;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 1rem 0;
+    align-items: center;
+}
+
+.fv3-folder-settings dt {
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.fv3-folder-settings dd {
     margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fv3-folder-settings input[type="text"],
+.fv3-folder-settings input[type="number"],
+.fv3-folder-settings select {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
+    padding: .5rem;
+    min-height: 2rem;
+    line-height: 2rem;
+    color: inherit;
+    outline: none;
+    flex: 1;
+    min-width: 0;
+}
+
+.fv3-folder-settings input[type="text"]:focus,
+.fv3-folder-settings input[type="number"]:focus,
+.fv3-folder-settings select:focus {
+    background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
+}
+
+.fv3-folder-settings .fv3-setting-sub {
+    padding-right: 0;
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+/* Order table spans full width */
+.fv3-folder-settings .fv3-order-dd {
+    grid-column: 1 / -1;
+}
+
+/* Color reset button */
+.fv3-color-reset {
+    width: 32px;
+    height: 28px;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* ===== Container/VM order table ===== */
+table.sortable {
+    width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
 }
@@ -74,6 +139,7 @@ table.sortable td .fv3-toggle {
     opacity: 20%;
 }
 
+/* ===== Custom actions ===== */
 .custom-action-wrapper {
     display: flex;
     flex-direction: column;
@@ -84,11 +150,7 @@ table.sortable td .fv3-toggle {
     text-overflow: ellipsis;
 }
 
-/* Custom action dialog — theme-aware
-   Unraid CSS variables are HSL components (e.g. --background: 0 0% 100%)
-   so they must be wrapped in hsl(). jQuery UI applies .ui-widget.ui-widget-content
-   on the dialog, so we need matching specificity to override jquery.ui.css.
-   We set our own --fv3-dialog-* vars with hsl() wrappers and safe fallbacks. */
+/* ===== Dialog theming ===== */
 .ui-dialog.ui-widget.ui-widget-content {
     --fv3-dialog-bg: hsl(var(--background, 0 0% 11%));
     --fv3-dialog-text: hsl(var(--text, 0 0% 95%));
@@ -107,10 +169,6 @@ table.sortable td .fv3-toggle {
 }
 
 .ui-dialog .ui-dialog-content {
-    color: var(--fv3-dialog-text);
-}
-
-.ui-dialog .ui-dialog-content dt {
     color: var(--fv3-dialog-text);
 }
 
@@ -150,7 +208,7 @@ table.sortable td .fv3-toggle {
     color: var(--fv3-dialog-text, hsl(0 0% 95%));
 }
 
-/* Collapsible sections */
+/* ===== Collapsible sections ===== */
 .fv3-section {
     margin-bottom: 4px;
     border: 1px solid var(--fv3-border, rgba(128,128,128,0.3));
@@ -202,54 +260,7 @@ table.sortable td .fv3-toggle {
     padding: 0 16px;
 }
 
-/* Form inputs - transparent with bottom-border (matches Unraid 7 native) */
-.canvas form input[type="text"],
-.canvas form select {
-    background-color: transparent;
-    border: none;
-    border-bottom: 1px solid var(--input-border-color, rgba(128,128,128,0.3));
-    padding: .5rem;
-    min-height: 2rem;
-    line-height: 2rem;
-    color: inherit;
-    outline: none;
-}
-
-.canvas form input[type="text"]:focus,
-.canvas form select:focus {
-    background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
-}
-
-/* Fix tooltip bullet points - remove list markers and align with headings */
-.canvas form > ul,
-.canvas form ul {
-    list-style: none;
-    padding-left: 0;
-    margin-left: 0;
-}
-
-.canvas form > ul > li,
-.canvas form ul > li {
-    list-style: none;
-    margin-left: 0;
-    padding-left: 0;
-}
-
-/* Nested ul for sub-options */
-.canvas form ul ul {
-    margin-left: 1em;
-}
-
-/* Keep color picker and reset button on same line.
-   Unraid 7 sets dd { flex-direction: column } on wide screens,
-   which stacks them vertically. Override to row. */
-.canvas form dd:has(> input[type="color"]) {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.5em;
-}
-
-/* Pure CSS toggle — base + flat (default) */
+/* ===== Toggle switches ===== */
 .fv3-toggle {
     -webkit-appearance: none;
     appearance: none;
@@ -283,35 +294,3 @@ table.sortable td .fv3-toggle {
 .fv3-toggle.fv3-toggle-pill::before { width: 20px; height: 20px; left: 3px; top: 3px; background: #888; border-radius: 50%; z-index: 1; }
 .fv3-toggle.fv3-toggle-pill:checked { background: var(--fv3-accent-color, #f0a30a); }
 .fv3-toggle.fv3-toggle-pill:checked::before { background: #fff; transform: translateX(30px); }
-
-/* Constrain form width and tighten layout */
-.canvas form {
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-.canvas form dt {
-    text-align: right;
-    width: 30%;
-}
-
-.canvas form dd {
-    margin-left: 32%;
-}
-
-/* Order section - table centered on page with label beside it */
-.canvas form > .basic.order-section dl {
-    position: relative;
-}
-
-.canvas form > .basic.order-section dd {
-    margin-left: 0;
-    width: 100%;
-    float: none;
-    display: flex;
-    justify-content: center;
-}
-
-.canvas form > .basic.order-section dt {
-    position: absolute;
-}

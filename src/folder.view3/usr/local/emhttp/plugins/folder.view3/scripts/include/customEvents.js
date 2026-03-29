@@ -96,6 +96,15 @@ window.fv3ApplyToggleStyle = window.fv3ApplyToggleStyle || ((style) => {
         el.classList.remove('fv3-toggle-rounded', 'fv3-toggle-material', 'fv3-toggle-pill');
         if (style !== 'flat') el.classList.add('fv3-toggle-' + style);
     });
+    ['#apps', '#vms'].forEach(id => {
+        const cb = document.querySelector('input' + id);
+        if (cb) {
+            const sw = cb.nextElementSibling;
+            if (sw && sw.classList.contains('switch-button-background')) {
+                sw.classList.add('fv3-styled-switch');
+            }
+        }
+    });
 });
 
 window._fv3ToggleStyle = null;

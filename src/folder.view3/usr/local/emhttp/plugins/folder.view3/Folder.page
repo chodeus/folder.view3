@@ -24,538 +24,190 @@ Markdown="false"
     <form onsubmit="submitForm(this); return false">
         <details class="fv3-section" open>
             <summary data-i18n="folder-basic">Basic</summary>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="name">Name:</dt>
-                    <dd>
-                        <img class="img" style="visibility: hidden;">
-                        <input type="text" name="name" pattern="[^\x00-\x1F\x7F<>&quot;'\\:]+" value="" required autocomplete="off">
-                        <div id="fv3-name-warning" style="color: #e22828; font-size: 12px; margin-top: 4px; display: none;">20 characters is the recommended maximum — longer names will be truncated/clipped.</div>
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]name-tooltip">
-                        The name of the folder. Supports Unicode (CJK, Cyrillic, etc). Not allowed: <b>&lt; &gt; &amp; " ' \ :</b> and control characters.
-                    </p>
-                </blockquote>
-            </div>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="icon">Icon:</dt>
-                    <dd>
-                        <img src="/plugins/dynamix.docker.manager/images/question.png" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">
-                        <input type="text" name="icon" value=""  oninput="updateIcon(this)">
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]icon-tooltip">
-                        A link to an image (<a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#supported_image_formats" target="_blank">Supported formats</a>)
-                        <br>
-                        It also supports <b>data:image/{type};base64,</b> format (<a href="https://base64.guru/converter/encode/image" target="_blank">Convert image to data strings</a>)
-                        <br>
-                        <a href="https://forums.unraid.net/topic/92824-icon-collections-for-docker-folder-plugin/" target="_blank">Thread with some icons</a>.
-                        <br>
-                        You can click the icon of the Docker/VM to set the folder icon.
-                    </p>
-                </blockquote>
-            </div>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="folder-webui">Folder WebUI:</dt>
-                    <dd>
-                        <img class="img" style="visibility: hidden;">
-                        <input class="fv3-toggle" name="folder_webui" type="checkbox" onchange="updateForm()" />
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]folder-webui-tooltip">Default folder WebUI URL.</p>
-                </blockquote>
-            </div>
-            <ul constraint="folder-webui" style="display: none;">
-                <li>
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="folder-webui-url">WebUI URL:</dt>
-                            <dd>
-                                <img class="img" style="visibility: hidden;">
-                                <input type="text" name="folder_webui_url" value="" placeholder="http://...">
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]folder-webui-url-tooltip">The URL to open when clicking the WebUI button in the folder context menu.</p>
-                        </blockquote>
-                    </div>
-                </li>
-            </ul>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="regex">Regex:</dt>
-                    <dd>
-                        <input type="text" name="regex" oninput="updateRegex(this)" value="">
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]regex-tooltip">
-                        Regex... <b>Lasciate ogne speranza, voi ch'intrate</b>
-                        <br>
-                        Any container name the regex matches will be added to folder.
-                        <br>
-                        Example for adding pterodactyl egg: <b>[0-9a-zA-Z]{8}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{12}</b>.
-                        <br>
-                        <a href="https://regex101.com/">Site for testing your regex</a>.
-                        <br>
-                        When you edit the regex anything selected manually will be deselected.
-                    </p>
-                </blockquote>
-            </div>
+            <dl class="fv3-folder-settings">
+                <dt data-i18n="name">Name:</dt>
+                <dd>
+                    <input type="text" name="name" pattern="[^\x00-\x1F\x7F<>&quot;'\\:]+" value="" required autocomplete="off">
+                    <div id="fv3-name-warning" style="color: #e22828; font-size: 12px; display: none;">20 characters is the recommended maximum — longer names will be truncated/clipped.</div>
+                </dd>
+
+                <dt data-i18n="icon">Icon:</dt>
+                <dd>
+                    <img src="/plugins/dynamix.docker.manager/images/question.png" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';" style="width:48px;height:48px;">
+                    <input type="text" name="icon" value="" oninput="updateIcon(this)">
+                </dd>
+
+                <dt data-i18n="folder-webui">Folder WebUI:</dt>
+                <dd><input class="fv3-toggle" name="folder_webui" type="checkbox" onchange="updateForm()" /></dd>
+
+                <dt constraint="folder-webui" class="fv3-setting-sub" style="display:none" data-i18n="folder-webui-url">WebUI URL:</dt>
+                <dd constraint="folder-webui" style="display:none">
+                    <input type="text" name="folder_webui_url" value="" placeholder="http://...">
+                </dd>
+
+                <dt data-i18n="regex">Regex:</dt>
+                <dd><input type="text" name="regex" oninput="updateRegex(this)" value=""></dd>
+            </dl>
         </details>
 
         <details class="fv3-section" open>
             <summary data-i18n="folder-preview-settings">Preview</summary>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="preview">Preview:</dt>
-                    <dd>
-                        <img class="img" style="visibility: hidden;">
-                        <select name="preview" onchange="updateForm()">
-                            <option value="0" data-i18n="preview-option-0">None</option>
-                            <option value="1" data-i18n="preview-option-1" selected>Icon and label</option>
-                            <option value="2" data-i18n="preview-option-2">Only icon</option>
-                            <option value="3" data-i18n="preview-option-3">Only label</option>
-                            <option value="4" data-i18n="preview-option-4">List</option>
-                        </select>
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]preview-tooltip">
-                        The preview type, not that difficult.
-                    </p>
-                </blockquote>
-            </div>
-            <ul>
-                <li constraint="preview-1 preview-2 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-hover">Show preview only on hover:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="preview_hover" type="checkbox" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-hover-tooltip">Will make the preview only show when mouse is hovering over.</p>
-                        </blockquote>
-                    </div>
-                </li>
-                <li constraint="preview-1 preview-3 preview-4 docker">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-update">Orange text on update:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="preview_update" type="checkbox" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-update-tooltip">Will make the name of the container in the preview orange if an update is available.</p>
-                        </blockquote>
-                    </div>
-                </li>
-                <li constraint="preview-1 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-text-width">Text width:</dt>
-                            <dd>
-                                <input name="preview_text_width" type="text"/>
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-text-width-tooltip">
-                            Will limit the width of the name of the container in the preview. <br>For example <b>12px</b>, <b>1rem</b> (Check <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/length">this</a> for more units). <br>Leave it blank and there is no limit.
-                            </p>
-                        </blockquote>
-                    </div>
-                </li>
-                <li constraint="preview-1 preview-2">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-grayscale">Preview icon grayscale:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="preview_grayscale" type="checkbox" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-grayscale-tooltip">Will make the preview icons grayscaled.</p>
-                        </blockquote>
-                    </div>
-                </li>
-                <li constraint="preview-1 preview-2 preview-3 preview-4 docker">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-webui">Add preview open WebUI:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="preview_webui" type="checkbox" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-webui-tooltip">Will add a little globe icon that opens the webUI.</p>
-                        </blockquote>
-                    </div>
-                </li>
-                <li constraint="preview-1 preview-2 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-logs">Add preview open logs:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="preview_logs" type="checkbox" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-logs-tooltip">Will add a little log icon that opens the log menu.</p>
-                        </blockquote>
-                    </div>
-                </li>
-                <li constraint="preview-1 preview-2 preview-3 preview-4 docker">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-console">Add preview open console:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="preview_console" type="checkbox" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-console-tooltip">Will add a little console icon that opens the console window.</p>
-                        </blockquote>
-                    </div>
-                </li>
-                <li constraint="preview-1 preview-2 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-vertical-bars">Preview vertical bars:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="preview_vertical_bars" type="checkbox" onchange="updateForm()" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-vertical-bars-tooltip">Will Show vertical bars between container/VM inside the folder preview.</p>
-                        </blockquote>
-                    </div>
-                    <ul constraint="bars-color" style="display: none;">
-                        <li>
-                            <div class="basic">
-                                <dl>
-                                    <dt data-i18n="bars-color">Vertical bars color:</dt>
-                                    <dd>
-                                        <input type="color" name="preview_vertical_bars_color" style="height:28px;vertical-align:middle;">
-                                        <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));" style="width:44px;height:28px;min-width:0;padding:0;margin:0;margin-left:0.5em;vertical-align:middle;">
-                                            <i class="fa fa-repeat" aria-hidden="true"></i>
-                                        </button>
-                                    </dd>
-                                </dl>
-                                <blockquote class="inline_help">
-                                    <p data-i18n="[html]bars-color-tooltip">
-                                        Set the color of the vertical bars between containers.
-                                        <br>
-                                        The <i class="fa fa-repeat" aria-hidden="true"></i> button will reset to the current font color.
-                                    </p>
-                                </blockquote>
-                            </div>
-                        </li>
-                    </ul>
-                </li>
-                <li constraint="preview-1 preview-2 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="border">Show preview border:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="preview_border" type="checkbox" onchange="updateForm()" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]border-tooltip">Will Show a border on the preview box.</p>
-                        </blockquote>
-                    </div>
-                    <ul constraint="border-color" style="display: none;">
-                        <li>
-                            <div class="basic">
-                                <dl>
-                                    <dt data-i18n="border-color">Border color:</dt>
-                                    <dd>
-                                        <input type="color" name="preview_border_color" style="height:28px;vertical-align:middle;">
-                                        <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));" style="width:44px;height:28px;min-width:0;padding:0;margin:0;margin-left:0.5em;vertical-align:middle;">
-                                            <i class="fa fa-repeat" aria-hidden="true"></i>
-                                        </button>
-                                    </dd>
-                                </dl>
-                                <blockquote class="inline_help">
-                                    <p data-i18n="[html]border-color-tooltip">
-                                        Set the color of the preview border.
-                                        <br>
-                                        The <i class="fa fa-repeat" aria-hidden="true"></i> button will reset to the current font color.
-                                    </p>
-                                </blockquote>
-                            </div>
-                        </li>
-                    </ul>
-                </li>
-                <li constraint="preview-1 preview-2 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-overflow">Preview overflow:</dt>
-                            <dd>
-                                <img class="img" style="visibility: hidden;">
-                                <select name="preview_overflow" onchange="updateForm()">
-                                    <option value="0" data-i18n="preview-overflow-0" selected>Default</option>
-                                    <option value="1" data-i18n="preview-overflow-1">Expand row</option>
-                                    <option value="2" data-i18n="preview-overflow-2">Scroll</option>
-                                </select>
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-overflow-tooltip">
-                                Controls what happens when there are too many containers to fit in the preview area.
-                                <br><b>Default:</b> Extra containers are hidden when the row is too narrow.
-                                <br><b>Expand row:</b> The preview area grows taller to show all containers on multiple lines.
-                                <br><b>Scroll:</b> A horizontal scrollbar appears to access all containers.
-                            </p>
-                        </blockquote>
-                    </div>
-                    <ul constraint="overflow-expand" style="display: none;">
-                        <li>
-                            <div class="basic">
-                                <dl>
-                                    <dt data-i18n="row-separator">Row separator:</dt>
-                                    <dd>
-                                        <input class="fv3-toggle" name="preview_row_separator" type="checkbox" onchange="updateForm()" />
-                                    </dd>
-                                </dl>
-                                <blockquote class="inline_help">
-                                    <p data-i18n="[html]row-separator-tooltip">Shows a faint horizontal line between rows when the preview expands to multiple lines.</p>
-                                </blockquote>
-                            </div>
-                            <ul constraint="separator-color" style="display: none;">
-                                <li>
-                                    <div class="basic">
-                                        <dl>
-                                            <dt data-i18n="separator-color">Separator color:</dt>
-                                            <dd>
-                                                <input type="color" name="preview_row_separator_color" style="height:28px;vertical-align:middle;">
-                                                <button onclick="event.preventDefault(); $('div.canvas > form')[0].preview_row_separator_color.value = rgbToHex($('body').css('color'));" style="width:44px;height:28px;min-width:0;padding:0;margin:0;margin-left:0.5em;vertical-align:middle;">
-                                                    <i class="fa fa-repeat" aria-hidden="true"></i>
-                                                </button>
-                                            </dd>
-                                        </dl>
-                                        <blockquote class="inline_help">
-                                            <p data-i18n="[html]separator-color-tooltip">
-                                                Set the color of the row separator line.
-                                                <br>
-                                                The <i class="fa fa-repeat" aria-hidden="true"></i> button will reset to the current font color.
-                                            </p>
-                                        </blockquote>
-                                    </div>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
-                </li>
-                <li constraint="preview-1 preview-2 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="lock-colors">Lock colors:</dt>
-                            <dd>
-                                <input class="fv3-toggle" name="lock_colors" type="checkbox" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]lock-colors-tooltip">
-                                When enabled, this folder's border, vertical bar, and separator colors cannot be overridden by CSS presets or custom CSS.
-                                <br>When disabled (default), CSS presets and custom CSS can override these colors.
-                            </p>
-                        </blockquote>
-                    </div>
-                </li>
-                <li constraint="docker preview-1 preview-2 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="context">Preview Context:</dt>
-                            <dd>
-                                <img class="img" style="visibility: hidden;">
-                                <select name="context" onchange="updateForm()">
-                                    <option value="0" data-i18n="context-option-0">None</option>
-                                    <option value="1" data-i18n="context-option-1" selected>Default</option>
-                                    <option value="2" data-i18n="context-option-2">Advanced</option>
-                                </select>
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]context-tooltip">Will show the preview context type you choose.</p>
-                        </blockquote>
-                    </div>
-                    <ul constraint="context-2 docker" style="display: none;">
-                        <li>
-                            <div class="basic">
-                                <dl>
-                                    <dt data-i18n="context-trigger">Activation mode:</dt>
-                                    <dd>
-                                        <img class="img" style="visibility: hidden;">
-                                        <select name="context_trigger">
-                                            <option value="0" data-i18n="context-trigger-option-0" selected>Click</option>
-                                            <option value="1" data-i18n="context-trigger-option-1">Hover</option>
-                                        </select>
-                                    </dd>
-                                </dl>
-                                <blockquote class="inline_help">
-                                    <p data-i18n="[html]context-trigger-tooltip">How the advanced preview will be shown.</p>
-                                </blockquote>
-                            </div>
-                        </li>
-                        <li>
-                            <div class="basic">
-                                <dl>
-                                    <dt data-i18n="context-graph">Graph mode:</dt>
-                                    <dd>
-                                        <img class="img" style="visibility: hidden;">
-                                        <select name="context_graph">
-                                            <option value="0" data-i18n="context-graph-option-0">None</option>
-                                            <option value="1" data-i18n="context-graph-option-1" selected>Combined</option>
-                                            <option value="2" data-i18n="context-graph-option-2">Split</option>
-                                            <option value="3" data-i18n="context-graph-option-3">CPU only</option>
-                                            <option value="4" data-i18n="context-graph-option-4">MEM only</option>
-                                        </select>
-                                    </dd>
-                                </dl>
-                                <blockquote class="inline_help">
-                                    <p data-i18n="[html]context-graph-tooltip">Which graph to show.</p>
-                                </blockquote>
-                            </div>
-                        </li>
-                        <li constraint="context_graph-1 context_graph-2 context_graph-3 context_graph-4 docker">
-                            <div class="basic">
-                                <dl>
-                                    <dt data-i18n="context-graph-time">Time Frame (s):</dt>
-                                    <dd>
-                                        <img class="img" style="visibility: hidden;">
-                                        <input type="number" name="context_graph_time" value="60">
-                                    </dd>
-                                </dl>
-                                <blockquote class="inline_help">
-                                    <p data-i18n="[html]context-graph-time-tooltip">Time frame for the graph(s) in seconds.</p>
-                                </blockquote>
-                            </div>
-                        </li>
-                    </ul>
-                </li>
-            </ul>
+            <dl class="fv3-folder-settings">
+                <dt data-i18n="preview">Preview:</dt>
+                <dd>
+                    <select name="preview" onchange="updateForm()">
+                        <option value="0" data-i18n="preview-option-0">None</option>
+                        <option value="1" data-i18n="preview-option-1" selected>Icon and label</option>
+                        <option value="2" data-i18n="preview-option-2">Only icon</option>
+                        <option value="3" data-i18n="preview-option-3">Only label</option>
+                        <option value="4" data-i18n="preview-option-4">List</option>
+                    </select>
+                </dd>
+
+                <dt constraint="preview-1 preview-2 preview-3 preview-4" data-i18n="preview-hover">Show preview only on hover:</dt>
+                <dd constraint="preview-1 preview-2 preview-3 preview-4"><input class="fv3-toggle" name="preview_hover" type="checkbox" /></dd>
+
+                <dt constraint="preview-1 preview-3 preview-4 docker" data-i18n="preview-update">Orange text on update:</dt>
+                <dd constraint="preview-1 preview-3 preview-4 docker"><input class="fv3-toggle" name="preview_update" type="checkbox" /></dd>
+
+                <dt constraint="preview-1 preview-3 preview-4" data-i18n="preview-text-width">Text width:</dt>
+                <dd constraint="preview-1 preview-3 preview-4"><input name="preview_text_width" type="text" /></dd>
+
+                <dt constraint="preview-1 preview-2" data-i18n="preview-grayscale">Preview icon grayscale:</dt>
+                <dd constraint="preview-1 preview-2"><input class="fv3-toggle" name="preview_grayscale" type="checkbox" /></dd>
+
+                <dt constraint="preview-1 preview-2 preview-3 preview-4 docker" data-i18n="preview-webui">Add preview open WebUI:</dt>
+                <dd constraint="preview-1 preview-2 preview-3 preview-4 docker"><input class="fv3-toggle" name="preview_webui" type="checkbox" /></dd>
+
+                <dt constraint="preview-1 preview-2 preview-3 preview-4" data-i18n="preview-logs">Add preview open logs:</dt>
+                <dd constraint="preview-1 preview-2 preview-3 preview-4"><input class="fv3-toggle" name="preview_logs" type="checkbox" /></dd>
+
+                <dt constraint="preview-1 preview-2 preview-3 preview-4 docker" data-i18n="preview-console">Add preview open console:</dt>
+                <dd constraint="preview-1 preview-2 preview-3 preview-4 docker"><input class="fv3-toggle" name="preview_console" type="checkbox" /></dd>
+
+                <dt constraint="preview-1 preview-2 preview-3 preview-4" data-i18n="preview-vertical-bars">Preview vertical bars:</dt>
+                <dd constraint="preview-1 preview-2 preview-3 preview-4"><input class="fv3-toggle" name="preview_vertical_bars" type="checkbox" onchange="updateForm()" /></dd>
+
+                <dt constraint="bars-color" class="fv3-setting-sub" style="display:none" data-i18n="bars-color">Vertical bars color:</dt>
+                <dd constraint="bars-color" style="display:none">
+                    <input type="color" name="preview_vertical_bars_color" style="height:28px;">
+                    <button class="fv3-color-reset" onclick="event.preventDefault(); $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));"><i class="fa fa-repeat" aria-hidden="true"></i></button>
+                </dd>
+
+                <dt constraint="preview-1 preview-2 preview-3 preview-4" data-i18n="border">Show preview border:</dt>
+                <dd constraint="preview-1 preview-2 preview-3 preview-4"><input class="fv3-toggle" name="preview_border" type="checkbox" onchange="updateForm()" /></dd>
+
+                <dt constraint="border-color" class="fv3-setting-sub" style="display:none" data-i18n="border-color">Border color:</dt>
+                <dd constraint="border-color" style="display:none">
+                    <input type="color" name="preview_border_color" style="height:28px;">
+                    <button class="fv3-color-reset" onclick="event.preventDefault(); $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));"><i class="fa fa-repeat" aria-hidden="true"></i></button>
+                </dd>
+
+                <dt constraint="preview-1 preview-2 preview-3 preview-4" data-i18n="preview-overflow">Preview overflow:</dt>
+                <dd constraint="preview-1 preview-2 preview-3 preview-4">
+                    <select name="preview_overflow" onchange="updateForm()">
+                        <option value="0" data-i18n="preview-overflow-0" selected>Default</option>
+                        <option value="1" data-i18n="preview-overflow-1">Expand row</option>
+                        <option value="2" data-i18n="preview-overflow-2">Scroll</option>
+                    </select>
+                </dd>
+
+                <dt constraint="overflow-expand" class="fv3-setting-sub" style="display:none" data-i18n="row-separator">Row separator:</dt>
+                <dd constraint="overflow-expand" style="display:none"><input class="fv3-toggle" name="preview_row_separator" type="checkbox" onchange="updateForm()" /></dd>
+
+                <dt constraint="separator-color" class="fv3-setting-sub" style="display:none" data-i18n="separator-color">Separator color:</dt>
+                <dd constraint="separator-color" style="display:none">
+                    <input type="color" name="preview_row_separator_color" style="height:28px;">
+                    <button class="fv3-color-reset" onclick="event.preventDefault(); $('div.canvas > form')[0].preview_row_separator_color.value = rgbToHex($('body').css('color'));"><i class="fa fa-repeat" aria-hidden="true"></i></button>
+                </dd>
+
+                <dt constraint="preview-1 preview-2 preview-3 preview-4" data-i18n="lock-colors">Lock colors:</dt>
+                <dd constraint="preview-1 preview-2 preview-3 preview-4"><input class="fv3-toggle" name="lock_colors" type="checkbox" /></dd>
+
+                <dt constraint="docker preview-1 preview-2 preview-3 preview-4" data-i18n="context">Preview Context:</dt>
+                <dd constraint="docker preview-1 preview-2 preview-3 preview-4">
+                    <select name="context" onchange="updateForm()">
+                        <option value="0" data-i18n="context-option-0">None</option>
+                        <option value="1" data-i18n="context-option-1" selected>Default</option>
+                        <option value="2" data-i18n="context-option-2">Advanced</option>
+                    </select>
+                </dd>
+
+                <dt constraint="context-2 docker" class="fv3-setting-sub" style="display:none" data-i18n="context-trigger">Activation mode:</dt>
+                <dd constraint="context-2 docker" style="display:none">
+                    <select name="context_trigger">
+                        <option value="0" data-i18n="context-trigger-option-0" selected>Click</option>
+                        <option value="1" data-i18n="context-trigger-option-1">Hover</option>
+                    </select>
+                </dd>
+
+                <dt constraint="context-2 docker" class="fv3-setting-sub" style="display:none" data-i18n="context-graph">Graph mode:</dt>
+                <dd constraint="context-2 docker" style="display:none">
+                    <select name="context_graph">
+                        <option value="0" data-i18n="context-graph-option-0">None</option>
+                        <option value="1" data-i18n="context-graph-option-1" selected>Combined</option>
+                        <option value="2" data-i18n="context-graph-option-2">Split</option>
+                        <option value="3" data-i18n="context-graph-option-3">CPU only</option>
+                        <option value="4" data-i18n="context-graph-option-4">MEM only</option>
+                    </select>
+                </dd>
+
+                <dt constraint="context_graph-1 context_graph-2 context_graph-3 context_graph-4 docker" class="fv3-setting-sub" style="display:none" data-i18n="context-graph-time">Time Frame (s):</dt>
+                <dd constraint="context_graph-1 context_graph-2 context_graph-3 context_graph-4 docker" style="display:none">
+                    <input type="number" name="context_graph_time" value="60">
+                </dd>
+            </dl>
         </details>
 
         <details class="fv3-section">
             <summary data-i18n="folder-behavior">Behavior</summary>
-            <div class="basic" constraint="docker">
-                <dl>
-                    <dt data-i18n="update-column">Hide update column:</dt>
-                    <dd>
-                        <input class="fv3-toggle" name="update_column" type="checkbox" />
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]update-column-tooltip">Will <b>NUKE</b> the update column for this folder.</p>
-                </blockquote>
-            </div>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="override-default-actions">Override default actions:</dt>
-                    <dd>
-                        <input class="fv3-toggle" name="override_default_actions" type="checkbox" />
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]override-default-actions-tooltip">Will remove the default menu and replace it with the custom actions set below.</p>
-                </blockquote>
-            </div>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="default-action">Hide default action button:</dt>
-                    <dd>
-                        <input class="fv3-toggle" name="default_action" type="checkbox" />
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]default-action-tooltip">Will remove the default action button like start, stop and restart from the folder context menu.</p>
-                </blockquote>
-            </div>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="expand-tab">Expanded on Docker/VM tab:</dt>
-                    <dd>
-                        <input class="fv3-toggle" name="expand_tab" type="checkbox" />
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]expand-tab-tooltip">Will make the folder start expanded on the Docker/VMs tab.</p>
-                </blockquote>
-            </div>
-            <div class="basic">
-                <dl>
-                    <dt data-i18n="expand-dashboard">Expanded on Dashboard tab:</dt>
-                    <dd>
-                        <input class="fv3-toggle" name="expand_dashboard" type="checkbox" />
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]expand-dashboard-tooltip">Will make the folder start expanded on the Dashboard.</p>
-                </blockquote>
-            </div>
+            <dl class="fv3-folder-settings">
+                <dt constraint="docker" data-i18n="update-column">Hide update column:</dt>
+                <dd constraint="docker"><input class="fv3-toggle" name="update_column" type="checkbox" /></dd>
+
+                <dt data-i18n="override-default-actions">Override default actions:</dt>
+                <dd><input class="fv3-toggle" name="override_default_actions" type="checkbox" /></dd>
+
+                <dt data-i18n="default-action">Hide default action button:</dt>
+                <dd><input class="fv3-toggle" name="default_action" type="checkbox" /></dd>
+
+                <dt data-i18n="expand-tab">Expanded on Docker/VM tab:</dt>
+                <dd><input class="fv3-toggle" name="expand_tab" type="checkbox" /></dd>
+
+                <dt data-i18n="expand-dashboard">Expanded on Dashboard tab:</dt>
+                <dd><input class="fv3-toggle" name="expand_dashboard" type="checkbox" /></dd>
+            </dl>
         </details>
 
         <details class="fv3-section">
             <summary data-i18n="folder-custom-actions">Custom Actions</summary>
-            <div class="basic custom-action-wrapper-parent">
-                <dl>
-                    <dt data-i18n="custom-actions-folder">Custom actions:</dt>
-                    <dd>
-                        <div class="custom-action-wrapper">​</div>
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <span data-i18n="[html]custom-actions-folder-tooltip">
-                        <b>Name:</b> Just the name of the action.<br><b>Type:</b> Type of the action.<br><ul><li><b>Standard</b> - normal action on docker containers (start, stop, ...).</li><li><b>Custom</b> - will execute a User Scripts (User Scripts plugin required).</li></ul><b>Action:</b> Action to be performed.<br><ul><li><b>Cycle</b> - cycle between two states.</li><li><b>Set</b> - set a state.</li><li><b>Restart</b> - basic restart.</li></ul><b>Conatiners:</b> A comma (,) separated list of conatiners.<br><b>Script:</b> Just the name of the script (<b>Names are case sensitive and need white spaces</b>).<br><b>Arguments:</b> Arguments passed to the script.<br><b>Sync:</b> Whether to run the script in background or not.<br><b>Icon:</b> Icon of the action, leave empty for default.
-                    </span>
-                </blockquote>
-            </div>
-            <div class="basic">
-                <dl>
-                    <dt>​</dt>
-                    <dd>
-                        <a class="custom-action" data-i18n="[html]custom-action" onclick="customAction()"><i class="fa fa-plus" aria-hidden="true"></i> Add a custom action</a>
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]custom-action-tooltip">Lets you perform custom action on the folder.</p>
-                </blockquote>
-            </div>
+            <dl class="fv3-folder-settings">
+                <dt data-i18n="custom-actions-folder">Custom actions:</dt>
+                <dd><div class="custom-action-wrapper">​</div></dd>
+
+                <dt>​</dt>
+                <dd><a class="custom-action" data-i18n="[html]custom-action" onclick="customAction()"><i class="fa fa-plus" aria-hidden="true"></i> Add a custom action</a></dd>
+            </dl>
         </details>
 
         <details class="fv3-section" open>
             <summary data-i18n="folder-containers">Containers / VMs</summary>
-            <div class="basic order-section">
-                <dl>
-                    <dt data-i18n="order">Order:</dt>
-                    <dd>
-                        <table class="sortable">
-                            <thead>
-                                <tr>
-                                    <th data-i18n="table-name">Name</th>
-                                    <th data-i18n="table-included">Included</th>
-                                    <th data-i18n="table-hide-preview">Hide Preview</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
-                    </dd>
-                </dl>
-                <blockquote class="inline_help">
-                    <p data-i18n="[html]order-tooltip">Drag and drop to make your desired order, if you edit the regex the selection will be deselected.</p>
-                </blockquote>
-            </div>
+            <dl class="fv3-folder-settings">
+                <dt data-i18n="order">Order:</dt>
+                <dd class="fv3-order-dd">
+                    <table class="sortable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="table-name">Name</th>
+                                <th data-i18n="table-included">Included</th>
+                                <th data-i18n="table-hide-preview">Hide Preview</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </dd>
+            </dl>
         </details>
 
         <span class="buttons-spaced">

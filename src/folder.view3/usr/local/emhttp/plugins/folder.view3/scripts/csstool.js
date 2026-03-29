@@ -5,6 +5,7 @@
     let cssDefaults = {};
     let currentScope = 'global';
     let dirty = false;
+    window.fv3IsCssDirty = () => dirty;
 
     const varMeta = {
         'folder-view3-graph-cpu': { type: 'color', group: 'colors', label: 'Graph CPU color', desc: 'CPU usage graph line color\nFormat: #hex', pages: ['docker'] },
@@ -240,22 +241,30 @@
             inputs.className = 'fv3-var-inputs';
             const currentVal = getVal(varName);
 
-            if (meta.type === 'color') {
+            if (meta.type === 'color' || (meta.type === 'text' && meta.group === 'colors')) {
+                const swatch = document.createElement('span');
+                swatch.className = 'fv3-var-swatch';
+                swatch.style.background = currentVal || cssDefaults[varName] || 'transparent';
                 const picker = document.createElement('input');
                 picker.type = 'color';
-                picker.value = currentVal;
+                picker.className = 'fv3-var-picker-hidden';
+                picker.value = isColor(currentVal) ? currentVal : '#000000';
+                swatch.addEventListener('click', () => picker.click());
                 const text = document.createElement('input');
                 text.type = 'text';
                 text.value = currentVal;
                 text.placeholder = cssDefaults[varName] || '';
                 picker.addEventListener('input', () => {
                     text.value = picker.value;
+                    swatch.style.background = picker.value;
                     setVal(varName, picker.value);
                 });
                 text.addEventListener('input', () => {
-                    if (isColor(text.value)) picker.value = text.value;
+                    if (isColor(text.value)) { picker.value = text.value; }
+                    swatch.style.background = text.value || 'transparent';
                     setVal(varName, text.value);
                 });
+                inputs.appendChild(swatch);
                 inputs.appendChild(picker);
                 inputs.appendChild(text);
             } else if (meta.type === 'dimension') {
@@ -281,20 +290,12 @@
                 inputs.appendChild(range);
                 inputs.appendChild(num);
             } else {
-                if (meta.group === 'colors') {
-                    const swatch = document.createElement('span');
-                    swatch.className = 'fv3-var-swatch';
-                    swatch.style.background = currentVal || cssDefaults[varName] || 'transparent';
-                    inputs.appendChild(swatch);
-                }
                 const text = document.createElement('input');
                 text.type = 'text';
                 text.value = currentVal;
                 text.placeholder = cssDefaults[varName] || '';
                 text.addEventListener('input', () => {
                     setVal(varName, text.value);
-                    var sw = inputs.querySelector('.fv3-var-swatch');
-                    if (sw) sw.style.background = text.value || 'transparent';
                 });
                 inputs.appendChild(text);
             }

@@ -571,11 +571,50 @@ $('#fv3-import-all').on('change', function() {
 });
 
 // Page-level tab switching
+const fv3IsSettingsDirty = () => {
+    const current = fv3CollectSettings();
+    for (const [key, value] of Object.entries(current)) {
+        if ((fv3LoadedSettings[key] ?? '') !== value) return true;
+    }
+    return false;
+};
+
 window.fv3SwitchTab = (function() {
     var tabs = document.querySelectorAll('.fv3-page-tab');
     var panels = document.querySelectorAll('.fv3-page-panel');
+    var currentTab = '';
 
-    function switchTab(tabName) {
+    function switchTab(tabName, force) {
+        if (!force && currentTab && currentTab !== tabName && currentTab !== 'backup') {
+            var isDirty = false;
+            if (currentTab === 'dashboard' || currentTab === 'defaults') {
+                isDirty = fv3IsSettingsDirty();
+            } else if (currentTab === 'css' && window.fv3IsCssDirty) {
+                isDirty = window.fv3IsCssDirty();
+            }
+            if (isDirty) {
+                var fromTab = currentTab;
+                swal({
+                    title: 'Unsaved Changes',
+                    text: 'You have unsaved changes. Discard them?',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Discard',
+                    cancelButtonText: 'Stay',
+                    closeOnConfirm: true,
+                    closeOnCancel: true
+                }, function(confirmed) {
+                    if (confirmed === true) {
+                        if (fromTab === 'dashboard' || fromTab === 'defaults') {
+                            fv3CancelSettings();
+                        }
+                        switchTab(tabName, true);
+                    }
+                });
+                return;
+            }
+        }
+        currentTab = tabName;
         tabs.forEach(function(t) {
             t.classList.toggle('fv3-page-tab-active', t.getAttribute('data-tab') === tabName);
         });
