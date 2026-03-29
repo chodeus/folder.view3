@@ -153,12 +153,37 @@
     }
 
     function applyToggleStyle(style) {
-        document.querySelectorAll('.fv3-toggle').forEach(function(el) {
-            el.classList.remove('fv3-toggle-ios', 'fv3-toggle-material', 'fv3-toggle-pill');
-            if (style && style !== 'flat' && style !== 'default') {
-                el.classList.add('fv3-toggle-' + style);
+        if (style === 'default') {
+            document.querySelectorAll('.fv3-toggle').forEach(function(el) {
+                el.classList.remove('fv3-toggle', 'fv3-toggle-ios', 'fv3-toggle-material', 'fv3-toggle-pill');
+                el.classList.add('basic-switch');
+                el.style.display = 'none';
+            });
+            if (typeof $ !== 'undefined' && $.fn.switchButton) {
+                $('input.basic-switch').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
             }
-        });
+        } else {
+            // Remove any switchButton wrappers first
+            document.querySelectorAll('.switch-button-background').forEach(function(el) {
+                var input = el.parentNode.querySelector('input[type="checkbox"]');
+                if (input) {
+                    input.style.display = '';
+                    input.classList.remove('basic-switch');
+                    input.classList.add('fv3-toggle');
+                }
+                el.remove();
+            });
+            document.querySelectorAll('.switch-button-label').forEach(function(el) { el.remove(); });
+            document.querySelectorAll('div[style*="clear: left"]').forEach(function(el) {
+                if (el.previousElementSibling && el.previousElementSibling.classList.contains('switch-button-label')) el.remove();
+            });
+            document.querySelectorAll('.fv3-toggle').forEach(function(el) {
+                el.classList.remove('fv3-toggle-ios', 'fv3-toggle-material', 'fv3-toggle-pill');
+                if (style && style !== 'flat') {
+                    el.classList.add('fv3-toggle-' + style);
+                }
+            });
+        }
     }
 
     function renderVariables() {
@@ -289,7 +314,7 @@
             del.title = 'Delete preset';
             del.addEventListener('click', function(e) {
                 e.stopPropagation();
-                swal({ title: 'Delete "' + preset.name + '"?', type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, function(ok) {
+                swal({ title: 'Delete "' + escapeAttr(preset.name) + '"?', type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, function(ok) {
                     if (!ok) return;
                     cssConfig.custom_presets = (cssConfig.custom_presets || []).filter(function(p) { return p.name !== preset.name; });
                     if (cssConfig.preset === preset.name) cssConfig.preset = 'Default';
@@ -436,7 +461,7 @@
             cssConfig.preset = name;
             dirty = true;
             renderPresets();
-            swal({ title: 'Saved', text: 'Preset "' + name + '" saved. Click Save to persist.', type: 'success', timer: 2000 });
+            swal({ title: 'Saved', text: 'Preset "' + escapeAttr(name) + '" saved. Click Save to persist.', type: 'success', timer: 2000 });
         });
     }
 
@@ -577,7 +602,7 @@
                     else { swal({ title: 'Updated', text: 'Downloaded ' + result.files.length + ' file(s).', type: 'success', timer: 2000 }); loadThemes(); }
                 });
                 card.querySelector('.fv3-theme-delete')?.addEventListener('click', () => {
-                    swal({ title: 'Delete theme?', text: `Remove "${theme.name}" permanently?`, type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, async (ok) => {
+                    swal({ title: 'Delete theme?', text: 'Remove "' + escapeAttr(theme.name) + '" permanently?', type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, async (ok) => {
                         if (!ok) return;
                         await postForm(API + '/delete_theme.php', { entry: theme.entry });
                         loadThemes();

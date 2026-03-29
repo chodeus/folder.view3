@@ -9,6 +9,8 @@ Markdown="false"
 require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 ?>
 
+<script src="<?=autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+<link type="text/css" rel="stylesheet" href="<?=autov('/webGui/styles/jquery.switchbutton.css')?>">
 <script>
     folderi18n = () => {
         $('body').i18n();
