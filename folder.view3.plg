@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.30">
-<!ENTITY md5 "7ac07e74b9106bf3b37fa30e86fd418f">
+<!ENTITY version "2026.03.30.1">
+<!ENTITY md5 "25c5627453977567265933a21357a89a">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.03.30.1
+- Mobile UI improvements
 
 ###2026.03.30
 - Fix preview overflow causing table expansion for users with a large number of containers in a folder

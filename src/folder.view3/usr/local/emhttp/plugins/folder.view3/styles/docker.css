@@ -115,10 +115,6 @@ td.folder-name .folder-outer {
 }
 
 @media (max-width: 768px) {
-    .folder-preview:not(.fv3-overflow-scroll):not(.fv3-overflow-expand) {
-        overflow-x: auto;
-        overflow-y: hidden;
-    }
     .folder-preview.fv3-overflow-scroll {
         padding-top: 0;
     }
@@ -497,12 +493,6 @@ div.folder-preview-4 span.outer {
 
 .preview-outbox div.status-stats div.usage-disk.mm span:last-of-type {
     background-color: var(--folder-view3-graph-mem);
-}
-
-/* === FOLDER EXPANDED STATE === */
-.folder-preview.expanded {
-    height: auto;
-    max-height: none;
 }
 
 /* === DOCKER CONTEXT MENU === */

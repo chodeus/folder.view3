@@ -1002,7 +1002,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                 for (let i = 0; i < children.length; i++) {
                     children[i].style.display = '';
                 }
-                if (window.matchMedia('(max-width: 768px)').matches) return;
                 let firstTop = -1;
                 let clipping = false;
                 let lastVisibleDivider = null;
@@ -1039,7 +1038,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     }
     if(folder.settings.preview_vertical_bars) {
         const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
-        $(`tr.folder-id-${id} div.folder-preview > div`).after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
+        $(`tr.folder-id-${id} div.folder-preview > div`).not(':last').after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
         if (FOLDER_VIEW_DEBUG_MODE) console.log(`[FV3_DEBUG] createFolder (id: ${id}): Added preview_vertical_bars.`);
     }
     if(folder.settings.update_column) {

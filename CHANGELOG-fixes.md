@@ -164,6 +164,10 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 94 | Enhanced mobile UI — removed stale `padding-bottom: 3px` mobile override (align-self handles centering), removed scroll `padding-top` on mobile (no visible scrollbar on touch), tightened `line-height: 1.1` on wrapper inner text to reduce gap between container name and status | `docker.css`, `vm.css` | 2026.03.28 |
 | 95 | Add form accessibility attributes — `name`, `for`, `autocomplete="off"` on folder editor and settings page form fields | `Folder.page`, `FolderView3.page` | 2026.03.28 |
 | 96 | Build system auto-detect branch and auto-increment version numbers — `pkg_build.sh` detects current git branch, supports `--beta`/`--develop`/`--main` overrides, auto-increments build numbers per date | `pkg_build.sh` | 2026.03.28 |
+| 97 | Fix preview overflow causing table expansion in Firefox/Edge — changed base `.folder-preview` from `flex-wrap: nowrap` back to `wrap`. Added `clipPreview()` JS that hides containers wrapping to second row via `display: none` with `ResizeObserver` for responsive re-clipping. Added `flex-wrap: nowrap` override on `.fv3-overflow-scroll`. Fixed expand mode detection to use `offsetTop` instead of `scrollWidth` (which fails with `flex-wrap: wrap`) | `docker.css`, `vm.css`, `docker.js`, `vm.js` | 2026.03.30 |
+| 98 | Mobile UI — removed CSS override that switched clip mode to horizontal scroll on mobile. Clip mode now uses JS `clipPreview()` consistently across all screen sizes | `docker.css`, `vm.css`, `docker.js`, `vm.js` | 2026.03.30 |
+| 99 | Remove dead `.folder-preview.expanded` CSS rule — class never applied by any JS | `docker.css` | 2026.03.30 |
+| 100 | Align docker.js divider insertion with vm.js — added `.not(':last')` to prevent trailing divider after last wrapper | `docker.js` | 2026.03.30 |
 
 ### Theme Compatibility (Advanced Preview Tooltip)
 
