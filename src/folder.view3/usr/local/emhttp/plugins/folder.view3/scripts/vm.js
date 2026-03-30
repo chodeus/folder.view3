@@ -402,7 +402,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                 for (let i = 0; i < children.length; i++) {
                     children[i].style.display = '';
                 }
-                if (window.matchMedia('(max-width: 768px)').matches) return;
                 let firstTop = -1;
                 let clipping = false;
                 let lastVisibleDivider = null;
