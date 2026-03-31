@@ -38,7 +38,7 @@ const createFolders = async () => {
                 originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
                 newOnes,
                 order,
-                containersInfo
+                containersInfo: fv3SanitizeContainersInfo(containersInfo)
             });
             const blob = new Blob([debugData], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1457,6 +1457,23 @@ let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = false;
 let folderDebugModeWindow = [];
+const fv3SanitizeContainersInfo = (ci) => {
+    var clone = JSON.parse(JSON.stringify(ci));
+    Object.values(clone).forEach(ct => {
+        delete ct.NetworkSettings;
+        if (ct.info) {
+            delete ct.info.Config?.Env;
+            delete ct.info.NetworkSettings;
+            delete ct.info.Ports;
+            if (ct.info.State) {
+                var rx = (s) => typeof s === 'string' ? s.replace(/\b(\d{1,3}\.){3}\d{1,3}\b/g, 'x.x.x.x') : s;
+                ct.info.State.WebUi = rx(ct.info.State.WebUi);
+                ct.info.State.TSWebUi = rx(ct.info.State.TSWebUi);
+            }
+        }
+    });
+    return clone;
+};
 let dockerDashboardLayout = 'classic';
 let vmDashboardLayout = 'classic';
 let fv3DockerCollapseToggle = false;
