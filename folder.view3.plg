@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.03.30.2">
-<!ENTITY md5 "a0c49aa574e02b2c0e7d40c5d270214a">
+<!ENTITY version "2026.04.01">
+<!ENTITY md5 "9bed96a342bc8745b6cd8acb5ab25489">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.01
+- Sanitize debug exports
 
 ###2026.03.30.2
 - Add Folder button relocated next to Add Container/VM
