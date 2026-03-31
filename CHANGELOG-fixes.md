@@ -63,6 +63,7 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 5 | Wrap buttons in `buttons-spaced` for responsive layout | `Folder.page` | 2026.03.04 |
 | 6 | Use CSS variables with fallbacks for theme compatibility | `docker.css` | 2026.03.04 |
 | 7 | Responsive fixes for preview tooltip and dialog widths | `docker.css`, `folder.js` | 2026.03.04 |
+| 8 | Sanitize debug exports — strip env vars, network settings, ports, redact IPs | `docker.js`, `dashboard.js` | 2026.04.01 |
 
 ### Bug Fixes
 
