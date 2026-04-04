@@ -52,18 +52,20 @@ mytheme.docker.css.disabled
 Custom files load **after** the plugin's built-in CSS, so your rules naturally override defaults. No `!important` should be needed for most overrides — use CSS variables where possible.
 
 ```
-1. customEvents.js (shared utilities)
-2. Custom JS files (your scripts)
-3. Plugin JS (docker.js / vm.js / dashboard.js)
-4. Plugin CSS (docker.css / vm.css / dashboard.css)
-5. Custom CSS files (your styles — loaded last, highest priority)
+1. customEvents.js (shared utilities: escapeHtml, CSRF, event bus)
+2. shared.js (shared functions: debug, API, row separators, preview)
+3. Custom JS files (your scripts)
+4. Plugin JS (docker.js / vm.js / dashboard.js)
+5. folder-common.css (shared CSS variables and rules)
+6. Plugin CSS (docker.css / vm.css / dashboard.css)
+7. Custom CSS files (your styles — loaded last, highest priority)
 ```
 
 ---
 
 ## CSS Variables Reference
 
-Override these in your custom CSS by redefining them in `:root`. All are defined in both `docker.css` and `vm.css`.
+Override these in your custom CSS by redefining them in `:root`. All are defined in `folder-common.css` (loaded on Docker and VM tabs).
 
 ### Layout
 
@@ -74,6 +76,13 @@ Override these in your custom CSS by redefining them in `:root`. All are defined
 | `--fv3-folder-preview-radius` | `4px` | Border radius of the preview bar |
 | `--fv3-folder-icon-spacing` | `4px` | Gap between container icons in preview |
 | `--fv3-folder-preview-wrapper-margin` | `10px` | Left margin of each preview icon wrapper |
+| `--fv3-folder-name-min-width` | `220px` | Minimum width of folder name cell |
+| `--fv3-folder-name-gap` | `4px` | Gap between folder name elements |
+| `--fv3-folder-row-padding` | `0` | Padding around folder rows |
+| `--fv3-folder-row-radius` | `0` | Border radius on folder rows |
+| `--fv3-folder-row-border-width` | `0` | Border width on folder rows |
+| `--fv3-row-padding` | `8px` | General row content padding |
+| `--tooltip-spacing` | `5px` | Spacing around tooltip content |
 
 ### Advanced Preview Tooltip
 
@@ -83,28 +92,71 @@ Override these in your custom CSS by redefining them in `:root`. All are defined
 | `--fv3-tooltip-max-height` | `80vh` | Maximum height of the advanced preview popup |
 | `--fv3-tooltip-action-pane-width` | `220px` | Width of the action button sidebar |
 
-### Colors (Theme-Agnostic Defaults)
+### Colors — Global (all pages)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `--fv3-accent-color` | `var(--color-orange, #f0a30a)` | Accent color for panels and borders |
 | `--fv3-surface-tint` | `rgba(128, 128, 128, 0.1)` | Subtle background tint |
 | `--fv3-hover-bg` | `rgba(128, 128, 128, 0.2)` | Hover state background |
 | `--fv3-border` | `1px solid rgba(128, 128, 128, 0.3)` | Standard border style |
-| `--folder-view3-graph-cpu` | `#2b8da3` | CPU graph line color |
-| `--folder-view3-graph-mem` | `#5d6db6` | Memory graph line color |
+| `--fv3-folder-name-bg` | `transparent` | Folder name cell background |
+| `--fv3-folder-name-color` | `inherit` | Folder name text color |
+| `--fv3-appname-color` | `inherit` | Container/VM name text color |
+| `--fv3-folder-icon-size` | `48px` | Folder icon size |
+| `--fv3-folder-name-size` | `inherit` | Folder name font size |
+| `--fv3-folder-name-weight` | `inherit` | Folder name font weight |
 
-### VM Row Backgrounds (Override Hooks)
+### Colors — Docker & VM tabs only
 
-These are **not defined** by the plugin — they exist as CSS variable fallbacks in `vm.js` inline styles. Define them in your custom CSS to control VM table row colors:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--folder-view3-graph-cpu` | `#2b8da3` | CPU graph line color (Docker only) |
+| `--folder-view3-graph-mem` | `#5d6db6` | Memory graph line color (Docker only) |
+| `--fv3-toggle-color` | `#ff8c2f` | Folder chevron dropdown button color |
+| `--fv3-toggle-hover-color` | `#ffad5c` | Chevron button hover color |
+| `--fv3-chevron-color` | `inherit` | Expand/collapse chevron color |
+| `--fv3-preview-border-color` | `currentColor` | Preview area border color |
+| `--fv3-vertical-bars-color` | `currentColor` | Vertical divider bar color |
+| `--fv3-separator-color` | `rgba(128, 128, 128, 0.3)` | Row separator color (expand mode) |
+| `--fv3-separator-bg` | `rgba(128, 128, 128, 0.15)` | Row separator background |
+| `--fv3-folder-row-border-color` | `transparent` | Folder row border color |
+| `--fv3-preview-row-border-width` | `0` | Preview area row border width |
+| `--fv3-preview-row-border-color` | `transparent` | Preview area row border color |
+| `--fv3-scrollbar-color` | `rgba(255, 140, 47, 0.5)` | Scroll overflow scrollbar thumb |
+| `--fv3-folder-preview-bg` | `transparent` | Preview bar background color |
+| `--fv3-preview-icon-size` | `32px` | Container icon size in preview |
+| `--fv3-appname-max-width` | `120px` | Max width before container names truncate |
+| `--fv3-appname-size` | `inherit` | Container name font size in previews |
+| `--fv3-chevron-size` | `14px` | Chevron button font size |
+| `--fv3-row-bg` | `transparent` | Folder row background |
+| `--fv3-row-alt-bg` | Unraid's `--dynamix-tablesorter-tbody-row-alt-bg-color` | Alternating row background |
 
-| Variable | Fallback | Description |
-|----------|----------|-------------|
-| `--fv3-row-bg` | `transparent` | Normal VM row background |
-| `--fv3-row-alt-bg` | Unraid's `--dynamix-tablesorter-tbody-row-alt-bg-color` | Alternating VM row background |
+### Colors — Dashboard only
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--fv3-panel-border` | `rgba(128, 128, 128, 0.2)` | Fullwidth/accordion panel border |
+| `--fv3-panel-bg` | `rgba(128, 128, 128, 0.08)` | Panel background |
+| `--fv3-tab-active-bg` | `transparent` | Expanded tab background |
+| `--fv3-tab-active-border` | `transparent` | Expanded tab border |
+| `--fv3-showcase-bg` | `transparent` | Showcase (child area) background |
+| `--fv3-inset-bg` | `transparent` | Inset expanded outer wrapper bg |
+| `--fv3-inset-fill` | `none` | Inset SVG L-shape fill |
+| `--fv3-inset-border-color` | `rgba(128,128,128,0.3)` | Inset SVG outer border |
+| `--fv3-inset-showcase-fill` | `none` | Inset SVG inner box fill |
+| `--fv3-inset-showcase-border` | `rgba(128,128,128,0.2)` | Inset SVG inner box border |
+| `--fv3-embossed-border` | `rgba(128,128,128,0.3)` | Embossed outer border |
+| `--fv3-embossed-accent` | `var(--color-orange, #f0a30a)` | Embossed left accent border |
+| `--fv3-embossed-inner-border` | `rgba(128,128,128,0.2)` | Embossed inner showcase border |
 
 **Example override:**
 ```css
 :root {
+    --fv3-accent-color: #e74c3c;
+    --fv3-toggle-color: #e74c3c;
+    --fv3-toggle-hover-color: #ff6b6b;
+    --fv3-folder-preview-bg: rgba(0, 0, 0, 0.05);
     --fv3-row-bg: #191818;
     --fv3-row-alt-bg: #212121;
 }
@@ -466,6 +518,108 @@ These community themes serve as working examples:
 
 The plugin's built-in stylesheets for reference:
 
-- [docker.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/docker.css)
-- [vm.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/vm.css)
-- [dashboard.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css)
+- [folder-common.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/folder-common.css) — shared variables and rules (Docker + VM)
+- [docker.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/docker.css) — Docker-specific (tooltips, context menu)
+- [vm.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/vm.css) — VM-specific
+- [dashboard.css](../src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css) — Dashboard layouts
+
+## CSS Template
+
+A starter template for custom themes is available at [examples/custom-template.css](examples/custom-template.css). Copy it to `/boot/config/plugins/folder.view3/styles/` on your Unraid server and rename it following the naming convention above.
+
+## CSS Tool & Theme Manager
+
+The FolderView3 settings page includes a built-in CSS Tool with:
+
+- **Themes** — Import community CSS themes from GitHub (`owner/repo`). One theme active at a time. Automatic update checking via GitHub API SHA comparison.
+- **Variables** — Edit all 27 CSS variables with color pickers and sliders. Per-page scope (Global/Dashboard/Docker/VM).
+- **Presets** — One-click preset themes (Default, Compact, Blue Accent, Muted).
+- **Advanced CSS** — Free-form CSS textarea for custom rules.
+
+### Generated CSS File
+
+The CSS Tool generates `_fv3-generated.docker-vm-dashboard.css` in the styles directory. It loads before user CSS (underscore prefix sorts first) and contains:
+- `:root {}` block with overridden variable values
+- Custom CSS from the Advanced tab
+
+### Theme File Convention
+
+Imported themes are stored as subdirectories in `/boot/config/plugins/folder.view3/styles/`:
+- `masterwishx/` — active theme folder
+- `masterwishx.disabled/` — disabled theme (`.disabled` suffix)
+- `.fv3-source` — JSON file inside theme folder with repo URL and file SHAs for update checking
+
+### PHP Endpoints (CSS Tool)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `read_css_config.php` | GET | Read CSS config |
+| `read_css_defaults.php` | GET | Get all variable defaults |
+| `update_css_config.php` | POST | Save CSS config + generate CSS |
+| `list_themes.php` | GET | List installed themes |
+| `toggle_theme.php` | POST | Enable/disable theme |
+| `import_theme.php` | POST | Import from GitHub |
+| `delete_theme.php` | POST | Delete theme |
+| `export_all.php` | GET | Full backup (all configs + CSS) |
+| `import_all.php` | POST | Restore full backup |
+
+## Folder Defaults System
+
+Global defaults are stored in `settings.json` with keys like `default_preview`, `default_overflow`, `default_preview_hover`, etc. When rendering, `fv3ApplyDefaults()` in `shared.js` merges defaults into any folder whose settings are unset. New folders created via Folder.page are pre-filled from these defaults.
+
+The "Apply Defaults to All Folders" button on the settings page reads current defaults and writes them to every existing folder config.
+
+## Theme Manager
+
+### Import Flow
+1. User enters `owner/repo` (or `owner/repo:branch`) → JS fetches GitHub Contents API (1 call)
+2. If repo has subdirectories with CSS (e.g. masterwishx, hernandito) → directory picker shown with checkboxes for multi-select
+3. Selected directories are sent to PHP `import_theme.php` which fetches file listing (1 API call per dir) and downloads via `raw.githubusercontent.com` (no API limit)
+4. PHP scans downloaded CSS for security warnings, returns results to JS
+5. If external URLs found → progress dialog shows warnings, user chooses Keep/Delete
+6. `.fv3-source` JSON file stored in theme folder: `{ "repo": "owner/repo", "path": "subdir", "branch": "branch", "files": { "file.css": "sha" }, "updated": "ISO date" }`
+7. Non-default branch names (not `main`/`master`) are appended to the theme folder name
+
+### Update Checking
+On settings page load, each theme's SHAs are compared against GitHub API. Status shown per-theme:
+- Spinner while checking
+- Green checkmark + "up-to-date" if all SHAs match
+- Blue cloud + "update ready" if any file changed
+
+### Security Scanning
+On every import/update, downloaded CSS files are scanned server-side by PHP (`fv3_scan_css_warnings()` in `lib.php`) for:
+- `url()` — external resource loading (could track users or load malicious content)
+- `@import` — external stylesheet loading
+- `expression()` — IE script execution
+- `javascript:` — script execution
+
+The scan happens **after download** on the Unraid server, not via the GitHub API. This is safe because CSS files on disk are inert — external URLs are only fetched when a browser renders the stylesheet. If external `url()` references are found, the progress dialog shows each flagged URL and prompts the user to **Keep** or **Delete** the theme. The CSS Tool's Advanced CSS textarea strips `@import`, `expression()`, and `javascript:` on save.
+
+### PHP Endpoints (Theme Manager)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `list_themes.php` | GET | Scan styles dir, return themes with source data |
+| `toggle_theme.php` | POST | Enable/disable (rename with `.disabled`), exclusive mode |
+| `import_theme.php` | POST | Fetch from GitHub API, supports `path` param for subdirs |
+| `delete_theme.php` | POST | Recursive delete, `_fv3-generated` protected |
+
+### Full Backup
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `export_all.php` | GET | Returns JSON bundle: docker/vm folders, settings, CSS config, custom styles |
+| `import_all.php` | POST | Restores bundle with path traversal prevention |
+
+Custom styles over 2MB are excluded from export with a warning. The bundle format:
+```json
+{
+    "fv3_export_version": 1,
+    "docker": {}, "vm": {}, "settings": {}, "css_config": {},
+    "custom_styles": { "theme-dir/file.css": "/* css content */" }
+}
+```
+
+## Debug Mode
+
+Type **fv3debug** on any FolderView3 page to toggle debug logging. When enabled, the browser console shows folder creation, API calls, organizer sync, and stats updates with `[FV3]` prefix. State persists in localStorage across page loads.

@@ -14,21 +14,20 @@ const applyVmZebra = () => {
  * Handles the creation of all folders
  */
 const createFolders = async () => {
+    await fv3LoadFolderDefaults();
     const prom = await Promise.all(folderReq);
-    // Parse the results
-    let folders = fv3SafeParse(prom[0], {});
+    let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
     const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
     const vmInfo = fv3SafeParse(prom[2], {});
     let order = Object.values(fv3SafeParse(prom[3], {}));
 
     fv3ResolveRenamedContainers(folders, vmInfo, 'vm');
-    
+    Object.values(folders).forEach(f => fv3ApplyDefaults(f));
+
 
     
-    // Filter the webui order to get the container that aren't in the order, this happen when a new container is created
     let newOnes = order.filter(x => !unraidOrder.includes(x));
 
-    // Insert the folder in the unraid folder into the order shifted by the unlisted containers
     for (let index = 0; index < unraidOrder.length; index++) {
         const element = unraidOrder[index];
         if((folderRegex.test(element) && folders[element.slice(7)])) {
@@ -36,7 +35,6 @@ const createFolders = async () => {
         }
     }
 
-    // debug mode, download the debug json file
     if(folderDebugMode) {
         const debugData = JSON.stringify({
             version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
@@ -47,17 +45,8 @@ const createFolders = async () => {
             order,
             vmInfo
         });
-        const blob = new Blob([debugData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const element = document.createElement('a');
-        element.href = url;
-        element.download = 'debug-VM.json';
-        element.style.display = 'none';
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-        URL.revokeObjectURL(url);
-        console.log('Order:', [...order]);
+        fv3DownloadDebugJSON('debug-VM.json', debugData);
+        fv3Debug('vm', 'Order:', [...order]);
     }
 
     let foldersDone = {};
@@ -68,7 +57,6 @@ const createFolders = async () => {
         vmInfo: vmInfo
     }}));
 
-    // Draw the folders in the order
     for (let key = 0; key < order.length; key++) {
         const container = order[key];
         if (container && folderRegex.test(container)) {
@@ -76,24 +64,19 @@ const createFolders = async () => {
             if (folders[id]) {
                 key -= createFolder(folders[id], id, key, order, vmInfo, Object.keys(foldersDone));
                 key -= newOnes.length;
-                // Move the folder to the done object and delete it from the undone one
                 foldersDone[id] = folders[id];
                 delete folders[id];
             }
         }
     }
 
-    // Draw the foldes outside of the order
     for (const [id, value] of Object.entries(folders)) {
-        // Add the folder on top of the array
         order.unshift(`folder-${id}`);
         createFolder(value, id, 0, order, vmInfo, Object.keys(foldersDone));
-        // Move the folder to the done object and delete it from the undone one
         foldersDone[id] = folders[id];
         delete folders[id];
     }
 
-    // Expand folders that are set to be expanded by default, this is here because is easier to work with all compressed folder when creating them
     for (const [id, value] of Object.entries(foldersDone)) {
         if((globalFolders[id] && globalFolders[id].status.expanded) || value.settings.expand_tab) {
             value.status.expanded = true;
@@ -107,10 +90,37 @@ const createFolders = async () => {
         vmInfo: vmInfo
     }}));
 
-    // Assing the folder done to the global object
     globalFolders = foldersDone;
 
-    requestAnimationFrame(() => fv3SyncPreviewHeights());
+    // Adopt VM detail rows that Unraid injects after createFolders (vmshow cookie)
+    const kvmList = document.querySelector('#kvm_list');
+    if (kvmList) {
+        const adoptDetailRows = () => {
+            const orphans = kvmList.querySelectorAll(':scope > tr[id^="name-"]');
+            orphans.forEach(tr => {
+                const nameId = tr.id;
+                const vmRow = document.querySelector(`tr.folder-element a[onclick*='toggle_id("${nameId}")']`)?.closest('tr');
+                if (vmRow) {
+                    const folderMatch = vmRow.className.match(/folder-(\S+?)-element/);
+                    if (folderMatch) {
+                        const folderId = folderMatch[1];
+                        const storage = document.querySelector(`tr.folder-id-${folderId} .folder-storage`);
+                        if (storage) {
+                            tr.classList.add(`folder-${folderId}-element`, 'folder-element');
+                            storage.appendChild(tr);
+                        }
+                    }
+                }
+            });
+            if (orphans.length) applyVmZebra();
+        };
+        const mo = new MutationObserver(adoptDetailRows);
+        mo.observe(kvmList, { childList: true });
+        fv3Cleanups.push(() => mo.disconnect());
+        adoptDetailRows();
+    }
+
+    requestAnimationFrame(() => fv3SyncPreviewHeights('vm_listview_mode'));
 
     applyVmZebra();
 
@@ -151,7 +161,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     let autostartStarted = 0;
     let remBefore = 0;
 
-    // If regex is present searches all containers for a match and put them inside the folder containers
     if (folder.regex && typeof folder.regex === 'string' && folder.regex.trim() !== "") {
         try {
             const regex = new RegExp(folder.regex);
@@ -178,9 +187,18 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     // This avoids the bug where initializing with checked:false then clicking ON could
     // fire a change event that resets VM autostart settings.
 
-    // Set the border if enabled and set the color
     if(folder.settings.preview_border) {
-        $(`tr.folder-id-${id} div.folder-preview`).css('border', `solid ${folder.settings.preview_border_color} 1px`);
+        const preview = $(`tr.folder-id-${id} div.folder-preview`);
+        if (folder.settings.preview_border_color) {
+            if (folder.settings.lock_colors) {
+                preview.css('border', `solid ${folder.settings.preview_border_color} 1px`);
+            } else {
+                preview[0].style.setProperty('--fv3-preview-border-color', folder.settings.preview_border_color);
+                preview.css('border', 'solid var(--fv3-preview-border-color) 1px');
+            }
+        } else {
+            preview.css('border', 'solid var(--fv3-preview-border-color) 1px');
+        }
     }
 
     $(`tr.folder-id-${id} div.folder-preview`).addClass(`folder-preview-${folder.settings.preview}`);
@@ -275,10 +293,17 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             let $vmTR = $('#kvm_list > tr.sortable').filter(function() {
                 return $(this).find('td.vm-name span.outer span.inner a').first().text().trim() === container;
             }).first();
+            let $detailRows = $vmTR.nextUntil('tr.sortable');
             $(`tr.folder-id-${id} div.folder-storage`).append($vmTR.addClass(`folder-${id}-element`).addClass(`folder-element`).removeClass('sortable'));
+            if ($detailRows.length) {
+                $(`tr.folder-id-${id} div.folder-storage`).append($detailRows.addClass(`folder-${id}-element folder-element`));
+            }
+            $vmTR.find('input:not([name]):not([id])').each(function() {
+                $(this).attr('name', `fv3-${$(this).attr('class') || 'input'}-${container}`);
+            });
 
             if(folderDebugMode) {
-                console.log(`${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
+                fv3Debug('vm', `${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
             }
             
             const isHiddenFromPreview = (folder.hidden_preview || []).includes(container);
@@ -300,6 +325,14 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                         sel = element.children('img.img');
                     }
                     sel.css('filter', 'grayscale(100%)');
+                }
+
+                if (folder.settings.preview_console && ct.vnc_port > 0) {
+                    sel = element.children('span.inner').last();
+                    if (!sel.length) {
+                        sel = element;
+                    }
+                    sel.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); window.open('/plugins/dynamix.vm.manager/vnc.html?autoconnect=true&resize=scale&host=' + location.hostname + '&port=&path=/wsproxy/${escapeHtml(ct.vnc_port)}/', '_blank');"><i class="fa fa-desktop" aria-hidden="true"></i></a></span>`));
                 }
 
                 if (folder.settings.preview_logs && ct.logs) {
@@ -345,56 +378,16 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     // wrap the preview with a div
     $(`tr.folder-id-${id} div.folder-preview > span`).wrap('<div class="folder-preview-wrapper"></div>');
 
-    if (folder.settings.preview_overflow === 1) {
-        const $expandPreview = $(`tr.folder-id-${id} div.folder-preview`);
-        const expandEl = $expandPreview[0];
-        $expandPreview.addClass('fv3-overflow-expand');
-        if (folder.settings.preview_row_separator) {
-            $expandPreview.addClass('fv3-has-separators');
-        }
-        const checkExpand = () => {
-            if (expandEl.classList.contains('fv3-overflow-expand')) {
-                const wrappers = expandEl.querySelectorAll('.folder-preview-wrapper');
-                if (wrappers.length < 2) return;
-                if (wrappers[0].offsetTop === wrappers[wrappers.length - 1].offsetTop) {
-                    expandEl.classList.remove('fv3-overflow-expand');
-                }
-            } else if (expandEl.scrollWidth > expandEl.clientWidth) {
-                expandEl.classList.add('fv3-overflow-expand');
-            }
-        };
-        expandEl._fv3CheckExpand = checkExpand;
-        requestAnimationFrame(checkExpand);
-        expandEl.querySelectorAll('img').forEach(img => {
-            if (!img.complete) {
-                img.addEventListener('load', () => requestAnimationFrame(checkExpand), { once: true });
-                img.addEventListener('error', () => requestAnimationFrame(checkExpand), { once: true });
-            }
-        });
-        const expandRo = new ResizeObserver(() => requestAnimationFrame(checkExpand));
-        expandRo.observe(expandEl);
-    } else if (folder.settings.preview_overflow === 2) {
-        const $scrollPreview = $(`tr.folder-id-${id} div.folder-preview`);
-        const scrollEl = $scrollPreview[0];
-        $scrollPreview.addClass('fv3-overflow-scroll');
-        requestAnimationFrame(() => {
-            if (scrollEl.scrollWidth <= scrollEl.clientWidth) {
-                $scrollPreview.removeClass('fv3-overflow-scroll');
-            }
-        });
-        const scrollRo = new ResizeObserver(() => {
-            scrollEl.classList.add('fv3-overflow-scroll');
-            requestAnimationFrame(() => {
-                if (scrollEl.scrollWidth <= scrollEl.clientWidth) {
-                    scrollEl.classList.remove('fv3-overflow-scroll');
-                }
-            });
-        });
-        scrollRo.observe(scrollEl);
-    }
+    fv3SetupPreviewMode(folder, id, globalFolders);
     if(folder.settings.preview_vertical_bars) {
-        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color;
-        $(`tr.folder-id-${id} div.folder-preview > div`).not(':last').after(`<div class="folder-preview-divider" style="border-color: ${barsColor};"></div>`);
+        const barsColor = folder.settings.preview_vertical_bars_color || folder.settings.preview_border_color || '';
+        let barStyle = '';
+        if (barsColor && folder.settings.lock_colors) {
+            barStyle = `border-color: ${barsColor};`;
+        } else if (barsColor) {
+            barStyle = `--fv3-vertical-bars-color: ${barsColor};`;
+        }
+        $(`tr.folder-id-${id} div.folder-preview > div`).not(':last').after(`<div class="folder-preview-divider" style="${barStyle}"></div>`);
     }
 
     //set tehe status of a folder
@@ -404,9 +397,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
     }
 
-    // Initialize switchButton with the correct checked state directly — no click() needed.
-    // This prevents the bug where checked:false + click() could fire a change event
-    // that propagates to folderAutostart and resets VM autostart settings.
     const folderHasAutostart = autostart > 0;
     $(`#folder-${id}-auto`).switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on'), checked: folderHasAutostart });
 
@@ -427,7 +417,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     folder.status.autostartStarted = autostartStarted;
     folder.status.expanded = false;
 
-    // Attach handler AFTER switchButton is fully initialized with correct state
     $(`#folder-${id}-auto`).off("change", folderAutostart).on("change", folderAutostart);
 
     folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-creation', {detail: {
@@ -448,14 +437,10 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
  */
 const folderAutostart = (el) => {
     const status = el.target.checked;
-    // The id is needded to get the containers, the checkbox has a id folder-${id}-auto, so split and take the second element
     const id = el.target.id.split('-')[1];
     const containers = $(`tr.folder-${id}-element`);
     for (const container of containers) {
-        // Select the td with the switch inside
         const el = $(container).children().last();
-
-        // Get the status of the container
         const cstatus = el.children('.autostart')[0].checked;
         if ((status && !cstatus) || (!status && cstatus)) {
             el.children('.switch-button-background').click();
@@ -463,65 +448,9 @@ const folderAutostart = (el) => {
     }
 };
 
-/**
- * Handle the dropdown expand button of folders
- * @param {string} id the id of the folder
- */
-const dropDownButton = (id) => {
-    folderEvents.dispatchEvent(new CustomEvent('vm-pre-folder-expansion', {detail: { id }}));
-    const element = $(`.dropDown-${id}`);
-    const state = element.attr('active') === "true";
-    if (state) {
-        element.children().removeClass('fa-chevron-up').addClass('fa-chevron-down');
-        $(`tr.folder-id-${id}`).addClass('sortable');
-        $(`tr.folder-id-${id} .folder-storage`).append($(`.folder-${id}-element`));
-        element.attr('active', 'false');
-    } else {
-        element.children().removeClass('fa-chevron-down').addClass('fa-chevron-up');
-        $(`tr.folder-id-${id}`).removeClass('sortable').removeClass('ui-sortable-handle').off().css('cursor', '');
-        $(`tr.folder-id-${id}`).after($(`.folder-${id}-element`));
-        $(`.folder-${id}-element > td > i.fa-arrows-v`).remove();
-        element.attr('active', 'true');
-    }
-    if(globalFolders[id]) {
-        globalFolders[id].status.expanded = !state;
-    }
-    folderEvents.dispatchEvent(new CustomEvent('vm-post-folder-expansion', {detail: { id }}));
-    applyVmZebra();
-};
-
-/**
- * Removie the folder
- * @param {string} id the id of the folder
- */
-const rmFolder = (id) => {
-    // Ask for a confirmation
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        if (!c) { setTimeout(loadlist); return; }
-        $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
-        loadedFolder = false;
-        setTimeout(loadlist, 500)
-    });
-};
-
-/**
- * Redirect to the page to edit the folder
- * @param {string} id the id of the folder
- */
-const editFolder = (id) => {
-    location.href = "/VMs/Folder?type=vm&id=" + id;
-};
+const dropDownButton = (id) => fv3DropDownButton('vm', globalFolders, id, applyVmZebra);
+const rmFolder = (id) => fv3RmFolder('vm', globalFolders, loadlist, id);
+const editFolder = (id) => fv3EditFolder('vm', '/VMs/Folder', id);
 
 /**
  * 
@@ -550,6 +479,7 @@ const actionFolder = async (id, action) => {
             case "domain-stop":
             case "domain-pause":
             case "domain-restart":
+            case "domain-reset":
             case "domain-pmsuspend":
                 pass = ct.state === "running";
                 break;
@@ -568,13 +498,13 @@ const actionFolder = async (id, action) => {
                 break;
         }
         if(pass) {
-            proms.push($.post('/plugins/dynamix.vm.manager/include/VMajax.php', {action: action, uuid: cid}, null,'json').promise());
+            proms.push(fv3VmAction(action, cid));
         }
     }
 
     proms = await Promise.all(proms);
     errors = proms.filter(e => e.success !== true);
-    const errorMessages = errors.map(e => e.text || JSON.stringify(e));
+    const errorMessages = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
     if(errors.length > 0) {
         swal({
@@ -597,7 +527,7 @@ const actionFolder = async (id, action) => {
  */
 const folderCustomAction = async (id, action) => {
     $('div.spinner.fixed').show('slow');
-    const eventURL = '/plugins/dynamix.vm.manager/include/VMajax.php';
+
     const folder = globalFolders[id];
     let act = folder.actions[action];
     let prom = [];
@@ -609,17 +539,17 @@ const folderCustomAction = async (id, action) => {
             if(act.modes === 0) {
                 ctAction = (e) => {
                     if(e.state === "running") {
-                        prom.push($.post(eventURL, {action: 'stop', uuid:e.id}, null,'json').promise());
+                        prom.push(fv3VmAction('domain-stop', e.id));
                     } else if(e.state !== "running" && e.state !== "pmsuspended" && e.state !== "paused" && e.state !== "unknown"){
-                        prom.push($.post(eventURL, {action: 'domain-start', uuid:e.id}, null,'json').promise());
+                        prom.push(fv3VmAction('domain-start', e.id));
                     }
                 };
             } else if(act.modes === 1) {
                 ctAction = (e) => {
                     if(e.state === "running") {
-                        prom.push($.post(eventURL, {action: 'domain-pause', uuid:e.id}, null,'json').promise());
+                        prom.push(fv3VmAction('domain-pause', e.id));
                     } else if(e.state === "paused" || e.state === "unknown") {
-                        prom.push($.post(eventURL, {action: 'domain-resume', uuid:e.id}, null,'json').promise());
+                        prom.push(fv3VmAction('domain-resume', e.id));
                     }
                 };
             }
@@ -629,25 +559,25 @@ const folderCustomAction = async (id, action) => {
             if(act.modes === 0) {
                 ctAction = (e) => {
                     if(e.state !== "running" && e.state !== "pmsuspended" && e.state !== "paused" && e.state !== "unknown") {
-                        prom.push($.post(eventURL, {action: 'domain-start', uuid:e.id}, null,'json').promise());
+                        prom.push(fv3VmAction('domain-start', e.id));
                     }
                 };
             } else if(act.modes === 1) {
                 ctAction = (e) => {
                     if(e.state === "running") {
-                        prom.push($.post(eventURL, {action: 'domain-stop', uuid:e.id}, null,'json').promise());
+                        prom.push(fv3VmAction('domain-stop', e.id));
                     }
                 };
             } else if(act.modes === 2) {
                 ctAction = (e) => {
                     if(e.state === "running") {
-                        prom.push($.post(eventURL, {action: 'domain-pause', uuid:e.id}, null,'json').promise());
+                        prom.push(fv3VmAction('domain-pause', e.id));
                     }
                 };
             } else if(act.modes === 3) {
                 ctAction = (e) => {
                     if(e.state === "paused" || e.state === "unknown") {
-                        prom.push($.post(eventURL, {action: 'domain-restart', uuid:e.id}, null,'json').promise());
+                        prom.push(fv3VmAction('domain-restart', e.id));
                     }
                 };
             }
@@ -656,7 +586,7 @@ const folderCustomAction = async (id, action) => {
 
             ctAction = (e) => {
                 if(e.state === "running") {
-                    prom.push($.post(eventURL, {action: 'domain-pause', uuid:e.id}, null,'json').promise());
+                    prom.push(fv3VmAction('domain-pause', e.id));
                 }
             };
 
@@ -666,20 +596,7 @@ const folderCustomAction = async (id, action) => {
             ctAction(e);
         });
     } else if(act.type === 1) {
-        const args = act.script_args || '';
-        if(act.script_sync) {
-            let scriptVariables = {}
-            let rawVars = await $.post("/plugins/user.scripts/exec.php",{action:'getScriptVariables',script:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            rawVars.trim().split('\n').forEach((e) => { const variable = e.split('='); scriptVariables[variable[0]] = variable[1] });
-            if(scriptVariables['directPHP']) {
-                $.post("/plugins/user.scripts/exec.php",{action:'directRunScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) { openBox(data,act.name,800,1200, 'loadlist');}})
-            } else {
-                $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
-            }
-        } else {
-            const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
-        }
+        await fv3RunUserScript(act, prom);
     }
 
     await Promise.all(prom);
@@ -706,7 +623,7 @@ const addVMFolderContext = (id) => {
         opts.push(
             ...globalFolders[id].actions.map((e, i) => {
                 return {
-                    text: e.name,
+                    text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
                 }
@@ -759,7 +676,15 @@ const addVMFolderContext = (id) => {
             icon:"fa-bomb",
             action:(e) => { e.preventDefault(); actionFolder(id, 'domain-destroy'); }
         });
-    
+
+        if (fv3ApiAvailable) {
+            opts.push({
+                text:$.i18n('reset'),
+                icon:"fa-bolt",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-reset'); }
+            });
+        }
+
         opts.push({
             divider: true
         });
@@ -788,7 +713,7 @@ const addVMFolderContext = (id) => {
             icon: 'fa-bars',
             subMenu: globalFolders[id].actions.map((e, i) => {
                 return {
-                    text: e.name,
+                    text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
                 }
@@ -805,8 +730,7 @@ const addVMFolderContext = (id) => {
 let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
-let folderDebugMode  = false;
-let folderDebugModeWindow = [];
+let folderDebugMode = !!window.FV3_DEBUG;
 let folderReq = [];
 
 // Patching the original function to make sure the containers are rendered before insering the folder
@@ -818,13 +742,9 @@ window.loadlist = (x) => {
         fv3FolderReqPending = true;
         loadedFolder = false;
         folderReq = [
-            // Get the folders
-            $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
-            // Get the order as unraid sees it
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            // Get the info on VMs, needed for autostart and started
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').promise(),
-            // Get the order that is shown in the webui
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
@@ -832,87 +752,10 @@ window.loadlist = (x) => {
     loadlist_original(x);
 };
 
-const fv3UpdateRowSeparators = (folderId) => {
-    const ids = folderId ? [folderId] : Object.keys(globalFolders);
-    ids.forEach(id => {
-        const folder = globalFolders[id];
-        if (!folder || !folder.settings.preview_row_separator || folder.settings.preview_overflow !== 1) return;
-        const preview = $(`tr.folder-id-${id} div.folder-preview`)[0];
-        if (!preview) return;
-        preview.querySelectorAll('.fv3-row-separator').forEach(el => el.remove());
-        const wrappers = $(`tr.folder-id-${id} div.folder-preview .folder-preview-wrapper`).get();
-        if (wrappers.length < 2) return;
-        let lastTop = wrappers[0].offsetTop;
-        const rows = [[]];
-        wrappers.forEach(w => {
-            if (w.offsetTop > lastTop) { rows.push([]); lastTop = w.offsetTop; }
-            rows[rows.length - 1].push(w);
-        });
-        if (rows.length > 1) {
-            const sepColor = folder.settings.preview_row_separator_color || '';
-            for (let i = 0; i < rows.length - 1; i++) {
-                const lastInRow = rows[i][rows[i].length - 1];
-                const nextRowFirst = rows[i + 1][0];
-                const bottom = lastInRow.offsetTop + lastInRow.offsetHeight;
-                const top = nextRowFirst.offsetTop;
-                const sep = document.createElement('div');
-                sep.className = 'fv3-row-separator';
-                sep.style.top = Math.round((bottom + top) / 2) + 'px';
-                if (sepColor) sep.style.backgroundColor = sepColor;
-                preview.appendChild(sep);
-            }
-        }
-    });
-};
-
-let fv3ResizeTimer;
-let _fv3SepTimer;
-window.addEventListener('resize', () => {
-    clearTimeout(fv3ResizeTimer);
-    fv3ResizeTimer = setTimeout(() => {
-        fv3SyncPreviewHeights();
-    }, 150);
-});
-
-const fv3SyncPreviewHeights = () => {
-    const isAdvanced = $.cookie('vm_listview_mode') == 'advanced';
-    document.querySelectorAll('tr.folder div.folder-preview:not(.fv3-overflow-expand)').forEach(el => {
-        el.style.height = '';
-        const cpuCell = el.closest('tr').querySelector('td.folder-advanced');
-        if (isAdvanced && cpuCell && cpuCell.offsetHeight > 0) {
-            const targetHeight = cpuCell.offsetHeight - 10;
-            const defaultHeight = el.offsetHeight;
-            if (targetHeight > defaultHeight) {
-                el.style.height = targetHeight + 'px';
-            }
-        }
-    });
-    document.querySelectorAll('tr.folder .folder-preview').forEach(el => {
-        if (el._fv3CheckExpand) el._fv3CheckExpand();
-    });
-    if (typeof fv3UpdateRowSeparators === 'function') {
-        clearTimeout(_fv3SepTimer);
-        _fv3SepTimer = setTimeout(() => fv3UpdateRowSeparators(), 300);
-    }
-};
-
-// Recalculate separators and preview heights when advanced/basic view is toggled
-let fv3LastAdvanced = $.cookie('vm_listview_mode') == 'advanced';
-document.addEventListener('click', () => {
-    setTimeout(() => {
-        const nowAdvanced = $.cookie('vm_listview_mode') == 'advanced';
-        if (nowAdvanced !== fv3LastAdvanced) {
-            fv3LastAdvanced = nowAdvanced;
-            clearTimeout(fv3ResizeTimer);
-            fv3ResizeTimer = setTimeout(() => {
-                fv3SyncPreviewHeights();
-            }, 300);
-        }
-    }, 100);
-}, true);
+fv3SetupResizeListeners(() => globalFolders, 'vm_listview_mode');
 
 // Add the button for creating a folder
-const createFolderBtn = () => { location.href = "/VMs/Folder?type=vm" };
+const createFolderBtn = () => fv3CreateFolderBtn('vm', '/VMs/Folder');
 
 
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
@@ -930,27 +773,11 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
         data.set('index', num);
         options.data = data.toString();
         $('.unhide').show();
-    // this is needed to trigger the funtion to create the folders
     } else if (options.url === "/plugins/dynamix.vm.manager/include/VMMachines.php" && !loadedFolder) {
         jqXHR.promise().then(() => {
             createFolders();
             $('div.spinner.fixed').hide();
-            loadedFolder = true
+            loadedFolder = true;
         });
     }
 });
-
-// activate debug mode
-addEventListener("keydown", (e) => {
-    if (e.isComposing || e.key.length !== 1) { // letter X FOR TESTING
-        return;
-    }
-    folderDebugModeWindow.push(e.key);
-    if(folderDebugModeWindow.length > 5) {
-        folderDebugModeWindow.shift();
-    }
-    if(folderDebugModeWindow.join('').toLowerCase() === "debug") {
-        folderDebugMode = true;
-        loadlist();
-    }
-})

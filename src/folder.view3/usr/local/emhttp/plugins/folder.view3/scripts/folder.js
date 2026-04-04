@@ -4,6 +4,7 @@ const escapeHtml = (str) => {
 };
 
 const fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
+    if (raw !== null && typeof raw === 'object') return raw;
     try { return JSON.parse(raw); }
     catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
 });
@@ -42,6 +43,27 @@ $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('c
 $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));
 
 (async () => {
+    const previewSummary = document.getElementById('fv3-preview-summary') || document.querySelectorAll('.fv3-section summary')[1];
+    if (previewSummary) {
+        previewSummary.removeAttribute('data-i18n');
+        const lbl = document.createElement('label');
+        lbl.className = 'fv3-global-defaults-toggle';
+        lbl.title = 'Use global defaults from Plugin Settings > Defaults';
+        lbl.onclick = (e) => e.stopPropagation();
+        lbl.innerHTML = '<input type="checkbox" name="use_global_defaults" onchange="fv3ToggleGlobalDefaults(this.checked)"><span><i class="fa fa-refresh"></i> Use Global Defaults</span>';
+        previewSummary.appendChild(lbl);
+    }
+
+    const fv3SyncSwitchButtons = () => {
+        $('input.fv3-checkbox').each(function() {
+            const $bg = $(this).siblings('.switch-button-background');
+            if (!$bg.length) return;
+            $bg.toggleClass('checked', this.checked);
+            $(this).siblings('.switch-button-label.on').toggle(this.checked);
+            $(this).siblings('.switch-button-label.off').toggle(!this.checked);
+        });
+    };
+
     // if editing a vm hide docker related settings
     if (type !== 'docker') {
         $('[constraint*="docker"]').hide();
@@ -103,7 +125,9 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         form.preview_border.checked = currFolder.settings.preview_border || false;
         form.preview_border_color.value = currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
         form.preview_vertical_bars_color.value = currFolder.settings.preview_vertical_bars_color || currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
+        form.lock_colors.checked = currFolder.settings.lock_colors || false;
         form.update_column.checked = currFolder.settings.update_column || false;
+        if (form.use_global_defaults) form.use_global_defaults.checked = currFolder.settings.use_global_defaults || false;
         form.default_action.checked = currFolder.settings.default_action || false;
         form.expand_tab.checked = currFolder.settings.expand_tab;
         form.override_default_actions.checked = currFolder.settings.override_default_actions;
@@ -125,12 +149,84 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
         // make the ui respond to the previus changes
         updateForm();
+        fv3SyncSwitchButtons();
         updateRegex(form.regex);
         updateIcon(form.icon);
+    } else {
+        try {
+            const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
+            const s = await resp.json();
+            const form = $('div.canvas > form')[0];
+            if (s.default_preview) form.preview.value = s.default_preview;
+            if (s.default_preview_hover === 'yes') form.preview_hover.checked = true;
+            if (s.default_preview_update === 'yes') form.preview_update.checked = true;
+            if (s.default_preview_grayscale === 'yes') form.preview_grayscale.checked = true;
+            if (s.default_preview_webui === 'yes') form.preview_webui.checked = true;
+            if (s.default_preview_logs === 'yes') form.preview_logs.checked = true;
+            if (s.default_preview_console === 'yes') form.preview_console.checked = true;
+            if (s.default_preview_vertical_bars === 'yes') form.preview_vertical_bars.checked = true;
+            if (s.default_vertical_bars_color) form.preview_vertical_bars_color.value = s.default_vertical_bars_color;
+            if (s.default_preview_border === 'yes') form.preview_border.checked = true;
+            if (s.default_border_color) form.preview_border_color.value = s.default_border_color;
+            if (s.default_row_separator === 'yes') form.preview_row_separator.checked = true;
+            if (s.default_separator_color) form.preview_row_separator_color.value = s.default_separator_color;
+            if (s.default_preview_text_width) form.preview_text_width.value = s.default_preview_text_width;
+            if (s.default_overflow === 'expand') form.preview_overflow.value = '1';
+            else if (s.default_overflow === 'scroll') form.preview_overflow.value = '2';
+            if (s.default_context) form.context.value = s.default_context;
+            if (s.default_update_column === 'yes') form.update_column.checked = true;
+            updateForm();
+            fv3SyncSwitchButtons();
+        } catch (e) {}
     }
 
-    // create the *cool* unraid button for the autostart
-    $('input.basic-switch').switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on')});
+    // "Use Global Defaults" toggle handler
+    let _fv3ApplyingDefaults = false;
+    window.fv3ToggleGlobalDefaults = async (checked) => {
+        if (!checked) return;
+        _fv3ApplyingDefaults = true;
+        try {
+            const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
+            const s = await resp.json();
+            const form = $('div.canvas > form')[0];
+            form.preview.value = s.default_preview || '1';
+            form.preview_hover.checked = s.default_preview_hover === 'yes';
+            form.preview_update.checked = s.default_preview_update === 'yes';
+            form.preview_grayscale.checked = s.default_preview_grayscale === 'yes';
+            form.preview_webui.checked = s.default_preview_webui === 'yes';
+            form.preview_logs.checked = s.default_preview_logs === 'yes';
+            form.preview_console.checked = s.default_preview_console === 'yes';
+            form.preview_vertical_bars.checked = s.default_preview_vertical_bars === 'yes';
+            form.preview_border.checked = s.default_preview_border === 'yes';
+            form.preview_row_separator.checked = s.default_row_separator === 'yes';
+            if (!form.lock_colors.checked) {
+                if (s.default_vertical_bars_color) form.preview_vertical_bars_color.value = s.default_vertical_bars_color;
+                if (s.default_border_color) form.preview_border_color.value = s.default_border_color;
+                if (s.default_separator_color) form.preview_row_separator_color.value = s.default_separator_color;
+            }
+            form.preview_text_width.value = s.default_preview_text_width || '';
+            if (s.default_overflow === 'expand') form.preview_overflow.value = '1';
+            else if (s.default_overflow === 'scroll') form.preview_overflow.value = '2';
+            else form.preview_overflow.value = '0';
+            form.context.value = s.default_context || '1';
+            form.context_trigger.value = s.default_context_trigger || '0';
+            form.context_graph.value = s.default_context_graph || '1';
+            form.context_graph_time.value = s.default_context_graph_time || '60';
+            form.update_column.checked = s.default_update_column === 'yes';
+            updateForm();
+            fv3SyncSwitchButtons();
+        } catch (e) {
+            console.error('[FV3] Failed to load global defaults:', e);
+        }
+        _fv3ApplyingDefaults = false;
+    };
+
+    $(document).on('change input', 'select[name="preview"], select[name="preview_overflow"], select[name="context"], input[name="preview_hover"], input[name="preview_update"], input[name="preview_grayscale"], input[name="preview_webui"], input[name="preview_logs"], input[name="preview_console"], input[name="preview_vertical_bars"], input[name="preview_vertical_bars_color"], input[name="preview_border"], input[name="preview_border_color"], input[name="preview_row_separator"], input[name="preview_row_separator_color"], input[name="preview_text_width"], input[name="lock_colors"], input[name="update_column"], select[name="context_trigger"], select[name="context_graph"], input[name="context_graph_time"]', function() {
+        if (_fv3ApplyingDefaults) return;
+        const cb = document.querySelector('input[name="use_global_defaults"]');
+        if (cb && cb.checked) cb.checked = false;
+    });
+
 
     // iterate over the folders
     for (const [folderId, value] of Object.entries(folders)) {
@@ -255,26 +351,21 @@ const updateList = () => {
     // append the selected elements
     for (const el of selected) {
         const isHidden = hiddenPreview.includes(el.Name);
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td><input class="preview-switch" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
     }
 
     // append the rest of the elements
     for (const el of choose) {
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
     }
 
     // prepend the selected regex element
     for (const el of selectedRegex) {
         const isHidden = hiddenPreview.includes(el.Name);
-        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}" style="display: none;"></td><td><input class="preview-switch" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}" style="display: none;"></td></tr>`));
+        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
     }
 
-    // create the *cool* unraid button for the autostart
-    $('table.sortable > tbody > tr > td > input.container-switch').switchButton({ show_labels: false });
-    $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().find('*').css('opacity', '0.5').css('cursor', 'default').off().end().end().each(function() { this.checked = !this.checked; });
-
-    // create the hide preview toggle for included containers
-    $('input.preview-switch').switchButton({ show_labels: false });
+    $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().css('opacity', '0.5').css('cursor', 'default');
 
     // sync hide preview toggle when included state changes
     $('table.sortable').off('change', 'input.container-switch').on('change', 'input.container-switch', function() {
@@ -290,26 +381,37 @@ const updateList = () => {
     $('.sortable').on('dragover', sortTable).on('dragenter', (e) => { e.preventDefault(); });
 
     $('.item').on('dragstart', (e) => { e.target.classList.add("dragging") }).on('dragend', (e) => { e.target.classList.remove("dragging") });
-};
 
-const syncHidePreview = ($row) => {
-    const $cb = $row.find('input.container-switch');
-    const isIncluded = $cb.is(':checked');
-    const $td = $row.find('td:nth-child(3)');
-    if (isIncluded) {
-        if (!$td.find('input.preview-switch').length) {
-            $td.html(`<input class="preview-switch" type="checkbox" value="${escapeHtml($cb.val())}" style="display:none;">`);
-            $td.find('input.preview-switch').switchButton({ show_labels: false });
+    $('.item[draggable="true"]').on('touchstart', function() {
+        this.classList.add('dragging');
+    }).on('touchmove', function(e) {
+        if (!this.classList.contains('dragging')) return;
+        e.preventDefault();
+        const touch = e.originalEvent.touches[0];
+        sortTable({ clientY: touch.clientY, preventDefault: () => {}, delegateTarget: this.closest('table') });
+    }).on('touchend', function() {
+        this.classList.remove('dragging');
+    });
+
+    if (typeof window._fv3FolderToggleStyle === 'string') {
+        var newSwitches = $('table.sortable input.fv3-checkbox[type="checkbox"]');
+        if (window._fv3FolderToggleStyle === 'default') {
+            newSwitches.not('.switchButton-init').each(function() {
+                $(this).addClass('switchButton-init').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+                var bg = $(this).next('.switch-button-background');
+                if (bg.length) bg.toggleClass('checked', this.checked);
+            });
+        } else {
+            newSwitches.each(function() {
+                if (!this.classList.contains('fv3-toggle')) {
+                    this.classList.add('fv3-toggle');
+                    if (window._fv3FolderToggleStyle !== 'flat') this.classList.add('fv3-toggle-' + window._fv3FolderToggleStyle);
+                }
+            });
         }
-    } else {
-        $td.empty();
     }
 };
 
-/**
- * i have no idea how this work, if it doesn't work you have to figure out yourself
- * @param {*} e who knows
- */
 const sortTable = (e) => {
     e.preventDefault();
 
@@ -323,6 +425,28 @@ const sortTable = (e) => {
 
     $(near).before($('.dragging'));
 }
+
+const syncHidePreview = ($row) => {
+    const $cb = $row.find('input.container-switch');
+    const isIncluded = $cb.is(':checked');
+    const $td = $row.find('td:nth-child(3)');
+    if (isIncluded) {
+        if (!$td.find('input.preview-switch').length) {
+            const style = window._fv3FolderToggleStyle || 'default';
+            const cls = (style !== 'default') ? ' fv3-toggle' + (style !== 'flat' ? ' fv3-toggle-' + style : '') : '';
+            const $newCb = $(`<input class="preview-switch fv3-checkbox${cls}" type="checkbox" value="${escapeHtml($cb.val())}">`);
+            $td.html($newCb);
+            if (style === 'default') {
+                $newCb.switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+                var bg = $newCb.next('.switch-button-background');
+                if (bg.length) bg.toggleClass('checked', $newCb[0].checked);
+            }
+        }
+    } else {
+        $td.empty();
+    }
+};
+
 
 /**
  * Handle sthe form submission
@@ -357,7 +481,9 @@ const submitForm = async (e) => {
             preview_border: e.preview_border.checked,
             preview_border_color: e.preview_border_color.value.toString(),
             preview_vertical_bars_color: e.preview_vertical_bars_color.value.toString(),
+            lock_colors: e.lock_colors.checked,
             update_column: e.update_column.checked,
+            use_global_defaults: e.use_global_defaults?.checked || false,
             default_action: e.default_action.checked,
             expand_tab: e.expand_tab.checked,
             override_default_actions: e.override_default_actions.checked,
@@ -465,8 +591,7 @@ const customAction = (action = undefined) => {
     dialog.find('[name="action_type"]').val(config.type);
     dialog.find('[constraint*=\'action-type-\']').hide();
     dialog.find(`[constraint*=\'action-type-${config.type}\']`).show();
-    dialog.find('input.basic-switch-sync').prop("checked", config.script_sync || false);
-    dialog.find('input.basic-switch-sync').switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on')});
+    dialog.find('input.basic-switch-sync').addClass('fv3-toggle').prop("checked", config.script_sync || false);
     if(config.type === 0) {
         dialog.find('[name="action_standard"]').val(config.action);
         dialog.find('[constraint*=\'action-standard-\']').hide();
@@ -550,3 +675,49 @@ if (nameInput && nameWarning) {
     });
     if (nameInput.value.length > 20) nameWarning.style.display = 'block';
 }
+
+fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(config => {
+        const style = config.toggle_style || 'default';
+        window._fv3FolderToggleStyle = style;
+        var syncSwitchState = function() {
+            $('input.fv3-checkbox[type="checkbox"]').each(function() {
+                var bg = $(this).next('.switch-button-background');
+                if (bg.length) {
+                    bg.toggleClass('checked', this.checked);
+                    var parent = bg.parent();
+                    parent.find('.switch-button-label.on').toggle(this.checked);
+                    parent.find('.switch-button-label.off').toggle(!this.checked);
+                }
+            });
+        };
+        if (style === 'default') {
+            $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+            syncSwitchState();
+            setTimeout(syncSwitchState, 200);
+            setTimeout(syncSwitchState, 1000);
+        } else {
+            document.querySelectorAll('input.fv3-checkbox[type="checkbox"]').forEach(el => {
+                el.classList.add('fv3-toggle');
+                if (style !== 'flat') el.classList.add('fv3-toggle-' + style);
+            });
+        }
+    })
+    .catch(() => {
+        $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+        var syncFallback = function() {
+            $('input.fv3-checkbox[type="checkbox"]').each(function() {
+                var bg = $(this).next('.switch-button-background');
+                if (bg.length) {
+                    bg.toggleClass('checked', this.checked);
+                    var parent = bg.parent();
+                    parent.find('.switch-button-label.on').toggle(this.checked);
+                    parent.find('.switch-button-label.off').toggle(!this.checked);
+                }
+            });
+        };
+        syncFallback();
+        setTimeout(syncFallback, 200);
+        setTimeout(syncFallback, 1000);
+    });

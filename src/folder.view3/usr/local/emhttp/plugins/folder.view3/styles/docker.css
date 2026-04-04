@@ -1,165 +1,7 @@
-:root {
-    /* Graph colors */
-    --folder-view3-graph-cpu: #2b8da3;
-    --folder-view3-graph-mem: #5d6db6;
-
-    /* Layout dimensions */
-    --fv3-folder-preview-height: 3.5em;
-    --fv3-folder-preview-radius: 4px;
-    --fv3-folder-icon-spacing: 4px;
-    --fv3-folder-preview-wrapper-margin: 10px;
-    --fv3-preview-icon-size: 32px;
-
-    /* Tooltip dimensions */
-    --fv3-tooltip-min-width: 700px;
-    --fv3-tooltip-max-height: 80vh;
-    --fv3-tooltip-action-pane-width: 220px;
-    --tooltip-spacing: 5px;
-
-    /* Theme colors (theme-safe defaults) */
-    --fv3-surface-tint: rgba(128, 128, 128, 0.1);
-    --fv3-hover-bg: rgba(128, 128, 128, 0.2);
-    --fv3-border: 1px solid rgba(128, 128, 128, 0.3);
-}
-
-/* --- General Folder Styles --- */
-.hover:hover div.folder-preview div {
-    visibility: visible;
-}
-
-.hover div.folder-preview div {
-    visibility: hidden;
-}
-
-.folder-name {
-    width: 1%;
-    white-space: nowrap;
-    min-width: 220px;
-    padding: 8px;
-    box-sizing: border-box;
-}
-
-.folder-name-sub {
-    display: flex;
-    align-items: center;
-    overflow: visible;
-    gap: 4px;
-    box-sizing: border-box;
-    width: 100%;
-}
-
-td.folder-name .folder-outer {
-    overflow: visible;
-    white-space: nowrap;
-    display: block;
-    width: auto;
-    margin-bottom: 0;
-}
-
-.folder-dropdown {
-    padding: 6px 6px 6px 8px;
-    min-width: 0;
-    margin: 0;
-    margin-left: auto;
-    flex-shrink: 0;
-}
+/* FolderView3 Docker-specific styles */
 
 .folder-update-text {
     white-space: nowrap;
-}
-
-.folder-storage {
-    display: none;
-}
-
-.folder-preview {
-    border-radius: var(--fv3-folder-preview-radius);
-    height: var(--fv3-folder-preview-height);
-    overflow: hidden;
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-}
-
-.folder-preview.fv3-overflow-expand {
-    height: auto;
-    min-height: var(--fv3-folder-preview-height);
-    max-height: none;
-    overflow: visible;
-    flex-wrap: wrap;
-    padding-top: 6px;
-    padding-bottom: 6px;
-    row-gap: 7px;
-    position: relative;
-}
-
-.folder-preview.fv3-overflow-expand.fv3-has-separators {
-    row-gap: 13px;
-}
-
-.fv3-row-separator {
-    position: absolute;
-    left: var(--fv3-folder-preview-wrapper-margin);
-    right: var(--fv3-folder-preview-wrapper-margin);
-    height: 1px;
-    background: rgba(128, 128, 128, 0.15);
-    pointer-events: none;
-}
-
-.folder-preview.fv3-overflow-scroll {
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-top: 6px;
-    box-sizing: border-box;
-}
-
-@media (max-width: 768px) {
-    .folder-preview:not(.fv3-overflow-scroll):not(.fv3-overflow-expand) {
-        overflow-x: auto;
-        overflow-y: hidden;
-    }
-    .folder-preview.fv3-overflow-scroll {
-        padding-top: 0;
-    }
-    .folder-preview-wrapper .inner {
-        line-height: 1.1;
-    }
-}
-
-.folder-preview.fv3-overflow-scroll .folder-preview-wrapper {
-    float: none;
-}
-
-.folder-preview.fv3-overflow-scroll::-webkit-scrollbar {
-    height: 6px;
-    background: transparent;
-}
-
-.folder-preview.fv3-overflow-scroll::-webkit-scrollbar-thumb {
-    background: transparent;
-    border-radius: 3px;
-}
-
-.folder-preview.fv3-overflow-scroll:hover::-webkit-scrollbar-thumb {
-    background: rgba(255, 140, 47, 0.5);
-}
-
-.folder-preview.fv3-overflow-scroll::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-@supports not selector(::-webkit-scrollbar) {
-    .folder-preview.fv3-overflow-scroll {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
-    }
-}
-
-.folder-preview-wrapper {
-    margin-left: var(--fv3-folder-preview-wrapper-margin);
-    margin-right: var(--fv3-folder-preview-wrapper-margin);
-    align-self: center;
-    flex-shrink: 0;
 }
 
 .folder-preview-wrapper .inner > span.appname {
@@ -169,28 +11,6 @@ td.folder-name .folder-outer {
     word-break: break-all;
 }
 
-.folder-preview-divider:not(:last-child) {
-    height: var(--fv3-preview-icon-size);
-    width: 0;
-    border-right: 1px solid;
-    margin-left: 0;
-    align-self: center;
-}
-
-.folder-preview.fv3-overflow-scroll .folder-preview-divider:not(:last-child) {
-    height: var(--fv3-preview-icon-size);
-    align-self: center;
-}
-
-.folder-preview.fv3-overflow-expand .folder-preview-divider:not(:last-child) {
-    height: var(--fv3-preview-icon-size);
-    align-self: center;
-}
-
-.folder-element-custom-btn {
-    margin-left: 0.5em;
-}
-
 div.folder-preview img.img {
     margin-right: var(--fv3-folder-icon-spacing);
 }
@@ -198,18 +18,6 @@ div.folder-preview img.img {
 .folder-cpu,
 .folder-mem {
     white-space: nowrap;
-}
-
-.folder-element .ct-name {
-    padding-left: 30px !important;
-}
-
-.folder-element .ct-name .inner {
-    display: inline-block;
-    max-width: calc(100% - 55px);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    vertical-align: middle;
 }
 
 div.folder-preview-4 span.outer {
@@ -237,7 +45,6 @@ div.folder-preview-4 span.outer {
     min-height: 400px;
     max-height: var(--fv3-tooltip-max-height);
     padding: var(--tooltip-spacing);
-    /* Inherit colors from Unraid's body/theme */
     background-color: inherit;
     color: inherit;
     border: 1px solid currentColor;
@@ -249,7 +56,6 @@ div.folder-preview-4 span.outer {
     overflow: auto;
 }
 
-/* Force the tooltip to pick up page styling */
 .tooltipster-docker-folder {
     color: inherit;
     background-color: inherit;
@@ -418,8 +224,8 @@ div.folder-preview-4 span.outer {
 }
 
 .info-tabs > li[aria-selected="true"] a {
-    background-color: rgba(128, 128, 128, 0.15);
-    border-color: rgba(128, 128, 128, 0.3);
+    background-color: var(--fv3-tab-active-bg);
+    border-color: var(--fv3-tab-active-border);
     position: relative;
 }
 
@@ -447,7 +253,6 @@ div.folder-preview-4 span.outer {
     color: inherit;
 }
 
-/* Ensure jQuery UI doesn't add unwanted backgrounds/borders */
 .info-section.ui-tabs.ui-widget.ui-widget-content {
     border: none;
     background: none;
@@ -460,7 +265,7 @@ div.folder-preview-4 span.outer {
 .info-section .ui-tabs-nav.ui-helper-reset.ui-helper-clearfix.ui-widget-header {
     border: none;
     background: none;
-    border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+    border-bottom: 1px solid var(--fv3-tab-active-border);
     padding: 0;
     flex-shrink: 0;
 }
@@ -476,14 +281,14 @@ div.folder-preview-4 span.outer {
 }
 
 /* Graph Canvas Responsiveness */
-.comb-stat-grapth, .cpu-stat-grapth, .mem-stat-grapth {
+.comb-stat-graph, .cpu-stat-graph, .mem-stat-graph {
     padding: 5px;
     box-sizing: border-box;
 }
 
-.comb-stat-grapth canvas,
-.cpu-stat-grapth canvas,
-.mem-stat-grapth canvas {
+.comb-stat-graph canvas,
+.cpu-stat-graph canvas,
+.mem-stat-graph canvas {
     max-width: 100%;
     height: auto !important;
     min-height: 150px;
@@ -496,12 +301,6 @@ div.folder-preview-4 span.outer {
 
 .preview-outbox div.status-stats div.usage-disk.mm span:last-of-type {
     background-color: var(--folder-view3-graph-mem);
-}
-
-/* === FOLDER EXPANDED STATE === */
-.folder-preview.expanded {
-    height: auto;
-    max-height: none;
 }
 
 /* === DOCKER CONTEXT MENU === */
@@ -528,5 +327,3 @@ div.folder-preview-4 span.outer {
 .docker-context-menu a:hover {
     background-color: var(--fv3-hover-bg);
 }
-
-

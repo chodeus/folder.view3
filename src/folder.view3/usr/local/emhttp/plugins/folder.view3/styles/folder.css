@@ -1,55 +1,222 @@
-/* Container order table - responsive for all screen sizes */
-table.sortable {
-    width: 100%;
-    margin: 0 auto;
-    table-layout: fixed;
+/* Unraid 7 sets dd { flex-direction: column } which stacks inputs
+   below their labels. Override to row so everything aligns. */
+.canvas .basic dd {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
-table.sortable th,
+/* Color picker row needs gap */
+.canvas form dd:has(> input[type="color"]) {
+    gap: 0.5em;
+}
+
+/* Hidden spacer images should not take space */
+.canvas .basic dd > img.img[style*="visibility: hidden"] {
+    display: none;
+}
+
+/* Text inputs and selects fill remaining width */
+.canvas .basic dd > input[type="text"],
+.canvas .basic dd > input[type="number"],
+.canvas .basic dd > select {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Remove bullet points from constraint lists */
+.canvas form ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Toggle ON/OFF label to the right, not underneath */
+.canvas dd .switch-button-background {
+    float: none;
+}
+
+.canvas dd .switch-button-label {
+    float: none;
+    display: inline;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.canvas dd .switch-button-label + div[style*="clear"] {
+    display: none;
+}
+
+/* Only show the active ON/OFF label */
+.canvas dd .switch-button-background.checked ~ .switch-button-label.on {
+    display: inline;
+}
+
+.canvas dd .switch-button-background.checked ~ .switch-button-label.off {
+    display: none;
+}
+
+.canvas dd .switch-button-background:not(.checked) ~ .switch-button-label.on {
+    display: none;
+}
+
+.canvas dd .switch-button-background:not(.checked) ~ .switch-button-label.off {
+    display: inline;
+}
+
+/* Order table: 50% width, centered */
+dl.fv3-folder-settings {
+    display: block;
+    padding: 16px;
+}
+
+dl.fv3-folder-settings dt {
+    display: none;
+}
+
+.fv3-folder-settings .fv3-order-dd {
+    display: block;
+    margin: 0 auto;
+    width: 50%;
+    float: none;
+}
+
+/* Use Global Defaults toggle — inline in summary bar via flexbox */
+.fv3-global-defaults-toggle {
+    --_accent: var(--fv3-accent-color, #f97316);
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: normal;
+    padding: 5px 12px;
+    border-radius: 3px;
+    border: 1px solid color-mix(in srgb, var(--_accent) 30%, transparent);
+    background: color-mix(in srgb, var(--_accent) 8%, transparent);
+    color: var(--_accent);
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+}
+.fv3-global-defaults-toggle:hover {
+    opacity: 1;
+}
+.fv3-global-defaults-toggle input {
+    vertical-align: middle;
+    margin: 0 4px 0 0;
+    accent-color: var(--_accent);
+}
+.fv3-global-defaults-toggle span {
+    color: var(--_accent);
+}
+
+/* Color reset button */
+.fv3-color-reset {
+    width: 32px;
+    height: 28px;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* ===== Container/VM order table ===== */
+table.sortable {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+table.sortable th {
+    padding: 0.6em 1em;
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.7;
+    border-bottom: var(--fv3-border, 2px solid rgba(128,128,128,0.3));
+}
+
 table.sortable td {
-    padding: 0.5em;
+    padding: 0.8em 1em;
+    border-bottom: var(--fv3-border, 1px solid rgba(128,128,128,0.15));
+}
+
+table.sortable tbody tr:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.06));
 }
 
 table.sortable th:first-child,
 table.sortable td:first-child {
-    width: 60%;
+    width: 55%;
     text-align: left;
 }
 
 table.sortable th:nth-child(2),
 table.sortable td:nth-child(2) {
-    width: 20%;
+    width: 22%;
     text-align: center;
 }
 
 table.sortable th:last-child,
 table.sortable td:last-child {
-    width: 20%;
+    width: 23%;
     text-align: center;
 }
 
-table.sortable td .switch-button-background {
+table.sortable td .switch-button-background,
+table.sortable td .fv3-toggle {
     float: none;
+    display: inline-block;
     margin: 0 auto;
 }
 
+table.sortable td .switch-button-label {
+    display: inline;
+    float: none;
+    clear: none;
+    margin-left: 4px;
+}
+
+table.sortable td .switch-button-label[style*="display: none"] {
+    display: none;
+}
+
+table.sortable td .switch-button-label + div[style*="clear"] {
+    display: none;
+}
+
+/* Drag handle icon hint */
+table.sortable tbody tr td:first-child::before {
+    content: '\f0c9';
+    font-family: FontAwesome;
+    opacity: 0.3;
+    margin-right: 8px;
+}
+
 .item {
-    height: 5em;
-    border-bottom: 1px solid;
+    height: 4em;
 }
 
 .item img {
     pointer-events: none;
+    width: 36px;
+    height: 36px;
+    vertical-align: middle;
+    margin-right: 8px;
+    border-radius: 4px;
 }
 
 .sortable > tbody > .item[draggable="true"] {
-    cursor: default;
+    cursor: grab;
+}
+
+.sortable > tbody > .item[draggable="true"]:active {
+    cursor: grabbing;
 }
 
 .dragging {
     opacity: 20%;
 }
 
+/* ===== Custom actions ===== */
 .custom-action-wrapper {
     display: flex;
     flex-direction: column;
@@ -60,11 +227,7 @@ table.sortable td .switch-button-background {
     text-overflow: ellipsis;
 }
 
-/* Custom action dialog — theme-aware
-   Unraid CSS variables are HSL components (e.g. --background: 0 0% 100%)
-   so they must be wrapped in hsl(). jQuery UI applies .ui-widget.ui-widget-content
-   on the dialog, so we need matching specificity to override jquery.ui.css.
-   We set our own --fv3-dialog-* vars with hsl() wrappers and safe fallbacks. */
+/* ===== Dialog theming ===== */
 .ui-dialog.ui-widget.ui-widget-content {
     --fv3-dialog-bg: hsl(var(--background, 0 0% 11%));
     --fv3-dialog-text: hsl(var(--text, 0 0% 95%));
@@ -83,10 +246,6 @@ table.sortable td .switch-button-background {
 }
 
 .ui-dialog .ui-dialog-content {
-    color: var(--fv3-dialog-text);
-}
-
-.ui-dialog .ui-dialog-content dt {
     color: var(--fv3-dialog-text);
 }
 
@@ -126,56 +285,158 @@ table.sortable td .switch-button-background {
     color: var(--fv3-dialog-text, hsl(0 0% 95%));
 }
 
-/* Fix tooltip bullet points - remove list markers and align with headings */
-.canvas form > ul,
-.canvas form ul {
+/* ===== Collapsible sections ===== */
+.fv3-section {
+    margin-bottom: 4px;
+    border: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fv3-section > summary {
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
     list-style: none;
-    padding-left: 0;
-    margin-left: 0;
-}
-
-.canvas form > ul > li,
-.canvas form ul > li {
-    list-style: none;
-    margin-left: 0;
-    padding-left: 0;
-}
-
-/* Nested ul for sub-options */
-.canvas form ul ul {
-    margin-left: 1em;
-}
-
-/* Keep color picker and reset button on same line.
-   Unraid 7 sets dd { flex-direction: column } on wide screens,
-   which stacks them vertically. Override to row. */
-.canvas form dd:has(> input[type="color"]) {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.5em;
-}
-
-/* Order section - display label above full-width table */
-.canvas form > .basic.order-section {
-    width: 100%;
-    padding: 0 1em;
-    box-sizing: border-box;
-}
-
-.canvas form > .basic.order-section dl {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: var(--fv3-surface-tint, rgba(128,128,128,0.08));
+    border-bottom: 1px solid transparent;
+    user-select: none;
 }
 
-.canvas form > .basic.order-section dt {
-    margin-bottom: 1em;
-    float: none;
-    width: auto;
-    text-align: left;
+.fv3-section[open] > summary {
+    border-bottom-color: rgba(128,128,128,0.3);
 }
 
-.canvas form > .basic.order-section dd {
-    margin-left: 0;
-    width: 100%;
-    float: none;
+.fv3-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.fv3-section > summary::before {
+    content: '\f054';
+    font-family: FontAwesome;
+    font-size: 0.75em;
+    transition: transform 0.15s;
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+}
+
+.fv3-section[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.fv3-section > summary:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.15));
+}
+
+.fv3-section > :not(summary) {
+    padding: 0 16px;
+}
+
+/* Toggle switches are in folder-common.css */
+
+/* ===== Mobile / Narrow Screen ===== */
+@media (max-width: 768px) {
+    .fv3-setting-row {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    /* Keep float so toggles stay inline with labels, just left-align */
+    .fv3-folder-settings dt {
+        text-align: left;
+    }
+
+    /* Keep toggle ON/OFF label next to switch on mobile */
+    .canvas dd .switch-button-background {
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .canvas dd .switch-button-label {
+        display: inline;
+        vertical-align: middle;
+    }
+
+    /* Text inputs and selects: full width forces them to wrap below the label */
+    .fv3-folder-settings input[type="text"],
+    .fv3-folder-settings input[type="number"],
+    .fv3-folder-settings select {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .fv3-section > dl,
+    .canvas .basic > dl {
+        padding: 6px 10px;
+    }
+
+    .fv3-section > :not(summary):not(dl) {
+        padding: 0 10px;
+    }
+
+    table.sortable th,
+    table.sortable td {
+        padding: 0.6em 0.5em;
+    }
+
+    table.sortable th:first-child,
+    table.sortable td:first-child {
+        width: 50%;
+    }
+
+    table.sortable th:nth-child(2),
+    table.sortable td:nth-child(2) {
+        width: 25%;
+    }
+
+    table.sortable th:last-child,
+    table.sortable td:last-child {
+        width: 25%;
+    }
+
+    .item img {
+        width: 28px;
+        height: 28px;
+        margin-right: 6px;
+    }
+
+    .fv3-folder-settings .fv3-order-dd {
+        width: 100%;
+    }
+}
+
+/* ===== Touch Devices ===== */
+@media (hover: none) {
+    .fv3-toggle {
+        width: 48px;
+        height: 28px;
+    }
+
+    .fv3-toggle::before {
+        width: 22px;
+        height: 22px;
+    }
+
+    .fv3-toggle:checked::before {
+        transform: translateX(20px);
+    }
+
+    .fv3-toggle.fv3-toggle-rounded {
+        width: 52px;
+        height: 30px;
+    }
+
+    .fv3-toggle.fv3-toggle-rounded::before {
+        width: 24px;
+        height: 24px;
+    }
+
+    .fv3-toggle.fv3-toggle-rounded:checked::before {
+        transform: translateX(22px);
+    }
 }

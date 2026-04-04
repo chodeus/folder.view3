@@ -1,0 +1,124 @@
+/* ============================================
+   Hernandito's Dashboard Theme — FV3 2026.04.04
+   Updated for develop branch compatibility
+   ============================================
+   File: hernandito.dashboard.css
+   Place in: /boot/config/plugins/folder.view3/styles/
+   ============================================
+
+   TIP: The inset/embossed variables below can also be set
+   via the CSS Tool Variables panel (Dashboard tab) instead
+   of custom CSS. Use whichever you prefer — custom CSS wins
+   if both are set.
+   ============================================ */
+
+/* ============================================
+   Inset Layout — SVG L-shape with custom colors
+   ============================================ */
+
+.fv3-layout-inset {
+    --fv3-inset-fill: #ebebeb;
+    --fv3-inset-showcase-fill: #fbf5e3;
+    --fv3-inset-border-color: #bababa;
+    --fv3-inset-showcase-border: #c1c1c1;
+}
+
+/* Child tile width inside inset panels */
+.fv3-layout-inset .folder-showcase > span.outer.solid,
+.fv3-layout-inset .folder-showcase > span.outer.apps {
+    width: 24%;
+    margin-bottom: 0;
+}
+
+/* Folder tab spacing when expanded */
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer {
+    margin-bottom: 3px;
+    padding-top: 0;
+}
+
+/* Hide folder name label for inset — it falls outside the SVG inner box */
+.fv3-layout-inset .folder-showcase[data-folder-name]:not(:empty)::after {
+    display: none;
+}
+
+/* ============================================
+   Embossed Layout — two-box look with borders
+   ============================================ */
+
+.fv3-layout-embossed {
+    --fv3-embossed-border: #cfcfcf;
+    --fv3-embossed-accent: #bababa;
+    --fv3-embossed-bg: #ebebeb;
+    --fv3-embossed-inner-border: #c1c1c1;
+    --fv3-embossed-inner-bg: #fbf5e3;
+}
+
+/* Expanded folder name in embossed */
+.fv3-layout-embossed .folder-showcase-outer[expanded="true"] > span.outer {
+    margin-bottom: 3px;
+    padding-top: 0;
+}
+
+/* Child tile width inside embossed panels */
+.fv3-layout-embossed .folder-showcase > span.outer.solid,
+.fv3-layout-embossed .folder-showcase > span.outer.apps {
+    width: 24%;
+    margin-bottom: 0;
+}
+
+/* ============================================
+   Dashboard Tile Layout (shared across layouts)
+   ============================================ */
+
+span.outer {
+    margin-bottom: 8px;
+    margin-right: 0;
+    border-bottom: none;
+    width: 33%;
+    background-color: transparent !important;
+}
+
+/* Reduce spacing after folder element separators */
+span[class^="folder-"][class$="-element"]::after {
+    content: "";
+    display: block;
+    height: 0;
+    margin-bottom: 2px;
+}
+
+div[class^="folder-showcase-"]::after {
+    height: 0;
+}
+
+/* ============================================
+   Folder Name Styling
+   ============================================ */
+
+.fv3-folder-inner-docker > .fv3-folder-appname-docker {
+    color: #00698c;
+    font-weight: bold;
+}
+
+.folder-showcase-outer[expanded="true"] .fv3-folder-appname-docker {
+    font-size: 18px;
+}
+
+/* ============================================
+   Collapse Toggle Button
+   ============================================ */
+
+button.fv3-collapse-toggle {
+    height: 24px;
+    border: 1px solid #b2b2b2;
+    border-radius: 4px;
+    color: #7e7e7e;
+    background-color: #e5e5e5;
+}
+
+/* ============================================
+   Table Spacing
+   ============================================ */
+
+table.dashboard tr:last-child > td {
+    padding-bottom: 5px;
+}

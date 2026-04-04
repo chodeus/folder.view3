@@ -1,6 +1,6 @@
 <?php
-    define('FV3_DEBUG_MODE', false); // << SET TO true TO ENABLE LOGGING TO FILE >>
-    $fv3_debug_log_file = "/tmp/folder_view3_php_debug.log"; 
+    define('FV3_DEBUG_MODE', file_exists('/tmp/fv3_debug_enabled'));
+    $fv3_debug_log_file = "/tmp/folder_view3_php_debug.log";
 
     function fv3_debug_log($message) {
         if (FV3_DEBUG_MODE) {
@@ -24,6 +24,45 @@
             exit;
         }
         return $type;
+    }
+
+    function fv3_security_headers(): void {
+        header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: DENY');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('Cache-Control: no-store');
+    }
+
+    function fv3_require_post(): void {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            header('Allow: POST');
+            exit;
+        }
+    }
+
+    function fv3_validate_csrf(): void {
+        global $var;
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        $expected = $var['csrf_token'] ?? '';
+        if ($expected === '' || $token === '' || !hash_equals($expected, $token)) {
+            http_response_code(403);
+            exit;
+        }
+    }
+
+    function fv3_post_init(): void {
+        fv3_security_headers();
+        fv3_require_post();
+    }
+
+    function fv3_get_init(): void {
+        fv3_security_headers();
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            http_response_code(405);
+            header('Allow: GET');
+            exit;
+        }
     }
 
     $folderVersion = 1.0;
@@ -305,9 +344,28 @@
             'dashboard_docker_folder_label'  => ['yes', 'no'],
             'dashboard_vm_expand_toggle'     => ['yes', 'no'],
             'dashboard_vm_greyscale'         => ['yes', 'no'],
-            'dashboard_vm_folder_label'      => ['yes', 'no']
+            'dashboard_vm_folder_label'      => ['yes', 'no'],
+            'default_preview'          => ['0', '1', '2', '3', '4'],
+            'default_preview_hover'    => ['yes', 'no'],
+            'default_preview_grayscale'=> ['yes', 'no'],
+            'default_preview_webui'    => ['yes', 'no'],
+            'default_preview_logs'     => ['yes', 'no'],
+            'default_preview_console'  => ['yes', 'no'],
+            'default_preview_update'   => ['yes', 'no'],
+            'default_preview_vertical_bars' => ['yes', 'no'],
+            'default_preview_border'   => ['yes', 'no'],
+            'default_row_separator'    => ['yes', 'no'],
+            'default_overflow'         => ['default', 'scroll', 'expand'],
+            'default_context'          => ['0', '1', '2'],
+            'default_context_trigger'  => ['0', '1'],
+            'default_context_graph'    => ['0', '1', '2', '3', '4'],
+            'default_update_column'    => ['yes', 'no']
         ];
-        if (!isset($allowed[$key]) || !in_array($value, $allowed[$key], true)) {
+        $freeformUpdate = ['default_context_graph_time'];
+        if (in_array($key, $freeformUpdate, true)) {
+            $value = preg_replace('/[^0-9]/', '', $value);
+            if ($value === '') { http_response_code(400); exit; }
+        } elseif (!isset($allowed[$key]) || !in_array($value, $allowed[$key], true)) {
             http_response_code(400);
             exit;
         }
@@ -325,6 +383,567 @@
         flock($fp, LOCK_UN);
         fclose($fp);
         @chmod($path, 0660);
+    }
+
+    function updateSettingsBatch(array $settings) : void {
+        global $configDir;
+        $allowed = [
+            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+            'dashboard_animation'            => ['yes', 'no'],
+            'dashboard_docker_expand_toggle' => ['yes', 'no'],
+            'dashboard_docker_greyscale'     => ['yes', 'no'],
+            'dashboard_docker_folder_label'  => ['yes', 'no'],
+            'dashboard_vm_expand_toggle'     => ['yes', 'no'],
+            'dashboard_vm_greyscale'         => ['yes', 'no'],
+            'dashboard_vm_folder_label'      => ['yes', 'no'],
+            'default_preview'          => ['0', '1', '2', '3', '4'],
+            'default_preview_hover'    => ['yes', 'no'],
+            'default_preview_grayscale'=> ['yes', 'no'],
+            'default_preview_webui'    => ['yes', 'no'],
+            'default_preview_logs'     => ['yes', 'no'],
+            'default_preview_console'  => ['yes', 'no'],
+            'default_preview_update'   => ['yes', 'no'],
+            'default_preview_vertical_bars' => ['yes', 'no'],
+            'default_preview_border'   => ['yes', 'no'],
+            'default_row_separator'    => ['yes', 'no'],
+            'default_overflow'         => ['default', 'scroll', 'expand'],
+            'default_context'          => ['0', '1', '2'],
+            'default_context_trigger'  => ['0', '1'],
+            'default_context_graph'    => ['0', '1', '2', '3', '4'],
+            'default_update_column'    => ['yes', 'no']
+        ];
+        $freeform = ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width', 'default_context_graph_time'];
+        $path = "$configDir/settings.json";
+        $fp = fopen($path, 'c+');
+        if (!$fp) { http_response_code(500); exit; }
+        flock($fp, LOCK_EX);
+        $raw = stream_get_contents($fp);
+        $data = json_decode($raw, true) ?: [];
+        foreach ($settings as $key => $value) {
+            $key = (string)$key;
+            $value = (string)$value;
+            if (isset($allowed[$key])) {
+                if (in_array($value, $allowed[$key], true)) $data[$key] = $value;
+            } elseif (in_array($key, $freeform, true)) {
+                if (strlen($value) > 50) continue;
+                $value = preg_replace('/[<>"\'\\\\]/', '', $value);
+                if ($value === '') { unset($data[$key]); } else { $data[$key] = $value; }
+            }
+        }
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($data));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        @chmod($path, 0660);
+    }
+
+    function updateSettingsFreeform(string $key, string $value) : void {
+        global $configDir;
+        $allowedFreeform = [
+            'default_vertical_bars_color',
+            'default_border_color',
+            'default_separator_color',
+            'default_preview_text_width'
+        ];
+        if (!in_array($key, $allowedFreeform, true)) {
+            http_response_code(400);
+            exit;
+        }
+        if (strlen($value) > 50) { http_response_code(400); exit; }
+        $value = preg_replace('/[<>"\'\\\\]/', '', $value);
+        $path = "$configDir/settings.json";
+        $fp = fopen($path, 'c+');
+        if (!$fp) { http_response_code(500); exit; }
+        flock($fp, LOCK_EX);
+        $raw = stream_get_contents($fp);
+        $data = json_decode($raw, true) ?: [];
+        if ($value === '') { unset($data[$key]); } else { $data[$key] = $value; }
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($data));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        @chmod($path, 0660);
+    }
+
+    function listThemes() : array {
+        global $configDir;
+        $stylesDir = "$configDir/styles";
+        if (!is_dir($stylesDir)) return [];
+        $themes = [];
+        foreach (scandir($stylesDir) as $entry) {
+            if ($entry === '.' || $entry === '..') continue;
+            $path = "$stylesDir/$entry";
+            if (!is_dir($path)) {
+                if (preg_match('/^_fv3-generated\./', $entry)) continue;
+                if (!preg_match('/\.css$/', $entry)) continue;
+                $disabled = false;
+                $name = preg_replace('/\.css$/', '', $entry);
+            } else {
+                $disabled = (bool) preg_match('/\.disabled$/', $entry);
+                $name = preg_replace('/\.disabled$/', '', $entry);
+            }
+            $source = null;
+            if (is_dir($path)) {
+                $srcFile = $path . '/.fv3-source';
+                if (file_exists($srcFile)) {
+                    $raw = trim(file_get_contents($srcFile));
+                    $parsed = json_decode($raw, true);
+                    $source = is_array($parsed) ? $parsed : ['repo' => $raw];
+                }
+            }
+            $themes[] = [
+                'name' => $name,
+                'entry' => $entry,
+                'isDir' => is_dir($path),
+                'enabled' => !$disabled,
+                'source' => $source
+            ];
+        }
+        return $themes;
+    }
+
+    function toggleTheme(string $entry, bool $enable, bool $exclusive) : void {
+        global $configDir;
+        $stylesDir = "$configDir/styles";
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry)) { http_response_code(400); exit; }
+        $path = "$stylesDir/$entry";
+        if (!file_exists($path)) { http_response_code(404); exit; }
+        if ($exclusive && $enable) {
+            foreach (scandir($stylesDir) as $e) {
+                if ($e === '.' || $e === '..' || !is_dir("$stylesDir/$e")) continue;
+                if (preg_match('/^_fv3-generated\./', $e)) continue;
+                $ePath = "$stylesDir/$e";
+                if (!preg_match('/\.disabled$/', $e) && $e !== $entry) {
+                    @rename($ePath, $ePath . '.disabled');
+                }
+            }
+        }
+        $isDisabled = (bool) preg_match('/\.disabled$/', $entry);
+        if ($enable && $isDisabled) {
+            $newName = preg_replace('/\.disabled$/', '', $entry);
+            @rename($path, "$stylesDir/$newName");
+        } else if (!$enable && !$isDisabled) {
+            @rename($path, $path . '.disabled');
+        }
+    }
+
+    function importTheme(string $repoUrl, string $subPath = '', string $branch = '') : array {
+        global $configDir;
+        $stylesDir = "$configDir/styles";
+        if (!preg_match('#^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$#', $repoUrl)) {
+            return ['error' => 'Invalid repo format. Use owner/repo.'];
+        }
+        $ctx = stream_context_create(['http' => [
+            'header' => "User-Agent: FolderView3\r\n",
+            'timeout' => 15
+        ]]);
+        $refParam = $branch !== '' ? '?ref=' . rawurlencode($branch) : '';
+        $apiBase = "https://api.github.com/repos/$repoUrl/contents/";
+        $fetchPath = ($subPath !== '' ? $apiBase . rawurlencode($subPath) : $apiBase) . $refParam;
+        $raw = @file_get_contents($fetchPath, false, $ctx);
+        if ($raw === false) return ['error' => 'Failed to fetch repo contents.'];
+        $contents = json_decode($raw, true);
+        if (!is_array($contents)) return ['error' => 'Invalid GitHub API response.'];
+        $cssFiles = [];
+        foreach ($contents as $f) {
+            if (!isset($f['name']) || $f['type'] !== 'file') continue;
+            if (preg_match('/\.css$/i', $f['name'])) $cssFiles[] = $f;
+        }
+        if ($subPath === '') {
+            $dirs = array_filter($contents, fn($f) => isset($f['name']) && $f['type'] === 'dir');
+            foreach ($dirs as $dir) {
+                $subRaw = @file_get_contents($apiBase . rawurlencode($dir['name']) . $refParam, false, $ctx);
+                if ($subRaw === false) continue;
+                $subContents = json_decode($subRaw, true);
+                if (!is_array($subContents)) continue;
+                foreach ($subContents as $sf) {
+                    if (isset($sf['name']) && $sf['type'] === 'file' && preg_match('/\.css$/i', $sf['name'])) {
+                        $sf['_subdir'] = $dir['name'];
+                        $cssFiles[] = $sf;
+                    }
+                }
+            }
+        }
+        if (empty($cssFiles)) return ['error' => 'No CSS files found.'];
+        $repoParts = explode('/', $repoUrl);
+        $owner = $repoParts[0];
+        $repoSlug = $repoParts[1];
+        $baseName = $subPath !== '' ? "$owner-$subPath" : "$owner-$repoSlug";
+        if ($branch !== '' && !in_array($branch, ['main', 'master'])) {
+            $baseName .= "-$branch";
+        }
+        $themeName = preg_replace('/[^a-zA-Z0-9._-]/', '-', $baseName);
+        $themeDirEnabled = "$stylesDir/$themeName";
+        $themeDirDisabled = "$stylesDir/$themeName.disabled";
+        $isUpdate = is_dir($themeDirEnabled) || is_dir($themeDirDisabled);
+        if (is_dir($themeDirEnabled)) $themeDir = $themeDirEnabled;
+        elseif (is_dir($themeDirDisabled)) $themeDir = $themeDirDisabled;
+        else $themeDir = $themeDirDisabled;
+        if (is_dir($themeDir)) {
+            $items = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($themeDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($items as $item) {
+                if ($item->getFilename() === '.fv3-source') continue;
+                if ($item->isDir()) @rmdir($item->getRealPath());
+                else @unlink($item->getRealPath());
+            }
+        } else {
+            @mkdir($themeDir, 0770, true);
+        }
+        $downloaded = [];
+        foreach ($cssFiles as $file) {
+            if (!isset($file['download_url'])) continue;
+            $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
+            $subdir = $file['_subdir'] ?? '';
+            $targetDir = $themeDir;
+            if ($subdir !== '') {
+                $safeDir = preg_replace('/[^a-zA-Z0-9._-]/', '-', $subdir);
+                $targetDir = "$themeDir/$safeDir";
+                if (!is_dir($targetDir)) @mkdir($targetDir, 0770, true);
+            }
+            $css = @file_get_contents($file['download_url'], false, $ctx);
+            if ($css !== false) {
+                file_put_contents("$targetDir/$safeName", $css);
+                @chmod("$targetDir/$safeName", 0660);
+                $downloaded[] = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
+            }
+        }
+        if (empty($downloaded)) return ['error' => 'Failed to download any CSS files.'];
+        $warnings = fv3_scan_css_warnings($themeDir, $downloaded);
+        $sourceData = ['repo' => $repoUrl, 'path' => $subPath, 'branch' => $branch, 'files' => []];
+        foreach ($cssFiles as $file) {
+            if (!isset($file['sha'])) continue;
+            $subdir = $file['_subdir'] ?? '';
+            $key = $subdir !== '' ? $subdir . '/' . $file['name'] : $file['name'];
+            $sourceData['files'][$key] = $file['sha'];
+        }
+        $sourceData['updated'] = date('c');
+        file_put_contents("$themeDir/.fv3-source", json_encode($sourceData));
+        @chmod("$themeDir/.fv3-source", 0660);
+        $result = ['success' => true, 'name' => $themeName, 'files' => $downloaded, 'is_update' => $isUpdate];
+        if (!empty($warnings)) $result['warnings'] = $warnings;
+        return $result;
+    }
+
+    function fv3_scan_css_warnings(string $baseDir, array $relPaths): array {
+        $warnings = [];
+        $patterns = [
+            'url(' => '/url\s*\(/i',
+            '@import' => '/@import\b/i',
+            'expression(' => '/expression\s*\(/i',
+            'javascript:' => '/javascript\s*:/i'
+        ];
+        foreach ($relPaths as $relPath) {
+            $filePath = "$baseDir/$relPath";
+            if (!file_exists($filePath)) continue;
+            $lines = file($filePath, FILE_IGNORE_NEW_LINES);
+            foreach ($lines as $lineNum => $line) {
+                foreach ($patterns as $label => $regex) {
+                    if (preg_match($regex, $line)) {
+                        $trimmed = trim($line);
+                        if (strlen($trimmed) > 120) $trimmed = substr($trimmed, 0, 120) . '...';
+                        $warning = [
+                            'file' => $relPath,
+                            'line' => $lineNum + 1,
+                            'type' => $label,
+                            'code' => $trimmed
+                        ];
+                        if ($label === 'url(' && preg_match('/url\s*\(\s*["\']?([^"\')\s]+)/i', $line, $urlMatch)) {
+                            $warning['url'] = $urlMatch[1];
+                        }
+                        $warnings[] = $warning;
+                    }
+                }
+            }
+        }
+        return $warnings;
+    }
+
+    function deleteTheme(string $entry) : void {
+        global $configDir;
+        $stylesDir = "$configDir/styles";
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry)) { http_response_code(400); exit; }
+        $path = "$stylesDir/$entry";
+        if (!file_exists($path)) { http_response_code(404); exit; }
+        if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }
+        if (is_dir($path)) {
+            $items = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+            foreach ($items as $item) {
+                if ($item->isDir()) { @rmdir($item->getRealPath()); }
+                else { @unlink($item->getRealPath()); }
+            }
+            @rmdir($path);
+        } else {
+            @unlink($path);
+        }
+    }
+
+    function exportAll() : array {
+        global $configDir;
+        $bundle = [
+            'fv3_export_version' => 1,
+            'plugin_version' => trim(@file_get_contents("$configDir/version") ?: ''),
+            'exported' => date('c'),
+            'docker' => json_decode(@file_get_contents("$configDir/docker.json") ?: '{}', true) ?? [],
+            'vm' => json_decode(@file_get_contents("$configDir/vm.json") ?: '{}', true) ?? [],
+            'settings' => json_decode(@file_get_contents("$configDir/settings.json") ?: '{}', true) ?? [],
+            'css_config' => json_decode(@file_get_contents("$configDir/css-config.json") ?: '{}', true) ?? [],
+            'custom_styles' => []
+        ];
+        $stylesDir = "$configDir/styles";
+        $cssSize = 0;
+        if (is_dir($stylesDir)) {
+            $items = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($stylesDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+            foreach ($items as $item) {
+                if ($item->isFile() && (preg_match('/\.css$/i', $item->getFilename()) || $item->getFilename() === '.fv3-source')) {
+                    if (preg_match('/^_fv3-generated\./', $item->getFilename())) continue;
+                    $relPath = substr($item->getRealPath(), strlen(realpath($stylesDir)) + 1);
+                    $content = file_get_contents($item->getRealPath());
+                    $cssSize += strlen($content);
+                    $bundle['custom_styles'][$relPath] = $content;
+                }
+            }
+        }
+        if ($cssSize > 2097152) {
+            $bundle['custom_styles'] = [];
+            $bundle['css_skipped'] = true;
+            $bundle['css_skipped_reason'] = 'Custom CSS files exceeded 2MB — export them manually via File Manager.';
+        }
+        return $bundle;
+    }
+
+    function importAll(string $json) : array {
+        global $configDir;
+        if (strlen($json) > 5242880) return ['error' => 'Bundle too large (5MB max)'];
+        $bundle = json_decode($json, true);
+        if (!$bundle || !isset($bundle['fv3_export_version'])) return ['error' => 'Invalid FV3 export file'];
+        $restored = [];
+        if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
+        foreach (['docker', 'vm', 'settings', 'css_config'] as $key) {
+            if (!isset($bundle[$key]) || !is_array($bundle[$key])) continue;
+            $filename = $key === 'css_config' ? 'css-config.json' : "$key.json";
+            $path = "$configDir/$filename";
+            $flags = JSON_PRETTY_PRINT;
+            if (empty($bundle[$key])) $flags |= JSON_FORCE_OBJECT;
+            file_put_contents($path, json_encode($bundle[$key], $flags));
+            @chmod($path, 0660);
+            $restored[] = $filename;
+        }
+        if (isset($bundle['custom_styles']) && is_array($bundle['custom_styles'])) {
+            $stylesDir = "$configDir/styles";
+            if (!is_dir($stylesDir)) @mkdir($stylesDir, 0770, true);
+            $baseReal = realpath($stylesDir);
+            foreach ($bundle['custom_styles'] as $relPath => $content) {
+                if (!is_string($content) || !is_string($relPath)) continue;
+                if (!preg_match('/\.css$/i', $relPath) && basename($relPath) !== '.fv3-source') continue;
+                if (preg_match('/\.\./', $relPath)) continue;
+                $fullPath = "$stylesDir/$relPath";
+                $dir = dirname($fullPath);
+                if (!is_dir($dir)) @mkdir($dir, 0770, true);
+                $dirReal = realpath($dir);
+                if ($dirReal === false || strpos($dirReal, $baseReal) !== 0) continue;
+                file_put_contents($fullPath, $content);
+                @chmod($fullPath, 0660);
+                $restored[] = "styles/$relPath";
+            }
+        }
+        if (isset($bundle['css_config']) && is_array($bundle['css_config'])) {
+            generateCssFile($bundle['css_config']);
+        }
+        return ['success' => true, 'restored' => $restored];
+    }
+
+    function readCssConfig() : string {
+        global $configDir;
+        $path = "$configDir/css-config.json";
+        if (!file_exists($path)) return '{}';
+        $raw = file_get_contents($path);
+        return ($raw !== false && json_decode($raw) !== null) ? $raw : '{}';
+    }
+
+    function readCssDefaults() : array {
+        return [
+            'folder-view3-graph-cpu' => '#2b8da3',
+            'folder-view3-graph-mem' => '#5d6db6',
+            'fv3-accent-color' => 'var(--color-orange, #f0a30a)',
+            'fv3-folder-preview-bg' => 'transparent',
+            'fv3-preview-icon-size' => '32px',
+            'fv3-folder-icon-size' => '36px',
+            'fv3-folder-name-bg' => 'transparent',
+            'fv3-row-bg' => 'transparent',
+            'fv3-toggle-color' => '',
+            'fv3-toggle-hover-color' => '',
+            'fv3-appname-max-width' => '120px',
+            'fv3-scrollbar-color' => 'rgba(255, 140, 47, 0.5)',
+            'fv3-separator-bg' => 'rgba(128, 128, 128, 0.15)',
+            'fv3-tab-active-bg' => 'rgba(128, 128, 128, 0.15)',
+            'fv3-tab-active-border' => 'rgba(128, 128, 128, 0.3)',
+            'fv3-panel-border' => 'rgba(128, 128, 128, 0.2)',
+            'fv3-panel-bg' => 'rgba(128, 128, 128, 0.08)',
+            'fv3-surface-tint' => 'rgba(128, 128, 128, 0.1)',
+            'fv3-hover-bg' => 'rgba(128, 128, 128, 0.2)',
+            'fv3-border' => '1px solid rgba(128, 128, 128, 0.3)',
+            'fv3-inset-bg' => 'transparent',
+            'fv3-inset-fill' => 'none',
+            'fv3-inset-border-color' => 'rgba(128, 128, 128, 0.3)',
+            'fv3-inset-showcase-fill' => 'none',
+            'fv3-inset-showcase-border' => 'rgba(128, 128, 128, 0.2)',
+            'fv3-embossed-border' => 'rgba(128, 128, 128, 0.3)',
+            'fv3-embossed-accent' => 'var(--color-orange, #f0a30a)',
+            'fv3-embossed-bg' => 'transparent',
+            'fv3-embossed-inner-border' => 'rgba(128, 128, 128, 0.2)',
+            'fv3-embossed-inner-bg' => 'var(--fv3-panel-bg, rgba(128, 128, 128, 0.08))',
+            'fv3-chevron-color' => 'inherit',
+            'fv3-chevron-size' => '14px',
+            'fv3-preview-border-color' => 'currentColor',
+            'fv3-vertical-bars-color' => 'currentColor',
+            'fv3-separator-color' => 'rgba(128, 128, 128, 0.5)',
+            'fv3-folder-name-color' => 'inherit',
+            'fv3-folder-name-size' => 'inherit',
+            'fv3-folder-name-weight' => 'inherit',
+            'fv3-appname-color' => 'inherit',
+            'fv3-appname-size' => 'inherit',
+            'fv3-folder-row-border-width' => '0',
+            'fv3-folder-row-border-color' => 'transparent',
+            'fv3-folder-row-radius' => '0',
+            'fv3-folder-row-padding' => '0',
+            'fv3-preview-row-border-width' => '0',
+            'fv3-preview-row-border-color' => 'transparent',
+            'fv3-showcase-bg' => 'transparent',
+            'fv3-row-alt-bg' => 'var(--dynamix-tablesorter-tbody-row-alt-bg-color, rgba(128, 128, 128, 0.08))',
+            'fv3-folder-name-min-width' => '220px'
+        ];
+    }
+
+    function updateCssConfig(string $json) : void {
+        global $configDir;
+        if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
+        $config = json_decode($json, true);
+        if ($config === null) { http_response_code(400); echo 'Invalid JSON'; exit; }
+        $allowedKeys = ['preset', 'global', 'dashboard', 'docker', 'vm', 'custom_css', 'custom_css_dashboard', 'custom_css_docker', 'custom_css_vm', 'toggle_style', 'custom_presets', 'user_notes', 'page_presets', 'page_values'];
+        foreach (array_keys($config) as $k) {
+            if (!in_array($k, $allowedKeys, true)) { unset($config[$k]); }
+        }
+        foreach (['custom_css', 'custom_css_dashboard', 'custom_css_docker', 'custom_css_vm'] as $cssKey) {
+            if (isset($config[$cssKey]) && is_string($config[$cssKey])) {
+                $config[$cssKey] = preg_replace('/@import\b/i', '', $config[$cssKey]);
+                $config[$cssKey] = preg_replace('/expression\s*\(/i', '', $config[$cssKey]);
+                $config[$cssKey] = preg_replace('/javascript\s*:/i', '', $config[$cssKey]);
+                if (strlen($config[$cssKey]) > 10240) $config[$cssKey] = substr($config[$cssKey], 0, 10240);
+            }
+        }
+        foreach (['global', 'dashboard', 'docker', 'vm'] as $section) {
+            if (isset($config[$section]) && is_array($config[$section])) {
+                foreach ($config[$section] as $varName => $val) {
+                    if (!is_string($val) || strlen($val) > 200) { unset($config[$section][$varName]); }
+                }
+            }
+        }
+        // Generate CSS file BEFORE object cast (generateCssFile expects arrays)
+        generateCssFile($config);
+        // Ensure map keys are always serialized as JSON objects (PHP encodes empty arrays as [])
+        foreach (['global', 'dashboard', 'docker', 'vm', 'page_presets', 'page_values'] as $mapKey) {
+            if (isset($config[$mapKey]) && is_array($config[$mapKey])) {
+                $config[$mapKey] = (object)$config[$mapKey];
+            }
+        }
+        $path = "$configDir/css-config.json";
+        if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
+        $fp = fopen($path, 'c+');
+        if (!$fp) { http_response_code(500); exit; }
+        flock($fp, LOCK_EX);
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($config, JSON_PRETTY_PRINT));
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        @chmod($path, 0660);
+    }
+
+    function generateCssFile(array $config) : void {
+        global $configDir;
+        $defaults = readCssDefaults();
+        $stylesDir = "$configDir/styles";
+        if (!is_dir($stylesDir)) { @mkdir($stylesDir, 0770, true); }
+
+        $sanitize = function($varName, $value) use ($defaults) {
+            if (!isset($defaults[$varName])) return null;
+            if ($value === $defaults[$varName]) return null;
+            $safeVar = preg_replace('/[^a-zA-Z0-9-]/', '', $varName);
+            $safeVal = str_replace([';', '{', '}', '<', '>'], '', $value);
+            $safeVal = preg_replace('/expression\s*\(/i', '', $safeVal);
+            $safeVal = preg_replace('/@import\b/i', '', $safeVal);
+            return "    --{$safeVar}: {$safeVal};\n";
+        };
+
+        // Global variables + custom CSS → combined file (loaded on all pages)
+        $globalCss = ":root {\n";
+        $hasGlobal = false;
+        if (isset($config['global']) && is_array($config['global'])) {
+            foreach ($config['global'] as $varName => $value) {
+                $line = $sanitize($varName, $value);
+                if ($line) { $globalCss .= $line; $hasGlobal = true; }
+            }
+        }
+        $globalCss .= "}\n";
+        if (isset($config['custom_css']) && is_string($config['custom_css']) && trim($config['custom_css']) !== '') {
+            $globalCss .= "\n" . $config['custom_css'] . "\n";
+            $hasGlobal = true;
+        }
+        $outPath = "$stylesDir/_fv3-generated.docker-vm-dashboard.css";
+        if ($hasGlobal) {
+            file_put_contents($outPath, $globalCss);
+            @chmod($outPath, 0660);
+        } else {
+            @unlink($outPath);
+        }
+
+        // Page-scoped variables + custom CSS → per-page files
+        foreach (['dashboard', 'docker', 'vm'] as $scope) {
+            $scopeCss = '';
+            $hasScope = false;
+
+            // Page-scoped variables from variable editor
+            if (isset($config[$scope]) && is_array($config[$scope])) {
+                $varBlock = ":root {\n";
+                $hasVars = false;
+                foreach ($config[$scope] as $varName => $value) {
+                    $line = $sanitize($varName, $value);
+                    if ($line) { $varBlock .= $line; $hasVars = true; }
+                }
+                $varBlock .= "}\n";
+                if ($hasVars) { $scopeCss .= $varBlock; $hasScope = true; }
+            }
+
+            // Page-scoped custom CSS
+            $scopeKey = "custom_css_{$scope}";
+            if (isset($config[$scopeKey]) && is_string($config[$scopeKey]) && trim($config[$scopeKey]) !== '') {
+                $scopeCss .= "\n" . $config[$scopeKey] . "\n";
+                $hasScope = true;
+            }
+
+            $scopePath = "$stylesDir/_fv3-generated.{$scope}.css";
+            if ($hasScope) {
+                file_put_contents($scopePath, $scopeCss);
+                @chmod($scopePath, 0660);
+            } else {
+                @unlink($scopePath);
+            }
+        }
     }
 
     function generateId(int $length = 20) : string {
@@ -621,13 +1240,25 @@
                     $res = $lv->get_domain_by_name($vm);
                     if (!$res) { fv3_debug_log("VM: Could not get domain by name for $vm."); continue; }
                     $dom = $lv->domain_get_info($res);
+                    $vncPort = '';
+                    $xml = $lv->domain_get_xml($res);
+                    if ($xml) {
+                        $xmlObj = @simplexml_load_string($xml);
+                        $graphics = $xmlObj ? $xmlObj->xpath('//graphics[@type="vnc"]') : [];
+                        if (!empty($graphics)) {
+                            $ws = (string)($graphics[0]['websocket'] ?? '');
+                            $raw = $ws ?: (string)$graphics[0]['port'];
+                            $vncPort = ctype_digit($raw) ? $raw : '';
+                        }
+                    }
                     $info[$vm] = [
                         'uuid' => $lv->domain_get_uuid($res), 'name' => $vm,
                         'description' => $lv->domain_get_description($res),
                         'autostart' => $lv->domain_get_autostart($res),
                         'state' => $lv->domain_state_translate($dom['state']),
                         'icon' => $lv->domain_get_icon_url($res),
-                        'logs' => (is_file("/var/log/libvirt/qemu/$vm.log") ? "libvirt/qemu/$vm.log" : '')
+                        'logs' => (is_file("/var/log/libvirt/qemu/$vm.log") ? "libvirt/qemu/$vm.log" : ''),
+                        'vnc_port' => $vncPort
                     ];
                 }
             }
