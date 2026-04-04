@@ -64,8 +64,8 @@ filename="$CWD/archive/folder.view3-$version.txz"
 
 # Collision detection for main branch (date-based only)
 if [ "$branch" = "main" ]; then
-    dayversion=$(ls $CWD/archive/folder.view3-$version*.txz 2>/dev/null | wc -l)
-    if [ $dayversion -gt 0 ]; then
+    dayversion=$(ls $CWD/archive/folder.view3-$version*.txz 2>/dev/null | wc -l | tr -d ' ' || echo 0)
+    if [ "$dayversion" -gt 0 ]; then
         version="$version.$dayversion"
         filename="$CWD/archive/folder.view3-$version.txz"
     fi
