@@ -117,6 +117,7 @@
     "lock-colors-tooltip": "Po włączeniu kolory ramki, pionowych pasków i separatorów tego folderu nie mogą być nadpisane przez presety CSS, wartości globalne ani Zastosuj domyślne do wszystkich folderów.<br>Po wyłączeniu (domyślnie) te źródła mogą nadpisywać kolory.",
     "update-column": "Ukryj kolumnę aktualizacji:",
     "update-column-tooltip": "Ukrywa kolumnę Wersja/aktualizacja dla tego wiersza folderu, zwalniając miejsce w poziomie.",
+    "vm-details": "Show VM details",
     "expand-tab": "Rozwinięty w zakładce Docker/VM:",
     "expand-tab-tooltip": "Folder będzie domyślnie rozwinięty (pokazując kontenery potomne) podczas ładowania strony Docker/VM.",
     "expand-dashboard": "Rozwinięty w zakładce Pulpit:",

@@ -6,72 +6,85 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
-## 2026.04.04.1 — Develop Branch Merge
+## 2026.04.04 — Stable Release
 
 ### New Features
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 29 | shared.js extraction (~930 lines): row separators, preview heights, resize listeners, debug system, JSON recovery | `shared.js` (new), `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04.1 |
-| 30 | folder-common.css extraction (~622 lines): common folder layout rules from docker/vm CSS | `folder-common.css` (new), `docker.css`, `vm.css` | 2026.04.04.1 |
-| 31 | customEvents.js consolidation: event bus (`folderEvents`), `escapeHtml()`, CSRF ajaxPrefilter | `customEvents.js` (new) | 2026.04.04.1 |
-| 32 | GraphQL API detection and hybrid mutations with automatic PHP fallback | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04.1 |
-| 33 | WebSocket real-time stats subscription (replaces SSE on Unraid 7.2+) | `shared.js`, `docker.js` | 2026.04.04.1 |
-| 34 | Docker container update checking via GraphQL API | `shared.js`, `docker.js` | 2026.04.04.1 |
-| 35 | Native Docker Organizer sync (one-way FV3→Unraid, fire-and-forget) | `shared.js`, `docker.js` | 2026.04.04.1 |
-| 36 | VM Reset action via GraphQL (7.2+ only) | `vm.js` | 2026.04.04.1 |
-| 37 | Settings page restructured into tabs (Backup, Dashboard, Defaults, CSS) | `FolderView3.page`, `folderview3.js`, `folderview3.css` | 2026.04.04.1 |
-| 38 | Folder defaults with Apply to All and Use Global Defaults checkbox | `FolderView3.page`, `folderview3.js`, `lib.php`, `read_settings.php`, `save_settings.php` | 2026.04.04.1 |
-| 39 | Full backup export/import (folders, settings, CSS config, themes in one JSON) | `folderview3.js`, `export_all.php`, `import_all.php` | 2026.04.04.1 |
-| 40 | CSS Tool: theme manager with GitHub import, enable/disable, update checker | `csstool.js` (new), `csstool.css` (new), `upload_theme.php`, `delete_theme.php`, `list_themes.php` | 2026.04.04.1 |
-| 41 | CSS Tool: variable editor (27 vars, page scoping, color pickers) | `csstool.js`, `csstool.css`, `read_css_config.php`, `save_css_config.php`, `default_css.php` | 2026.04.04.1 |
-| 42 | CSS Tool: presets (Default, Compact, Blue Accent, Orange Accent, Muted) | `csstool.js`, `csstool.css` | 2026.04.04.1 |
-| 43 | CSS Tool: toggle style picker (5 styles with live preview) | `csstool.js`, `csstool.css`, `folder-common.css` | 2026.04.04.1 |
-| 44 | CSS Tool: advanced CSS textarea with security scanning | `csstool.js`, `lib.php` | 2026.04.04.1 |
-| 45 | Incognito mode (blur container names, IPs, ports for screenshot-safe sharing) | `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04.1 |
-| 46 | Error banners (`fv3ShowBanner()`): deduped, auto-dismiss warnings (15s), persistent errors | `shared.js` | 2026.04.04.1 |
-| 47 | Unified debug system: `fv3debug` keyboard toggle, localStorage persistence, zero-overhead no-op when off | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04.1 |
-| 48 | PHP debug toggle via `touch /tmp/fv3_debug_enabled` file flag | `lib.php` | 2026.04.04.1 |
-| 49 | Build script cross-platform support (macOS sed, md5, cp detection) | `pkg_build.sh` | 2026.04.04.1 |
-| 50 | README updated with screenshots and missing feature descriptions | `README.md` | 2026.04.04.1 |
+| 29 | shared.js extraction (~930 lines): row separators, preview heights, resize listeners, debug system, JSON recovery | `shared.js` (new), `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04 |
+| 30 | folder-common.css extraction (~622 lines): common folder layout rules from docker/vm CSS | `folder-common.css` (new), `docker.css`, `vm.css` | 2026.04.04 |
+| 31 | customEvents.js consolidation: event bus (`folderEvents`), `escapeHtml()`, CSRF ajaxPrefilter | `customEvents.js` (new) | 2026.04.04 |
+| 32 | GraphQL API detection and hybrid mutations with automatic PHP fallback | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04 |
+| 33 | WebSocket real-time stats subscription (replaces SSE on Unraid 7.2+) | `shared.js`, `docker.js` | 2026.04.04 |
+| 34 | Docker container update checking via GraphQL API | `shared.js`, `docker.js` | 2026.04.04 |
+| 35 | Native Docker Organizer sync (one-way FV3→Unraid, fire-and-forget) | `shared.js`, `docker.js` | 2026.04.04 |
+| 36 | VM Reset action via GraphQL (7.2+ only) | `vm.js` | 2026.04.04 |
+| 37 | Settings page restructured into tabs (Backup, Dashboard, Defaults, CSS) | `FolderView3.page`, `folderview3.js`, `folderview3.css` | 2026.04.04 |
+| 38 | Folder defaults with Apply to All and Use Global Defaults checkbox | `FolderView3.page`, `folderview3.js`, `lib.php`, `read_settings.php`, `save_settings.php` | 2026.04.04 |
+| 39 | Full backup export/import (folders, settings, CSS config, themes in one JSON) | `folderview3.js`, `export_all.php`, `import_all.php` | 2026.04.04 |
+| 40 | CSS Tool: theme manager with GitHub import, enable/disable, update checker | `csstool.js` (new), `csstool.css` (new), `upload_theme.php`, `delete_theme.php`, `list_themes.php` | 2026.04.04 |
+| 41 | CSS Tool: variable editor (27 vars, page scoping, color pickers) | `csstool.js`, `csstool.css`, `read_css_config.php`, `save_css_config.php`, `default_css.php` | 2026.04.04 |
+| 42 | CSS Tool: presets (Default, Compact, Blue Accent, Orange Accent, Muted) | `csstool.js`, `csstool.css` | 2026.04.04 |
+| 43 | CSS Tool: toggle style picker (5 styles with live preview) | `csstool.js`, `csstool.css`, `folder-common.css` | 2026.04.04 |
+| 44 | CSS Tool: advanced CSS textarea with security scanning | `csstool.js`, `lib.php` | 2026.04.04 |
+| 45 | Incognito mode (blur container names, IPs, ports for screenshot-safe sharing) | `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04 |
+| 46 | Error banners (`fv3ShowBanner()`): deduped, auto-dismiss warnings (15s), persistent errors | `shared.js` | 2026.04.04 |
+| 47 | Unified debug system: `fv3debug` keyboard toggle, localStorage persistence, zero-overhead no-op when off | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04 |
+| 48 | PHP debug toggle via `touch /tmp/fv3_debug_enabled` file flag | `lib.php` | 2026.04.04 |
+| 49 | Build script cross-platform support (macOS sed, md5, cp detection) | `pkg_build.sh` | 2026.04.04 |
+| 50 | README updated with screenshots and missing feature descriptions | `README.md` | 2026.04.04 |
 
 ### Security
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 12 | Content-Type: application/json on all JSON endpoints | All `server/*.php` | 2026.04.04.1 |
-| 13 | CSS injection sanitization (strips @import, url(), expression(), javascript:) | `lib.php` | 2026.04.04.1 |
-| 14 | Recursive delete for theme removal | `lib.php`, `delete_theme.php` | 2026.04.04.1 |
+| 12 | Content-Type: application/json on all JSON endpoints | All `server/*.php` | 2026.04.04 |
+| 13 | CSS injection sanitization (strips @import, url(), expression(), javascript:) | `lib.php` | 2026.04.04 |
+| 14 | Recursive delete for theme removal | `lib.php`, `delete_theme.php` | 2026.04.04 |
 
 ### Bug Fixes
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 101 | CSS-only chevron positioning (deleted `fv3PositionChevrons()` entirely) | `dashboard.js`, `dashboard.css` | 2026.04.04.1 |
-| 102 | Dashboard CSS variable gaps wired up | `dashboard.css`, `folder-common.css` | 2026.04.04.1 |
-| 103 | Switch button alignment/specificity fixes (beat ID selectors) | `folder-common.css`, `csstool.css` | 2026.04.04.1 |
-| 104 | Mobile dashboard overflow for all layout styles | `dashboard.css` | 2026.04.04.1 |
-| 105 | Fullwidth expanded folder alignment | `dashboard.css`, `dashboard.js` | 2026.04.04.1 |
-| 106 | Theme branch naming in GitHub imports | `csstool.js`, `upload_theme.php` | 2026.04.04.1 |
-| 107 | VNC websocket port validation | `folder.js` | 2026.04.04.1 |
-| 108 | JSON double-parse fix after Content-Type header addition | `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04.1 |
-| 109 | Incognito mode destroying folder name DOM structure | `docker.js` | 2026.04.04.1 |
-| 110 | Apply Defaults applying stale server values instead of form state | `folderview3.js` | 2026.04.04.1 |
+| 101 | CSS-only chevron positioning (deleted `fv3PositionChevrons()` entirely) | `dashboard.js`, `dashboard.css` | 2026.04.04 |
+| 102 | Dashboard CSS variable gaps wired up | `dashboard.css`, `folder-common.css` | 2026.04.04 |
+| 103 | Switch button alignment/specificity fixes (beat ID selectors) | `folder-common.css`, `csstool.css` | 2026.04.04 |
+| 104 | Mobile dashboard overflow for all layout styles | `dashboard.css` | 2026.04.04 |
+| 105 | Fullwidth expanded folder alignment | `dashboard.css`, `dashboard.js` | 2026.04.04 |
+| 106 | Theme branch naming in GitHub imports | `csstool.js`, `upload_theme.php` | 2026.04.04 |
+| 107 | VNC websocket port validation | `folder.js` | 2026.04.04 |
+| 108 | JSON double-parse fix after Content-Type header addition | `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04 |
+| 109 | Incognito mode destroying folder name DOM structure | `docker.js` | 2026.04.04 |
+| 110 | Apply Defaults applying stale server values instead of form state | `folderview3.js` | 2026.04.04 |
+| 111 | VM detail rows positioned correctly in expanded folders | `vm.js` | 2026.04.04 |
+| 112 | MutationObserver loop prevention for VM detail row adoption | `vm.js` | 2026.04.04 |
+| 113 | Non-folder VM detail rows stay in correct position | `vm.js` | 2026.04.04 |
+| 114 | Zebra striping preserved after VM detail toggle (event delegation) | `vm.js` | 2026.04.04 |
 
 ### Mobile/Touch
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 1 | 44px dropdown tap targets for touch devices | `folder-common.css` | 2026.04.04.1 |
-| 2 | hover:none visibility for touch-only devices | `folder-common.css` | 2026.04.04.1 |
-| 3 | Firefox scrollbar fallback (`scrollbar-width`, `scrollbar-color`) | `folder-common.css` | 2026.04.04.1 |
-| 4 | Dashboard responsive breakpoints for all layouts | `dashboard.css` | 2026.04.04.1 |
+| 1 | 44px dropdown tap targets for touch devices | `folder-common.css` | 2026.04.04 |
+| 2 | hover:none visibility for touch-only devices | `folder-common.css` | 2026.04.04 |
+| 3 | Firefox scrollbar fallback (`scrollbar-width`, `scrollbar-color`) | `folder-common.css` | 2026.04.04 |
+| 4 | Dashboard responsive breakpoints for all layouts | `dashboard.css` | 2026.04.04 |
 
 ### i18n
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 1 | ~40 new keys across all 7 language files (settings, CSS tool, folder defaults, incognito) | `langs/*.json` | 2026.04.04.1 |
+| 1 | ~40 new keys across all 7 language files (settings, CSS tool, folder defaults, incognito) | `langs/*.json` | 2026.04.04 |
+
+### Infrastructure
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 1 | PLG pre-install cleanup: removes stale package DB entries before install | `folder.view3.plg` | 2026.04.04 |
+| 2 | PLG post-install cleanup: safety net for lingering package entries | `folder.view3.plg` | 2026.04.04 |
+| 3 | PLG old .txz cleanup moved from post-install to pre-install | `folder.view3.plg` | 2026.04.04 |
+| 4 | .DS_Store files removed and added to .gitignore | `.gitignore` | 2026.04.04 |
 
 ---
 

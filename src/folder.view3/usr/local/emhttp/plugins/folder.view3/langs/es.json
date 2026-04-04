@@ -117,6 +117,7 @@
     "lock-colors-tooltip": "Cuando está habilitado, los colores de borde, barras verticales y separadores de esta carpeta no pueden ser sobrescritos por presets CSS, valores globales o Aplicar valores predeterminados a todas las carpetas.<br>Cuando está deshabilitado (predeterminado), estas fuentes pueden sobrescribir los colores.",
     "update-column": "Ocultar la columna de versión:",
     "update-column-tooltip": "Oculta la columna de Versión/actualización para esta fila de carpeta, liberando espacio horizontal.",
+    "vm-details": "Show VM details",
     "expand-tab": "Ampliado en la pestaña Docker/VM:",
     "expand-tab-tooltip": "La carpeta se expandirá (mostrando contenedores hijos) por defecto al cargar la página Docker/VMs.",
     "expand-dashboard": "Ampliado en el panel de Administración:",

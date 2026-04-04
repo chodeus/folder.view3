@@ -117,6 +117,7 @@
     "lock-colors-tooltip": "When enabled, this folder's border, vertical bar, and separator colors cannot be overridden by CSS presets, global defaults, or Apply Defaults to All Folders.<br>When disabled (default), these sources can override the colors.",
     "update-column": "Hide update column:",
     "update-column-tooltip": "Hides the Version/update column for this folder's row, freeing up horizontal space.",
+    "vm-details": "Show VM details",
     "expand-tab": "Expanded on Docker/VM tab:",
     "expand-tab-tooltip": "The folder will be expanded (showing child containers) by default when the Docker/VMs page loads.",
     "expand-dashboard": "Expanded on Dashboard tab:",

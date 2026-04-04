@@ -96,20 +96,25 @@ const createFolders = async () => {
     const kvmList = document.querySelector('#kvm_list');
     if (kvmList) {
         const adoptDetailRows = () => {
-            const orphans = kvmList.querySelectorAll(':scope > tr[id^="name-"]');
+            const orphans = kvmList.querySelectorAll(':scope > tr[id^="name-"]:not(.fv3-adopted)');
             orphans.forEach(tr => {
+                tr.classList.add('fv3-adopted');
                 const nameId = tr.id;
-                const vmRow = document.querySelector(`tr.folder-element a[onclick*='toggle_id("${nameId}")']`)?.closest('tr');
-                if (vmRow) {
-                    const folderMatch = vmRow.className.match(/folder-(\S+?)-element/);
-                    if (folderMatch) {
-                        const folderId = folderMatch[1];
+                const vmRow = document.querySelector(`tr:not(.folder) a[onclick*='toggle_id("${nameId}")']`)?.closest('tr');
+                if (!vmRow) return;
+                const folderMatch = vmRow.className.match(/folder-(\S+?)-element/);
+                if (folderMatch) {
+                    const folderId = folderMatch[1];
+                    tr.classList.add(`folder-${folderId}-element`, 'folder-element');
+                    const isExpanded = document.querySelector(`.dropDown-${folderId}`)?.getAttribute('active') === 'true';
+                    if (isExpanded) {
+                        vmRow.after(tr);
+                    } else {
                         const storage = document.querySelector(`tr.folder-id-${folderId} .folder-storage`);
-                        if (storage) {
-                            tr.classList.add(`folder-${folderId}-element`, 'folder-element');
-                            storage.appendChild(tr);
-                        }
+                        if (storage) storage.appendChild(tr);
                     }
+                } else {
+                    vmRow.after(tr);
                 }
             });
             if (orphans.length) applyVmZebra();
@@ -120,7 +125,13 @@ const createFolders = async () => {
         adoptDetailRows();
     }
 
-    requestAnimationFrame(() => fv3SyncPreviewHeights('vm_listview_mode'));
+    document.getElementById('kvm_table')?.addEventListener('click', (e) => {
+        if (e.target.closest('a[onclick*="toggle_id"]')) {
+            setTimeout(applyVmZebra, 400);
+        }
+    });
+
+    requestAnimationFrame(() => fv3SyncPreviewHeights());
 
     applyVmZebra();
 

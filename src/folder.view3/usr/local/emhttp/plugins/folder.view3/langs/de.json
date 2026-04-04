@@ -117,6 +117,7 @@
     "lock-colors-tooltip": "Wenn aktiviert, können die Farben für Rahmen, vertikale Balken und Trennlinien dieses Ordners nicht durch CSS-Vorlagen, globale Standards oder \u201eStandards auf alle anwenden\u201c überschrieben werden.<br>Wenn deaktiviert (Standard), können diese Quellen die Farben überschreiben.",
     "update-column": "Aktualisierungsspalte ausblenden:",
     "update-column-tooltip": "Blendet die Version-/Update-Spalte für diese Ordnerzeile aus und gibt horizontalen Platz frei.",
+    "vm-details": "Show VM details",
     "expand-tab": "Im Docker/VM-Reiter aufklappen:",
     "expand-tab-tooltip": "Der Ordner wird standardmäßig erweitert (zeigt untergeordnete Container) beim Laden der Docker/VM-Seite.",
     "expand-dashboard": "Im Übersicht-Reiter aufklappen:",

@@ -117,6 +117,7 @@
     "lock-colors-tooltip": "Lorsqu'activé, les couleurs de bordure, barres verticales et séparateurs de ce dossier ne peuvent pas être remplacées par les presets CSS, les valeurs globales ou Appliquer les valeurs par défaut à tous les dossiers.<br>Lorsque désactivé (par défaut), ces sources peuvent remplacer les couleurs.",
     "update-column": "Cacher la colonne de mise à jour :",
     "update-column-tooltip": "Masque la colonne Version/mise à jour pour cette ligne de dossier, libérant de l'espace horizontal.",
+    "vm-details": "Show VM details",
     "expand-tab": "Déployé sur l'onglet Docker/VM :",
     "expand-tab-tooltip": "Le dossier sera étendu (montrant les conteneurs enfants) par défaut au chargement de la page Docker/VMs.",
     "expand-dashboard": "Déployé sur l'onglet du Tableau de bord :",

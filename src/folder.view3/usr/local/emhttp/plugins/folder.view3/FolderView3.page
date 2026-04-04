@@ -460,6 +460,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
+
     <div class="fv3-button-bar">
         <button onclick="fv3SubmitSettings()" data-i18n="apply">Apply</button>
         <button onclick="fv3CancelSettings()" data-i18n="reset">Reset</button>

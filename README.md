@@ -19,13 +19,17 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 
   <img src="screenshots/dockerpagepreviewexpand.png" alt="Docker page with expanded preview" width="600">
 
+- **Hide from preview** — selectively hide containers from the collapsed preview while keeping them visible when expanded
 - **Real-time stats** — live CPU/memory graphs in Advanced Preview via WebSocket (7.2+) or SSE, with configurable graph modes (Combined, Split, CPU-only, MEM-only) and time frame
 - **Drag-and-drop reordering** — reorder containers within folders via drag (mouse and touch supported)
 - **Unraid 7.2+ API integration** — hybrid GraphQL/PHP with automatic fallback for older versions
 - **Native organizer sync** — folder structure automatically syncs to Unraid's built-in Docker Organizer when available
 - **Bulk actions** — start, stop, restart, pause all containers in a folder
-- **Autostart sync** — container autostart order stays aligned with folder layout
+- **Autostart sync** — container autostart order is automatically rewritten to match your folder layout whenever you save or reorder. Stale entries from removed containers are cleaned up automatically.
+
+  <img src="img/autostartsequence.png" alt="Autostart sequence numbers" width="600">
 - **Compose & 3rd Party awareness** — handles Docker Compose and 3rd party containers
+- **Folder name length warning** — warns when names exceed 20 characters to prevent layout issues
 - **CSS Tool** — built-in theme manager with GitHub import, variable editor, presets, and advanced CSS
 - **Theme update checker** — detects when imported GitHub themes have updates, Docker-style indicators
 - **Folder defaults** — set global defaults for preview, overflow, context, and more — apply to all folders in one click
@@ -171,6 +175,15 @@ Originally created by [scolcipitato](https://github.com/scolcipitato/folder.view
 
 - **Unraid Forum:** [FolderView3 Support Thread](https://forums.unraid.net/topic/197223-plugin-folderview3/)
 - **GitHub Issues:** [chodeus/folder.view3](https://github.com/chodeus/folder.view3/issues)
+
+## Libraries
+
+- [Chart.js](https://www.chartjs.org/)
+- [chartjs-adapter-moment](https://github.com/chartjs/chartjs-adapter-moment)
+- [Moment.js](https://momentjs.com/)
+- [chartjs-plugin-streaming](https://github.com/nagix/chartjs-plugin-streaming)
+- [jquery.i18n](https://github.com/wikimedia/jquery.i18n)
+- [jQuery UI MultiSelect](https://github.com/ehynds/jquery-ui-multiselect-widget)
 
 ## Credits
 

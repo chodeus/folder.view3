@@ -117,6 +117,7 @@
     "lock-colors-tooltip": "启用后，此文件夹的边框、垂直条和分隔线颜色不能被 CSS 预设、全局默认值或\"将默认值应用到所有文件夹\"覆盖。<br>禁用时（默认），这些来源可以覆盖颜色。",
     "update-column": "隐藏更新栏：",
     "update-column-tooltip": "隐藏此文件夹行的版本/更新列，释放水平空间。",
+    "vm-details": "Show VM details",
     "expand-tab": "默认在Docker/虚拟机页展开：",
     "expand-tab-tooltip": "加载 Docker/VM 页面时，文件夹默认展开（显示子容器）。",
     "expand-dashboard": "默认在仪表板展开：",
