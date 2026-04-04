@@ -2,4 +2,5 @@ claude.md
 CLAUDE.md
 .claude/
 tests/
+dev/tests/
 .DS_Store

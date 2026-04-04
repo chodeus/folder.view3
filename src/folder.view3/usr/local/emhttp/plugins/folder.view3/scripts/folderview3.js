@@ -3,7 +3,19 @@ const escapeHtml = (str) => {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
 
+const rgbToHex = (rgb) => {
+    const m = rgb.match(/\d+/g);
+    return m ? '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('') : rgb;
+};
+
+const fv3ResetColor = (colorId, textId) => {
+    const val = rgbToHex($('body').css('color'));
+    $(`#${colorId}`).val(val);
+    $(`#${textId}`).val(val);
+};
+
 const fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
+    if (raw !== null && typeof raw === 'object') return raw;
     try { return JSON.parse(raw); }
     catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
 });
@@ -70,23 +82,30 @@ const populateTable = async () => {
     dockerTable.empty();
     vmsTable.empty();
 
-    for (const id of orderFolderIds(dockers, currentDockerContainerOrder)) {
+    const dockerIds = orderFolderIds(dockers, currentDockerContainerOrder);
+    for (const id of dockerIds) {
         const folder = dockers[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadDocker('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
-    for (const id of orderFolderIds(vms, currentVmOrder)) {
+    const vmIds = orderFolderIds(vms, currentVmOrder);
+    for (const id of vmIds) {
         const folder = vms[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadVm('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
         vmsTable.append($(fld));
     }
+
+    const dockerCount = document.getElementById('fv3-docker-count');
+    const vmCount = document.getElementById('fv3-vm-count');
+    if (dockerCount) dockerCount.textContent = `(${dockerIds.length})`;
+    if (vmCount) vmCount.textContent = `(${vmIds.length})`;
 };
 
 populateTable();
 
 const buildOrderedExport = async (folders, type) => {
-    const order = JSON.parse(await $.get(`/plugins/folder.view3/server/read_unraid_order.php?type=${type}`).promise());
+    const order = fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_unraid_order.php?type=${type}`).promise(), []);
     const orderedIds = orderFolderIds(folders, order);
     const exportData = {};
     for (const folderId of orderedIds) {
@@ -110,7 +129,7 @@ const downloadDocker = async (id) => {
 };
 
 const importDocker = () => {
-    let input = $('input[type*=file]')[0];
+    let input = document.getElementById('fv3-import-docker-file');
     input.onchange = (e) => {
 
         // getting a hold of the file reference
@@ -150,7 +169,7 @@ const importDocker = () => {
 };
 
 const importVm = () => {
-    let input = $('input[type*=file]')[0];
+    let input = document.getElementById('fv3-import-vm-file');
     input.onchange = (e) => {
 
         // getting a hold of the file reference
@@ -317,81 +336,351 @@ const fileManager = async (type) => {
     location.href = location.pathname + '/Browse?dir=/boot/config/plugins/folder.view3';
 };
 
-let fv3SuppressToggle = false;
-
-const fv3InitToggle = (id, settingKey) => {
-    const $cb = $(`#${id}`);
-    $cb.switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
-    $cb.on('change', function() {
-        if (fv3SuppressToggle) return;
-        saveDashboardSetting(settingKey, this.checked ? 'yes' : 'no');
-    });
+const fv3ToggleMap = {
+    'dashboard-animation': 'dashboard_animation',
+    'dashboard-docker-expand-toggle': 'dashboard_docker_expand_toggle',
+    'dashboard-docker-greyscale': 'dashboard_docker_greyscale',
+    'dashboard-docker-folder-label': 'dashboard_docker_folder_label',
+    'dashboard-vm-expand-toggle': 'dashboard_vm_expand_toggle',
+    'dashboard-vm-greyscale': 'dashboard_vm_greyscale',
+    'dashboard-vm-folder-label': 'dashboard_vm_folder_label',
+    'default-preview-hover': 'default_preview_hover',
+    'default-preview-grayscale': 'default_preview_grayscale',
+    'default-preview-webui': 'default_preview_webui',
+    'default-preview-logs': 'default_preview_logs',
+    'default-preview-console': 'default_preview_console',
+    'default-preview-update': 'default_preview_update',
+    'default-preview-vertical-bars': 'default_preview_vertical_bars',
+    'default-preview-border': 'default_preview_border',
+    'default-row-separator': 'default_row_separator',
+    'default-update-column': 'default_update_column'
 };
+
+const fv3SelectMap = {
+    'dashboard-docker-layout': 'dashboard_docker_layout',
+    'dashboard-vm-layout': 'dashboard_vm_layout',
+    'default-preview': 'default_preview',
+    'default-overflow': 'default_overflow',
+    'default-context': 'default_context',
+    'default-context-trigger': 'default_context_trigger',
+    'default-context-graph': 'default_context_graph'
+};
+
+const fv3ColorFields = [
+    { toggleId: 'default-preview-vertical-bars', rowId: 'fv3-bars-color-row', colorId: 'default-vertical-bars-color', textId: 'default-vertical-bars-color-text', key: 'default_vertical_bars_color' },
+    { toggleId: 'default-preview-border', rowId: 'fv3-border-color-row', colorId: 'default-border-color', textId: 'default-border-color-text', key: 'default_border_color' },
+    { toggleId: 'default-row-separator', rowId: 'fv3-separator-color-row', colorId: 'default-separator-color', textId: 'default-separator-color-text', key: 'default_separator_color' }
+];
+
+const fv3ToggleNonClassicSettings = () => {
+    const docker = $('select#dashboard-docker-layout').val();
+    const vm = $('select#dashboard-vm-layout').val();
+    $('.fv3-docker-nonclassic').css('display', docker !== 'classic' ? '' : 'none');
+    $('.fv3-vm-nonclassic').css('display', vm !== 'classic' ? '' : 'none');
+};
+
+const fv3ApplyFormState = (settings) => {
+    for (const [id, key] of Object.entries(fv3SelectMap)) {
+        if (settings[key]) $(`select#${id}`).val(settings[key]);
+    }
+    for (const [id, key] of Object.entries(fv3ToggleMap)) {
+        $(`#${id}`).prop('checked', settings[key] === 'yes');
+    }
+    fv3ToggleNonClassicSettings();
+    const overflow = settings.default_overflow || '';
+    $('.fv3-expand-only').css('display', overflow === 'expand' ? '' : 'none');
+    fv3ColorFields.forEach(cf => {
+        const val = settings[cf.key] || '';
+        if (val) { $(`#${cf.colorId}`).val(val); $(`#${cf.textId}`).val(val); }
+        else { $(`#${cf.colorId}`).val('#000000'); $(`#${cf.textId}`).val(''); }
+        $(`#${cf.rowId}`).css('display', $(`#${cf.toggleId}`).is(':checked') ? 'flex' : 'none');
+    });
+    if (settings.default_preview_text_width) $(`#default-preview-text-width`).val(settings.default_preview_text_width);
+    else $(`#default-preview-text-width`).val('');
+    if (settings.default_context_graph_time) $(`#default-context-graph-time`).val(settings.default_context_graph_time);
+    else $(`#default-context-graph-time`).val('60');
+    $('.fv3-context-advanced').css('display', ($('select#default-context').val() === '2') ? '' : 'none');
+};
+
+const fv3CollectSettings = () => {
+    const settings = {};
+    for (const [id, key] of Object.entries(fv3SelectMap)) {
+        settings[key] = $(`select#${id}`).val();
+    }
+    for (const [id, key] of Object.entries(fv3ToggleMap)) {
+        settings[key] = $(`#${id}`).is(':checked') ? 'yes' : 'no';
+    }
+    fv3ColorFields.forEach(cf => {
+        settings[cf.key] = $(`#${cf.textId}`).val() || '';
+    });
+    settings.default_preview_text_width = $(`#default-preview-text-width`).val() || '';
+    settings.default_context_graph_time = $(`#default-context-graph-time`).val() || '';
+    return settings;
+};
+
+let fv3LoadedSettings = {};
 
 const loadDashboardSettings = async () => {
     try {
-        const settings = JSON.parse(await $.get('/plugins/folder.view3/server/read_settings.php').promise());
-        if (settings.dashboard_docker_layout) {
-            $('select#dashboard-docker-layout').val(settings.dashboard_docker_layout);
-        }
-        if (settings.dashboard_vm_layout) {
-            $('select#dashboard-vm-layout').val(settings.dashboard_vm_layout);
-        }
-        if (settings.dashboard_animation === 'yes') {
-            $('#dashboard-animation').prop('checked', true);
-        }
-        fv3InitToggle('dashboard-animation', 'dashboard_animation');
-        const toggleMap = {
-            'dashboard-docker-expand-toggle': 'dashboard_docker_expand_toggle',
-            'dashboard-docker-greyscale': 'dashboard_docker_greyscale',
-            'dashboard-docker-folder-label': 'dashboard_docker_folder_label',
-            'dashboard-vm-expand-toggle': 'dashboard_vm_expand_toggle',
-            'dashboard-vm-greyscale': 'dashboard_vm_greyscale',
-            'dashboard-vm-folder-label': 'dashboard_vm_folder_label'
-        };
-        for (const [id, key] of Object.entries(toggleMap)) {
-            if (settings[key] === 'yes') {
-                $(`#${id}`).prop('checked', true);
-            }
-            fv3InitToggle(id, key);
-        }
-        fv3ToggleNonClassicSettings();
+        const settings = fv3SafeParse(await $.get('/plugins/folder.view3/server/read_settings.php').promise(), {});
+        fv3LoadedSettings = { ...settings };
+        fv3ApplyFormState(settings);
     } catch (e) {
         console.error('Failed to load dashboard settings:', e);
     }
 };
 
-const fv3ToggleNonClassicSettings = () => {
-    const docker = $('select#dashboard-docker-layout').val();
-    const vm = $('select#dashboard-vm-layout').val();
-    $('.fv3-docker-nonclassic').toggle(docker !== 'classic');
-    $('.fv3-vm-nonclassic').toggle(vm !== 'classic');
-};
-
-const fv3ResetNonClassicSettings = async (type) => {
-    const id = type === 'docker' ? 'dashboard-docker' : 'dashboard-vm';
-    const key = type === 'docker' ? 'dashboard_docker' : 'dashboard_vm';
-    fv3SuppressToggle = true;
-    $(`#${id}-folder-label`).prop('checked', false).switchButton('option', 'checked', false);
-    $(`#${id}-expand-toggle`).prop('checked', false).switchButton('option', 'checked', false);
-    fv3SuppressToggle = false;
-    await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_folder_label`, value: 'no' }).promise();
-    await $.post('/plugins/folder.view3/server/update_settings.php', { key: `${key}_expand_toggle`, value: 'no' }).promise();
-};
-
-const saveDashboardSetting = async (key, value) => {
+const fv3SubmitSettings = async () => {
+    const current = fv3CollectSettings();
+    const changed = {};
+    for (const [key, value] of Object.entries(current)) {
+        if ((fv3LoadedSettings[key] ?? '') !== value) changed[key] = value;
+    }
+    if (changed.dashboard_docker_layout === 'classic') {
+        changed.dashboard_docker_folder_label = 'no';
+        changed.dashboard_docker_expand_toggle = 'no';
+    }
+    if (changed.dashboard_vm_layout === 'classic') {
+        changed.dashboard_vm_folder_label = 'no';
+        changed.dashboard_vm_expand_toggle = 'no';
+    }
+    if (Object.keys(changed).length === 0) return;
     try {
-        await $.post('/plugins/folder.view3/server/update_settings.php', { key, value }).promise();
-        if (key === 'dashboard_docker_layout') {
-            fv3ToggleNonClassicSettings();
-            if (value === 'classic') fv3ResetNonClassicSettings('docker');
-        } else if (key === 'dashboard_vm_layout') {
-            fv3ToggleNonClassicSettings();
-            if (value === 'classic') fv3ResetNonClassicSettings('vm');
-        }
+        await $.ajax({
+            url: '/plugins/folder.view3/server/update_settings_batch.php',
+            method: 'POST',
+            data: { settings: JSON.stringify(changed) }
+        }).promise();
+        fv3LoadedSettings = { ...fv3LoadedSettings, ...changed };
+        fv3ApplyFormState(fv3LoadedSettings);
     } catch (e) {
-        console.error('Failed to save dashboard setting:', e);
+        console.error('Failed to save settings:', e);
     }
 };
 
+const fv3CancelSettings = () => {
+    fv3ApplyFormState(fv3LoadedSettings);
+};
+
+// UI side effects (no save, just visual)
+$('select#dashboard-docker-layout, select#dashboard-vm-layout').on('change', fv3ToggleNonClassicSettings);
+$('select#default-overflow').on('change', function() {
+    $('.fv3-expand-only').css('display', this.value === 'expand' ? '' : 'none');
+});
+$('select#default-context').on('change', function() {
+    $('.fv3-context-advanced').css('display', this.value === '2' ? '' : 'none');
+});
+fv3ColorFields.forEach(cf => {
+    $(`#${cf.toggleId}`).on('change', function() { $(`#${cf.rowId}`).css('display', this.checked ? 'flex' : 'none'); });
+    $(`#${cf.colorId}`).on('input', function() { $(`#${cf.textId}`).val(this.value); });
+    $(`#${cf.textId}`).on('change', function() { $(`#${cf.colorId}`).val(this.value); });
+});
+
+$('#fv3-apply-defaults').on('click', function() {
+    swal({
+        title: 'Apply Defaults?',
+        text: 'This will update all existing folders to use the current default settings. Per-folder overrides will be replaced.',
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Apply'
+    }, async (confirmed) => {
+        if (!confirmed) return;
+        await fv3SubmitSettings();
+        const settings = fv3CollectSettings();
+        const defaultMap = {
+            preview: parseInt(settings.default_preview !== undefined ? settings.default_preview : '1', 10),
+            preview_hover: settings.default_preview_hover === 'yes',
+            preview_grayscale: settings.default_preview_grayscale === 'yes',
+            preview_webui: settings.default_preview_webui === 'yes',
+            preview_logs: settings.default_preview_logs === 'yes',
+            preview_console: settings.default_preview_console === 'yes',
+            preview_update: settings.default_preview_update === 'yes',
+            preview_vertical_bars: settings.default_preview_vertical_bars === 'yes',
+            preview_vertical_bars_color: settings.default_vertical_bars_color || '',
+            preview_border: settings.default_preview_border === 'yes',
+            preview_border_color: settings.default_border_color || '',
+            preview_row_separator: settings.default_row_separator === 'yes',
+            preview_row_separator_color: settings.default_separator_color || '',
+            preview_text_width: settings.default_preview_text_width || '',
+            preview_overflow: settings.default_overflow === 'scroll' ? 2 : settings.default_overflow === 'expand' ? 1 : 0,
+            context: parseInt(settings.default_context !== undefined ? settings.default_context : '1', 10),
+            context_trigger: parseInt(settings.default_context_trigger || '0', 10),
+            context_graph: parseInt(settings.default_context_graph || '1', 10),
+            context_graph_time: parseInt(settings.default_context_graph_time || '60', 10),
+            update_column: settings.default_update_column === 'yes',
+            use_global_defaults: true
+        };
+        for (const [type, folders] of [['docker', dockers], ['vm', vms]]) {
+            for (const [id, folder] of Object.entries(folders)) {
+                if (!folder.settings) folder.settings = {};
+                const applyMap = Object.assign({}, defaultMap);
+                if (folder.settings.lock_colors) {
+                    delete applyMap.preview_vertical_bars_color;
+                    delete applyMap.preview_border_color;
+                    delete applyMap.preview_row_separator_color;
+                }
+                Object.assign(folder.settings, applyMap);
+                await $.post('/plugins/folder.view3/server/update.php', {
+                    type, id, content: JSON.stringify(folder)
+                }).promise();
+            }
+        }
+        swal({ title: 'Done', text: 'Defaults applied to all folders.', type: 'success', timer: 1500 });
+    });
+});
+
+const fv3ExportAll = async () => {
+    try {
+        const resp = await fetch('/plugins/folder.view3/server/export_all.php', { credentials: 'same-origin' });
+        const data = await resp.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'fv3-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (data.css_skipped) {
+            swal({ title: 'Partial Export', text: data.css_skipped_reason || 'Custom CSS files were too large and were excluded. Export them manually via File Manager.', type: 'warning' });
+        }
+    } catch (e) {
+        swal({ title: 'Error', text: 'Export failed: ' + e.message, type: 'error' });
+    }
+};
+window.fv3ExportAll = fv3ExportAll;
+
+$('#fv3-import-all-btn').on('click', () => $('#fv3-import-all').click());
+$('#fv3-import-all').on('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    this.value = '';
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            if (!parsed.fv3_export_version) { swal({ title: 'Error', text: 'Not a valid FV3 backup file.', type: 'error' }); return; }
+            const items = [];
+            if (parsed.docker && Object.keys(parsed.docker).length) items.push(Object.keys(parsed.docker).length + ' Docker folders');
+            if (parsed.vm && Object.keys(parsed.vm).length) items.push(Object.keys(parsed.vm).length + ' VM folders');
+            if (parsed.settings && Object.keys(parsed.settings).length) items.push('settings');
+            if (parsed.css_config && Object.keys(parsed.css_config).length) items.push('CSS config');
+            if (parsed.custom_styles && Object.keys(parsed.custom_styles).length) items.push(Object.keys(parsed.custom_styles).length + ' custom CSS files');
+            if (parsed.css_skipped) items.push('(custom CSS excluded — too large)');
+            swal({
+                title: 'Import Backup?',
+                text: 'This will overwrite current config with: ' + items.join(', ') + '.' + (parsed.exported ? '\nExported: ' + parsed.exported : ''),
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Import'
+            }, async (confirmed) => {
+                if (!confirmed) return;
+                const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
+                const result = (typeof resp === 'object') ? resp : fv3SafeParse(resp, {});
+                if (result.error) {
+                    swal({ title: 'Error', text: result.error, type: 'error' });
+                } else {
+                    swal({ title: 'Restored', text: (result.restored || []).length + ' items restored.', type: 'success', timer: 2000 });
+                    setTimeout(function() { location.reload(); }, 2000);
+                }
+            });
+        } catch (err) {
+            swal({ title: 'Error', text: 'Invalid JSON file.', type: 'error' });
+        }
+    };
+    reader.readAsText(file);
+});
+
+// Page-level tab switching
+const fv3SettingDefaults = {
+    dashboard_docker_layout: 'classic', dashboard_vm_layout: 'classic',
+    default_preview: '0', default_overflow: 'default', default_context: '0',
+    default_context_trigger: '0', default_context_graph: '1', default_context_graph_time: '60'
+};
+
+const fv3IsSettingsDirty = () => {
+    const current = fv3CollectSettings();
+    for (const [key, value] of Object.entries(current)) {
+        const loaded = fv3LoadedSettings[key] ?? fv3SettingDefaults[key] ?? (value === 'yes' || value === 'no' ? 'no' : '');
+        if (loaded !== value) return true;
+    }
+    return false;
+};
+
+window.fv3SwitchTab = (function() {
+    var tabs = document.querySelectorAll('.fv3-page-tab');
+    var panels = document.querySelectorAll('.fv3-page-panel');
+    var currentTab = '';
+
+    function switchTab(tabName, force) {
+        if (!force && currentTab && currentTab !== tabName && currentTab !== 'backup') {
+            var isDirty = false;
+            if (currentTab === 'dashboard' || currentTab === 'defaults') {
+                isDirty = fv3IsSettingsDirty();
+            } else if (currentTab === 'css' && window.fv3IsCssDirty) {
+                isDirty = window.fv3IsCssDirty();
+            }
+            if (isDirty) {
+                var fromTab = currentTab;
+                swal({
+                    title: 'Unsaved Changes',
+                    text: 'You have unsaved changes. Discard them?',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Discard',
+                    cancelButtonText: 'Stay',
+                    closeOnConfirm: true,
+                    closeOnCancel: true
+                }, function(confirmed) {
+                    if (confirmed === true) {
+                        if (fromTab === 'dashboard' || fromTab === 'defaults') {
+                            fv3CancelSettings();
+                        } else if (fromTab === 'css' && window.fv3ResetCssDirty) {
+                            window.fv3ResetCssDirty();
+                        }
+                        switchTab(tabName, true);
+                    }
+                });
+                return;
+            }
+        }
+        currentTab = tabName;
+        tabs.forEach(function(t) {
+            t.classList.toggle('fv3-page-tab-active', t.getAttribute('data-tab') === tabName);
+        });
+        panels.forEach(function(p) {
+            p.style.display = p.id === 'fv3-panel-' + tabName ? '' : 'none';
+        });
+        // Tab state not persisted — always start on Backup
+    }
+
+    tabs.forEach(function(t) {
+        t.addEventListener('click', function() { switchTab(this.getAttribute('data-tab')); });
+    });
+
+    return switchTab;
+})();
+
 loadDashboardSettings();
+fv3SwitchTab('backup');
+
+// Intercept Unraid's SPA navigation to warn about unsaved changes
+if (typeof initab === 'function') {
+    const _origInitab = initab;
+    window.initab = function(url) {
+        const cssDirty = window.fv3IsCssDirty && window.fv3IsCssDirty();
+        const settingsDirty = typeof fv3IsSettingsDirty === 'function' && fv3IsSettingsDirty();
+        if (cssDirty || settingsDirty) {
+            swal({
+                title: 'Unsaved Changes',
+                text: 'You have unsaved changes. Discard them?',
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Discard',
+                cancelButtonText: 'Stay'
+            }, function(confirmed) {
+                if (confirmed === true) _origInitab(url);
+            });
+            return false;
+        }
+        return _origInitab(url);
+    };
+}

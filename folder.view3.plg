@@ -6,12 +6,22 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.04.01">
-<!ENTITY md5 "9bed96a342bc8745b6cd8acb5ab25489">
+<!ENTITY version "2026.04.04">
+<!ENTITY md5 "d97d6ff255e0fb337c17726c0953ca84">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.04
+- Shared code extraction and CSS consolidation for improved maintainability
+- GraphQL API integration with WebSocket stats and automatic PHP fallback
+- Settings page modernization with folder defaults and full backup/restore
+- CSS Tool with theme manager, presets, variables, and GitHub import
+- Incognito mode for screenshot-safe sharing
+- Pre-install cleanup for reliable upgrades
+- VM detail row positioning fixes in folders
+- Mobile and touch improvements
 
 ###2026.04.01
 - Sanitize debug exports
@@ -499,6 +509,17 @@
 - Initial Release
     </CHANGES>
 
+    <!-- Pre-install: clean stale package DB entries so upgradepkg extracts fresh -->
+    <FILE Run="/bin/bash">
+        <INLINE>
+            OLD=$(ls /var/log/packages/&name;-* 2>/dev/null | head -1)
+            if [ -n "$OLD" ]; then
+                removepkg $(basename "$OLD") 2>/dev/null
+            fi
+            rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null | grep -v '&version;')
+        </INLINE>
+    </FILE>
+
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
         <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
@@ -508,9 +529,15 @@
     <!-- Post install -->
     <FILE Run="/bin/bash">
         <INLINE>
+            # Clean up any additional stale package DB entries (safety net)
+            for p in /var/log/packages/&name;-*; do
+                [ -e "$p" ] || continue
+                pname=$(basename "$p")
+                case "$pname" in *&version;) continue;; esac
+                removepkg "$pname" 2>/dev/null
+            done
             mkdir -p /boot/config/plugins/&name;/styles
             mkdir -p /boot/config/plugins/&name;/scripts
-            rm -f $(ls /boot/config/plugins/&name;/&name;*.txz | grep -v '&version;')
             echo "&version;" > /boot/config/plugins/&name;/version
             echo ""
             echo "----------------------------------------------------"

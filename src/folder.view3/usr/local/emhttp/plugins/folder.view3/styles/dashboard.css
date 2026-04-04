@@ -59,6 +59,7 @@
     margin: 0;
     align-self: flex-start;
     position: relative;
+    background: transparent;
 }
 
 .fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer::before,
@@ -135,14 +136,15 @@
 }
 
 .fv3-layout-accordion .folder-showcase:not(:empty) {
-    border: 1px solid rgba(128,128,128,0.2);
-    border-left: 3px solid var(--color-orange, #f0a30a);
+    border: 1px solid var(--fv3-panel-border, rgba(128,128,128,0.2));
+    border-left: 3px solid var(--fv3-accent-color, var(--color-orange, #f0a30a));
     border-radius: 4px;
     margin: 6px 4px 4px;
     padding: 8px;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    background-color: var(--fv3-panel-bg, rgba(128,128,128,0.08));
 }
 
 .fv3-layout-accordion .folder-showcase > span.outer.solid,
@@ -183,14 +185,15 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    border: 1px solid rgba(128,128,128,0.2);
-    border-left: 3px solid var(--color-orange, #f0a30a);
+    border: 1px solid var(--fv3-panel-border, rgba(128,128,128,0.2));
+    border-left: 3px solid var(--fv3-accent-color, var(--color-orange, #f0a30a));
     border-radius: 4px;
     margin: 6px 0;
     padding: 8px;
     width: 100%;
     min-width: 100%;
     box-sizing: border-box;
+    background-color: var(--fv3-panel-bg, rgba(128,128,128,0.08));
 }
 
 .fv3-fullwidth-panel > span.outer.solid,
@@ -227,7 +230,7 @@
     border: 1px solid var(--fv3-embossed-border, rgba(128,128,128,0.3));
     border-left: 4px solid var(--fv3-embossed-accent, var(--color-orange, #f0a30a));
     border-radius: 6px;
-    background-color: transparent;
+    background-color: var(--fv3-embossed-bg, transparent);
     box-shadow: none;
 }
 
@@ -244,7 +247,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    background-color: rgba(128,128,128,0.08);
+    background-color: var(--fv3-embossed-inner-bg, var(--fv3-panel-bg, rgba(128,128,128,0.08)));
 }
 
 .fv3-layout-embossed .folder-showcase:not(:empty)::before {
@@ -266,7 +269,7 @@
 
 .fv3-layout-embossed .folder-showcase-outer:not([expanded="true"]) .fv3-folder-appname {
     display: inline-block;
-    max-width: 120px;
+    max-width: var(--fv3-appname-max-width, 120px);
     overflow: hidden;
     text-overflow: clip;
     white-space: nowrap;
@@ -280,23 +283,31 @@
 
 .fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer {
     margin-bottom: 5px;
+    position: relative;
+    align-self: flex-start;
+}
+
+.fv3-layout-fullwidth button.fv3-collapse-toggle {
+    position: absolute;
+    right: 22px;
+    top: 8px;
 }
 
 /* ===== Collapse toggle button ===== */
 .fv3-expanded-tab {
-    position: relative;
+    display: inline-flex;
+    align-items: center;
 }
 
 button.fv3-collapse-toggle {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
+    position: static;
     min-width: 0;
     width: 18px;
     height: 18px;
     max-width: 18px;
     padding: 0;
-    margin: 0;
+    margin: 0 0 0 10px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -304,15 +315,15 @@ button.fv3-collapse-toggle {
     line-height: 1;
     font-size: 10px;
     background: transparent;
-    border: 2px solid #ff8c2f;
+    border: 2px solid var(--fv3-toggle-color, var(--color-orange, #ff8c2f));
     border-radius: 3px;
-    color: #ff8c2f;
+    color: var(--fv3-toggle-color, var(--color-orange, #ff8c2f));
     cursor: pointer;
 }
 
 button.fv3-collapse-toggle:hover {
-    border-color: #ffad5c;
-    color: #ffad5c;
+    border-color: var(--fv3-toggle-hover-color, var(--color-orange, #ffad5c));
+    color: var(--fv3-toggle-hover-color, var(--color-orange, #ffad5c));
 }
 
 .fv3-collapse-toggle i.fa {
@@ -322,19 +333,6 @@ button.fv3-collapse-toggle:hover {
     line-height: 1;
     font-size: inherit;
     padding-left: 1px;
-}
-
-.fv3-layout-accordion button.fv3-collapse-toggle,
-.fv3-layout-embossed button.fv3-collapse-toggle {
-    position: static;
-    transform: none;
-    margin: 0 0 0 10px;
-    vertical-align: middle;
-}
-
-.fv3-layout-fullwidth button.fv3-collapse-toggle,
-.fv3-layout-inset button.fv3-collapse-toggle {
-    margin: 0;
 }
 
 .fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer,
@@ -367,7 +365,7 @@ td.fv3-layout-classic {
 
 .fv3-layout-inset .folder-showcase-outer:not([expanded="true"]) .fv3-folder-appname {
     display: inline-block;
-    max-width: 120px;
+    max-width: var(--fv3-appname-max-width, 120px);
     overflow: hidden;
     text-overflow: clip;
     white-space: nowrap;
@@ -376,7 +374,7 @@ td.fv3-layout-classic {
 
 .fv3-layout-classic .fv3-folder-appname {
     display: inline-block;
-    max-width: 120px;
+    max-width: var(--fv3-appname-max-width, 120px);
     overflow: hidden;
     text-overflow: clip;
     white-space: nowrap;
@@ -427,6 +425,43 @@ table.dashboard tr:last-child > td {
     display: none;
 }
 
+/* ===== Mobile responsive: table overflow fix ===== */
+@media (max-width: 768px) {
+    td.fv3-layout-accordion,
+    td.fv3-layout-embossed,
+    td.fv3-layout-inset {
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .fv3-layout-embossed .folder-showcase-outer[expanded="true"],
+    .fv3-layout-inset .folder-showcase-outer[expanded="true"],
+    .fv3-layout-accordion .folder-showcase-outer[expanded="true"] {
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+
+    .fv3-layout-inset .folder-showcase:not(:empty),
+    .fv3-layout-embossed .folder-showcase:not(:empty) {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .fv3-layout-accordion .folder-showcase:not(:empty) {
+        min-width: 0;
+        box-sizing: border-box;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .fv3-fullwidth-panel {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+}
+
 /* ===== Mobile responsive: child tile widths ===== */
 @media (max-width: 768px) {
     .fv3-layout-inset .folder-showcase > span.outer.solid,
@@ -452,4 +487,131 @@ table.dashboard tr:last-child > td {
     .fv3-fullwidth-panel > span.outer.apps {
         width: calc(50% - 4px);
     }
+}
+
+@media (max-width: 360px) {
+    .fv3-layout-inset .folder-showcase,
+    .fv3-layout-embossed .folder-showcase,
+    .fv3-layout-accordion .folder-showcase,
+    .fv3-fullwidth-panel .folder-showcase {
+        width: calc(100% - 4px);
+    }
+}
+
+
+/* Incognito mode toggle (dashboard — inline next to All Apps/VMs toggle) */
+.fv3-incognito-btn {
+    min-width: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0 0 0 8px;
+    border: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.fv3-incognito-btn:hover {
+    opacity: 0.7;
+}
+
+.fv3-incognito-btn.fv3-incognito-active {
+    opacity: 1;
+    color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+    border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+/* Restyle Unraid switches marked by FV3 on Dashboard */
+body[data-fv3-toggle="flat"] .fv3-styled-switch {
+    border-radius: 4px; width: 40px; height: 22px; background: rgba(128,128,128,0.25); border: 1px solid rgba(128,128,128,0.4);
+}
+body[data-fv3-toggle="flat"] .fv3-styled-switch .switch-button-button {
+    border-radius: 3px; width: 16px; height: 16px; top: 3px; left: 3px; background: rgba(128,128,128,0.6);
+}
+body[data-fv3-toggle="flat"] .fv3-styled-switch.checked {
+    background: #2d4a1e; border-color: #4a7c2e;
+}
+body[data-fv3-toggle="flat"] .fv3-styled-switch.checked .switch-button-button {
+    left: 21px; background: #5cb85c;
+}
+
+body[data-fv3-toggle="rounded"] .fv3-styled-switch {
+    border-radius: 24px; width: 44px; height: 24px; background: #555; border: none;
+}
+body[data-fv3-toggle="rounded"] .fv3-styled-switch .switch-button-button {
+    border-radius: 50%; width: 18px; height: 18px; top: 3px; left: 3px; background: #fff;
+}
+body[data-fv3-toggle="rounded"] .fv3-styled-switch.checked {
+    background: #f0a30a;
+}
+body[data-fv3-preset][data-fv3-toggle="rounded"] .fv3-styled-switch.checked {
+    background: var(--fv3-accent-color, #f0a30a);
+}
+body[data-fv3-toggle="rounded"] .fv3-styled-switch.checked .switch-button-button {
+    left: 23px;
+}
+
+body[data-fv3-toggle="material"] .fv3-styled-switch {
+    border-radius: 14px; width: 36px; height: 14px; background: rgba(128,128,128,0.4); border: none;
+}
+body[data-fv3-toggle="material"] .fv3-styled-switch .switch-button-button {
+    border-radius: 50%; width: 20px; height: 20px; top: -3px; left: -2px; background: #aaa; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+body[data-fv3-toggle="material"] .fv3-styled-switch.checked {
+    background: rgba(240,163,10,0.4);
+}
+body[data-fv3-toggle="material"] .fv3-styled-switch.checked .switch-button-button {
+    left: 18px; background: #f0a30a;
+}
+body[data-fv3-preset][data-fv3-toggle="material"] .fv3-styled-switch.checked {
+    background: color-mix(in srgb, var(--fv3-accent-color, #f0a30a) 40%, transparent);
+}
+body[data-fv3-preset][data-fv3-toggle="material"] .fv3-styled-switch.checked .switch-button-button {
+    background: var(--fv3-accent-color, #f0a30a);
+}
+
+body[data-fv3-toggle="pill"] .fv3-styled-switch {
+    border-radius: 26px; width: 56px; height: 26px; background: #444; border: none;
+}
+body[data-fv3-toggle="pill"] .fv3-styled-switch .switch-button-button {
+    border-radius: 50%; width: 20px; height: 20px; top: 3px; left: 3px; background: #888;
+}
+body[data-fv3-toggle="pill"] .fv3-styled-switch.checked {
+    background: #f0a30a;
+}
+body[data-fv3-preset][data-fv3-toggle="pill"] .fv3-styled-switch.checked {
+    background: var(--fv3-accent-color, #f0a30a);
+}
+body[data-fv3-toggle="pill"] .fv3-styled-switch.checked .switch-button-button {
+    left: 33px; background: #fff;
+}
+
+body[data-fv3-toggle] .fv3-styled-switch .switch-button-button {
+    border: none;
+    box-sizing: border-box;
+    position: absolute;
+    transition: left 0.15s ease;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+}
+
+body[data-fv3-toggle="material"] .fv3-styled-switch {
+    overflow: visible;
+}
+
+body[data-fv3-toggle="material"] .fv3-styled-switch .switch-button-button {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
+    display: none;
 }
