@@ -131,14 +131,49 @@ window.fv3Incognito = false;
         return nameMap[key];
     }
 
-    function scrubText(text, knownNames) {
+    function scrubText(text, knownNames, type) {
         var result = text;
         for (var i = 0; i < knownNames.length; i++) {
             if (knownNames[i] && result.indexOf(knownNames[i]) !== -1) {
-                result = result.split(knownNames[i]).join(getAnon(knownNames[i], 'container'));
+                result = result.split(knownNames[i]).join(getAnon(knownNames[i], type || 'container'));
             }
         }
         return result;
+    }
+
+    var macRe = /[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5}/g;
+    var ipv6Re = /[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{0,4}){2,7}(?:\/\d{1,3})?/g;
+    var diskFileRe = /([^\/\s]+)\.(qcow2|img|iso|raw|vmdk|vdi|vhd|vhdx)\b/gi;
+    var domainsDirRe = /(\/domains\/)([^\/]+)(\/)/g;
+    var stdIface = /^(eth|enp|ens|eno|wl|wlan|br|docker|veth|virbr|vnet|lo|bond|tap|tun)/i;
+
+    function scrubTextNodes(el, knownNames, type) {
+        var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+        var textNodes = [];
+        var node;
+        while (node = walker.nextNode()) textNodes.push(node);
+        var modified = false;
+        textNodes.forEach(function(tn) {
+            var text = tn.nodeValue;
+            var changed = scrubText(text, knownNames, type);
+            changed = changed.replace(macRe, 'xx:xx:xx:xx:xx:xx');
+            changed = changed.replace(ipv6Re, function(match) {
+                if (/^fe80/i.test(match) || /^f[cd]/i.test(match)) return match;
+                return 'xxxx:xxxx::xxxx';
+            });
+            changed = changed.replace(diskFileRe, '[hidden].$2');
+            changed = changed.replace(domainsDirRe, '$1[hidden]$3');
+            changed = changed.replace(/([a-zA-Z][a-zA-Z0-9_.-]*)(\s*\(xx:xx:xx:xx:xx:xx\))/, function(m, name, rest) {
+                if (stdIface.test(name)) return m;
+                return '[hidden]' + rest;
+            });
+            if (changed !== text) {
+                if (!tn._fv3Original) tn._fv3Original = text;
+                tn.nodeValue = changed;
+                modified = true;
+            }
+        });
+        if (modified) el.setAttribute('data-fv3-scrubbed', 'true');
     }
 
     window.fv3IncognitoApply = function() {
@@ -186,7 +221,8 @@ window.fv3Incognito = false;
             var name = (el.getAttribute('data-name') || el.textContent || '').trim();
             if (name) {
                 el.setAttribute('data-fv3-real', name);
-                el.textContent = getAnon(name, 'container');
+                var previewType = document.querySelector('#kvm_table') ? 'vm' : 'container';
+                el.textContent = getAnon(name, previewType);
             }
         });
 
@@ -219,21 +255,18 @@ window.fv3Incognito = false;
             el.textContent = '100.x.x.x';
         });
 
-        var macRe = /[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5}/g;
-        var ipv6Re = /[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{0,4}){2,7}(?:\/\d{1,3})?/g;
-
-        document.querySelectorAll('.info-section td, .tooltip-content, .preview-outbox .status-info, #docker_containers > tbody td, #kvm_table td').forEach(function(el) {
+        document.querySelectorAll('.info-section td, .tooltip-content, .preview-outbox .status-info').forEach(function(el) {
             var html = el.innerHTML;
             var changed = scrubText(html, knownNames);
-            changed = changed.replace(macRe, 'xx:xx:xx:xx:xx:xx');
-            changed = changed.replace(ipv6Re, function(match) {
-                if (/^fe80/i.test(match) || /^f[cd]/i.test(match)) return match;
-                return 'xxxx:xxxx::xxxx';
-            });
             if (changed !== html) {
                 el.setAttribute('data-fv3-real-html', html);
                 el.innerHTML = changed;
             }
+        });
+
+        var isVmPage = !!document.querySelector('#kvm_table');
+        document.querySelectorAll('#docker_containers td, #kvm_table td').forEach(function(el) {
+            scrubTextNodes(el, knownNames, isVmPage ? 'vm' : 'container');
         });
     };
 
@@ -255,6 +288,17 @@ window.fv3Incognito = false;
         document.querySelectorAll('[data-fv3-real-html]').forEach(function(el) {
             el.innerHTML = el.getAttribute('data-fv3-real-html');
             el.removeAttribute('data-fv3-real-html');
+        });
+        document.querySelectorAll('[data-fv3-scrubbed]').forEach(function(el) {
+            var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+            var node;
+            while (node = walker.nextNode()) {
+                if (node._fv3Original) {
+                    node.nodeValue = node._fv3Original;
+                    delete node._fv3Original;
+                }
+            }
+            el.removeAttribute('data-fv3-scrubbed');
         });
         nameMap = {};
         nameCounter = { container: 0, vm: 0, folder: 0 };

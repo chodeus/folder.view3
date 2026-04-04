@@ -6,15 +6,17 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.05.1">
-<!ENTITY md5 "0b83e3f86d6051c4e65ac32425baf423">
+<!ENTITY version "2026.04.05.2">
+<!ENTITY md5 "648584293d849df30c1d0e52911c8e19">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 ###2026.04.05
-- Incognito mode: scrub container names in volume paths, public IPv6, and MAC addresses
+- Incognito mode: scrub volume paths, public IPv6, MACs, disk filenames, non-standard interfaces
+- Incognito mode: VM previews now show "VM 1" instead of "Container 1"
+- Incognito mode: fix expand/collapse breaking when incognito active
 
 ###2026.04.04
 - Shared code extraction and CSS consolidation for improved maintainability
