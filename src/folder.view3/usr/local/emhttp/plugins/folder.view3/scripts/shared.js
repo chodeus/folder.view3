@@ -219,9 +219,17 @@ window.fv3Incognito = false;
             el.textContent = '100.x.x.x';
         });
 
-        document.querySelectorAll('.info-section td, .tooltip-content, .preview-outbox .status-info').forEach(function(el) {
+        var macRe = /[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5}/g;
+        var ipv6Re = /[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{0,4}){2,7}(?:\/\d{1,3})?/g;
+
+        document.querySelectorAll('.info-section td, .tooltip-content, .preview-outbox .status-info, #docker_containers > tbody td, #kvm_table td').forEach(function(el) {
             var html = el.innerHTML;
             var changed = scrubText(html, knownNames);
+            changed = changed.replace(macRe, 'xx:xx:xx:xx:xx:xx');
+            changed = changed.replace(ipv6Re, function(match) {
+                if (/^fe80/i.test(match) || /^f[cd]/i.test(match)) return match;
+                return 'xxxx:xxxx::xxxx';
+            });
             if (changed !== html) {
                 el.setAttribute('data-fv3-real-html', html);
                 el.innerHTML = changed;
