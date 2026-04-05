@@ -97,7 +97,7 @@ The plugin settings page (**Settings > FolderView3**) is organized into collapsi
 - **Custom CSS** — four tabs:
   - **Themes** — import community CSS from GitHub, enable/disable, one-click updates with change detection
   - **Variables** — edit 27 CSS variables with color pickers and sliders, scoped per page
-  - **Presets** — one-click theme presets (Default, Compact, Blue Accent, Muted)
+  - **Presets** — one-click theme presets (Default, Orange, Blue Accent, Muted)
   - **Advanced CSS** — free-form CSS editor with live preview
 
   <img src="screenshots/customcsssettings.png" alt="CSS Tool with presets and variables" width="600">

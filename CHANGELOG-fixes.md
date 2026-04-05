@@ -6,6 +6,23 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.05 — Stable Release
+
+### Incognito Mode Improvements
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 51 | Scrub container/VM names in volume paths (preserves path structure) | `shared.js` | 2026.04.05 |
+| 52 | Hide public IPv6 addresses (keeps private fe80/fc/fd) | `shared.js` | 2026.04.05 |
+| 53 | Hide MAC addresses | `shared.js` | 2026.04.05 |
+| 54 | Scrub disk image filenames (qcow2/img/iso/raw/vmdk/vdi/vhd/vhdx) | `shared.js` | 2026.04.05 |
+| 55 | Scrub /domains/ directory names in VM disk paths | `shared.js` | 2026.04.05 |
+| 56 | Hide non-standard interface names (keeps eth/enp/docker/br/etc) | `shared.js` | 2026.04.05 |
+| 57 | VM folder previews show "VM 1" instead of "Container 1" | `shared.js` | 2026.04.05 |
+| 58 | Use text node walking instead of innerHTML for table cell scrubbing (preserves event handlers) | `shared.js` | 2026.04.05 |
+
+---
+
 ## 2026.04.04 — Stable Release
 
 ### New Features
@@ -25,10 +42,10 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 | 39 | Full backup export/import (folders, settings, CSS config, themes in one JSON) | `folderview3.js`, `export_all.php`, `import_all.php` | 2026.04.04 |
 | 40 | CSS Tool: theme manager with GitHub import, enable/disable, update checker | `csstool.js` (new), `csstool.css` (new), `upload_theme.php`, `delete_theme.php`, `list_themes.php` | 2026.04.04 |
 | 41 | CSS Tool: variable editor (27 vars, page scoping, color pickers) | `csstool.js`, `csstool.css`, `read_css_config.php`, `save_css_config.php`, `default_css.php` | 2026.04.04 |
-| 42 | CSS Tool: presets (Default, Compact, Blue Accent, Orange Accent, Muted) | `csstool.js`, `csstool.css` | 2026.04.04 |
+| 42 | CSS Tool: presets (Default, Orange, Blue Accent, Muted) | `csstool.js`, `csstool.css` | 2026.04.04 |
 | 43 | CSS Tool: toggle style picker (5 styles with live preview) | `csstool.js`, `csstool.css`, `folder-common.css` | 2026.04.04 |
 | 44 | CSS Tool: advanced CSS textarea with security scanning | `csstool.js`, `lib.php` | 2026.04.04 |
-| 45 | Incognito mode (blur container names, IPs, ports for screenshot-safe sharing) | `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04 |
+| 45 | Incognito mode (blur container/VM names, icons, Tailscale IPs for screenshot-safe sharing) | `shared.js` | 2026.04.04 |
 | 46 | Error banners (`fv3ShowBanner()`): deduped, auto-dismiss warnings (15s), persistent errors | `shared.js` | 2026.04.04 |
 | 47 | Unified debug system: `fv3debug` keyboard toggle, localStorage persistence, zero-overhead no-op when off | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04 |
 | 48 | PHP debug toggle via `touch /tmp/fv3_debug_enabled` file flag | `lib.php` | 2026.04.04 |
