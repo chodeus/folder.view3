@@ -36,7 +36,7 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 - **Full backup/restore** — export everything (folders, settings, CSS config, themes) to a single JSON file
 - **Custom CSS/JS extensions** — full theming support with 40+ CSS variables
 - **Security warnings** — CSS imports are scanned for external URLs and flagged for user review
-- **Incognito mode** — blur container names, IPs, and ports for screenshot-safe sharing
+- **Incognito mode** — blur container names, icons, Tailscale IPs, public IPv6 addresses, MAC addresses, and container references in volume paths for screenshot-safe sharing
 
   <img src="screenshots/incognitomode.png" alt="Incognito mode with blurred container details" width="600">
 
