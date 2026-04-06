@@ -149,7 +149,6 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
         // make the ui respond to the previus changes
         updateForm();
-        fv3SyncSwitchButtons();
         updateRegex(form.regex);
         updateIcon(form.icon);
     } else {
@@ -176,7 +175,6 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             if (s.default_context) form.context.value = s.default_context;
             if (s.default_update_column === 'yes') form.update_column.checked = true;
             updateForm();
-            fv3SyncSwitchButtons();
         } catch (e) {}
     }
 
@@ -254,6 +252,25 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     choose.sort((a, b) => a.Name.localeCompare(b.Name));
 
     updateList();
+
+    // Initialize toggle style AFTER checkbox states are set to avoid race condition
+    try {
+        const cssConfig = await (await fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })).json();
+        const style = cssConfig.toggle_style || 'default';
+        window._fv3FolderToggleStyle = style;
+        if (style === 'default') {
+            $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+            fv3SyncSwitchButtons();
+        } else {
+            document.querySelectorAll('input.fv3-checkbox[type="checkbox"]').forEach(el => {
+                el.classList.add('fv3-toggle');
+                if (style !== 'flat') el.classList.add('fv3-toggle-' + style);
+            });
+        }
+    } catch (e) {
+        $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+        fv3SyncSwitchButtons();
+    }
 
     $('.canvas form div.basic > dl > dt').css('cursor', 'default').wrapInner('<span style="cursor: help;"></span>');
 })();
@@ -676,48 +693,3 @@ if (nameInput && nameWarning) {
     if (nameInput.value.length > 20) nameWarning.style.display = 'block';
 }
 
-fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })
-    .then(r => r.json())
-    .then(config => {
-        const style = config.toggle_style || 'default';
-        window._fv3FolderToggleStyle = style;
-        var syncSwitchState = function() {
-            $('input.fv3-checkbox[type="checkbox"]').each(function() {
-                var bg = $(this).next('.switch-button-background');
-                if (bg.length) {
-                    bg.toggleClass('checked', this.checked);
-                    var parent = bg.parent();
-                    parent.find('.switch-button-label.on').toggle(this.checked);
-                    parent.find('.switch-button-label.off').toggle(!this.checked);
-                }
-            });
-        };
-        if (style === 'default') {
-            $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
-            syncSwitchState();
-            setTimeout(syncSwitchState, 200);
-            setTimeout(syncSwitchState, 1000);
-        } else {
-            document.querySelectorAll('input.fv3-checkbox[type="checkbox"]').forEach(el => {
-                el.classList.add('fv3-toggle');
-                if (style !== 'flat') el.classList.add('fv3-toggle-' + style);
-            });
-        }
-    })
-    .catch(() => {
-        $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
-        var syncFallback = function() {
-            $('input.fv3-checkbox[type="checkbox"]').each(function() {
-                var bg = $(this).next('.switch-button-background');
-                if (bg.length) {
-                    bg.toggleClass('checked', this.checked);
-                    var parent = bg.parent();
-                    parent.find('.switch-button-label.on').toggle(this.checked);
-                    parent.find('.switch-button-label.off').toggle(!this.checked);
-                }
-            });
-        };
-        syncFallback();
-        setTimeout(syncFallback, 200);
-        setTimeout(syncFallback, 1000);
-    });
