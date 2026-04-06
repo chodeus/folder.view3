@@ -6,6 +6,16 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.06 — Stable Release
+
+### Bug Fixes
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 59 | Fix folder settings page toggles showing wrong ON/OFF state on load (race condition between CSS config fetch and folder data fetch) | `folder.js` | 2026.04.06 |
+
+---
+
 ## 2026.04.05 — Stable Release
 
 ### Incognito Mode Improvements
