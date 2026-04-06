@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.05">
-<!ENTITY md5 "88837c846802b56c30a03d4c895425af">
+<!ENTITY version "2026.04.06.1">
+<!ENTITY md5 "b62093e90c3e181b7169c94fd49ee7c3">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.06
+- Fix folder settings page toggles showing wrong state on load
 
 ###2026.04.05
 - Incognito mode: scrub volume paths, public IPv6, MACs, disk filenames, non-standard interfaces
