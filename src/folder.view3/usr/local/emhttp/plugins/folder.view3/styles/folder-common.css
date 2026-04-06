@@ -190,19 +190,15 @@ body[data-fv3-preset] .folder-dropdown:hover {
 
 /* Unraid native autostart switch — left unstyled to match container toggles */
 
-/* Accent: update badge */
-body[data-fv3-preset] .folder-update-text {
-    color: var(--fv3-accent-color, inherit);
-}
-
 /* Accent: folder status text (e.g. "3/4 started") */
 body[data-fv3-preset] .folder-state {
     color: var(--fv3-accent-color, inherit);
 }
 
 /* Accent: container names and action icons in folder preview (not status play/stop icons) */
-body[data-fv3-preset] .folder-preview-wrapper .appname,
-body[data-fv3-preset] .folder-preview-wrapper a.exec,
+/* Excludes .orange-text so update-available containers keep native orange */
+body[data-fv3-preset] .folder-preview-wrapper .appname:not(.orange-text),
+body[data-fv3-preset] .folder-preview-wrapper a.exec:not(.orange-text),
 body[data-fv3-preset] .folder-preview-wrapper .folder-element-custom-btn a {
     color: var(--fv3-appname-color, var(--fv3-accent-color, inherit));
 }
