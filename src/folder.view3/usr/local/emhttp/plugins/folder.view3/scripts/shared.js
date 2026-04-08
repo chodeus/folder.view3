@@ -861,12 +861,12 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
             if (el.classList.contains('fv3-overflow-expand')) {
                 const wrappers = el.querySelectorAll('.folder-preview-wrapper');
                 if (wrappers.length < 2) return;
-                if (wrappers[0].offsetTop === wrappers[wrappers.length - 1].offsetTop) {
+                if (wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop <= wrappers[0].offsetHeight / 2) {
                     el.classList.remove('fv3-overflow-expand');
                 }
             } else {
                 const wrappers = el.querySelectorAll('.folder-preview-wrapper');
-                if (wrappers.length >= 2 && wrappers[0].offsetTop !== wrappers[wrappers.length - 1].offsetTop) {
+                if (wrappers.length >= 2 && wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop > wrappers[0].offsetHeight / 2) {
                     el.classList.add('fv3-overflow-expand');
                 }
             }
@@ -918,7 +918,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 }
                 if (isWrapper) {
                     if (firstTop < 0) firstTop = child.offsetTop;
-                    if (child.offsetTop !== firstTop) {
+                    if (child.offsetTop - firstTop > child.offsetHeight / 2) {
                         clipping = true;
                         child.style.display = 'none';
                         if (lastVisibleDivider) lastVisibleDivider.style.display = 'none';
