@@ -149,7 +149,7 @@ const createFolders = async () => {
         }
     });
     const nameColWidth = Math.min(maxNameWidth + nameExtra, 300);
-    document.querySelectorAll('#vm_list th.th1').forEach(th => { th.style.width = nameColWidth + 'px'; });
+    document.querySelectorAll('#kvm_table th.th1').forEach(th => { th.style.width = nameColWidth + 'px'; });
 
     folderDebugMode  = false;
 };
