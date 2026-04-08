@@ -444,7 +444,10 @@ const fv3SubmitSettings = async () => {
         changed.dashboard_vm_folder_label = 'no';
         changed.dashboard_vm_expand_toggle = 'no';
     }
-    if (Object.keys(changed).length === 0) return;
+    if (Object.keys(changed).length === 0) {
+        swal({ title: 'No Changes', text: 'Settings are unchanged.', type: 'info', timer: 1500 });
+        return;
+    }
     try {
         await $.ajax({
             url: '/plugins/folder.view3/server/update_settings_batch.php',
@@ -453,8 +456,11 @@ const fv3SubmitSettings = async () => {
         }).promise();
         fv3LoadedSettings = { ...fv3LoadedSettings, ...changed };
         fv3ApplyFormState(fv3LoadedSettings);
+        swal({ title: 'Saved', text: 'Settings saved.', type: 'success', timer: 1500 });
     } catch (e) {
-        console.error('Failed to save settings:', e);
+        var msg = e.responseText || e.statusText || e.message || 'Unknown error';
+        console.error('Failed to save settings:', msg);
+        swal({ title: 'Error', text: 'Failed to save settings: ' + msg, type: 'error' });
     }
 };
 
