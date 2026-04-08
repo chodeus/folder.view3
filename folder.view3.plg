@@ -5,7 +5,7 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
 <!ENTITY version "2026.04.09">
 <!ENTITY md5 "bdeb687e725a4c4aa6af3ce4b5eef25c">
 ]>
@@ -544,7 +544,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
