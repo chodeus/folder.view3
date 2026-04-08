@@ -529,7 +529,10 @@ window.fv3SyncPreviewHeights = (cookieName) => {
         el.style.height = '';
         const cpuCell = el.closest('tr').querySelector('td.folder-advanced');
         if (isAdvanced && cpuCell && cpuCell.offsetHeight > 0) {
-            const targetHeight = cpuCell.offsetHeight - 10;
+            const elStyle = getComputedStyle(el);
+            const verticalGap = parseFloat(elStyle.marginTop) + parseFloat(elStyle.marginBottom)
+                + parseFloat(elStyle.borderTopWidth) + parseFloat(elStyle.borderBottomWidth);
+            const targetHeight = cpuCell.offsetHeight - (verticalGap || 10);
             const defaultHeight = el.offsetHeight;
             if (targetHeight > defaultHeight) {
                 el.style.height = targetHeight + 'px';
