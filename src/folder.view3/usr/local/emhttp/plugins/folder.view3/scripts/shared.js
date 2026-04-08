@@ -355,14 +355,12 @@ window.fv3Incognito = false;
         var toggleView = document.querySelector('.ToggleViewMode');
         if (toggleView) {
             toggleView.insertBefore(createBtn(), toggleView.firstChild);
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
             return;
         }
 
         var table = document.querySelector('table#docker_containers, table#kvm_table');
         if (table) {
             table.parentNode.insertBefore(createBtn(), table);
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
             return;
         }
     }

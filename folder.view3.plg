@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.08.5">
-<!ENTITY md5 "ab6319ab24c19cfc7894254c3f331e5a">
+<!ENTITY version "2026.04.08.6">
+<!ENTITY md5 "ebd2041fdb3a97307ab5abc0062630f3">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
@@ -20,6 +20,7 @@
 - Compute VM name column width from actual icon and padding sizes
 - Fix VM name column width selector (was targeting non-existent element)
 - Fix incognito mode not hiding container registry/image info in "By:" fields
+- Fix incognito auto-apply racing with folder creation on page load
 
 ###2026.04.07
 - Fix preset accent color overriding orange update-available text
