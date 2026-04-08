@@ -134,9 +134,10 @@ window.fv3Incognito = false;
     function scrubText(text, knownNames, type) {
         var result = text;
         for (var i = 0; i < knownNames.length; i++) {
-            if (knownNames[i] && result.indexOf(knownNames[i]) !== -1) {
-                result = result.split(knownNames[i]).join(getAnon(knownNames[i], type || 'container'));
-            }
+            if (!knownNames[i]) continue;
+            var escaped = knownNames[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            var anon = getAnon(knownNames[i], type || 'container');
+            result = result.replace(new RegExp(escaped, 'gi'), anon);
         }
         return result;
     }
@@ -146,6 +147,10 @@ window.fv3Incognito = false;
     var diskFileRe = /([^\/\s]+)\.(qcow2|img|iso|raw|vmdk|vdi|vhd|vhdx)\b/gi;
     var domainsDirRe = /(\/domains\/)([^\/]+)(\/)/g;
     var stdIface = /^(eth|enp|ens|eno|wl|wlan|br|docker|veth|virbr|vnet|lo|bond|tap|tun)/i;
+    var appdataRe = /(\/appdata\/)([^\/\s]+)/g;
+    var publisherPrefixRe = /([a-z0-9][a-z0-9._-]*)\/(Container \d+|VM \d+|Folder \d+)/g;
+    var safeTagRe = /^(latest|stable|lts|release|edge|beta|dev|nightly|rc\d*)$/i;
+    var statusTextRe = /^(up-to-date|update ready|force update|checking|not available|install|orphan image|update|rebuild ready)$/i;
 
     function scrubTextNodes(el, knownNames, type) {
         var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
@@ -163,6 +168,8 @@ window.fv3Incognito = false;
             });
             changed = changed.replace(diskFileRe, '[hidden].$2');
             changed = changed.replace(domainsDirRe, '$1[hidden]$3');
+            changed = changed.replace(appdataRe, '$1[hidden]');
+            changed = changed.replace(publisherPrefixRe, '[hidden]/$2');
             changed = changed.replace(/([a-zA-Z][a-zA-Z0-9_.-]*)(\s*\(xx:xx:xx:xx:xx:xx\))/, function(m, name, rest) {
                 if (stdIface.test(name)) return m;
                 return '[hidden]' + rest;
@@ -278,12 +285,37 @@ window.fv3Incognito = false;
             el.textContent = '100.x.x.x';
         });
 
+        var extraNames = [];
+        knownNames.forEach(function(name) {
+            var parts = name.split(/[_\-. ]+/);
+            if (parts.length > 1) {
+                parts.forEach(function(p) {
+                    if (p.length >= 4 && knownNames.indexOf(p) === -1 && extraNames.indexOf(p) === -1) extraNames.push(p);
+                });
+            }
+        });
+        knownNames = knownNames.concat(extraNames);
+
         document.querySelectorAll('.info-section td, .tooltip-content, .preview-outbox .status-info').forEach(function(el) {
             var html = el.innerHTML;
             var changed = scrubText(html, knownNames);
             if (changed !== html) {
                 el.setAttribute('data-fv3-real-html', html);
                 el.innerHTML = changed;
+            }
+        });
+
+        document.querySelectorAll('#docker_containers td.updatecolumn').forEach(function(cell) {
+            var walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, null, false);
+            var tn;
+            while (tn = walker.nextNode()) {
+                var tag = tn.nodeValue.trim();
+                if (!tag || statusTextRe.test(tag) || safeTagRe.test(tag)) continue;
+                if (/[a-zA-Z]/.test(tag) && /\d/.test(tag)) {
+                    tn._fv3Original = tn.nodeValue;
+                    tn.nodeValue = tn.nodeValue.replace(tag, '[hidden]');
+                    cell.setAttribute('data-fv3-scrubbed', 'true');
+                }
             }
         });
 
