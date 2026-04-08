@@ -1636,7 +1636,7 @@ const fv3FullwidthReflowSync = (onlyType) => {
             const showcase = outer.find('.folder-showcase');
             const folderTile = outer.children('span.outer').first()[0];
             if (!folderTile) return;
-            const folderTop = Math.round(folderTile.getBoundingClientRect().top);
+            const folderTop = folderTile.getBoundingClientRect().top;
             let lastInRow = outer;
             const nextExpanded = idx < expandedOuters.length - 1 ? expandedOuters[idx + 1] : null;
             parentTd.children('.folder-showcase-outer, span.outer:not(:empty)').each(function() {
@@ -1649,7 +1649,7 @@ const fv3FullwidthReflowSync = (onlyType) => {
                     visualEl = this;
                 }
                 if (!visualEl || visualEl.offsetParent === null) return;
-                if (Math.round(visualEl.getBoundingClientRect().top) === folderTop) {
+                if (Math.abs(visualEl.getBoundingClientRect().top - folderTop) <= 2) {
                     lastInRow = $(this);
                 }
             });
@@ -1758,7 +1758,7 @@ const fv3FullwidthExpand = (id, type) => {
         const parentTd = $(`tbody#${tbody} > tr.updated > td`);
         const folderTile = outer.children('span.outer').first()[0];
         if (!folderTile) { showcase.css('display', ''); return; }
-        const folderTop = Math.round(folderTile.getBoundingClientRect().top);
+        const folderTop = folderTile.getBoundingClientRect().top;
 
         let lastInRow = outer;
         parentTd.children('.folder-showcase-outer, span.outer:not(:empty)').each(function() {
@@ -1771,7 +1771,7 @@ const fv3FullwidthExpand = (id, type) => {
             }
             if (!visualEl) return;
             if (visualEl.offsetParent === null) return;
-            if (Math.round(visualEl.getBoundingClientRect().top) === folderTop) {
+            if (Math.abs(visualEl.getBoundingClientRect().top - folderTop) <= 2) {
                 lastInRow = $(this);
             }
         });

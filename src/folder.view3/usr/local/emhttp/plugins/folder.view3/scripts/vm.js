@@ -136,11 +136,20 @@ const createFolders = async () => {
     applyVmZebra();
 
     let maxNameWidth = 0;
-    document.querySelectorAll('td.vm-name .inner, td.vm-name .folder-inner').forEach(el => {
-        if (el.scrollWidth > maxNameWidth) maxNameWidth = el.scrollWidth;
+    let nameExtra = 80;
+    document.querySelectorAll('td.vm-name').forEach(td => {
+        const inner = td.querySelector('.inner') || td.querySelector('.folder-inner');
+        if (!inner || !inner.scrollWidth) return;
+        if (inner.scrollWidth > maxNameWidth) {
+            maxNameWidth = inner.scrollWidth;
+            const outer = td.querySelector('.outer') || td.querySelector('.folder-outer');
+            const tdStyle = getComputedStyle(td);
+            const tdPad = parseFloat(tdStyle.paddingLeft) + parseFloat(tdStyle.paddingRight);
+            nameExtra = (outer ? outer.scrollWidth - inner.scrollWidth : 36) + tdPad + 10;
+        }
     });
-    const nameColWidth = Math.min(maxNameWidth + 80, 300);
-    document.querySelectorAll('#vm_list th.th1').forEach(th => { th.style.width = nameColWidth + 'px'; });
+    const nameColWidth = Math.min(maxNameWidth + nameExtra, 300);
+    document.querySelectorAll('#kvm_table th.th1').forEach(th => { th.style.width = nameColWidth + 'px'; });
 
     folderDebugMode  = false;
 };

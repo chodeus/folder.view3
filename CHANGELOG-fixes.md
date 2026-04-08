@@ -6,6 +6,16 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.07 — Stable Release
+
+### Bug Fixes
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 60 | Fix CSS presets overriding orange update-available text — removed accent override on `.folder-update-text`, added `:not(.orange-text)` exclusion on preview appname selectors | `folder-common.css` | 2026.04.07 |
+
+---
+
 ## 2026.04.06 — Stable Release
 
 ### Bug Fixes

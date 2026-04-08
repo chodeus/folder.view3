@@ -236,12 +236,35 @@ window.fv3Incognito = false;
             el.textContent = 'image/hidden';
         });
 
+        var byWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+        var byNode;
+        while (byNode = byWalker.nextNode()) {
+            var byIdx = byNode.nodeValue.indexOf('By:');
+            if (byIdx === -1) continue;
+            var nextSib = byNode.nextSibling;
+            if (nextSib && nextSib.nodeType === 1 && nextSib.tagName === 'A') {
+                nextSib.setAttribute('data-fv3-real', nextSib.textContent);
+                nextSib.setAttribute('data-fv3-real-href', nextSib.getAttribute('href') || '');
+                nextSib.textContent = 'registry/image';
+                nextSib.setAttribute('href', '#');
+            } else {
+                var afterBy = byNode.nodeValue.substring(byIdx + 3).trim();
+                if (afterBy) {
+                    byNode._fv3Original = byNode.nodeValue;
+                    byNode.nodeValue = byNode.nodeValue.substring(0, byIdx + 4) + 'registry/image';
+                    if (byNode.parentElement) byNode.parentElement.setAttribute('data-fv3-scrubbed', '');
+                }
+            }
+        }
+
         document.querySelectorAll('a[href*="://"]').forEach(function(el) {
             var href = el.getAttribute('href') || '';
+            var text = el.textContent || '';
             if (el.closest('.fv3-incognito-skip')) return;
+            if (el.hasAttribute('data-fv3-real')) return;
             for (var i = 0; i < knownNames.length; i++) {
-                if (href.indexOf(knownNames[i].toLowerCase()) !== -1 || (el.textContent && el.textContent.indexOf(knownNames[i]) !== -1)) {
-                    el.setAttribute('data-fv3-real', el.textContent);
+                if (href.indexOf(knownNames[i].toLowerCase()) !== -1 || (text && text.indexOf(knownNames[i]) !== -1)) {
+                    el.setAttribute('data-fv3-real', text);
                     el.setAttribute('data-fv3-real-href', href);
                     el.textContent = 'WebUI';
                     el.setAttribute('href', '#');
@@ -332,14 +355,12 @@ window.fv3Incognito = false;
         var toggleView = document.querySelector('.ToggleViewMode');
         if (toggleView) {
             toggleView.insertBefore(createBtn(), toggleView.firstChild);
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
             return;
         }
 
         var table = document.querySelector('table#docker_containers, table#kvm_table');
         if (table) {
             table.parentNode.insertBefore(createBtn(), table);
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 500);
             return;
         }
     }
@@ -494,7 +515,7 @@ window.fv3UpdateRowSeparators = (folderMap, folderId) => {
         let lastTop = wrappers[0].offsetTop;
         const rows = [[]];
         wrappers.forEach(w => {
-            if (w.offsetTop > lastTop) { rows.push([]); lastTop = w.offsetTop; }
+            if (w.offsetTop - lastTop > w.offsetHeight / 2) { rows.push([]); lastTop = w.offsetTop; }
             rows[rows.length - 1].push(w);
         });
         if (rows.length > 1) {
@@ -861,12 +882,12 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
             if (el.classList.contains('fv3-overflow-expand')) {
                 const wrappers = el.querySelectorAll('.folder-preview-wrapper');
                 if (wrappers.length < 2) return;
-                if (wrappers[0].offsetTop === wrappers[wrappers.length - 1].offsetTop) {
+                if (wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop <= wrappers[0].offsetHeight / 2) {
                     el.classList.remove('fv3-overflow-expand');
                 }
             } else {
                 const wrappers = el.querySelectorAll('.folder-preview-wrapper');
-                if (wrappers.length >= 2 && wrappers[0].offsetTop !== wrappers[wrappers.length - 1].offsetTop) {
+                if (wrappers.length >= 2 && wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop > wrappers[0].offsetHeight / 2) {
                     el.classList.add('fv3-overflow-expand');
                 }
             }
@@ -918,7 +939,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 }
                 if (isWrapper) {
                     if (firstTop < 0) firstTop = child.offsetTop;
-                    if (child.offsetTop !== firstTop) {
+                    if (child.offsetTop - firstTop > child.offsetHeight / 2) {
                         clipping = true;
                         child.style.display = 'none';
                         if (lastVisibleDivider) lastVisibleDivider.style.display = 'none';
