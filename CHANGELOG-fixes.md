@@ -6,6 +6,28 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.08 — Stable Release
+
+### Bug Fixes
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 61 | Fix preview clipping hiding containers due to sub-pixel rounding with custom CSS themes — `clipPreview` and `checkExpand` used strict `offsetTop` equality, replaced with `offsetHeight/2` tolerance | `shared.js` | 2026.04.08 |
+| 62 | Fix row separator false row breaks from sub-pixel rounding — same tolerance pattern as #61 | `shared.js` | 2026.04.08 |
+| 63 | Fix dashboard fullwidth panel row detection — replace `Math.round() ===` with `Math.abs() <= 2` tolerance | `dashboard.js` | 2026.04.08 |
+| 64 | Fix VM name column width selector targeting non-existent `#vm_list` — changed to `#kvm_table` (dead code since original fork) | `vm.js` | 2026.04.08 |
+| 65 | Fix incognito mode not hiding "By:" registry/image info — walk text nodes for both link and plain-text repos, label as `registry/image` | `shared.js` | 2026.04.08 |
+| 66 | Fix incognito race condition — remove 500ms auto-apply timeout that fired before `createFolders()`, causing VM name matching to fail. Now only applies via `folderEvents` post-creation listeners | `shared.js` | 2026.04.08 |
+
+### Improvements
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 19 | Compute VM name column width from actual icon size and cell padding instead of hardcoded +80px | `vm.js` | 2026.04.08 |
+| 20 | Add swal confirmation dialogs to settings Apply buttons (saved, no changes, error with details) | `folderview3.js` | 2026.04.08 |
+
+---
+
 ## 2026.04.07 — Stable Release
 
 ### Bug Fixes
