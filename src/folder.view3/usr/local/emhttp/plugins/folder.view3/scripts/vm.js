@@ -136,10 +136,11 @@ const createFolders = async () => {
     applyVmZebra();
 
     let maxNameWidth = 0;
-    document.querySelectorAll('td.vm-name .inner, td.vm-name .folder-inner').forEach(el => {
+    document.querySelectorAll('td.vm-name .outer, td.vm-name .folder-outer').forEach(el => {
         if (el.scrollWidth > maxNameWidth) maxNameWidth = el.scrollWidth;
     });
-    const nameColWidth = Math.min(maxNameWidth + 80, 300);
+    const cellPadding = 16;
+    const nameColWidth = Math.min(maxNameWidth + cellPadding, 300);
     document.querySelectorAll('#vm_list th.th1').forEach(th => { th.style.width = nameColWidth + 'px'; });
 
     folderDebugMode  = false;
