@@ -494,7 +494,7 @@ window.fv3UpdateRowSeparators = (folderMap, folderId) => {
         let lastTop = wrappers[0].offsetTop;
         const rows = [[]];
         wrappers.forEach(w => {
-            if (w.offsetTop > lastTop) { rows.push([]); lastTop = w.offsetTop; }
+            if (w.offsetTop - lastTop > w.offsetHeight / 2) { rows.push([]); lastTop = w.offsetTop; }
             rows[rows.length - 1].push(w);
         });
         if (rows.length > 1) {
