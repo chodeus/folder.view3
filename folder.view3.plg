@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.08.1">
-<!ENTITY md5 "ea2087c7488efc504b802eeb6e76183a">
+<!ENTITY version "2026.04.08.2">
+<!ENTITY md5 "03b1119655aa94eaab2e49f234b931ca">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
@@ -15,6 +15,9 @@
 
 ###2026.04.08
 - Fix preview clipping hiding containers due to sub-pixel rounding with custom CSS themes
+- Fix row separator false row breaks from sub-pixel rounding
+- Fix dashboard fullwidth panel row detection tolerance
+- Compute VM name column width from actual icon and padding sizes
 
 ###2026.04.07
 - Fix preset accent color overriding orange update-available text
