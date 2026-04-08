@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Platform detection — macOS vs Linux (Unraid)
 if [[ "$(uname)" == "Darwin" ]]; then
-    SED_I=(sed -i '')
+    SED_I=(sed -i'')
     MD5CMD() { md5 -q "$1"; }
     CP_PARENTS() {
         rsync -aR --files-from=<(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json" \)) . "$1/"

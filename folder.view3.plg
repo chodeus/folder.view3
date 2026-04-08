@@ -5,13 +5,16 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.08.7">
-<!ENTITY md5 "8b0d932429da172099627deecfb50f74">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+<!ENTITY version "2026.04.09">
+<!ENTITY md5 "bdeb687e725a4c4aa6af3ce4b5eef25c">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.09
+- Harden incognito mode: scrub volume paths, image tags, and registry prefixes in expanded rows
 
 ###2026.04.08
 - Fix preview clipping hiding containers due to sub-pixel rounding with custom CSS themes
@@ -21,7 +24,6 @@
 - Fix VM name column width selector (was targeting non-existent element)
 - Fix incognito mode not hiding container registry/image info in "By:" fields
 - Fix incognito auto-apply racing with folder creation on page load
-- Harden incognito mode: scrub volume paths, image tags, and registry prefixes in expanded rows
 
 ###2026.04.07
 - Fix preset accent color overriding orange update-available text
@@ -542,7 +544,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
