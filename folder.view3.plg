@@ -560,12 +560,38 @@
             done
             mkdir -p /boot/config/plugins/&name;/styles
             mkdir -p /boot/config/plugins/&name;/scripts
+            if [ -f /boot/config/plugins/&name;/version ]; then
+                ACTION="Updated"
+            else
+                ACTION="Installed"
+            fi
             echo "&version;" > /boot/config/plugins/&name;/version
             echo ""
-            echo "----------------------------------------------------"
-            echo " &name; has been installed."
-            echo " Version: &version;"
-            echo "----------------------------------------------------"
+            echo "  ███████╗██╗   ██╗ ██████╗ "
+            echo "  ██╔════╝██║   ██║ ╚════██╗"
+            echo "  █████╗  ██║   ██║  █████╔╝"
+            echo "  ██╔══╝  ╚██╗ ██╔╝  ╚═══██╗"
+            echo "  ██║      ╚████╔╝  ██████╔╝"
+            echo "  ╚═╝      ╚═══╝   ╚═════╝ "
+            echo ""
+            echo "  FolderView3 — $ACTION"
+            echo "  Version: &version;"
+            echo ""
+            echo "  ──────────────────────────────────────────────────"
+            echo ""
+            echo "  Organize your Docker containers and VMs into"
+            echo "  collapsible, drag-and-drop folders on the Docker,"
+            echo "  VM, and Dashboard tabs. Features real-time stats,"
+            echo "  custom themes, and a built-in CSS editor."
+            echo ""
+            echo "  Maintained by:"
+            echo "    2026-present  chodeus (folder.view3)"
+            echo "    2025          VladoPortos (folder.view2)"
+            echo "    2023-2024     scolcipitato (folder.view)"
+            echo ""
+            echo "  GitHub:  github.com/chodeus/folder.view3"
+            echo "  Issues:  github.com/chodeus/folder.view3/issues"
+            echo "  Support: forums.unraid.net/topic/197223"
             echo ""
         </INLINE>
     </FILE>
