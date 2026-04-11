@@ -72,6 +72,9 @@
 
     require_once("$documentRoot/webGui/include/Helpers.php");
     require_once("$documentRoot/plugins/dynamix.docker.manager/include/DockerClient.php");
+    if (file_exists("$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php")) {
+        require_once("$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php");
+    }
 
     function fv3_require_libvirt_helpers(): bool {
         global $documentRoot;
