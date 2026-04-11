@@ -356,6 +356,12 @@
     gap: 12px;
 }
 
+.fv3-section-heading-actions button,
+.fv3-backup-actions button {
+    margin: 0;
+    min-width: 0;
+}
+
 .fv3-section-heading-actions {
     display: flex;
     gap: 6px;
@@ -373,19 +379,35 @@
 }
 
 /* ===== Settings panel layout fixes ===== */
-/* Override Unraid dd flex-direction:column — align inputs with labels */
+.fv3-page-panel .basic dl {
+    display: grid;
+    grid-template-columns: 35% 1fr;
+    gap: 0.5rem 2rem;
+    align-items: center;
+    margin: 0;
+    padding: 0.5rem 0;
+    line-height: normal;
+}
+
+.fv3-page-panel .basic dt {
+    float: none;
+    text-align: right;
+    font-weight: normal;
+}
+
 .fv3-page-panel .basic dd {
+    display: flex;
     flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
+    margin: 0;
+    white-space: nowrap;
 }
 
-/* Hidden spacer images should not take space */
 .fv3-page-panel .basic dd > img.img[style*="visibility: hidden"] {
     display: none;
 }
 
-/* Text inputs and selects fill remaining width */
 .fv3-page-panel .basic dd > input[type="text"],
 .fv3-page-panel .basic dd > input[type="number"],
 .fv3-page-panel .basic dd > select {
@@ -393,8 +415,8 @@
     min-width: 0;
 }
 
-/* Toggle ON/OFF label to the right, not underneath */
-.fv3-page-panel dd .switch-button-background {
+.fv3-page-panel dd .switch-button-background,
+.fv3-page-panel dd .switch-button-label {
     float: none;
 }
 
@@ -406,22 +428,10 @@
     display: none;
 }
 
-/* Only show the active ON/OFF label */
-.fv3-page-panel dd .switch-button-background.checked ~ .switch-button-label.on {
-    display: inline;
-}
-
-.fv3-page-panel dd .switch-button-background.checked ~ .switch-button-label.off {
-    display: none;
-}
-
-.fv3-page-panel dd .switch-button-background:not(.checked) ~ .switch-button-label.on {
-    display: none;
-}
-
-.fv3-page-panel dd .switch-button-background:not(.checked) ~ .switch-button-label.off {
-    display: inline;
-}
+.fv3-page-panel dd .switch-button-background.checked ~ .switch-button-label.on { display: inline; }
+.fv3-page-panel dd .switch-button-background.checked ~ .switch-button-label.off { display: none; }
+.fv3-page-panel dd .switch-button-background:not(.checked) ~ .switch-button-label.on { display: none; }
+.fv3-page-panel dd .switch-button-background:not(.checked) ~ .switch-button-label.off { display: inline; }
 
 /* Dashboard two-column grid */
 .fv3-dashboard-grid {
