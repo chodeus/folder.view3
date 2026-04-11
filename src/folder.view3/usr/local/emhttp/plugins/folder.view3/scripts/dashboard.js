@@ -1801,7 +1801,7 @@ let folderReq = {
 };
 
 // Patching the original function to make sure the containers are rendered before insering the folder
-window.loadlist_original = loadlist;
+window.loadlist_original = window.loadlist;
 window.loadlist = (x) => {
     loadedFolder = false;
     if($('tbody#docker_view').length > 0) {
@@ -1821,7 +1821,7 @@ window.loadlist = (x) => {
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
         ];
     }
-    loadlist_original(x);
+    if (typeof window.loadlist_original === 'function') { loadlist_original(x); }
 };
 
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
