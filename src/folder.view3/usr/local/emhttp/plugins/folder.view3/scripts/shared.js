@@ -392,7 +392,15 @@ window.fv3Incognito = false;
 
         var table = document.querySelector('table#docker_containers, table#kvm_table');
         if (table) {
-            table.parentNode.insertBefore(createBtn(), table);
+            var wrapper = document.createElement('div');
+            wrapper.className = 'fv3-incognito-bar';
+            wrapper.appendChild(createBtn());
+            var titleDiv = table.parentNode.querySelector('div.title');
+            if (titleDiv) {
+                titleDiv.parentNode.insertBefore(wrapper, titleDiv.nextSibling);
+            } else {
+                table.parentNode.insertBefore(wrapper, table);
+            }
             return;
         }
     }

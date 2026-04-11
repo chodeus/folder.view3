@@ -72,6 +72,9 @@
 
     require_once("$documentRoot/webGui/include/Helpers.php");
     require_once("$documentRoot/plugins/dynamix.docker.manager/include/DockerClient.php");
+    if (file_exists("$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php")) {
+        require_once("$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php");
+    }
 
     function fv3_require_libvirt_helpers(): bool {
         global $documentRoot;
@@ -1227,29 +1230,44 @@
             unset($ct); 
 
         } elseif ($type == "vm") {
+            fv3_debug_log("VM: Entering VM block.");
             if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM: libvirt_helpers.php not available."); return []; }
-            global $lv;
-            if (!isset($lv)) {
-                $lv = new Libvirt();
-                if (!$lv->connect()) { fv3_debug_log("VM: Libvirt connection failed."); return []; }
+            fv3_debug_log("VM: libvirt_helpers loaded OK.");
+            try {
+                global $lv;
+                if (!isset($lv)) {
+                    fv3_debug_log("VM: Creating Libvirt instance...");
+                    $lv = new Libvirt();
+                    fv3_debug_log("VM: Libvirt instance created. Connecting...");
+                    if (!$lv->connect()) { fv3_debug_log("VM: Libvirt connection failed."); return []; }
+                    fv3_debug_log("VM: Libvirt connected.");
+                }
+                fv3_debug_log("VM: Calling get_domains()...");
+                $vms = $lv->get_domains();
+                fv3_debug_log("VM: Found " . count($vms) . " VMs.");
+            } catch (\Throwable $e) {
+                fv3_debug_log("VM: FATAL - Libvirt init/connect crashed: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+                return [];
             }
-            $vms = $lv->get_domains();
-            fv3_debug_log("VM: Found " . count($vms) . " VMs.");
             if (!empty($vms)) {
                 foreach ($vms as $vm) {
                     $res = $lv->get_domain_by_name($vm);
                     if (!$res) { fv3_debug_log("VM: Could not get domain by name for $vm."); continue; }
                     $dom = $lv->domain_get_info($res);
                     $vncPort = '';
-                    $xml = $lv->domain_get_xml($res);
-                    if ($xml) {
-                        $xmlObj = @simplexml_load_string($xml);
-                        $graphics = $xmlObj ? $xmlObj->xpath('//graphics[@type="vnc"]') : [];
-                        if (!empty($graphics)) {
-                            $ws = (string)($graphics[0]['websocket'] ?? '');
-                            $raw = $ws ?: (string)$graphics[0]['port'];
-                            $vncPort = ctype_digit($raw) ? $raw : '';
+                    try {
+                        $xml = $lv->domain_get_xml($res);
+                        if ($xml) {
+                            $xmlObj = @simplexml_load_string($xml);
+                            $graphics = $xmlObj ? $xmlObj->xpath('//graphics[@type="vnc"]') : [];
+                            if (!empty($graphics)) {
+                                $ws = (string)($graphics[0]['websocket'] ?? '');
+                                $raw = $ws ?: (string)$graphics[0]['port'];
+                                $vncPort = ctype_digit($raw) ? $raw : '';
+                            }
                         }
+                    } catch (\Throwable $e) {
+                        fv3_debug_log("VM: VNC port extraction failed for $vm: " . $e->getMessage());
                     }
                     $info[$vm] = [
                         'uuid' => $lv->domain_get_uuid($res), 'name' => $vm,
