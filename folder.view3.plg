@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.11.1">
-<!ENTITY md5 "782c302cedd0402916f30a73d84ee31d">
+<!ENTITY version "2026.04.12.1">
+<!ENTITY md5 "4594d8ebdf9df1be877c3260a7d10b1c">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.12
+- Fix Unraid 7.0.x CSS: incognito bar overlap, settings toggle alignment, button spacing
 
 ###2026.04.11
 - Fix Unraid 7.0.x compatibility: Add Folder button, VM page crash, incognito button placement
