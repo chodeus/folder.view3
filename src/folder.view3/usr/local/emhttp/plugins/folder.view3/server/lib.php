@@ -1241,15 +1241,19 @@
                     if (!$res) { fv3_debug_log("VM: Could not get domain by name for $vm."); continue; }
                     $dom = $lv->domain_get_info($res);
                     $vncPort = '';
-                    $xml = $lv->domain_get_xml($res);
-                    if ($xml) {
-                        $xmlObj = @simplexml_load_string($xml);
-                        $graphics = $xmlObj ? $xmlObj->xpath('//graphics[@type="vnc"]') : [];
-                        if (!empty($graphics)) {
-                            $ws = (string)($graphics[0]['websocket'] ?? '');
-                            $raw = $ws ?: (string)$graphics[0]['port'];
-                            $vncPort = ctype_digit($raw) ? $raw : '';
+                    try {
+                        $xml = $lv->domain_get_xml($res);
+                        if ($xml) {
+                            $xmlObj = @simplexml_load_string($xml);
+                            $graphics = $xmlObj ? $xmlObj->xpath('//graphics[@type="vnc"]') : [];
+                            if (!empty($graphics)) {
+                                $ws = (string)($graphics[0]['websocket'] ?? '');
+                                $raw = $ws ?: (string)$graphics[0]['port'];
+                                $vncPort = ctype_digit($raw) ? $raw : '';
+                            }
                         }
+                    } catch (\Throwable $e) {
+                        fv3_debug_log("VM: VNC port extraction failed for $vm: " . $e->getMessage());
                     }
                     $info[$vm] = [
                         'uuid' => $lv->domain_get_uuid($res), 'name' => $vm,

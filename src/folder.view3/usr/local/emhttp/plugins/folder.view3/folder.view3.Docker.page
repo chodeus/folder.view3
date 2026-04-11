@@ -11,7 +11,8 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <script>
     $(document).ready(() => {
         folderi18n = () => {
-            $(`<input type="button" class="fv3-add-folder-btn" onclick="createFolderBtn()" value="Add Folder" data-i18n="[value]add-folder">`).prependTo('.js-actions');
+            var $btn = $(`<input type="button" class="fv3-add-folder-btn" onclick="createFolderBtn()" value="Add Folder" data-i18n="[value]add-folder">`);
+            if ($('.js-actions').length) { $btn.prependTo('.js-actions'); } else { $btn.insertAfter('table#docker_containers'); }
             $('body').i18n();
             $('[type="button"]').i18n();
         }
