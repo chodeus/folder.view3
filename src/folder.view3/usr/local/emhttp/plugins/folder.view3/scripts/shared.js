@@ -395,7 +395,12 @@ window.fv3Incognito = false;
             var wrapper = document.createElement('div');
             wrapper.className = 'fv3-incognito-bar';
             wrapper.appendChild(createBtn());
-            table.parentNode.insertBefore(wrapper, table);
+            var titleDiv = table.parentNode.querySelector('div.title');
+            if (titleDiv) {
+                titleDiv.parentNode.insertBefore(wrapper, titleDiv.nextSibling);
+            } else {
+                table.parentNode.insertBefore(wrapper, table);
+            }
             return;
         }
     }
