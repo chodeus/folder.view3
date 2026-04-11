@@ -12,7 +12,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
     $(document).ready(() => {
         folderi18n = () => {
             var $btn = $('<input type="button" class="fv3-add-folder-btn" onclick="createFolderBtn()" value="Add Folder" data-i18n="[value]add-folder">');
-            if ($('.js-actions').length) { $btn.prependTo('.js-actions'); } else { $btn.insertAfter('table#kvm_table'); }
+            if ($('.js-actions').length) { $btn.prependTo('.js-actions'); } else { $btn.insertAfter('input[value="Add VM"]'); }
             $('body').i18n();
             $('[type="button"]').i18n();
         }
