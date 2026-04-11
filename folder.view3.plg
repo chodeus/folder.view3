@@ -6,12 +6,16 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.09">
-<!ENTITY md5 "bdeb687e725a4c4aa6af3ce4b5eef25c">
+<!ENTITY version "2026.04.11.1">
+<!ENTITY md5 "782c302cedd0402916f30a73d84ee31d">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.11
+- Fix Unraid 7.0.x compatibility: Add Folder button, VM page crash, incognito button placement
+- Defensive loadlist patching in vm.js and dashboard.js
 
 ###2026.04.09
 - Harden incognito mode: scrub volume paths, image tags, and registry prefixes in expanded rows
