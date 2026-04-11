@@ -577,7 +577,7 @@ body[data-fv3-toggle] .folder-autostart div[style*="clear"] {
 .fv3-incognito-bar {
     display: flex;
     align-items: center;
-    margin: 4px 0;
+    margin: 0;
 }
 
 /* ===== Toggle switches (used on Docker, VM, Folder, and Settings pages) ===== */
