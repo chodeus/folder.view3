@@ -1227,14 +1227,25 @@
             unset($ct); 
 
         } elseif ($type == "vm") {
+            fv3_debug_log("VM: Entering VM block.");
             if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM: libvirt_helpers.php not available."); return []; }
-            global $lv;
-            if (!isset($lv)) {
-                $lv = new Libvirt();
-                if (!$lv->connect()) { fv3_debug_log("VM: Libvirt connection failed."); return []; }
+            fv3_debug_log("VM: libvirt_helpers loaded OK.");
+            try {
+                global $lv;
+                if (!isset($lv)) {
+                    fv3_debug_log("VM: Creating Libvirt instance...");
+                    $lv = new Libvirt();
+                    fv3_debug_log("VM: Libvirt instance created. Connecting...");
+                    if (!$lv->connect()) { fv3_debug_log("VM: Libvirt connection failed."); return []; }
+                    fv3_debug_log("VM: Libvirt connected.");
+                }
+                fv3_debug_log("VM: Calling get_domains()...");
+                $vms = $lv->get_domains();
+                fv3_debug_log("VM: Found " . count($vms) . " VMs.");
+            } catch (\Throwable $e) {
+                fv3_debug_log("VM: FATAL - Libvirt init/connect crashed: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+                return [];
             }
-            $vms = $lv->get_domains();
-            fv3_debug_log("VM: Found " . count($vms) . " VMs.");
             if (!empty($vms)) {
                 foreach ($vms as $vm) {
                     $res = $lv->get_domain_by_name($vm);
