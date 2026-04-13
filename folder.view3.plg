@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.13.1">
-<!ENTITY md5 "df70c76539d6b3f225212777a927da76">
+<!ENTITY version "2026.04.13.2">
+<!ENTITY md5 "46594d5c2715fe6adce220110fb1ff38">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.13
+- Fix TDZ errors on slow connections: hoist global variables in docker.js and dashboard.js
 
 ###2026.04.12
 - Fix Unraid 7.0.x CSS: incognito bar overlap, settings toggle alignment, button spacing
