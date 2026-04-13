@@ -1,3 +1,16 @@
+// Global variables
+let cpus = 1;
+let loadedFolder = false;
+let globalFolders = {};
+const folderRegex = /^folder-/;
+let folderDebugMode = !!window.FV3_DEBUG;
+let folderobserver;
+let folderobserverConfig = {
+    subtree: true,
+    attributes: true
+};
+let folderReq = [];
+
 /**
  * Handles the creation of all folders
  */
@@ -1636,19 +1649,6 @@ const bToMem = (b) => {
     return result;
 };
 
-
-// Global variables
-let cpus = 1;
-let loadedFolder = false;
-let globalFolders = {};
-const folderRegex = /^folder-/;
-let folderDebugMode = !!window.FV3_DEBUG;
-let folderobserver;
-let folderobserverConfig = {
-    subtree: true,
-    attributes: true
-};
-let folderReq = [];
 
 fv3Debug('init', 'globals', {
     cpus, loadedFolder, globalFolders: {...globalFolders}, folderRegex: folderRegex.toString(),

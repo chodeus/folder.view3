@@ -1,3 +1,23 @@
+// Global variables
+let loadedFolder = false;
+let globalFolders = {};
+const folderRegex = /^folder-/;
+let folderDebugMode = !!window.FV3_DEBUG;
+let dockerDashboardLayout = 'classic';
+let vmDashboardLayout = 'classic';
+let fv3DockerCollapseToggle = false;
+let fv3VmCollapseToggle = false;
+let fv3DockerGreyscale = false;
+let fv3VmGreyscale = false;
+let fv3DockerShowLabel = false;
+let fv3VmShowLabel = false;
+let fv3AnimationEnabled = false;
+let fv3LayoutReady = false;
+let folderReq = {
+    docker: [],
+    vm: []
+};
+
 /**
  * Handles the creation of all folders
  */
@@ -1428,21 +1448,6 @@ const actionFolderVM = async (id, action) => {
     $('div.spinner.fixed').hide('slow');
 }
 
-// Global variables
-let loadedFolder = false;
-let globalFolders = {};
-const folderRegex = /^folder-/;
-let folderDebugMode = !!window.FV3_DEBUG;
-let dockerDashboardLayout = 'classic';
-let vmDashboardLayout = 'classic';
-let fv3DockerCollapseToggle = false;
-let fv3VmCollapseToggle = false;
-let fv3DockerGreyscale = false;
-let fv3VmGreyscale = false;
-let fv3DockerShowLabel = false;
-let fv3VmShowLabel = false;
-let fv3AnimationEnabled = false;
-let fv3LayoutReady = false;
 const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').promise().then(r => {
     try {
         const s = fv3SafeParse(r, {});
@@ -1794,10 +1799,6 @@ const fv3FullwidthExpand = (id, type) => {
             outer.removeData('fv3-panel');
         }
     }
-};
-let folderReq = {
-    docker: [],
-    vm: []
 };
 
 // Patching the original function to make sure the containers are rendered before insering the folder
