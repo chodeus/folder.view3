@@ -342,6 +342,7 @@
 .fv3-section-heading {
     display: block;
     float: none;
+    clear: both;
     width: 100%;
     font-weight: 700;
     font-size: 1.3em;
@@ -394,6 +395,9 @@
 
 .fv3-page-panel .basic dt {
     float: none;
+    clear: none;
+    width: auto;
+    margin-right: 0;
     text-align: right;
     font-weight: normal;
 }

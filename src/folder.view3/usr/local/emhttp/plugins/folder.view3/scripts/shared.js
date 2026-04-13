@@ -37,6 +37,8 @@ window.fv3Error = function(context, error) {
     });
 })();
 
+if (window.fv3UnraidLegacy) fv3Debug('Init', 'Unraid legacy mode (pre-7.2)');
+
 window.fv3SafeParseWithRecovery = (raw, storageKey, fallback) => {
     if (raw !== null && typeof raw === 'object') {
         try { localStorage.setItem('fv3-' + storageKey, JSON.stringify(raw)); } catch(e) {}
@@ -395,12 +397,7 @@ window.fv3Incognito = false;
             var wrapper = document.createElement('div');
             wrapper.className = 'fv3-incognito-bar';
             wrapper.appendChild(createBtn());
-            var titleDiv = table.parentNode.querySelector('div.title');
-            if (titleDiv) {
-                titleDiv.parentNode.insertBefore(wrapper, titleDiv.nextSibling);
-            } else {
-                table.parentNode.insertBefore(wrapper, table);
-            }
+            table.parentNode.insertBefore(wrapper, table);
             return;
         }
     }

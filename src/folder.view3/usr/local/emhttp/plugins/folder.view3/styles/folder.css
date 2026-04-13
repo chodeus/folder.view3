@@ -12,6 +12,9 @@
 
 .canvas .basic dt {
     float: none;
+    clear: none;
+    width: auto;
+    margin-right: 0;
     text-align: right;
     font-weight: normal;
 }
