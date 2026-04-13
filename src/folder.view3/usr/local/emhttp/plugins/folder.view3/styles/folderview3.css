@@ -340,6 +340,9 @@
 }
 
 .fv3-section-heading {
+    display: block;
+    float: none;
+    width: 100%;
     font-weight: 700;
     font-size: 1.3em;
     margin-top: 1.2rem;
@@ -382,7 +385,7 @@
 .fv3-page-panel .basic dl {
     display: grid;
     grid-template-columns: 35% 1fr;
-    gap: 0.5rem 2rem;
+    gap: 0.5rem 1rem;
     align-items: center;
     margin: 0;
     padding: 0.5rem 0;
@@ -453,6 +456,16 @@
 
 .fv3-dashboard-col .fv3-section-heading {
     margin-top: 0;
+}
+
+.fv3-dashboard-col .basic dl,
+.fv3-dashboard-global .basic dl {
+    grid-template-columns: auto 1fr;
+}
+
+.fv3-dashboard-col .basic dt,
+.fv3-dashboard-global .basic dt {
+    white-space: nowrap;
 }
 
 .fv3-dashboard-global {

@@ -413,9 +413,11 @@ window.fv3Incognito = false;
 
     if (typeof folderEvents !== 'undefined') {
         folderEvents.addEventListener('docker-post-folders-creation', function() {
+            injectToggle();
             if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
         });
         folderEvents.addEventListener('vm-post-folders-creation', function() {
+            injectToggle();
             if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
         });
     }
