@@ -1,3 +1,16 @@
+// Global variables
+let cpus = 1;
+let loadedFolder = false;
+let globalFolders = {};
+const folderRegex = /^folder-/;
+let folderDebugMode = !!window.FV3_DEBUG;
+let folderobserver;
+let folderobserverConfig = {
+    subtree: true,
+    attributes: true
+};
+let folderReq = [];
+
 /**
  * Handles the creation of all folders
  */
@@ -432,7 +445,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             fv3Debug('createFolder', id, container_name_in_folder, 'Container info (ct):', JSON.parse(JSON.stringify(ct)));
 
 
-            let CPU = []; let MEM = []; let charts = []; let tootltipObserver;
+            let CPU = []; let MEM = []; let charts = []; let tootltipObserver; let tooltipResizeObserver; let chartHeightGuards = [];
             fv3Debug('createFolder', id, container_name_in_folder, 'Initialized CPU, MEM, charts, tootltipObserver for tooltip.');
 
             const pushChartData = (cpuVal, memVal) => {
@@ -684,9 +697,77 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                 disabled: diabled,
                                 active: active
                             });
-                            $(`.preview-outbox-${ct.shortId} table > tbody div.status-autostart > input[type="checkbox"]`, tooltipDomEl).on("change", advancedAutostart); 
+                            $(`.preview-outbox-${ct.shortId} table > tbody div.status-autostart > input[type="checkbox"]`, tooltipDomEl).on("change", advancedAutostart);
                         } else {
                              fv3DebugWarn('tooltipster', ct.shortId, 'Autostart switch placeholder not found as expected in tooltip.');
+                        }
+
+                        // Mobile: wrap actions and graph in collapsible accordions
+                        if (window.innerWidth <= 768) {
+                            fv3Debug('tooltipster', ct.shortId, 'Mobile detected — applying hybrid accordion layout.');
+                            const $secondRow = $(`.preview-outbox-${ct.shortId} .second-row`, tooltipDomEl);
+                            const $actionInfo = $secondRow.children('.action-info');
+                            const $infoSection = $secondRow.children('.info-section');
+                            const $infoCt = $actionInfo.children('.info-ct');
+
+                            // Quick Actions accordion (open by default)
+                            const $actionsDetails = $(`<details class="fv3-mobile-details" open><summary>${$.i18n('quick-actions') || 'Quick Actions'}</summary></details>`);
+                            $actionInfo.before($actionsDetails);
+                            $actionsDetails.append($actionInfo);
+
+                            // Graph & Details accordion (closed by default)
+                            const $graphDetails = $(`<details class="fv3-mobile-details"><summary>${$.i18n('graph-details') || 'Graph & Details'}</summary></details>`);
+                            $infoSection.before($graphDetails);
+                            $graphDetails.append($infoSection);
+
+                            // Move container ID/registry to bottom of second-row
+                            $secondRow.append($infoCt);
+
+                            // Mutual exclusion + chart resize on expand
+                            const $allDetails = $secondRow.find('.fv3-mobile-details');
+                            $allDetails.on('toggle', function () {
+                                // Disconnect any existing chart height guards
+                                chartHeightGuards.forEach(id => clearTimeout(id));
+                                chartHeightGuards = [];
+
+                                if (this.open) {
+                                    $allDetails.not(this).each(function () { this.open = false; });
+                                    $(this).find('canvas').each(function () {
+                                        const canvas = this;
+                                        const container = canvas.parentElement;
+                                        // Wait for layout to settle before resizing chart
+                                        requestAnimationFrame(() => {
+                                            if (!document.body.contains(canvas)) return;
+                                            const chart = Chart.getChart(canvas);
+                                            if (chart) {
+                                                chart.resize();
+                                                chart.update();
+                                            }
+                                            // Clear inline height once after chart settles,
+                                            // then once more after streaming plugin's first tick
+                                            container.style.height = 'auto';
+                                            const guardId = setTimeout(() => {
+                                                if (document.body.contains(container)) {
+                                                    container.style.height = 'auto';
+                                                }
+                                            }, 1100);
+                                            chartHeightGuards.push(guardId);
+                                        });
+                                    });
+                                }
+                            });
+
+                            // ResizeObserver repositions tooltip when content size changes (accordion, chart, etc.)
+                            let resizeTimer;
+                            tooltipResizeObserver = new ResizeObserver(() => {
+                                clearTimeout(resizeTimer);
+                                resizeTimer = setTimeout(() => {
+                                    try {
+                                        $(tooltip_trigger_element).tooltipster('reposition');
+                                    } catch(e) {}
+                                }, 150);
+                            });
+                            tooltipResizeObserver.observe($(`.preview-outbox-${ct.shortId}`, tooltipDomEl).get(0));
                         }
 
                         if (fv3UsingWebSocket) {
@@ -696,6 +777,8 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                             dockerload.addEventListener('message', graphListenerSSE);
                             fv3Debug('tooltipster', ct.shortId, 'Added graphListener to dockerload SSE.');
                         }
+
+                        if (fv3Incognito) fv3IncognitoScrubTooltip($(tooltipDomEl)[0], ct.info.Name);
 
                         fv3Debug('tooltipster', ct.shortId, 'Dispatching docker-tooltip-ready-end event.');
                         folderEvents.dispatchEvent(new CustomEvent('docker-tooltip-ready-end', {detail: {
@@ -744,6 +827,12 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                             tootltipObserver = undefined;
                             fv3Debug('tooltipster', ct.shortId, 'Disconnected and cleared tootltipObserver.');
                         }
+                        if (tooltipResizeObserver) {
+                            tooltipResizeObserver.disconnect();
+                            tooltipResizeObserver = undefined;
+                        }
+                        chartHeightGuards.forEach(id => clearTimeout(id));
+                        chartHeightGuards = [];
                     },
                    content: $(`
                         <div class="preview-outbox preview-outbox-${ct.shortId}">
@@ -1636,19 +1725,6 @@ const bToMem = (b) => {
     return result;
 };
 
-
-// Global variables
-let cpus = 1;
-let loadedFolder = false;
-let globalFolders = {};
-const folderRegex = /^folder-/;
-let folderDebugMode = !!window.FV3_DEBUG;
-let folderobserver;
-let folderobserverConfig = {
-    subtree: true,
-    attributes: true
-};
-let folderReq = [];
 
 fv3Debug('init', 'globals', {
     cpus, loadedFolder, globalFolders: {...globalFolders}, folderRegex: folderRegex.toString(),

@@ -1,9 +1,30 @@
-/* Unraid 7 sets dd { flex-direction: column } which stacks inputs
-   below their labels. Override to row so everything aligns. */
+/* ===== Grid layout for label/control alignment ===== */
+/* Unraid 7.2 uses float:left on dt, but 7.0.x doesn't — grid works on both */
+.canvas .basic dl {
+    display: grid;
+    grid-template-columns: 35% 1fr;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    margin: 0;
+    padding: 0.5rem 0;
+    line-height: normal;
+}
+
+.canvas .basic dt {
+    float: none;
+    clear: none;
+    width: auto;
+    margin-right: 0;
+    text-align: right;
+    font-weight: normal;
+}
+
 .canvas .basic dd {
+    display: flex;
     flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
+    margin: 0;
 }
 
 /* Color picker row needs gap */
@@ -67,6 +88,9 @@
 /* Order table: 50% width, centered */
 dl.fv3-folder-settings {
     display: block;
+    float: none;
+    width: 100%;
+    clear: both;
     padding: 16px;
 }
 
@@ -122,6 +146,7 @@ table.sortable {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
+    margin: 0;
 }
 
 table.sortable th {

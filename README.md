@@ -161,6 +161,11 @@ On Unraid 7.2+, FolderView3 automatically detects and uses the GraphQL API for:
 
 All features fall back gracefully on older Unraid versions — no configuration needed.
 
+## Compatibility
+
+- **Unraid 7.0.x** — fully supported with layout and CSS compatibility fixes
+- **Unraid 7.2+** — enhanced with GraphQL API, WebSocket stats, and native organizer sync
+
 ## Debug Mode
 
 Type **fv3debug** on any FolderView3 page to toggle debug logging. Console shows folder creation, API calls, organizer sync activity, and stats updates with `[FV3]` prefix. State persists across page loads.

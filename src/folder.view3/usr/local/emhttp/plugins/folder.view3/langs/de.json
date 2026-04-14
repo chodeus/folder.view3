@@ -55,6 +55,8 @@
     "volume-mappings": "Volumen Zuordnungen",
     "by": "Von",
     "container-id": "Container-ID",
+    "quick-actions": "Quick Actions",
+    "graph-details": "Graph & Details",
     "name": "Name:",
     "name-tooltip": "Der Name des Ordners. Unterstützt Unicode (CJK, Kyrillisch usw.). Nicht erlaubt: <b>&lt; &gt; &amp; \" ' \\\\ :</b> und Steuerzeichen.",
     "icon": "Symbol:",

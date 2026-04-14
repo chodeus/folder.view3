@@ -37,6 +37,8 @@ window.fv3Error = function(context, error) {
     });
 })();
 
+if (window.fv3UnraidLegacy) fv3Debug('Init', 'Unraid legacy mode (pre-7.2)');
+
 window.fv3SafeParseWithRecovery = (raw, storageKey, fallback) => {
     if (raw !== null && typeof raw === 'object') {
         try { localStorage.setItem('fv3-' + storageKey, JSON.stringify(raw)); } catch(e) {}
@@ -160,6 +162,8 @@ window.fv3Incognito = false;
         var modified = false;
         textNodes.forEach(function(tn) {
             var text = tn.nodeValue;
+            var prev = tn.previousSibling;
+            if (prev && prev.nodeType === 1 && (prev.classList.contains('fa-info-circle') || prev.classList.contains('fa-docker'))) return;
             var changed = scrubText(text, knownNames, type);
             changed = changed.replace(macRe, 'xx:xx:xx:xx:xx:xx');
             changed = changed.replace(ipv6Re, function(match) {
@@ -197,6 +201,7 @@ window.fv3Incognito = false;
         });
 
         document.querySelectorAll('.appname').forEach(function(el) {
+            if (el.closest('.folder-name')) return;
             var link = el.querySelector('a');
             var target = link || el;
             if (target.hasAttribute('data-fv3-real')) return;
@@ -311,6 +316,8 @@ window.fv3Incognito = false;
             while (tn = walker.nextNode()) {
                 var tag = tn.nodeValue.trim();
                 if (!tag || statusTextRe.test(tag) || safeTagRe.test(tag)) continue;
+                var prevSib = tn.previousSibling;
+                if (prevSib && prevSib.nodeType === 1 && prevSib.tagName === 'I') continue;
                 if (/[a-zA-Z]/.test(tag) && /\d/.test(tag)) {
                     tn._fv3Original = tn.nodeValue;
                     tn.nodeValue = tn.nodeValue.replace(tag, '[hidden]');
@@ -320,8 +327,64 @@ window.fv3Incognito = false;
         });
 
         var isVmPage = !!document.querySelector('#kvm_table');
-        document.querySelectorAll('#docker_containers td, #kvm_table td').forEach(function(el) {
+        document.querySelectorAll('#docker_containers td:not(.updatecolumn):not(.folder-name), #kvm_table td:not(.folder-name)').forEach(function(el) {
             scrubTextNodes(el, knownNames, isVmPage ? 'vm' : 'container');
+        });
+    };
+
+    window.fv3IncognitoScrubTooltip = function(tooltipEl, containerName) {
+        if (!fv3Incognito || !tooltipEl) return;
+        var anonName = getAnon(containerName, 'container');
+        var names = [containerName];
+        var parts = containerName.split(/[_\-. ]+/);
+        if (parts.length > 1) {
+            parts.forEach(function(p) {
+                if (p.length >= 4 && names.indexOf(p) === -1) names.push(p);
+            });
+        }
+
+        tooltipEl.querySelectorAll('.preview-actual-name .appname').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real')) return;
+            el.setAttribute('data-fv3-real', el.textContent);
+            el.textContent = anonName;
+        });
+
+        tooltipEl.querySelectorAll('img.img').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real-src')) return;
+            el.setAttribute('data-fv3-real-src', el.src);
+            el.style.filter = 'blur(8px) brightness(0.7)';
+        });
+
+        tooltipEl.querySelectorAll('.info-ct .repo a').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real')) return;
+            el.setAttribute('data-fv3-real', el.textContent);
+            el.setAttribute('data-fv3-real-href', el.getAttribute('href') || '');
+            el.textContent = 'registry/image';
+            el.setAttribute('href', '#');
+        });
+
+        tooltipEl.querySelectorAll('a[href*="://"]').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real')) return;
+            var href = el.getAttribute('href') || '';
+            var text = el.textContent || '';
+            for (var i = 0; i < names.length; i++) {
+                if (href.toLowerCase().indexOf(names[i].toLowerCase()) !== -1 ||
+                    text.indexOf(names[i]) !== -1) {
+                    el.setAttribute('data-fv3-real', text);
+                    el.setAttribute('data-fv3-real-href', href);
+                    el.textContent = 'WebUI';
+                    el.setAttribute('href', '#');
+                    break;
+                }
+            }
+        });
+
+        tooltipEl.querySelectorAll('.info-ports').forEach(function(el) {
+            scrubTextNodes(el, names, 'container');
+        });
+
+        tooltipEl.querySelectorAll('.info-volumes').forEach(function(el) {
+            scrubTextNodes(el, names, 'container');
         });
     };
 
@@ -392,7 +455,10 @@ window.fv3Incognito = false;
 
         var table = document.querySelector('table#docker_containers, table#kvm_table');
         if (table) {
-            table.parentNode.insertBefore(createBtn(), table);
+            var wrapper = document.createElement('div');
+            wrapper.className = 'fv3-incognito-bar';
+            wrapper.appendChild(createBtn());
+            table.parentNode.insertBefore(wrapper, table);
             return;
         }
     }
@@ -405,9 +471,11 @@ window.fv3Incognito = false;
 
     if (typeof folderEvents !== 'undefined') {
         folderEvents.addEventListener('docker-post-folders-creation', function() {
+            injectToggle();
             if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
         });
         folderEvents.addEventListener('vm-post-folders-creation', function() {
+            injectToggle();
             if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
         });
     }

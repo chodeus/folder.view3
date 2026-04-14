@@ -55,6 +55,8 @@
     "volume-mappings": "Mapowanie wolumenów",
     "by": "Przez",
     "container-id": "ID kontenera",
+    "quick-actions": "Quick Actions",
+    "graph-details": "Graph & Details",
     "name": "Nazwa:",
     "name-tooltip": "Nazwa folderu. Obsługuje Unicode (CJK, cyrylica itp.). Niedozwolone: <b>&lt; &gt; &amp; \" ' \\\\ :</b> oraz znaki sterujące.",
     "icon": "Ikona:",

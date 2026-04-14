@@ -55,6 +55,8 @@
     "volume-mappings": "Correspondances de Volume",
     "by": "Par",
     "container-id": "ID du Conteneur",
+    "quick-actions": "Quick Actions",
+    "graph-details": "Graph & Details",
     "name": "Nom :",
     "name-tooltip": "Le nom du dossier. Supporte Unicode (CJK, Cyrillique, etc). Non autorisé : <b>&lt; &gt; &amp; \" ' \\\\ :</b> et caractères de contrôle.",
     "icon": "Icône :",

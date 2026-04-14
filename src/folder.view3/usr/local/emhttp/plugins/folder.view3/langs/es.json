@@ -55,6 +55,8 @@
     "volume-mappings": "Asignaciones de volumen",
     "by": "Por",
     "container-id": "ID del contenedor",
+    "quick-actions": "Quick Actions",
+    "graph-details": "Graph & Details",
     "name": "Nombre:",
     "name-tooltip": "El nombre de la carpeta. Soporta Unicode (CJK, Cirílico, etc). No permitido: <b>&lt; &gt; &amp; \" ' \\\\ :</b> y caracteres de control.",
     "icon": "Icono:",

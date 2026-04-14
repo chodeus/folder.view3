@@ -1,3 +1,9 @@
+(function() {
+    var isModern = !!document.querySelector('link[href*="default-base"]');
+    document.body.dataset.fv3Unraid = isModern ? 'modern' : 'legacy';
+    window.fv3UnraidLegacy = !isModern;
+})();
+
 const escapeHtml = (str) => {
     if (typeof str !== 'string') return str;
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -99,6 +105,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         // select the folder and delete it from the list
         const currFolder = folders[folderId];
         delete folders[folderId];
+        if (!currFolder.settings) currFolder.settings = {};
 
         // set the value of the form
         const form = $('div.canvas > form')[0];

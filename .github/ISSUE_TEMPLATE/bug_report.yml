@@ -39,7 +39,7 @@ body:
     attributes:
       label: Debug Log
       description: |
-        Optional — to capture a debug log: open the affected page, press F12, go to the Console tab, type `FOLDER_VIEW_DEBUG_MODE = true`, reload the page, reproduce the issue, then copy/paste the console output here.
+        Optional — to capture a debug log: open the affected page, press F12 to open the Console tab, then just type `fv3debug` on your keyboard (don't click any input field — just type it). You'll see `[FV3] Debug mode ON` appear in the console. Reload the page, reproduce the issue, then copy/paste the console output here.
       render: shell
     validations:
       required: false

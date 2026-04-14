@@ -2,6 +2,21 @@
     define('FV3_DEBUG_MODE', file_exists('/tmp/fv3_debug_enabled'));
     $fv3_debug_log_file = "/tmp/folder_view3_php_debug.log";
 
+    function fv3_atomic_write(string $path, string $data, int $perms = 0660): bool {
+        $tmp = $path . '.tmp';
+        if (@file_put_contents($tmp, $data) === false) return false;
+        @chmod($tmp, $perms);
+        return @rename($tmp, $path);
+    }
+
+    function fv3_read_json(string $path): array {
+        if (!file_exists($path)) return [];
+        $raw = @file_get_contents($path);
+        if ($raw === false) return [];
+        $data = json_decode($raw, true);
+        return is_array($data) ? $data : [];
+    }
+
     function fv3_debug_log($message) {
         if (FV3_DEBUG_MODE) {
             global $fv3_debug_log_file;
@@ -72,6 +87,9 @@
 
     require_once("$documentRoot/webGui/include/Helpers.php");
     require_once("$documentRoot/plugins/dynamix.docker.manager/include/DockerClient.php");
+    if (file_exists("$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php")) {
+        require_once("$documentRoot/plugins/dynamix.vm.manager/include/libvirt_helpers.php");
+    }
 
     function fv3_require_libvirt_helpers(): bool {
         global $documentRoot;
@@ -136,7 +154,8 @@
     function readFolder(string $type) : string {
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); }
-        return file_get_contents("$configDir/$type.json");
+        $raw = @file_get_contents("$configDir/$type.json");
+        return ($raw !== false) ? $raw : '{}';
     }
 
     function readUserPrefs(string $type) : string {
@@ -163,7 +182,7 @@
         $currentOrder = $currentPrefs ? array_values($currentPrefs) : [];
 
         $foldersFile = "$configDir/docker.json";
-        $folders = file_exists($foldersFile) ? (json_decode(file_get_contents($foldersFile), true) ?: []) : [];
+        $folders = fv3_read_json($foldersFile);
 
         $dockerClient = new DockerClient();
         $allContainerNames = array_column($dockerClient->getDockerContainers(), 'Name');
@@ -271,11 +290,10 @@
             http_response_code(400);
             exit;
         }
-        $fileData = json_decode(file_get_contents("$configDir/$type.json"), true) ?: [];
+        $fileData = fv3_read_json("$configDir/$type.json");
         $fileData[$id] = $decoded;
         $path = "$configDir/$type.json";
-        file_put_contents($path, json_encode($fileData));
-        @chmod($path, 0660);
+        fv3_atomic_write($path, json_encode($fileData));
     }
 
     function updateFolderIds(string $type, string $data) : void {
@@ -283,7 +301,7 @@
         if(!file_exists("$configDir/$type.json")) { return; }
         $updates = json_decode($data, true);
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($updates)) { http_response_code(400); exit; }
-        $fileData = json_decode(file_get_contents("$configDir/$type.json"), true) ?: [];
+        $fileData = fv3_read_json("$configDir/$type.json");
         $changed = false;
         foreach ($updates as $folderId => $patch) {
             if (!preg_match('/^[A-Za-z0-9+\/=]+$/', $folderId)) continue;
@@ -307,19 +325,17 @@
         }
         if ($changed) {
             $path = "$configDir/$type.json";
-            file_put_contents($path, json_encode($fileData));
-            @chmod($path, 0660);
+            fv3_atomic_write($path, json_encode($fileData));
         }
     }
 
     function deleteFolder(string $type, string $id) : void {
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); return; }
-        $fileData = json_decode(file_get_contents("$configDir/$type.json"), true) ?: [];
+        $fileData = fv3_read_json("$configDir/$type.json");
         unset($fileData[$id]);
         $path = "$configDir/$type.json";
-        file_put_contents($path, json_encode($fileData));
-        @chmod($path, 0660);
+        fv3_atomic_write($path, json_encode($fileData));
     }
 
     function readSettings() : string {
@@ -327,10 +343,10 @@
         $path = "$configDir/settings.json";
         if(!file_exists($path)) {
             if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-            @file_put_contents($path, '{}');
-            @chmod($path, 0660);
+            fv3_atomic_write($path, '{}');
         }
-        return file_get_contents($path);
+        $raw = @file_get_contents($path);
+        return ($raw !== false) ? $raw : '{}';
     }
 
     function updateSettings(string $key, string $value) : void {
@@ -610,8 +626,7 @@
             }
             $css = @file_get_contents($file['download_url'], false, $ctx);
             if ($css !== false) {
-                file_put_contents("$targetDir/$safeName", $css);
-                @chmod("$targetDir/$safeName", 0660);
+                fv3_atomic_write("$targetDir/$safeName", $css);
                 $downloaded[] = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
             }
         }
@@ -625,8 +640,7 @@
             $sourceData['files'][$key] = $file['sha'];
         }
         $sourceData['updated'] = date('c');
-        file_put_contents("$themeDir/.fv3-source", json_encode($sourceData));
-        @chmod("$themeDir/.fv3-source", 0660);
+        fv3_atomic_write("$themeDir/.fv3-source", json_encode($sourceData));
         $result = ['success' => true, 'name' => $themeName, 'files' => $downloaded, 'is_update' => $isUpdate];
         if (!empty($warnings)) $result['warnings'] = $warnings;
         return $result;
@@ -694,10 +708,10 @@
             'fv3_export_version' => 1,
             'plugin_version' => trim(@file_get_contents("$configDir/version") ?: ''),
             'exported' => date('c'),
-            'docker' => json_decode(@file_get_contents("$configDir/docker.json") ?: '{}', true) ?? [],
-            'vm' => json_decode(@file_get_contents("$configDir/vm.json") ?: '{}', true) ?? [],
-            'settings' => json_decode(@file_get_contents("$configDir/settings.json") ?: '{}', true) ?? [],
-            'css_config' => json_decode(@file_get_contents("$configDir/css-config.json") ?: '{}', true) ?? [],
+            'docker' => fv3_read_json("$configDir/docker.json"),
+            'vm' => fv3_read_json("$configDir/vm.json"),
+            'settings' => fv3_read_json("$configDir/settings.json"),
+            'css_config' => fv3_read_json("$configDir/css-config.json"),
             'custom_styles' => []
         ];
         $stylesDir = "$configDir/styles";
@@ -738,8 +752,7 @@
             $path = "$configDir/$filename";
             $flags = JSON_PRETTY_PRINT;
             if (empty($bundle[$key])) $flags |= JSON_FORCE_OBJECT;
-            file_put_contents($path, json_encode($bundle[$key], $flags));
-            @chmod($path, 0660);
+            fv3_atomic_write($path, json_encode($bundle[$key], $flags));
             $restored[] = $filename;
         }
         if (isset($bundle['custom_styles']) && is_array($bundle['custom_styles'])) {
@@ -755,8 +768,7 @@
                 if (!is_dir($dir)) @mkdir($dir, 0770, true);
                 $dirReal = realpath($dir);
                 if ($dirReal === false || strpos($dirReal, $baseReal) !== 0) continue;
-                file_put_contents($fullPath, $content);
-                @chmod($fullPath, 0660);
+                fv3_atomic_write($fullPath, $content);
                 $restored[] = "styles/$relPath";
             }
         }
@@ -906,8 +918,7 @@
         }
         $outPath = "$stylesDir/_fv3-generated.docker-vm-dashboard.css";
         if ($hasGlobal) {
-            file_put_contents($outPath, $globalCss);
-            @chmod($outPath, 0660);
+            fv3_atomic_write($outPath, $globalCss);
         } else {
             @unlink($outPath);
         }
@@ -938,8 +949,7 @@
 
             $scopePath = "$stylesDir/_fv3-generated.{$scope}.css";
             if ($hasScope) {
-                file_put_contents($scopePath, $scopeCss);
-                @chmod($scopePath, 0660);
+                fv3_atomic_write($scopePath, $scopeCss);
             } else {
                 @unlink($scopePath);
             }
@@ -953,10 +963,8 @@
     function createFile(string $type): void {
         global $configDir;
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-        $default = ['docker' => '{}', 'vm' => '{}'];
         $path = "$configDir/$type.json";
-        @file_put_contents($path, $default[$type] ?? '{}');
-        @chmod($path, 0660);
+        fv3_atomic_write($path, '{}');
     }
 
     function readInfo(string $type): array {
@@ -1227,29 +1235,44 @@
             unset($ct); 
 
         } elseif ($type == "vm") {
+            fv3_debug_log("VM: Entering VM block.");
             if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM: libvirt_helpers.php not available."); return []; }
-            global $lv;
-            if (!isset($lv)) {
-                $lv = new Libvirt();
-                if (!$lv->connect()) { fv3_debug_log("VM: Libvirt connection failed."); return []; }
+            fv3_debug_log("VM: libvirt_helpers loaded OK.");
+            try {
+                global $lv;
+                if (!isset($lv)) {
+                    fv3_debug_log("VM: Creating Libvirt instance...");
+                    $lv = new Libvirt();
+                    fv3_debug_log("VM: Libvirt instance created. Connecting...");
+                    if (!$lv->connect()) { fv3_debug_log("VM: Libvirt connection failed."); return []; }
+                    fv3_debug_log("VM: Libvirt connected.");
+                }
+                fv3_debug_log("VM: Calling get_domains()...");
+                $vms = $lv->get_domains();
+                fv3_debug_log("VM: Found " . count($vms) . " VMs.");
+            } catch (\Throwable $e) {
+                fv3_debug_log("VM: FATAL - Libvirt init/connect crashed: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+                return [];
             }
-            $vms = $lv->get_domains();
-            fv3_debug_log("VM: Found " . count($vms) . " VMs.");
             if (!empty($vms)) {
                 foreach ($vms as $vm) {
                     $res = $lv->get_domain_by_name($vm);
                     if (!$res) { fv3_debug_log("VM: Could not get domain by name for $vm."); continue; }
                     $dom = $lv->domain_get_info($res);
                     $vncPort = '';
-                    $xml = $lv->domain_get_xml($res);
-                    if ($xml) {
-                        $xmlObj = @simplexml_load_string($xml);
-                        $graphics = $xmlObj ? $xmlObj->xpath('//graphics[@type="vnc"]') : [];
-                        if (!empty($graphics)) {
-                            $ws = (string)($graphics[0]['websocket'] ?? '');
-                            $raw = $ws ?: (string)$graphics[0]['port'];
-                            $vncPort = ctype_digit($raw) ? $raw : '';
+                    try {
+                        $xml = $lv->domain_get_xml($res);
+                        if ($xml) {
+                            $xmlObj = @simplexml_load_string($xml);
+                            $graphics = $xmlObj ? $xmlObj->xpath('//graphics[@type="vnc"]') : [];
+                            if (!empty($graphics)) {
+                                $ws = (string)($graphics[0]['websocket'] ?? '');
+                                $raw = $ws ?: (string)$graphics[0]['port'];
+                                $vncPort = ctype_digit($raw) ? $raw : '';
+                            }
                         }
+                    } catch (\Throwable $e) {
+                        fv3_debug_log("VM: VNC port extraction failed for $vm: " . $e->getMessage());
                     }
                     $info[$vm] = [
                         'uuid' => $lv->domain_get_uuid($res), 'name' => $vm,

@@ -6,12 +6,20 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.04.09">
-<!ENTITY md5 "bdeb687e725a4c4aa6af3ce4b5eef25c">
+<!ENTITY version "2026.04.14.11">
+<!ENTITY md5 "87228956481e7ff307ba3f6b584bc4b1">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.14
+- Unraid 7.0.x compatibility fixes
+- Mobile advanced preview and tooltip improvements
+- Atomic file writes and safer JSON handling
+- Extend incognito mode to advanced preview tooltips
+- CSS cleanup and layout fixes
+- UI polish and bug fixes
 
 ###2026.04.09
 - Harden incognito mode: scrub volume paths, image tags, and registry prefixes in expanded rows
@@ -544,7 +552,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 

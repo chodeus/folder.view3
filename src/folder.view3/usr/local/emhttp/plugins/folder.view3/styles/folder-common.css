@@ -65,6 +65,11 @@
     --fv3-panel-bg: rgba(128, 128, 128, 0.08);
 }
 
+/* Reduce Unraid's default page title margin (2rem → 1rem) */
+div.title {
+    margin: 1rem 0;
+}
+
 /* --- Error Banners --- */
 .fv3-banner {
     display: flex;
@@ -480,8 +485,9 @@ body[data-fv3-toggle] .folder-autostart div[style*="clear"] {
     align-self: center;
 }
 
-.folder-element .ct-name {
-    padding-left: 30px !important;
+#docker_containers .folder-element .ct-name,
+#kvm_table .folder-element .ct-name {
+    padding-left: 30px;
 }
 
 .folder-element .ct-name .inner {
@@ -571,6 +577,26 @@ body[data-fv3-toggle] .folder-autostart div[style*="clear"] {
     opacity: 1;
     color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
     border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+/* Fallback wrapper when .ToggleViewMode doesn't exist (Unraid < 7.2) */
+.fv3-incognito-bar {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: 0.25rem;
+}
+
+.fv3-incognito-bar + table.tablesorter {
+    margin-top: 0;
+}
+
+/* Unraid 7.0.x applies table { margin: -30px 0 0 0 } globally.
+   The incognito bar sits between the title and table, so it needs the
+   negative margin the table used to have to close the gap above it. */
+body[data-fv3-unraid="legacy"] .fv3-incognito-bar {
+    margin-top: -30px;
 }
 
 /* ===== Toggle switches (used on Docker, VM, Folder, and Settings pages) ===== */
