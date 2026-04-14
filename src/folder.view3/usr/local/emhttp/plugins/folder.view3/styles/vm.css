@@ -23,7 +23,7 @@ div.folder-preview-4 span.outer {
 }
 
 
-@media (max-width: 769px) {
+@media (max-width: 768px) {
     #kvm_table td {
         white-space: nowrap;
     }

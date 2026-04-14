@@ -213,6 +213,7 @@
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
+    margin: 0;
 }
 
 .fv3-folder-table th {
@@ -340,6 +341,10 @@
 }
 
 .fv3-section-heading {
+    display: block;
+    float: none;
+    clear: both;
+    width: 100%;
     font-weight: 700;
     font-size: 1.3em;
     margin-top: 1.2rem;
@@ -354,6 +359,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+}
+
+.fv3-section-heading-actions button,
+.fv3-backup-actions button {
+    margin: 0;
+    min-width: 0;
 }
 
 .fv3-section-heading-actions {
@@ -373,19 +384,38 @@
 }
 
 /* ===== Settings panel layout fixes ===== */
-/* Override Unraid dd flex-direction:column — align inputs with labels */
+.fv3-page-panel .basic dl {
+    display: grid;
+    grid-template-columns: 35% 1fr;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    margin: 0;
+    padding: 0.5rem 0;
+    line-height: normal;
+}
+
+.fv3-page-panel .basic dt {
+    float: none;
+    clear: none;
+    width: auto;
+    margin-right: 0;
+    text-align: right;
+    font-weight: normal;
+}
+
 .fv3-page-panel .basic dd {
+    display: flex;
     flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
+    margin: 0;
+    white-space: nowrap;
 }
 
-/* Hidden spacer images should not take space */
 .fv3-page-panel .basic dd > img.img[style*="visibility: hidden"] {
     display: none;
 }
 
-/* Text inputs and selects fill remaining width */
 .fv3-page-panel .basic dd > input[type="text"],
 .fv3-page-panel .basic dd > input[type="number"],
 .fv3-page-panel .basic dd > select {
@@ -393,8 +423,8 @@
     min-width: 0;
 }
 
-/* Toggle ON/OFF label to the right, not underneath */
-.fv3-page-panel dd .switch-button-background {
+.fv3-page-panel dd .switch-button-background,
+.fv3-page-panel dd .switch-button-label {
     float: none;
 }
 
@@ -406,22 +436,10 @@
     display: none;
 }
 
-/* Only show the active ON/OFF label */
-.fv3-page-panel dd .switch-button-background.checked ~ .switch-button-label.on {
-    display: inline;
-}
-
-.fv3-page-panel dd .switch-button-background.checked ~ .switch-button-label.off {
-    display: none;
-}
-
-.fv3-page-panel dd .switch-button-background:not(.checked) ~ .switch-button-label.on {
-    display: none;
-}
-
-.fv3-page-panel dd .switch-button-background:not(.checked) ~ .switch-button-label.off {
-    display: inline;
-}
+.fv3-page-panel dd .switch-button-background.checked ~ .switch-button-label.on { display: inline; }
+.fv3-page-panel dd .switch-button-background.checked ~ .switch-button-label.off { display: none; }
+.fv3-page-panel dd .switch-button-background:not(.checked) ~ .switch-button-label.on { display: none; }
+.fv3-page-panel dd .switch-button-background:not(.checked) ~ .switch-button-label.off { display: inline; }
 
 /* Dashboard two-column grid */
 .fv3-dashboard-grid {
@@ -445,6 +463,14 @@
     margin-top: 0;
 }
 
+.fv3-dashboard-col .basic dl {
+    grid-template-columns: 1fr 1fr;
+}
+
+.fv3-dashboard-col .basic dt {
+    white-space: nowrap;
+}
+
 .fv3-dashboard-global {
     border-top: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
     margin-top: 16px;
@@ -452,6 +478,19 @@
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.fv3-dashboard-global .basic {
+    width: auto;
+}
+
+.fv3-dashboard-global .basic dl {
+    grid-template-columns: auto auto;
+    justify-content: center;
+    width: auto;
 }
 
 .fv3-heading-center {

@@ -754,7 +754,7 @@ let folderDebugMode = !!window.FV3_DEBUG;
 let folderReq = [];
 
 // Patching the original function to make sure the containers are rendered before insering the folder
-window.loadlist_original = loadlist;
+window.loadlist_original = window.loadlist;
 let fv3FolderReqPending = false;
 window.loadlist = (x) => {
     // Only create new PHP requests if previous ones have been consumed
@@ -769,7 +769,7 @@ window.loadlist = (x) => {
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
     }
-    loadlist_original(x);
+    if (typeof window.loadlist_original === 'function') { loadlist_original(x); }
 };
 
 fv3SetupResizeListeners(() => globalFolders, 'vm_listview_mode');

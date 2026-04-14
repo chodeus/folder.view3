@@ -55,6 +55,8 @@
     "volume-mappings": "Volume Mappings",
     "by": "By",
     "container-id": "Container ID",
+    "quick-actions": "Quick Actions",
+    "graph-details": "Graph & Details",
     "name": "Name:",
     "name-tooltip": "The name of the folder. Supports Unicode (CJK, Cyrillic, etc). Not allowed: <b>&lt; &gt; &amp; \" ' \\ :</b> and control characters.",
     "icon": "Icon:",

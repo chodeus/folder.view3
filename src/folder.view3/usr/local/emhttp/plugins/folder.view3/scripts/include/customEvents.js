@@ -1,3 +1,9 @@
+(function() {
+    var isModern = !!document.querySelector('link[href*="default-base"]');
+    document.body.dataset.fv3Unraid = isModern ? 'modern' : 'legacy';
+    window.fv3UnraidLegacy = !isModern;
+})();
+
 window.folderEvents = window.folderEvents || new EventTarget();
 
 window.escapeHtml = window.escapeHtml || ((str) => {

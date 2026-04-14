@@ -55,6 +55,8 @@
     "volume-mappings": "Mappature dei volumi",
     "by": "Da",
     "container-id": "ID Contenitore",
+    "quick-actions": "Quick Actions",
+    "graph-details": "Graph & Details",
     "name": "Nome:",
     "name-tooltip": "Il nome della cartella. Supporta Unicode (CJK, Cirillico, ecc). Non consentiti: <b>&lt; &gt; &amp; \" ' \\\\ :</b> e caratteri di controllo.",
     "icon": "Icona:",

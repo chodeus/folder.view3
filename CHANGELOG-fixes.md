@@ -6,6 +6,57 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.14 — Stable Release
+
+### Unraid 7.0.x Compatibility
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 67 | Fix Add Folder button missing on Unraid 7.0.1 | `docker.js`, `vm.js`, `dashboard.js` | 2026.04.11 |
+| 68 | Fix incognito button placement on Unraid < 7.2 | `shared.js` | 2026.04.11 |
+| 69 | Fix VM page crash: load `libvirt_helpers.php` at top level | `lib.php` | 2026.04.11 |
+| 70 | Defensive loadlist patching in vm.js and dashboard.js | `vm.js`, `dashboard.js` | 2026.04.11 |
+| 71 | Fix CSS: incognito bar overlap, settings toggle alignment, button spacing | `folderview3.css`, `folder-common.css` | 2026.04.12 |
+| 72 | Fix grid layouts, incognito timing, float fixes for 7.0.x | `docker.js`, `shared.js`, CSS | 2026.04.13 |
+| 73 | Fix table margin overrides: incognito gap, backup table, folder accordion | `folderview3.css`, `docker.css` | 2026.04.14 |
+
+### Bug Fixes
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 74 | Fix TDZ errors on slow connections: hoist global variable declarations | `docker.js`, `dashboard.js` | 2026.04.13 |
+| 75 | Fix folder editor crash when editing legacy folders without settings | `folder.js` | 2026.04.14 |
+| 76 | Fix dashboard settings tab toggle/label alignment | `folderview3.css` | 2026.04.14 |
+| 77 | Fix media query breakpoint consistency (769px → 768px) | CSS | 2026.04.14 |
+| 78 | Fix incognito image tag scrubbing and tooltip DOM error | `shared.js` | 2026.04.14 |
+| 79 | Fix incognito folder name and update column scrubbing | `shared.js` | 2026.04.14 |
+
+### Improvements
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 21 | Atomic file writes: prevent config corruption on power loss or crash | `lib.php` | 2026.04.14 |
+| 22 | Safe JSON reads: validate file contents before parsing | `lib.php` | 2026.04.14 |
+| 23 | Error banner on settings page if folder data fails to load | `folderview3.js` | 2026.04.14 |
+| 24 | Extend incognito mode scrubbing to advanced preview tooltips | `docker.js`, `shared.js` | 2026.04.14 |
+| 25 | Remove all `!important` from CSS in favor of specificity | CSS | 2026.04.14 |
+| 26 | Reduce page title margin for tighter layout (issue #6) | `folder-common.css` | 2026.04.14 |
+| 27 | Improved post-install dialog with FV3 logo and maintainer credits | `.plg` | 2026.04.11 |
+| 28 | Updated bug report template with FV3 debug instructions | `bug_report.yml` | 2026.04.11 |
+
+### Mobile
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 29 | Advanced preview hybrid accordion layout with collapsible sections | `docker.js`, `docker.css` | 2026.04.14 |
+| 30 | Fix tooltip resize: ResizeObserver replaces setTimeout | `docker.js` | 2026.04.14 |
+| 31 | Fix dropdown chevrons and tooltip repositioning on accordion toggle | `docker.css`, `docker.js` | 2026.04.14 |
+| 32 | Fix graph axis label clipping and container overflow | `docker.css`, `docker.js` | 2026.04.14 |
+| 33 | Fix CSS preset cards to 2-column grid layout | `csstool.css` | 2026.04.14 |
+| 34 | Fix transparent tooltip background on advanced preview | `docker.css` | 2026.04.14 |
+
+---
+
 ## 2026.04.08 — Stable Release
 
 ### Bug Fixes

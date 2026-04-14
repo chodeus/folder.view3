@@ -1,3 +1,9 @@
+(function() {
+    var isModern = !!document.querySelector('link[href*="default-base"]');
+    document.body.dataset.fv3Unraid = isModern ? 'modern' : 'legacy';
+    window.fv3UnraidLegacy = !isModern;
+})();
+
 const escapeHtml = (str) => {
     if (typeof str !== 'string') return str;
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -62,12 +68,19 @@ const orderFolderIds = (folders, itemOrder) => {
 };
 
 const populateTable = async () => {
-    const proms = await Promise.all([
-        $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
-        $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
-        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
-        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
-    ]);
+    let proms;
+    try {
+        proms = await Promise.all([
+            $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
+        ]);
+    } catch (e) {
+        console.error('[FV3] Failed to load folder data:', e);
+        fv3ShowBanner?.('error', 'Failed to load folder data. Please refresh the page.');
+        return;
+    }
     const dockerData = fv3SafeParse(proms[0], {});
     const vmData = fv3SafeParse(proms[1], {});
     const currentDockerContainerOrder = fv3SafeParse(proms[2], []);

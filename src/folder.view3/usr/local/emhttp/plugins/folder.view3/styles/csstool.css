@@ -596,7 +596,7 @@
 }
 
 /* Responsive */
-@media (max-width: 769px) {
+@media (max-width: 768px) {
     .fv3-csstool-tiers {
         justify-content: space-around;
     }
@@ -620,6 +620,7 @@
     }
     .fv3-preset-grid .fv3-preset-card {
         width: calc(50% - 8px);
+        min-width: 0;
         flex: 0 0 auto;
         box-sizing: border-box;
     }

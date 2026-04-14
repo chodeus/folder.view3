@@ -55,6 +55,8 @@
     "volume-mappings": "卷映射",
     "by": "通过",
     "container-id": "容器编号",
+    "quick-actions": "Quick Actions",
+    "graph-details": "Graph & Details",
     "name": "名称:",
     "name-tooltip": "文件夹名称。支持 Unicode（CJK、西里尔文等）。不允许：<b>&lt; &gt; &amp; \" ' \\\\ :</b> 及控制字符。",
     "icon": "图标:",
