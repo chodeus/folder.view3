@@ -65,8 +65,10 @@
     --fv3-panel-bg: rgba(128, 128, 128, 0.08);
 }
 
-/* Reduce Unraid's default page title margin (2rem → 1rem) */
-div.title {
+/* Reduce Unraid's default page title margin (2rem → 1rem).
+   Scoped to modern (7.2+) only — 7.0.x needs the 2rem default so the
+   .fv3-incognito-bar's -30px pull-up lands between title and table. */
+body[data-fv3-unraid="modern"] div.title {
     margin: 1rem 0;
 }
 
