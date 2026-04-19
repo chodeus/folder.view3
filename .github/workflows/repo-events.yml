@@ -16,5 +16,5 @@ on:
 
 jobs:
   notify:
-    uses: chodeus/chodeus-ops/.github/workflows/repo-events.yml@01955db8a3a9dfabfd1d0496db344ed42ea60753 # main
+    uses: chodeus/chodeus-ops/.github/workflows/repo-events.yml@3f45de2e4563b8d1ec8e385d9b0cdc5508657ce8 # main
     secrets: inherit
