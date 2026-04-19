@@ -1,0 +1,60 @@
+name: Release dispatcher
+
+# Watches pushes to beta/main for conventional-commit feat:/fix: messages
+# and dispatches the corresponding release workflow automatically.
+#
+# Skipped for bot actors (github-actions, renovate, dependabot) so
+# (a) release workflows pushing back via GITHUB_TOKEN never loop, and
+# (b) Renovate's fix(deps):/chore(deps): churn doesn't trigger a release
+# per dep-bump. Manually run release-beta.yml / release-main.yml if you
+# want to bundle dep bumps into a release.
+
+on:
+  push:
+    branches:
+      - main
+      - beta
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.actor != 'renovate[bot]' &&
+      github.actor != 'dependabot[bot]'
+    steps:
+      - name: Check commit message
+        id: check
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          first_line=$(printf '%s\n' "$MSG" | head -n1)
+          printf 'First line: %s\n' "$first_line"
+          if printf '%s' "$first_line" | grep -qE '^(feat|fix)(\([^)]+\))?!?:'; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "Commit qualifies for auto-release"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Not a feat/fix commit — skipping"
+          fi
+
+      - name: Dispatch release workflow
+        if: steps.check.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          case "$BRANCH" in
+            beta) WF="release-beta.yml" ;;
+            main) WF="release-main.yml" ;;
+            *)    echo "::error::Unexpected branch: $BRANCH"; exit 1 ;;
+          esac
+          gh workflow run "$WF" --ref "$BRANCH" --repo "$REPO"
+          echo "::notice::Dispatched $WF on $BRANCH"
