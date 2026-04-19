@@ -1,0 +1,39 @@
+name: Validate workflows
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+      - '.github/actionlint.yaml'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actionlint.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Install actionlint
+        id: install
+        shell: bash
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash)
+          echo "exe=$PWD/actionlint" >> "$GITHUB_OUTPUT"
+
+      - name: Run actionlint
+        shell: bash
+        env:
+          # Skip shellcheck info/style findings; real bugs still fail.
+          SHELLCHECK_OPTS: --severity=warning
+        run: ${{ steps.install.outputs.exe }} -color
