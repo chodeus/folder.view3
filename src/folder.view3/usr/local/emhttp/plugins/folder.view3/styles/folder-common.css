@@ -396,6 +396,11 @@ body[data-fv3-toggle] .folder-autostart div[style*="clear"] {
     display: none;
 }
 
+#docker_containers tr.folder > td:nth-child(3),
+#kvm_table tr.folder > td:nth-child(3) {
+    max-width: 0;
+}
+
 .folder-preview {
     border-radius: var(--fv3-folder-preview-radius);
     height: var(--fv3-folder-preview-height);
@@ -403,7 +408,9 @@ body[data-fv3-toggle] .folder-autostart div[style*="clear"] {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    align-content: safe center;
     background: var(--fv3-folder-preview-bg);
+    min-width: 0;
 }
 
 .folder-preview.fv3-overflow-expand {

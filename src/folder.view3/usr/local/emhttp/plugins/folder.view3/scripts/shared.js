@@ -572,8 +572,84 @@ window.fv3SanitizeContainersInfo = (containersInfo) => {
     return clone;
 };
 
-window.fv3DownloadDebugJSON = (filename, data) => {
-    const blob = new Blob([data], { type: 'application/json' });
+window.fv3CollectEnv = () => {
+    const getCookie = (n) => { try { return (typeof $ !== 'undefined' && $.cookie) ? $.cookie(n) : null; } catch (_) { return null; } };
+    const sample = (sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const cs = getComputedStyle(el);
+        return {
+            width: el.offsetWidth,
+            height: el.offsetHeight,
+            cssHeight: cs.height,
+            overflow: cs.overflow,
+            display: cs.display,
+            flexWrap: cs.flexWrap,
+            alignItems: cs.alignItems,
+            alignContent: cs.alignContent,
+            minWidth: cs.minWidth,
+            maxWidth: cs.maxWidth,
+            whiteSpace: cs.whiteSpace
+        };
+    };
+    const tableSize = (id) => {
+        const t = document.getElementById(id);
+        if (!t) return null;
+        return { offsetWidth: t.offsetWidth, scrollWidth: t.scrollWidth, rowCount: t.rows.length };
+    };
+    return {
+        capturedAt: new Date().toISOString(),
+        viewport: { innerWidth: window.innerWidth, innerHeight: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
+        userAgent: navigator.userAgent,
+        path: location.pathname,
+        unraidTheme: window.fv3UnraidTheme,
+        graphqlAvailable: window.fv3ApiAvailable,
+        advancedViewDocker: getCookie('display') === 'advanced',
+        advancedViewVM: getCookie('display_vm') === 'advanced',
+        bodyFv3Attrs: {
+            unraid: document.body.getAttribute('data-fv3-unraid'),
+            preset: document.body.getAttribute('data-fv3-preset'),
+            toggle: document.body.getAttribute('data-fv3-toggle')
+        },
+        externalInjections: {
+            dockerVersions: !!document.querySelector('.changelog, .change-log-summary'),
+            unraidNet: !!document.querySelector('[id*="unraid-net"], .unraid-net-connect-banner'),
+            composeManager: !!document.querySelector('#compose'),
+            foreignPluginScripts: [...document.querySelectorAll('script[src*="/plugins/"]')]
+                .map(s => s.getAttribute('src'))
+                .filter(src => src && !src.includes('/plugins/folder.view3/'))
+                .slice(0, 20)
+        },
+        tables: { docker: tableSize('docker_containers'), vm: tableSize('kvm_table') },
+        samples: {
+            folderPreview: sample('tr.folder .folder-preview'),
+            folderPreviewScroll: sample('tr.folder .folder-preview.fv3-overflow-scroll'),
+            folderPreviewExpand: sample('tr.folder .folder-preview.fv3-overflow-expand'),
+            ctName: sample('#docker_containers tr.sortable:not(.folder) td.ct-name, #docker_containers tr.folder-element td.ct-name'),
+            updateColumn: sample('#docker_containers tr.sortable:not(.folder) td.updatecolumn, #docker_containers tr.folder-element td.updatecolumn')
+        },
+        customExtensions: {
+            customPhpLoaded: !!document.querySelector('link[href*="/folder.view3/custom.php"], script[src*="/folder.view3/custom.php"]'),
+            fv3PresetStyles: [...document.querySelectorAll('style[id^="fv3-"], style.fv3-preset-styles')].map(s => s.id || s.className).slice(0, 10)
+        }
+    };
+};
+
+window.fv3DownloadDebugJSON = (source, data) => {
+    let filename, body;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+    const themeTag = window.fv3UnraidTheme || 'theme-unknown';
+    if (typeof data === 'string' && /\.json$/i.test(source)) {
+        const parsed = (() => { try { return JSON.parse(data); } catch (_) { return { rawBody: data }; } })();
+        parsed.env = window.fv3CollectEnv();
+        body = JSON.stringify(parsed, null, 2);
+        filename = source.replace(/\.json$/i, `-${ts}-${themeTag}.json`);
+    } else {
+        const payload = Object.assign({ env: window.fv3CollectEnv() }, data);
+        body = JSON.stringify(payload, null, 2);
+        filename = `folder.view3-${source}-${ts}-${themeTag}.json`;
+    }
+    const blob = new Blob([body], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const el = document.createElement('a');
     el.href = url;

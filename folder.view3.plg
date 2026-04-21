@@ -6,12 +6,17 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.17">
-<!ENTITY md5 "823474cec4d6af3ff53495161a9d7348">
+<!ENTITY version "2026.04.21.1">
+<!ENTITY md5 "574d69f734e7574152028c6835cd9d10">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.21.1
+- Fix scroll/expand overflow modes inflating Docker/VM table width past viewport
+- Enrich debug JSON export with viewport, theme, foreign plugin detection, and computed preview styles
+- Defensive align-content on preview flex so row 1 stays put when other plugins mutate shared columns
 
 ###2026.04.17
 - Minor 7.0.x compatibility fix

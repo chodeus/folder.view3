@@ -6,6 +6,16 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.21.1 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 82 | Fix scroll/expand overflow modes inflating Docker/VM table past viewport (max-width:0 on preview td, min-width:0 on preview flex) | `folder-common.css` | 2026.04.21.1 |
+| 83 | Enrich debug export: viewport, theme, foreign plugin detection, computed preview/ct-name/updatecolumn styles, timestamp+theme in filename | `shared.js` | 2026.04.21.1 |
+| 84 | `align-content: safe center` on preview flex — stops row 1 shifting when row 2 briefly appears before `clipPreview()` runs | `folder-common.css` | 2026.04.21.1 |
+
+---
+
 ## 2026.04.14 — Stable Release
 
 ### Unraid 7.0.x Compatibility
