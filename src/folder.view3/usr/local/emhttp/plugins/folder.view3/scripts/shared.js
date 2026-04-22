@@ -1138,6 +1138,103 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     }
 };
 
+// Docker table column stabilization.
+// Prevents the preview row from shifting when a folder expands by pre-allocating
+// column widths that match the "expanded children" equilibrium. The VERSION column
+// also gets a content cap so oversized version strings (e.g. "release-5.1.4") truncate
+// with ellipsis instead of growing the column.
+window.fv3InstallDockerTableWidthFix = () => {
+    const HINT_ID = 'fv3-width-hint';
+    const STYLE_ID = 'fv3-width-style';
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl) return;
+
+    document.getElementById(HINT_ID)?.remove();
+    document.getElementById(STYLE_ID)?.remove();
+
+    const headers = Array.from(tbl.querySelectorAll('thead > tr > th'));
+    if (!headers.length) return;
+    const colCount = headers.length;
+
+    const firstFolder = tbl.querySelector('tr.folder');
+    if (!firstFolder) return;
+    const verCell = firstFolder.querySelector('td.folder-update');
+    if (!verCell) return;
+
+    // Measure VER content: largest natural width among current VER cell children
+    // (covers "up-to-date" span, "force update" div, and any i18n variants).
+    let verContentMax = 0;
+    verCell.querySelectorAll(':scope > *').forEach(el => {
+        const w = el.getBoundingClientRect().width;
+        if (w > verContentMax) verContentMax = w;
+    });
+    if (verContentMax <= 0) return;
+    const verCap = Math.ceil(verContentMax + 2);
+
+    const verCs = getComputedStyle(verCell);
+    const verPadding = parseFloat(verCs.paddingLeft) + parseFloat(verCs.paddingRight);
+    const verHint = Math.ceil(verCap + verPadding + 2);
+
+    // Probe expanded children widths for cols 3-7 (NET/IP/PORT/LAN/VOL).
+    // Move each folder's stored child rows to tbody siblings, measure, restore — all synchronous
+    // so no frame ever renders the intermediate state. visibility:hidden prevents theoretical paint.
+    const maxCols = Array(colCount).fill(0);
+    Array.from(tbl.querySelectorAll('tr.folder')).forEach(folder => {
+        const storage = folder.querySelector('.folder-storage');
+        if (!storage || !storage.children.length) return;
+        const children = Array.from(storage.children);
+        const origStyles = children.map(c => c.getAttribute('style') || '');
+        children.forEach(c => c.style.cssText += ';visibility:hidden !important;');
+        children.forEach(c => folder.parentNode.insertBefore(c, folder.nextSibling));
+        void tbl.offsetHeight;
+        headers.forEach((h, i) => {
+            const w = h.getBoundingClientRect().width;
+            if (w > maxCols[i]) maxCols[i] = w;
+        });
+        children.forEach(c => storage.appendChild(c));
+        children.forEach((c, i) => c.setAttribute('style', origStyles[i]));
+    });
+    maxCols[1] = verHint;
+
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `
+        #${HINT_ID} { height: 0 !important; line-height: 0 !important; }
+        #${HINT_ID} > td { height: 0 !important; padding: 0 !important; border: 0 !important; line-height: 0 !important; overflow: hidden !important; }
+        #docker_containers td.folder-update *, #docker_containers tr:not(.folder) > td:nth-child(2) * {
+            max-width: ${verCap}px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    `;
+    document.head.appendChild(style);
+
+    const hint = document.createElement('tr');
+    hint.id = HINT_ID;
+    hint.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < colCount; i++) {
+        const td = document.createElement('td');
+        if (i >= 1 && i <= 6) {
+            td.style.width = Math.ceil(maxCols[i]) + 'px';
+            td.innerHTML = '<div style="height:0;line-height:0;overflow:hidden;"><span style="display:inline-block;min-width:' + Math.ceil(maxCols[i]) + 'px;height:0;line-height:0">&nbsp;</span></div>';
+        }
+        hint.appendChild(td);
+    }
+    const tbody = tbl.querySelector('tbody') || tbl;
+    tbody.insertBefore(hint, tbody.firstElementChild);
+    void tbl.offsetHeight;
+    fv3Debug('WidthFix', `verCap=${verCap} verHint=${verHint} cols=`, maxCols.map(Math.ceil));
+};
+
+let _fv3WidthFixTimer;
+window.fv3ScheduleWidthFix = () => {
+    clearTimeout(_fv3WidthFixTimer);
+    _fv3WidthFixTimer = setTimeout(() => {
+        try { fv3InstallDockerTableWidthFix(); } catch (e) { fv3DebugWarn('WidthFix', e.message); }
+    }, 150);
+};
+
 window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
     _fv3FolderMapGetter = folderMapGetter;
     let recalcTimer;

@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.22.1 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 85 | Stabilize Docker table columns: probe expanded-child widths, inject zero-height hint row, cap VERSION cell content with ellipsis so preview row left edge stops shifting on folder expand/collapse (issue #31) | `shared.js`, `docker.js` | 2026.04.22.1 |
+
+---
+
 ## 2026.04.21.1 — Beta
 
 | # | Change | File(s) | Version |

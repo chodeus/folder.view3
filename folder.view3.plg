@@ -6,12 +6,16 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.21.1">
-<!ENTITY md5 "574d69f734e7574152028c6835cd9d10">
+<!ENTITY version "2026.04.22.1">
+<!ENTITY md5 "eb9b8ecbbcde9f48de582002a0962878">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.22.1
+- Stabilize Docker table columns so the folder preview row doesn't shift when a folder is expanded/collapsed
+- Truncate oversized container version strings (e.g. "release-5.1.4") with ellipsis to keep VERSION column bounded
 
 ###2026.04.21.1
 - Fix scroll/expand overflow modes inflating Docker/VM table width past viewport

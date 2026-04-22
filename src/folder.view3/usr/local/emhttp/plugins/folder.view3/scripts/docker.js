@@ -144,6 +144,8 @@ const createFolders = async () => {
         containersInfo: containersInfo
     }}));
 
+    try { fv3InstallDockerTableWidthFix(); } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
+
     globalFolders = foldersDone;
     fv3Debug('createFolders', 'Assigned foldersDone to globalFolders:', {...globalFolders});
 
@@ -1732,6 +1734,15 @@ fv3Debug('init', 'globals', {
 });
 
 fv3SetupResizeListeners(() => globalFolders, 'docker_listview_mode');
+
+window.addEventListener('resize', () => fv3ScheduleWidthFix());
+let _fv3LastAdvanced = $.cookie('docker_listview_mode') == 'advanced';
+document.addEventListener('click', () => {
+    setTimeout(() => {
+        const now = $.cookie('docker_listview_mode') == 'advanced';
+        if (now !== _fv3LastAdvanced) { _fv3LastAdvanced = now; fv3ScheduleWidthFix(); }
+    }, 100);
+}, true);
 
 // Add the button for creating a folder
 const createFolderBtn = () => fv3CreateFolderBtn('docker', '/Docker/Folder');
