@@ -704,9 +704,11 @@
 
     function exportAll() : array {
         global $configDir;
+        $unraidIni = @parse_ini_file('/etc/unraid-version');
         $bundle = [
             'fv3_export_version' => 1,
             'plugin_version' => trim(@file_get_contents("$configDir/version") ?: ''),
+            'unraid_version' => is_array($unraidIni) && isset($unraidIni['version']) ? $unraidIni['version'] : '',
             'exported' => date('c'),
             'docker' => fv3_read_json("$configDir/docker.json"),
             'vm' => fv3_read_json("$configDir/vm.json"),
