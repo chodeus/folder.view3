@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.25.2 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 88 | Lock Docker table columns in advanced view: bump `verHint` padding buffer from +2 to +12 to absorb auto-layout discrepancy between folder rows (2 stacked divs) and child rows (3 stacked divs) — kills the ~7px Version column shift on expand. Cap total column-sum to container width and proportionally scale cols 2-6 (NET/IP/PORT/LAN/VOL) when natural widths would overflow — kills the persistent horizontal scrollbar in advanced view | `shared.js` | 2026.04.25.2 |
+
+---
+
 ## 2026.04.25.1 — Beta
 
 | # | Change | File(s) | Version |
