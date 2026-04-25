@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.22.1">
-<!ENTITY md5 "eb9b8ecbbcde9f48de582002a0962878">
+<!ENTITY version "2026.04.25.1">
+<!ENTITY md5 "7566c76ddc5f6f32aa7da3e42d7efe44">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.25.1
+- Capture CSS variable values, plugin stylesheet hrefs, folder-name border sample, active CSS preset config, and installed theme list in debug JSON
 
 ###2026.04.22.1
 - Stabilize Docker table columns so the folder preview row doesn't shift when a folder is expanded/collapsed

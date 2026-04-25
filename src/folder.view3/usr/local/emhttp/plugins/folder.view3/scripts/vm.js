@@ -43,7 +43,8 @@ const createFolders = async () => {
             originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), []),
             newOnes,
             order,
-            vmInfo
+            vmInfo,
+            cssDebug: await fv3CollectCssDebug()
         });
         fv3DownloadDebugJSON('debug-VM.json', debugData);
         fv3Debug('vm', 'Order:', [...order]);

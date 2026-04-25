@@ -6,6 +6,15 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.25.1 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 86 | Add CSS diagnostics to debug export: --fv3-* variable values from :root, plugin stylesheet hrefs (with autov tokens), `.folder-name-sub`/`td.folder-name` border samples, plus async fetch of `read_css_config.php` + `list_themes.php` — diagnoses preset/cache/theme issues without back-and-forth | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.25.1 |
+| 87 | Remove narration comments from mobile accordion block; kept two that explain non-obvious timing (requestAnimationFrame settle, 1100ms double-cleanup for streaming plugin) | `docker.js` | 2026.04.25.1 |
+
+---
+
 ## 2026.04.22.1 — Beta
 
 | # | Change | File(s) | Version |

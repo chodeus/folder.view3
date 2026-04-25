@@ -589,13 +589,30 @@ window.fv3CollectEnv = () => {
             alignContent: cs.alignContent,
             minWidth: cs.minWidth,
             maxWidth: cs.maxWidth,
-            whiteSpace: cs.whiteSpace
+            whiteSpace: cs.whiteSpace,
+            borderStyle: cs.borderStyle,
+            borderWidth: cs.borderWidth,
+            borderColor: cs.borderColor,
+            borderRadius: cs.borderRadius,
+            padding: cs.padding,
+            boxSizing: cs.boxSizing
         };
     };
     const tableSize = (id) => {
         const t = document.getElementById(id);
         if (!t) return null;
         return { offsetWidth: t.offsetWidth, scrollWidth: t.scrollWidth, rowCount: t.rows.length };
+    };
+    const readCssVars = (names) => {
+        const cs = getComputedStyle(document.documentElement);
+        const out = {};
+        for (const n of names) out[n] = (cs.getPropertyValue(n) || '').trim();
+        return out;
+    };
+    const collectStylesheets = () => {
+        return [...document.querySelectorAll('link[rel="stylesheet"]')]
+            .map(l => l.getAttribute('href'))
+            .filter(h => h && h.includes('/folder.view3/'));
     };
     return {
         capturedAt: new Date().toISOString(),
@@ -625,14 +642,51 @@ window.fv3CollectEnv = () => {
             folderPreview: sample('tr.folder .folder-preview'),
             folderPreviewScroll: sample('tr.folder .folder-preview.fv3-overflow-scroll'),
             folderPreviewExpand: sample('tr.folder .folder-preview.fv3-overflow-expand'),
+            folderNameSub: sample('tr.folder .folder-name-sub'),
+            folderNameTd: sample('tr.folder td.folder-name'),
             ctName: sample('#docker_containers tr.sortable:not(.folder) td.ct-name, #docker_containers tr.folder-element td.ct-name'),
             updateColumn: sample('#docker_containers tr.sortable:not(.folder) td.updatecolumn, #docker_containers tr.folder-element td.updatecolumn')
         },
+        cssVariables: readCssVars([
+            '--fv3-accent-color',
+            '--fv3-appname-color',
+            '--fv3-toggle-color',
+            '--fv3-toggle-hover-color',
+            '--fv3-folder-row-border-width',
+            '--fv3-folder-row-border-color',
+            '--fv3-folder-row-radius',
+            '--fv3-folder-row-padding',
+            '--fv3-preview-row-border-width',
+            '--fv3-preview-row-border-color',
+            '--fv3-folder-preview-bg',
+            '--fv3-preview-icon-size',
+            '--fv3-folder-icon-size',
+            '--fv3-folder-name-weight',
+            '--fv3-border'
+        ]),
+        stylesheets: collectStylesheets(),
         customExtensions: {
             customPhpLoaded: !!document.querySelector('link[href*="/folder.view3/custom.php"], script[src*="/folder.view3/custom.php"]'),
             fv3PresetStyles: [...document.querySelectorAll('style[id^="fv3-"], style.fv3-preset-styles')].map(s => s.id || s.className).slice(0, 10)
         }
     };
+};
+
+window.fv3CollectCssDebug = async () => {
+    const safeJson = async (url) => {
+        try {
+            const raw = await $.get(url).promise();
+            if (typeof raw === 'string') { try { return JSON.parse(raw); } catch (_) { return raw; } }
+            return raw;
+        } catch (e) {
+            return { _fetchError: e && e.statusText ? e.statusText : String(e) };
+        }
+    };
+    const [cssConfig, themes] = await Promise.all([
+        safeJson('/plugins/folder.view3/server/read_css_config.php'),
+        safeJson('/plugins/folder.view3/server/list_themes.php')
+    ]);
+    return { cssConfig, themes };
 };
 
 window.fv3DownloadDebugJSON = (source, data) => {

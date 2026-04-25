@@ -56,7 +56,8 @@ const createFolders = async () => {
             originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
             newOnes,
             order,
-            containersInfo: fv3SanitizeContainersInfo(containersInfo)
+            containersInfo: fv3SanitizeContainersInfo(containersInfo),
+            cssDebug: await fv3CollectCssDebug()
         });
         fv3DownloadDebugJSON('debug-DOCKER.json', debugData);
         fv3Debug('createFolders', 'Order:', [...order]);
@@ -704,7 +705,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                              fv3DebugWarn('tooltipster', ct.shortId, 'Autostart switch placeholder not found as expected in tooltip.');
                         }
 
-                        // Mobile: wrap actions and graph in collapsible accordions
                         if (window.innerWidth <= 768) {
                             fv3Debug('tooltipster', ct.shortId, 'Mobile detected — applying hybrid accordion layout.');
                             const $secondRow = $(`.preview-outbox-${ct.shortId} .second-row`, tooltipDomEl);
@@ -712,23 +712,18 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                             const $infoSection = $secondRow.children('.info-section');
                             const $infoCt = $actionInfo.children('.info-ct');
 
-                            // Quick Actions accordion (open by default)
                             const $actionsDetails = $(`<details class="fv3-mobile-details" open><summary>${$.i18n('quick-actions') || 'Quick Actions'}</summary></details>`);
                             $actionInfo.before($actionsDetails);
                             $actionsDetails.append($actionInfo);
 
-                            // Graph & Details accordion (closed by default)
                             const $graphDetails = $(`<details class="fv3-mobile-details"><summary>${$.i18n('graph-details') || 'Graph & Details'}</summary></details>`);
                             $infoSection.before($graphDetails);
                             $graphDetails.append($infoSection);
 
-                            // Move container ID/registry to bottom of second-row
                             $secondRow.append($infoCt);
 
-                            // Mutual exclusion + chart resize on expand
                             const $allDetails = $secondRow.find('.fv3-mobile-details');
                             $allDetails.on('toggle', function () {
-                                // Disconnect any existing chart height guards
                                 chartHeightGuards.forEach(id => clearTimeout(id));
                                 chartHeightGuards = [];
 
@@ -737,7 +732,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                     $(this).find('canvas').each(function () {
                                         const canvas = this;
                                         const container = canvas.parentElement;
-                                        // Wait for layout to settle before resizing chart
+                                        // requestAnimationFrame: wait for layout to settle before resizing chart
                                         requestAnimationFrame(() => {
                                             if (!document.body.contains(canvas)) return;
                                             const chart = Chart.getChart(canvas);
@@ -745,8 +740,8 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                                 chart.resize();
                                                 chart.update();
                                             }
-                                            // Clear inline height once after chart settles,
-                                            // then once more after streaming plugin's first tick
+                                            // Clear inline height twice: once after chart settles,
+                                            // again at 1100ms to clear the streaming plugin's first tick
                                             container.style.height = 'auto';
                                             const guardId = setTimeout(() => {
                                                 if (document.body.contains(container)) {
@@ -759,7 +754,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                 }
                             });
 
-                            // ResizeObserver repositions tooltip when content size changes (accordion, chart, etc.)
                             let resizeTimer;
                             tooltipResizeObserver = new ResizeObserver(() => {
                                 clearTimeout(resizeTimer);
