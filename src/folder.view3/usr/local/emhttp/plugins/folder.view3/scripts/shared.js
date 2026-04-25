@@ -1227,7 +1227,9 @@ window.fv3InstallDockerTableWidthFix = () => {
 
     const verCs = getComputedStyle(verCell);
     const verPadding = parseFloat(verCs.paddingLeft) + parseFloat(verCs.paddingRight);
-    const verHint = Math.ceil(verCap + verPadding + 2);
+    // +12px buffer absorbs auto-layout discrepancy between folder rows (2 stacked divs)
+    // and child rows (3 stacked divs) — without it Version column shifts ~7px on expand.
+    const verHint = Math.ceil(verCap + verPadding + 12);
 
     // Probe expanded children widths for cols 3-7 (NET/IP/PORT/LAN/VOL).
     // Move each folder's stored child rows to tbody siblings, measure, restore — all synchronous
@@ -1250,6 +1252,22 @@ window.fv3InstallDockerTableWidthFix = () => {
     });
     maxCols[1] = verHint;
 
+    // Cap total to container width — scale cols 2-6 (NET/IP/PORT/LAN/VOL) down
+    // proportionally if their natural sum would force a horizontal scroll.
+    // verHint and unconstrained cols (0,7,8,9) are preserved.
+    const containerW = (tbl.parentElement && tbl.parentElement.clientWidth) || tbl.clientWidth;
+    const sumCols = maxCols.reduce((a, b) => a + b, 0);
+    const widths = maxCols.map(Math.ceil);
+    if (sumCols > containerW) {
+        const overflow = sumCols - containerW;
+        let flexSum = 0;
+        for (let i = 2; i <= 6; i++) flexSum += maxCols[i];
+        if (flexSum > overflow) {
+            const scale = (flexSum - overflow) / flexSum;
+            for (let i = 2; i <= 6; i++) widths[i] = Math.floor(maxCols[i] * scale);
+        }
+    }
+
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = `
@@ -1270,15 +1288,15 @@ window.fv3InstallDockerTableWidthFix = () => {
     for (let i = 0; i < colCount; i++) {
         const td = document.createElement('td');
         if (i >= 1 && i <= 6) {
-            td.style.width = Math.ceil(maxCols[i]) + 'px';
-            td.innerHTML = '<div style="height:0;line-height:0;overflow:hidden;"><span style="display:inline-block;min-width:' + Math.ceil(maxCols[i]) + 'px;height:0;line-height:0">&nbsp;</span></div>';
+            td.style.width = widths[i] + 'px';
+            td.innerHTML = '<div style="height:0;line-height:0;overflow:hidden;"><span style="display:inline-block;min-width:' + widths[i] + 'px;height:0;line-height:0">&nbsp;</span></div>';
         }
         hint.appendChild(td);
     }
     const tbody = tbl.querySelector('tbody') || tbl;
     tbody.insertBefore(hint, tbody.firstElementChild);
     void tbl.offsetHeight;
-    fv3Debug('WidthFix', `verCap=${verCap} verHint=${verHint} cols=`, maxCols.map(Math.ceil));
+    fv3Debug('WidthFix', `verCap=${verCap} verHint=${verHint} containerW=${containerW} measured=`, maxCols.map(Math.ceil), 'applied=', widths);
 };
 
 let _fv3WidthFixTimer;
