@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.26.6 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 98 | Re-fix the chevron-alignment issue from #97 without truncating names. Root cause: as a flex item, `.folder-outer` defaults to `min-width: min-content`, so the flex shrink algorithm can't shrink it below its natural content width. Long folder names then push the chevron right, varying chevron x by name length. Adding only `min-width: 0` (no `overflow: hidden`, no `text-overflow`) lets flex shrink the outer span when needed; the chevron's `margin-left: auto` then correctly pins it at the right edge for every row. Visually the names continue to render in full because the outer's `overflow: visible` (existing) lets the natural content stay visible. The widthFix may give the APPLICATION column a few extra px to fit, taking from Volume Mappings. Preset-only — default view untouched. | `folder-common.css` | 2026.04.26.6 |
+
+---
+
 ## 2026.04.26.5 — Beta
 
 | # | Change | File(s) | Version |

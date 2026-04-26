@@ -231,6 +231,12 @@ body[data-fv3-preset] .folder-name-sub {
     box-sizing: border-box;
 }
 
+/* Without this, .folder-outer's implicit min-width: min-content stops the flex shrink, and
+   longer names push the chevron right of the pill — chevron x varies by name length. */
+body[data-fv3-preset] td.folder-name .folder-outer {
+    min-width: 0;
+}
+
 body[data-fv3-preset] .folder-preview {
     border-style: solid;
     border-width: var(--fv3-preview-row-border-width);
