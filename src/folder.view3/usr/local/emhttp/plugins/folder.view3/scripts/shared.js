@@ -1192,57 +1192,31 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     }
 };
 
-// Docker table column stabilization.
-// Prevents the preview row from shifting when a folder expands by pre-allocating
-// column widths that match the "expanded children" equilibrium. The VERSION column
-// also gets a content cap so oversized version strings (e.g. "release-5.1.4") truncate
-// with ellipsis instead of growing the column.
+// Locks Docker table column widths via `table-layout: fixed` so the preview row
+// doesn't shift on folder expand/collapse or basic↔advanced toggle.
 window.fv3InstallDockerTableWidthFix = () => {
-    const HINT_ID = 'fv3-width-hint';
     const STYLE_ID = 'fv3-width-style';
     const tbl = document.querySelector('#docker_containers');
     if (!tbl) return;
-
-    document.getElementById(HINT_ID)?.remove();
-    document.getElementById(STYLE_ID)?.remove();
-    // Force layout flush after cleanup so subsequent measurements read natural widths,
-    // not values still influenced by the previous hint row.
-    void tbl.offsetHeight;
-
-    // Basic view doesn't need column locking — child rows share the same visible-column
-    // set as folder rows, so expand/collapse can't shift columns. Skipping here also
-    // prevents the hint from forcing widths that don't account for the hidden CPU column.
-    if (typeof getCookie === 'function' && getCookie('display') !== 'advanced') return;
-
     const headers = Array.from(tbl.querySelectorAll('thead > tr > th'));
     if (!headers.length) return;
-    const colCount = headers.length;
+
+    document.getElementById(STYLE_ID)?.remove();
+    document.getElementById('fv3-width-hint')?.remove();
+    headers.forEach(th => { th.style.width = ''; th.style.boxSizing = ''; });
+    tbl.style.tableLayout = '';
+    void tbl.offsetHeight;
+    void document.body.offsetHeight;
 
     const firstFolder = tbl.querySelector('tr.folder');
     if (!firstFolder) return;
-    const verCell = firstFolder.querySelector('td.folder-update');
-    if (!verCell) return;
 
-    // Measure VER content: largest natural width among current VER cell children
-    // (covers "up-to-date" span, "force update" div, and any i18n variants).
+    const containerW = (tbl.parentElement && tbl.parentElement.clientWidth) || tbl.clientWidth;
+    const targetW = containerW - 2; // subpixel safety
+
+    const maxCols = headers.map(h => h.getBoundingClientRect().width);
     let verContentMax = 0;
-    verCell.querySelectorAll(':scope > *').forEach(el => {
-        const w = el.getBoundingClientRect().width;
-        if (w > verContentMax) verContentMax = w;
-    });
-    if (verContentMax <= 0) return;
-    const verCap = Math.ceil(verContentMax + 2);
 
-    const verCs = getComputedStyle(verCell);
-    const verPadding = parseFloat(verCs.paddingLeft) + parseFloat(verCs.paddingRight);
-    // +12px buffer absorbs auto-layout discrepancy between folder rows (2 stacked divs)
-    // and child rows (3 stacked divs) — without it Version column shifts ~7px on expand.
-    const verHint = Math.ceil(verCap + verPadding + 12);
-
-    // Probe expanded children widths for cols 3-7 (NET/IP/PORT/LAN/VOL).
-    // Move each folder's stored child rows to tbody siblings, measure, restore — all synchronous
-    // so no frame ever renders the intermediate state. visibility:hidden prevents theoretical paint.
-    const maxCols = Array(colCount).fill(0);
     Array.from(tbl.querySelectorAll('tr.folder')).forEach(folder => {
         const storage = folder.querySelector('.folder-storage');
         if (!storage || !storage.children.length) return;
@@ -1255,56 +1229,91 @@ window.fv3InstallDockerTableWidthFix = () => {
             const w = h.getBoundingClientRect().width;
             if (w > maxCols[i]) maxCols[i] = w;
         });
+        children.forEach(row => {
+            const verTd = row.querySelector('td:nth-child(2)');
+            if (!verTd) return;
+            Array.from(verTd.children).forEach(el => {
+                const w = el.scrollWidth || el.getBoundingClientRect().width;
+                if (w > verContentMax) verContentMax = w;
+            });
+        });
         children.forEach(c => storage.appendChild(c));
         children.forEach((c, i) => c.setAttribute('style', origStyles[i]));
     });
-    maxCols[1] = verHint;
-
-    // Cap total to container width — scale cols 2-6 (NET/IP/PORT/LAN/VOL) down
-    // proportionally if their natural sum would force a horizontal scroll.
-    // verHint and unconstrained cols (0,7,8,9) are preserved.
-    const containerW = (tbl.parentElement && tbl.parentElement.clientWidth) || tbl.clientWidth;
-    const sumCols = maxCols.reduce((a, b) => a + b, 0);
-    const widths = maxCols.map(Math.ceil);
-    if (sumCols > containerW) {
-        const overflow = sumCols - containerW;
-        let flexSum = 0;
-        for (let i = 2; i <= 6; i++) flexSum += maxCols[i];
-        if (flexSum > overflow) {
-            const scale = (flexSum - overflow) / flexSum;
-            for (let i = 2; i <= 6; i++) widths[i] = Math.floor(maxCols[i] * scale);
-        }
-    }
-
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = `
-        #${HINT_ID} { height: 0 !important; line-height: 0 !important; }
-        #${HINT_ID} > td { height: 0 !important; padding: 0 !important; border: 0 !important; line-height: 0 !important; overflow: hidden !important; }
-        #docker_containers td.folder-update *, #docker_containers tr:not(.folder) > td:nth-child(2) * {
-            max-width: ${verCap}px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-    `;
-    document.head.appendChild(style);
-
-    const hint = document.createElement('tr');
-    hint.id = HINT_ID;
-    hint.setAttribute('aria-hidden', 'true');
-    for (let i = 0; i < colCount; i++) {
-        const td = document.createElement('td');
-        if (i >= 1 && i <= 6) {
-            td.style.width = widths[i] + 'px';
-            td.innerHTML = '<div style="height:0;line-height:0;overflow:hidden;"><span style="display:inline-block;min-width:' + widths[i] + 'px;height:0;line-height:0">&nbsp;</span></div>';
-        }
-        hint.appendChild(td);
-    }
-    const tbody = tbl.querySelector('tbody') || tbl;
-    tbody.insertBefore(hint, tbody.firstElementChild);
     void tbl.offsetHeight;
-    fv3Debug('WidthFix', `verCap=${verCap} verHint=${verHint} containerW=${containerW} measured=`, maxCols.map(Math.ceil), 'applied=', widths);
+
+    tbl.querySelectorAll('td.folder-update > *, tr:not(.folder) > td:nth-child(2) > *').forEach(el => {
+        const w = el.scrollWidth || el.getBoundingClientRect().width;
+        if (w > verContentMax) verContentMax = w;
+    });
+
+    let verCap = 0;
+    if (verContentMax > 0) {
+        verCap = Math.ceil(verContentMax + 2);
+        const verCell = firstFolder.querySelector('td.folder-update');
+        if (verCell) {
+            const verCs = getComputedStyle(verCell);
+            const verPad = parseFloat(verCs.paddingLeft || '0') + parseFloat(verCs.paddingRight || '0');
+            // +12px buffer absorbs auto-layout discrepancy between folder rows (2 stacked divs)
+            // and child rows (3 stacked divs) — without it Version column shifts ~7px on expand.
+            const verHint = Math.ceil(verCap + verPad + 12);
+            if (verHint > maxCols[1]) maxCols[1] = verHint;
+        }
+    }
+
+    headers.forEach((h, i) => {
+        if (h.offsetParent === null && h.getBoundingClientRect().width === 0) maxCols[i] = 0;
+    });
+
+    const sum = maxCols.reduce((a, b) => a + b, 0);
+    const widths = maxCols.map(Math.ceil);
+    if (sum > targetW) {
+        const overflow = sum - targetW;
+        let flex = 0;
+        for (let i = 2; i <= 6; i++) flex += maxCols[i];
+        if (flex > overflow) {
+            const scale = (flex - overflow) / flex;
+            for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(maxCols[i] * scale));
+        }
+    } else if (sum < targetW) {
+        const extra = targetW - sum;
+        let flex = 0;
+        for (let i = 2; i <= 6; i++) if (maxCols[i] > 0) flex += maxCols[i];
+        if (flex > 0) {
+            for (let i = 2; i <= 6; i++) {
+                if (maxCols[i] > 0) widths[i] = Math.floor(maxCols[i] + extra * (maxCols[i] / flex));
+            }
+        }
+    }
+    let finalSum = widths.reduce((a, b) => a + b, 0);
+    if (finalSum !== targetW) {
+        const diff = targetW - finalSum;
+        if (widths[6] + diff >= 60) widths[6] += diff;
+    }
+
+    headers.forEach((th, i) => {
+        if (maxCols[i] > 0) {
+            th.style.boxSizing = 'border-box';
+            th.style.width = widths[i] + 'px';
+        }
+    });
+    tbl.style.tableLayout = 'fixed';
+
+    if (verCap > 0) {
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+            #docker_containers td.folder-update *,
+            #docker_containers tr:not(.folder) > td:nth-child(2) * {
+                max-width: ${verCap}px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    fv3Debug('WidthFix', `containerW=${containerW} targetW=${targetW} verCap=${verCap} measured=`, maxCols.map(Math.ceil), 'applied=', widths);
 };
 
 let _fv3WidthFixTimer;

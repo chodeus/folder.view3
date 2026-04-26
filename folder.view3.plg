@@ -6,17 +6,19 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.26.1">
-<!ENTITY md5 "bfc3f6b3527d45d327d65ee93d452752">
+<!ENTITY version "2026.04.26.2">
+<!ENTITY md5 "e90552392027c9ec0fc9c321e28c7a50">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.04.26.2
+- Replace the unreliable min-width column hint with table-layout: fixed so the preview row no longer shifts on folder expand/collapse or basic↔advanced toggle in either view
+- Include child-row Version content when sizing the Version column so long image tags (e.g. "release-5.1.4") get a proper cap instead of being truncated mid-text
+
 ###2026.04.26.1
 - Fix Firefox-only bug where folder name border drew through the icon and text instead of around them — pill height now set in JS so it works in every browser
-- Skip the Docker advanced-view column lock in basic view so the table fills the page width again
-- Force a layout flush before the column-lock re-measures so toggling between basic and advanced no longer clips the Version column
 
 ###2026.04.25.2
 - Lock Docker table column widths in advanced view so columns no longer shift on folder expand/collapse and the table no longer triggers a horizontal scrollbar
