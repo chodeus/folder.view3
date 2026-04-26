@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.26.7">
-<!ENTITY md5 "ffaa4245db1d4ab7b212a0191d731354">
+<!ENTITY version "2026.04.26.8">
+<!ENTITY md5 "4a1913a0df2a316257276285eb4c23b3">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.26.8
+- Folder-name pill height now tracks the row fluidly during window resize and shrinks back when expand-mode chips re-fit on fewer rows — fixes the lingering tall row when widening the window after chips wrapped at narrow viewports
 
 ###2026.04.26.7
 - Re-run widthFix after CSS preset applies so APPLICATION column accounts for preset's added pill padding/border, fixing chevron alignment across folder names — replaces v6's `min-width: 0` rule which caused chevron-over-text overlap

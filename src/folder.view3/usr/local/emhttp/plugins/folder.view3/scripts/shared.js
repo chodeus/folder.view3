@@ -1339,6 +1339,25 @@ window.fv3ScheduleWidthFix = () => {
 // Folder name pill height matching — replaces the height: 1px / height: 100% table-cell
 // hack that worked in Chromium/WebKit but rendered the bordered pill far too short in
 // Firefox. JS measures the row's content area height and applies it as inline style.
+//
+// Two invariants that prevent the runaway growth seen in earlier ResizeObserver attempts:
+//   1. Clear-measure-reset: clear sub.style.height before measuring, so the reading
+//      reflects the row's *natural* height (driven by the preview cell). Without this
+//      the pill's own inline height props the cell open and the measurement stays at
+//      whatever value the pill was last set to — pill never shrinks back when chips
+//      re-fit on fewer rows.
+//   2. Observe the preview CELL, not the folder row. Preview cell is a sibling of the
+//      folder-name cell, so changing the pill height does not feed back into preview
+//      cell layout — the observer only fires on real chip reflow. Observing the row
+//      itself causes immediate growth loops (verified failure mode, do not retry).
+const _fv3PreviewObserved = new WeakSet();
+const _fv3PreviewRO = ('ResizeObserver' in window) ? new ResizeObserver(() => {
+    requestAnimationFrame(() => {
+        try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); }
+    });
+}) : null;
+if (_fv3PreviewRO) fv3Cleanups.push(() => _fv3PreviewRO.disconnect());
+
 window.fv3SizeFolderPills = () => {
     if (!document.body.hasAttribute('data-fv3-preset')) return;
     document.querySelectorAll('tr.folder > td.folder-name').forEach(td => {
@@ -1346,8 +1365,14 @@ window.fv3SizeFolderPills = () => {
         if (!sub) return;
         const cs = getComputedStyle(td);
         const pad = parseFloat(cs.paddingTop || '0') + parseFloat(cs.paddingBottom || '0');
+        sub.style.height = '';
         const h = td.getBoundingClientRect().height - pad;
         if (h > 0) sub.style.height = h + 'px';
+        const previewCell = td.parentElement?.querySelector('.folder-preview')?.closest('td');
+        if (_fv3PreviewRO && previewCell && !_fv3PreviewObserved.has(previewCell)) {
+            _fv3PreviewRO.observe(previewCell);
+            _fv3PreviewObserved.add(previewCell);
+        }
     });
 };
 

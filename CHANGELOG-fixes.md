@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.26.8 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 100 | Folder-name pill height now tracks the row fluidly during window resize and shrinks back when expand-mode chips re-fit on fewer rows. Two-part fix in [shared.js:1339](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/shared.js:1339): (1) **Clear-measure-reset** in `fv3SizeFolderPills` — `sub.style.height = ''` before measuring `td.getBoundingClientRect().height`. Without this the pill's own inline height props the cell open, the measurement returns whatever the pill was last set to, and the pill never shrinks back when chips re-fit on fewer rows (the v7 lingering-tall-row bug). (2) **ResizeObserver attached to the preview CELL** (sibling of folder-name cell), not the folder row. Preview cell height is independent of the pill, so setting pill height does not feed back into the observer — it fires only on real chip reflow. Observing the row itself (or any ancestor of the pill) caused immediate runaway growth in earlier attempts (verified failure mode, see "preview-border-basic-view-failed-attempts" memory). Verified live in Chrome MCP: 1223 samples across resize sweep 1700→1100→900→1700, gap=8 throughout (one 30ms transient frame); 200 dispatched resize events plus 30 s idle, zero growth on all 10 folders. | `shared.js` | 2026.04.26.8 |
+
+---
+
 ## 2026.04.26.7 — Beta
 
 | # | Change | File(s) | Version |
