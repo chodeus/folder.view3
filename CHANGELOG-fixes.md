@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.26.5 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 97 | Revert #96. Adding `flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis` to `body[data-fv3-preset] td.folder-name .folder-outer` aligned the chevron but truncated longer folder names with an ellipsis — unwanted. Restoring v2026.04.26.3 behavior; chevron will again sit at varying x-positions when names are long. | `folder-common.css` | 2026.04.26.5 |
+
+---
+
 ## 2026.04.26.4 — Beta
 
 | # | Change | File(s) | Version |
