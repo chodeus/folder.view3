@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.26.7 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 99 | Replace v6's `min-width: 0` chevron-alignment rule (which caused chevron-over-text overlap on long folder names) with a proper widthFix re-run. Inside `fv3LoadToggleStyle`'s success callback in [customEvents.js:197](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:197), call `window.fv3ScheduleWidthFix()` after the preset attribute is set/removed. This makes the APPLICATION column re-measure with the preset's extra pill padding/border accounted for, so the cell is wide enough for natural folder name widths plus the chevron without overflow. | `customEvents.js`, `folder-common.css` | 2026.04.26.7 |
+
+---
+
 ## 2026.04.26.6 — Beta
 
 | # | Change | File(s) | Version |

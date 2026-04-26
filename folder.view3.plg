@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.26.6">
-<!ENTITY md5 "aba53ade4236d94c9e27c6d43650b696">
+<!ENTITY version "2026.04.26.7">
+<!ENTITY md5 "ffaa4245db1d4ab7b212a0191d731354">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.26.7
+- Re-run widthFix after CSS preset applies so APPLICATION column accounts for preset's added pill padding/border, fixing chevron alignment across folder names — replaces v6's `min-width: 0` rule which caused chevron-over-text overlap
 
 ###2026.04.26.6
 - Align folder-name chevron across rows when a CSS preset is active by adding `min-width: 0` to .folder-outer — lets the flex shrink algorithm work, no name truncation

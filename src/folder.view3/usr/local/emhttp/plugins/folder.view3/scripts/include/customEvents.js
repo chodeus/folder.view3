@@ -194,6 +194,7 @@ window.fv3LoadToggleStyle = window.fv3LoadToggleStyle || (() => {
             } else {
                 document.body.removeAttribute('data-fv3-preset');
             }
+            if (typeof window.fv3ScheduleWidthFix === 'function') window.fv3ScheduleWidthFix();
         })
         .catch(() => {});
 });
