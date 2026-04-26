@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.26.3">
-<!ENTITY md5 "e6c37a3c1b05ebe03812e6264a239b2a">
+<!ENTITY version "2026.04.26.4">
+<!ENTITY md5 "21431646b741ad6351f778482bef47b8">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.26.4
+- Fix folder-name chevron alignment with custom CSS preset — chevron now sits at the same x-position regardless of folder name length, instead of being pushed right by long names overflowing .folder-outer
 
 ###2026.04.26.3
 - Fix volume mappings staying fully expanded with no chevron after toggling Basic↔Advanced view while a folder was collapsed — re-init readmore on folder expand so cells hidden during the toggle get rewrapped

@@ -231,6 +231,16 @@ body[data-fv3-preset] .folder-name-sub {
     box-sizing: border-box;
 }
 
+/* Pin the chevron to the right edge of the pill so it lines up across rows regardless of
+   folder name length. Without this, longer names push .folder-outer wider (overflow:visible)
+   and shift the chevron right. Preset-only — default view keeps natural overflow. */
+body[data-fv3-preset] td.folder-name .folder-outer {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 body[data-fv3-preset] .folder-preview {
     border-style: solid;
     border-width: var(--fv3-preview-row-border-width);

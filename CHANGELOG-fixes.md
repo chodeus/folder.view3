@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.26.4 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 96 | Pin chevron to right edge of folder pill when a CSS preset is active. `.folder-outer` had `overflow: visible; width: auto`, so longer folder names ("Media Automation", "File Management") pushed it wider than its share of the flex container, shifting the chevron right by up to 18px. With the new column lock the cell width is fixed, making the misalignment visible. Adding `flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis` on `body[data-fv3-preset] td.folder-name .folder-outer` lets the inner span shrink, so `margin-left: auto` on the chevron always pins it to the right edge of the pill. Default view (no preset) is untouched. | `folder-common.css` | 2026.04.26.4 |
+
+---
+
 ## 2026.04.26.3 — Beta
 
 | # | Change | File(s) | Version |
