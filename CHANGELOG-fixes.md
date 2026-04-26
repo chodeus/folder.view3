@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.26.3 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 95 | Fix volume mappings rendering at full height with no chevron after toggling Basic↔Advanced view while a folder was collapsed. Unraid's `listview()` re-runs the readmore plugin on view toggle but skips elements that are currently hidden — child rows tucked inside `.folder-storage` (collapsed folder state) end up unwrapped, so when you later expand the folder the volumes show in full with no `readmore-js-collapsed` wrapper or chevron. Fix: in `fv3DropDownButton`, after revealing child rows, call `$readmoreEls.readmore('destroy').readmore({...})` with Unraid's canonical options (`maxHeight: 32`, chevron-down/up icons) on `.folder-${id}-element .docker_readmore`. Idempotent across multiple expand/collapse cycles. Gated to `eventPrefix === 'docker'`. | `shared.js` | 2026.04.26.3 |
+
+---
+
 ## 2026.04.26.2 — Beta
 
 | # | Change | File(s) | Version |

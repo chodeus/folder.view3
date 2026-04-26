@@ -546,6 +546,18 @@ window.fv3DropDownButton = (eventPrefix, globalFolders, id, postCallback) => {
         $(`tr.folder-id-${id}`).after($(`.folder-${id}-element`));
         $(`.folder-${id}-element > td > i.fa-arrows-v`).remove();
         element.attr('active', 'true');
+        // listview() on view toggle skips readmore for cells hidden inside .folder-storage; rewrap on expand
+        if (eventPrefix === 'docker') {
+            const $readmoreEls = $(`.folder-${id}-element .docker_readmore`);
+            if ($readmoreEls.length && typeof $readmoreEls.readmore === 'function') {
+                $readmoreEls.readmore('destroy');
+                $readmoreEls.readmore({
+                    maxHeight: 32,
+                    moreLink: "<a href='#' style='text-align:center'><i class='fa fa-chevron-down'></i></a>",
+                    lessLink: "<a href='#' style='text-align:center'><i class='fa fa-chevron-up'></i></a>"
+                });
+            }
+        }
     }
     if(globalFolders[id]) {
         globalFolders[id].status.expanded = !state;

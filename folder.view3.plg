@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.26.2">
-<!ENTITY md5 "e90552392027c9ec0fc9c321e28c7a50">
+<!ENTITY version "2026.04.26.3">
+<!ENTITY md5 "e6c37a3c1b05ebe03812e6264a239b2a">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.26.3
+- Fix volume mappings staying fully expanded with no chevron after toggling Basic↔Advanced view while a folder was collapsed — re-init readmore on folder expand so cells hidden during the toggle get rewrapped
 
 ###2026.04.26.2
 - Replace the unreliable min-width column hint with table-layout: fixed so the preview row no longer shifts on folder expand/collapse or basic↔advanced toggle in either view
