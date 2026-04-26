@@ -1205,6 +1205,14 @@ window.fv3InstallDockerTableWidthFix = () => {
 
     document.getElementById(HINT_ID)?.remove();
     document.getElementById(STYLE_ID)?.remove();
+    // Force layout flush after cleanup so subsequent measurements read natural widths,
+    // not values still influenced by the previous hint row.
+    void tbl.offsetHeight;
+
+    // Basic view doesn't need column locking — child rows share the same visible-column
+    // set as folder rows, so expand/collapse can't shift columns. Skipping here also
+    // prevents the hint from forcing widths that don't account for the hidden CPU column.
+    if (typeof getCookie === 'function' && getCookie('display') !== 'advanced') return;
 
     const headers = Array.from(tbl.querySelectorAll('thead > tr > th'));
     if (!headers.length) return;
@@ -1306,6 +1314,39 @@ window.fv3ScheduleWidthFix = () => {
         try { fv3InstallDockerTableWidthFix(); } catch (e) { fv3DebugWarn('WidthFix', e.message); }
     }, 150);
 };
+
+// Folder name pill height matching — replaces the height: 1px / height: 100% table-cell
+// hack that worked in Chromium/WebKit but rendered the bordered pill far too short in
+// Firefox. JS measures the row's content area height and applies it as inline style.
+window.fv3SizeFolderPills = () => {
+    if (!document.body.hasAttribute('data-fv3-preset')) return;
+    document.querySelectorAll('tr.folder > td.folder-name').forEach(td => {
+        const sub = td.querySelector('.folder-name-sub');
+        if (!sub) return;
+        const cs = getComputedStyle(td);
+        const pad = parseFloat(cs.paddingTop || '0') + parseFloat(cs.paddingBottom || '0');
+        const h = td.getBoundingClientRect().height - pad;
+        if (h > 0) sub.style.height = h + 'px';
+    });
+};
+
+let _fv3PillTimer;
+window.fv3SchedulePillSize = () => {
+    clearTimeout(_fv3PillTimer);
+    _fv3PillTimer = setTimeout(() => {
+        try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); }
+    }, 50);
+};
+
+(function() {
+    if (typeof folderEvents !== 'undefined') {
+        folderEvents.addEventListener('docker-post-folders-creation', fv3SchedulePillSize);
+        folderEvents.addEventListener('vm-post-folders-creation', fv3SchedulePillSize);
+        folderEvents.addEventListener('docker-post-folder-expansion', fv3SchedulePillSize);
+        folderEvents.addEventListener('vm-post-folder-expansion', fv3SchedulePillSize);
+    }
+    window.addEventListener('resize', fv3SchedulePillSize);
+})();
 
 window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
     _fv3FolderMapGetter = folderMapGetter;

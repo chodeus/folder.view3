@@ -6,6 +6,16 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.26.1 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 89 | Fix Firefox-only folder pill border bug. Pre-existing CSS `body[data-fv3-preset] td.folder-name { height: 1px }` + `.folder-name-sub { height: 100% }` was a Chromium/WebKit table-cell stretch hack that Firefox doesn't honor, leaving the bordered pill ~20px tall and drawing through the icon and text. Replaced with a JS function `fv3SizeFolderPills()` that measures `tr.folder` row height, subtracts td vertical padding, and applies inline height. Hooked to `folderEvents` post-folders-creation, post-folder-expansion, and `window resize`. Pill now matches preview pill height in every browser. | `shared.js`, `folder-common.css` | 2026.04.26.1 |
+| 90 | Gate `fv3InstallDockerTableWidthFix` to advanced view only. The width-hint mechanism was running in basic view too, locking cols 1-6 to widths whose sum didn't account for the freed CPU column space — leaving ~180px of empty area on the right side of the Docker table in basic view. The expand-shift problem the lock was meant to solve doesn't manifest in basic view because folder rows and child rows share the same visible-column set. Early-return when `getCookie('display') !== 'advanced'`, after cleaning up any leftover hint row + style. | `shared.js` | 2026.04.26.1 |
+| 91 | Force a layout flush (`void tbl.offsetHeight`) between hint-row removal and re-measurement in `fv3InstallDockerTableWidthFix` so toggling advanced→basic→advanced no longer reads stale (basic-view) column widths and locks Version column to a width too small for "force update" / "update ready" content. | `shared.js` | 2026.04.26.1 |
+
+---
+
 ## 2026.04.25.2 — Beta
 
 | # | Change | File(s) | Version |
