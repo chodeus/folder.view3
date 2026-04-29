@@ -532,6 +532,42 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                         const triggerOriginEl = helper.origin;  // This is the jQuery object of the element that triggered the tooltip
                         const tooltipDomEl = helper.tooltip;  // This is the jQuery object of the tooltip's outermost DOM element
 
+                        const $loadIcon = $(`i#load-${ct.info.Name}`);
+                        if ($loadIcon.length) {
+                            const liveRunning = $loadIcon.hasClass('started') || $loadIcon.hasClass('paused');
+                            const livePaused = $loadIcon.hasClass('paused');
+                            const iconName = liveRunning ? (livePaused ? 'pause' : 'play') : 'square';
+                            const stateClass = liveRunning ? (livePaused ? 'paused' : 'started') : 'stopped';
+                            const colorClass = liveRunning ? (livePaused ? 'orange-text' : 'green-text') : 'red-text';
+                            const stateText = liveRunning ? (livePaused ? $.i18n('paused') : $.i18n('started')) : $.i18n('stopped');
+                            $(`.preview-outbox-${ct.shortId} .preview-actual-name i`, tooltipDomEl)
+                                .attr('class', `fa fa-${iconName} ${stateClass} ${colorClass}`);
+                            $(`.preview-outbox-${ct.shortId} .preview-actual-name .state`, tooltipDomEl)
+                                .text(' ' + stateText);
+
+                            const actionItems = [];
+                            if (liveRunning && !livePaused) {
+                                if (ct.info.State.WebUi) actionItems.push(`<li><a href="${escapeHtml(ct.info.State.WebUi)}" target="_blank"><i class="fa fa-globe" aria-hidden="true"></i> ${$.i18n('webui')}</a></li>`);
+                                if (ct.info.State.TSWebUi) actionItems.push(`<li><a href="${escapeHtml(ct.info.State.TSWebUi)}" target="_blank"><i class="fa fa-shield" aria-hidden="true"></i> ${$.i18n('tailscale-webui')}</a></li>`);
+                                actionItems.push(`<li><a onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i> ${$.i18n('console')}</a></li>`);
+                            }
+                            if (!liveRunning) {
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'start', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-play" aria-hidden="true"></i> ${$.i18n('start')}</a></li>`);
+                            } else if (livePaused) {
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'resume', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-play" aria-hidden="true"></i> ${$.i18n('resume')}</a></li>`);
+                            } else {
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'stop', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-stop" aria-hidden="true"></i> ${$.i18n('stop')}</a></li>`);
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'pause', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-pause" aria-hidden="true"></i> ${$.i18n('pause')}</a></li>`);
+                            }
+                            if (liveRunning) {
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'restart', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-refresh" aria-hidden="true"></i> ${$.i18n('restart')}</a></li>`);
+                            }
+                            actionItems.push(`<li><a onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-navicon" aria-hidden="true"></i> ${$.i18n('logs')}</a></li>`);
+                            if (ct.info.template) actionItems.push(`<li><a onclick="event.preventDefault(); editContainer('${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.template.path)}');"><i class="fa fa-wrench" aria-hidden="true"></i> ${$.i18n('edit')}</a></li>`);
+                            actionItems.push(`<li><a onclick="event.preventDefault(); rmContainer('${escapeHtml(ct.info.Name)}', '${ct.shortImageId}', '${ct.shortId}');"><i class="fa fa-trash" aria-hidden="true"></i> ${$.i18n('remove')}</a></li>`);
+                            $(`.preview-outbox-${ct.shortId} .action-left ul.fa-ul`, tooltipDomEl).html(actionItems.join(''));
+                        }
+
                         fv3Debug('tooltipster', ct.shortId, 'functionReady. Instance:', instance, "Helper:", helper, "Trigger Origin Element:", triggerOriginEl[0], "Tooltip DOM Element:", tooltipDomEl[0]);
                         fv3Debug('tooltipster', ct.shortId, 'Dispatching docker-tooltip-ready-start event.');
                         
@@ -1581,10 +1617,12 @@ window.loadlist = () => {
 
 // Folder stats aggregation
 const fv3UpdateFolderStats = (load, divideByCore) => {
+    const hostMemB = Math.max(0, ...Object.values(load || {}).map(c => memToB((c && c.mem ? c.mem : ['0B','0B'])[1])));
+
     for (const [id, value] of Object.entries(globalFolders)) {
         let loadCpu = 0;
-        let totalMemB = 0;
         let loadMemB = 0;
+        const limits = [];
 
         if (!value || !value.containers) continue;
 
@@ -1594,9 +1632,11 @@ const fv3UpdateFolderStats = (load, divideByCore) => {
             const cpuVal = typeof curLoad.cpu === 'number' ? curLoad.cpu : parseFloat(curLoad.cpu.replace('%', ''));
             loadCpu += divideByCore ? cpuVal / cpus : cpuVal;
             loadMemB += memToB(curLoad.mem[0]);
-            let tempTotalMem = memToB(curLoad.mem[1]);
-            totalMemB = Math.max(totalMemB, tempTotalMem);
+            limits.push(memToB(curLoad.mem[1]));
         }
+
+        const allLimited = hostMemB > 0 && limits.length > 0 && limits.every(l => l > 0 && l < hostMemB);
+        const totalMemB = allLimited ? limits.reduce((a, b) => a + b, 0) : Math.max(0, ...limits);
 
         $(`span.mem-folder-${id}`).text(`${bToMem(loadMemB)} / ${bToMem(totalMemB)}`);
         $(`span.cpu-folder-${id}`).text(`${loadCpu.toFixed(2)}%`);
