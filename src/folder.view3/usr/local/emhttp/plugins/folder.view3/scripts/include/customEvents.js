@@ -121,22 +121,32 @@ window.fv3ApplyToggleStyle = window.fv3ApplyToggleStyle || ((style) => {
             btn.style.margin = '';
         }
     };
-    var stripAll = function() {
-        document.querySelectorAll('.switch-button-background').forEach(bg => {
-            stripSwitchInline(bg);
-            var btn = bg.querySelector('.switch-button-button');
-            if (btn && !btn._fv3StyleObserver) {
-                btn._fv3StyleObserver = new MutationObserver(function() {
-                    if (btn.style.left) btn.style.left = '';
-                    if (btn.style.top) btn.style.top = '';
-                });
-                btn._fv3StyleObserver.observe(btn, { attributes: true, attributeFilter: ['style'] });
+    var processSwitch = function(bg) {
+        stripSwitchInline(bg);
+        var btn = bg.querySelector('.switch-button-button');
+        if (btn && !btn._fv3StyleObserver) {
+            btn._fv3StyleObserver = new MutationObserver(function() {
+                if (btn.style.left) btn.style.left = '';
+                if (btn.style.top) btn.style.top = '';
+            });
+            btn._fv3StyleObserver.observe(btn, { attributes: true, attributeFilter: ['style'] });
+        }
+    };
+    document.querySelectorAll('.switch-button-background').forEach(processSwitch);
+    if (!window._fv3SwitchAddObserver) {
+        window._fv3SwitchAddObserver = new MutationObserver(function(mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+                var added = mutations[i].addedNodes;
+                for (var j = 0; j < added.length; j++) {
+                    var node = added[j];
+                    if (node.nodeType !== 1) continue;
+                    if (node.classList && node.classList.contains('switch-button-background')) processSwitch(node);
+                    if (node.querySelectorAll) node.querySelectorAll('.switch-button-background').forEach(processSwitch);
+                }
             }
         });
-    };
-    stripAll();
-    setTimeout(stripAll, 100);
-    setTimeout(stripAll, 500);
+        window._fv3SwitchAddObserver.observe(document.body, { childList: true, subtree: true });
+    }
     ['#apps', '#vms'].forEach(id => {
         const cb = document.querySelector('input' + id);
         if (cb) {

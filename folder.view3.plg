@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.29.1">
-<!ENTITY md5 "53de811b866a88cc05eda2c9570eaf12">
+<!ENTITY version "2026.04.29.2">
+<!ENTITY md5 "6b307d996314dfccb044493d6573ba6e">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.29.2
+- Strip inline styles from switches added after page load so custom toggle style applies to advanced popup autostart
 
 ###2026.04.29.1
 - Refresh advanced popup state on open
