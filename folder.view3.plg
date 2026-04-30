@@ -5,13 +5,21 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.04.17">
-<!ENTITY md5 "823474cec4d6af3ff53495161a9d7348">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.04.30.1">
+<!ENTITY md5 "5ed987674be4a8b81996d85e107e7f8c">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.04.30
+- Docker table column lock and layout stability fixes
+- Folder-name pill and chevron polish (Firefox border fix, CSS preset alignment, fluid resize)
+- Advanced popup and dashboard toggle consistency
+- Folder RAM total now respects per-container `--memory=` limits
+- Richer debug JSON export for diagnostics
+- Misc bug fixes and cross-plugin robustness
 
 ###2026.04.17
 - Minor 7.0.x compatibility fix
@@ -555,7 +563,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 

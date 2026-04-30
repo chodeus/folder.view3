@@ -546,6 +546,18 @@ window.fv3DropDownButton = (eventPrefix, globalFolders, id, postCallback) => {
         $(`tr.folder-id-${id}`).after($(`.folder-${id}-element`));
         $(`.folder-${id}-element > td > i.fa-arrows-v`).remove();
         element.attr('active', 'true');
+        // listview() on view toggle skips readmore for cells hidden inside .folder-storage; rewrap on expand
+        if (eventPrefix === 'docker') {
+            const $readmoreEls = $(`.folder-${id}-element .docker_readmore`);
+            if ($readmoreEls.length && typeof $readmoreEls.readmore === 'function') {
+                $readmoreEls.readmore('destroy');
+                $readmoreEls.readmore({
+                    maxHeight: 32,
+                    moreLink: "<a href='#' style='text-align:center'><i class='fa fa-chevron-down'></i></a>",
+                    lessLink: "<a href='#' style='text-align:center'><i class='fa fa-chevron-up'></i></a>"
+                });
+            }
+        }
     }
     if(globalFolders[id]) {
         globalFolders[id].status.expanded = !state;
@@ -572,8 +584,138 @@ window.fv3SanitizeContainersInfo = (containersInfo) => {
     return clone;
 };
 
-window.fv3DownloadDebugJSON = (filename, data) => {
-    const blob = new Blob([data], { type: 'application/json' });
+window.fv3CollectEnv = () => {
+    const getCookie = (n) => { try { return (typeof $ !== 'undefined' && $.cookie) ? $.cookie(n) : null; } catch (_) { return null; } };
+    const sample = (sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const cs = getComputedStyle(el);
+        return {
+            width: el.offsetWidth,
+            height: el.offsetHeight,
+            cssHeight: cs.height,
+            overflow: cs.overflow,
+            display: cs.display,
+            flexWrap: cs.flexWrap,
+            alignItems: cs.alignItems,
+            alignContent: cs.alignContent,
+            minWidth: cs.minWidth,
+            maxWidth: cs.maxWidth,
+            whiteSpace: cs.whiteSpace,
+            borderStyle: cs.borderStyle,
+            borderWidth: cs.borderWidth,
+            borderColor: cs.borderColor,
+            borderRadius: cs.borderRadius,
+            padding: cs.padding,
+            boxSizing: cs.boxSizing
+        };
+    };
+    const tableSize = (id) => {
+        const t = document.getElementById(id);
+        if (!t) return null;
+        return { offsetWidth: t.offsetWidth, scrollWidth: t.scrollWidth, rowCount: t.rows.length };
+    };
+    const readCssVars = (names) => {
+        const cs = getComputedStyle(document.documentElement);
+        const out = {};
+        for (const n of names) out[n] = (cs.getPropertyValue(n) || '').trim();
+        return out;
+    };
+    const collectStylesheets = () => {
+        return [...document.querySelectorAll('link[rel="stylesheet"]')]
+            .map(l => l.getAttribute('href'))
+            .filter(h => h && h.includes('/folder.view3/'));
+    };
+    return {
+        capturedAt: new Date().toISOString(),
+        viewport: { innerWidth: window.innerWidth, innerHeight: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
+        userAgent: navigator.userAgent,
+        path: location.pathname,
+        unraidTheme: window.fv3UnraidTheme,
+        graphqlAvailable: window.fv3ApiAvailable,
+        advancedViewDocker: getCookie('display') === 'advanced',
+        advancedViewVM: getCookie('display_vm') === 'advanced',
+        bodyFv3Attrs: {
+            unraid: document.body.getAttribute('data-fv3-unraid'),
+            preset: document.body.getAttribute('data-fv3-preset'),
+            toggle: document.body.getAttribute('data-fv3-toggle')
+        },
+        externalInjections: {
+            dockerVersions: !!document.querySelector('.changelog, .change-log-summary'),
+            unraidNet: !!document.querySelector('[id*="unraid-net"], .unraid-net-connect-banner'),
+            composeManager: !!document.querySelector('#compose'),
+            foreignPluginScripts: [...document.querySelectorAll('script[src*="/plugins/"]')]
+                .map(s => s.getAttribute('src'))
+                .filter(src => src && !src.includes('/plugins/folder.view3/'))
+                .slice(0, 20)
+        },
+        tables: { docker: tableSize('docker_containers'), vm: tableSize('kvm_table') },
+        samples: {
+            folderPreview: sample('tr.folder .folder-preview'),
+            folderPreviewScroll: sample('tr.folder .folder-preview.fv3-overflow-scroll'),
+            folderPreviewExpand: sample('tr.folder .folder-preview.fv3-overflow-expand'),
+            folderNameSub: sample('tr.folder .folder-name-sub'),
+            folderNameTd: sample('tr.folder td.folder-name'),
+            ctName: sample('#docker_containers tr.sortable:not(.folder) td.ct-name, #docker_containers tr.folder-element td.ct-name'),
+            updateColumn: sample('#docker_containers tr.sortable:not(.folder) td.updatecolumn, #docker_containers tr.folder-element td.updatecolumn')
+        },
+        cssVariables: readCssVars([
+            '--fv3-accent-color',
+            '--fv3-appname-color',
+            '--fv3-toggle-color',
+            '--fv3-toggle-hover-color',
+            '--fv3-folder-row-border-width',
+            '--fv3-folder-row-border-color',
+            '--fv3-folder-row-radius',
+            '--fv3-folder-row-padding',
+            '--fv3-preview-row-border-width',
+            '--fv3-preview-row-border-color',
+            '--fv3-folder-preview-bg',
+            '--fv3-preview-icon-size',
+            '--fv3-folder-icon-size',
+            '--fv3-folder-name-weight',
+            '--fv3-border'
+        ]),
+        stylesheets: collectStylesheets(),
+        customExtensions: {
+            customPhpLoaded: !!document.querySelector('link[href*="/folder.view3/custom.php"], script[src*="/folder.view3/custom.php"]'),
+            fv3PresetStyles: [...document.querySelectorAll('style[id^="fv3-"], style.fv3-preset-styles')].map(s => s.id || s.className).slice(0, 10)
+        }
+    };
+};
+
+window.fv3CollectCssDebug = async () => {
+    const safeJson = async (url) => {
+        try {
+            const raw = await $.get(url).promise();
+            if (typeof raw === 'string') { try { return JSON.parse(raw); } catch (_) { return raw; } }
+            return raw;
+        } catch (e) {
+            return { _fetchError: e && e.statusText ? e.statusText : String(e) };
+        }
+    };
+    const [cssConfig, themes] = await Promise.all([
+        safeJson('/plugins/folder.view3/server/read_css_config.php'),
+        safeJson('/plugins/folder.view3/server/list_themes.php')
+    ]);
+    return { cssConfig, themes };
+};
+
+window.fv3DownloadDebugJSON = (source, data) => {
+    let filename, body;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+    const themeTag = window.fv3UnraidTheme || 'theme-unknown';
+    if (typeof data === 'string' && /\.json$/i.test(source)) {
+        const parsed = (() => { try { return JSON.parse(data); } catch (_) { return { rawBody: data }; } })();
+        parsed.env = window.fv3CollectEnv();
+        body = JSON.stringify(parsed, null, 2);
+        filename = source.replace(/\.json$/i, `-${ts}-${themeTag}.json`);
+    } else {
+        const payload = Object.assign({ env: window.fv3CollectEnv() }, data);
+        body = JSON.stringify(payload, null, 2);
+        filename = `folder.view3-${source}-${ts}-${themeTag}.json`;
+    }
+    const blob = new Blob([body], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const el = document.createElement('a');
     el.href = url;
@@ -1061,6 +1203,196 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
         fv3Cleanups.push(() => ro.disconnect());
     }
 };
+
+// Locks Docker table column widths via `table-layout: fixed` so the preview row
+// doesn't shift on folder expand/collapse or basic↔advanced toggle.
+window.fv3InstallDockerTableWidthFix = () => {
+    const STYLE_ID = 'fv3-width-style';
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl) return;
+    const headers = Array.from(tbl.querySelectorAll('thead > tr > th'));
+    if (!headers.length) return;
+
+    document.getElementById(STYLE_ID)?.remove();
+    document.getElementById('fv3-width-hint')?.remove();
+    headers.forEach(th => { th.style.width = ''; th.style.boxSizing = ''; });
+    tbl.style.tableLayout = '';
+    void tbl.offsetHeight;
+    void document.body.offsetHeight;
+
+    const firstFolder = tbl.querySelector('tr.folder');
+    if (!firstFolder) return;
+
+    const containerW = (tbl.parentElement && tbl.parentElement.clientWidth) || tbl.clientWidth;
+    const targetW = containerW - 2; // subpixel safety
+
+    const maxCols = headers.map(h => h.getBoundingClientRect().width);
+    let verContentMax = 0;
+
+    Array.from(tbl.querySelectorAll('tr.folder')).forEach(folder => {
+        const storage = folder.querySelector('.folder-storage');
+        if (!storage || !storage.children.length) return;
+        const children = Array.from(storage.children);
+        const origStyles = children.map(c => c.getAttribute('style') || '');
+        children.forEach(c => c.style.cssText += ';visibility:hidden !important;');
+        children.forEach(c => folder.parentNode.insertBefore(c, folder.nextSibling));
+        void tbl.offsetHeight;
+        headers.forEach((h, i) => {
+            const w = h.getBoundingClientRect().width;
+            if (w > maxCols[i]) maxCols[i] = w;
+        });
+        children.forEach(row => {
+            const verTd = row.querySelector('td:nth-child(2)');
+            if (!verTd) return;
+            Array.from(verTd.children).forEach(el => {
+                const w = el.scrollWidth || el.getBoundingClientRect().width;
+                if (w > verContentMax) verContentMax = w;
+            });
+        });
+        children.forEach(c => storage.appendChild(c));
+        children.forEach((c, i) => c.setAttribute('style', origStyles[i]));
+    });
+    void tbl.offsetHeight;
+
+    tbl.querySelectorAll('td.folder-update > *, tr:not(.folder) > td:nth-child(2) > *').forEach(el => {
+        const w = el.scrollWidth || el.getBoundingClientRect().width;
+        if (w > verContentMax) verContentMax = w;
+    });
+
+    let verCap = 0;
+    if (verContentMax > 0) {
+        verCap = Math.ceil(verContentMax + 2);
+        const verCell = firstFolder.querySelector('td.folder-update');
+        if (verCell) {
+            const verCs = getComputedStyle(verCell);
+            const verPad = parseFloat(verCs.paddingLeft || '0') + parseFloat(verCs.paddingRight || '0');
+            // +12px buffer absorbs auto-layout discrepancy between folder rows (2 stacked divs)
+            // and child rows (3 stacked divs) — without it Version column shifts ~7px on expand.
+            const verHint = Math.ceil(verCap + verPad + 12);
+            if (verHint > maxCols[1]) maxCols[1] = verHint;
+        }
+    }
+
+    headers.forEach((h, i) => {
+        if (h.offsetParent === null && h.getBoundingClientRect().width === 0) maxCols[i] = 0;
+    });
+
+    const sum = maxCols.reduce((a, b) => a + b, 0);
+    const widths = maxCols.map(Math.ceil);
+    if (sum > targetW) {
+        const overflow = sum - targetW;
+        let flex = 0;
+        for (let i = 2; i <= 6; i++) flex += maxCols[i];
+        if (flex > overflow) {
+            const scale = (flex - overflow) / flex;
+            for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(maxCols[i] * scale));
+        }
+    } else if (sum < targetW) {
+        const extra = targetW - sum;
+        let flex = 0;
+        for (let i = 2; i <= 6; i++) if (maxCols[i] > 0) flex += maxCols[i];
+        if (flex > 0) {
+            for (let i = 2; i <= 6; i++) {
+                if (maxCols[i] > 0) widths[i] = Math.floor(maxCols[i] + extra * (maxCols[i] / flex));
+            }
+        }
+    }
+    let finalSum = widths.reduce((a, b) => a + b, 0);
+    if (finalSum !== targetW) {
+        const diff = targetW - finalSum;
+        if (widths[6] + diff >= 60) widths[6] += diff;
+    }
+
+    headers.forEach((th, i) => {
+        if (maxCols[i] > 0) {
+            th.style.boxSizing = 'border-box';
+            th.style.width = widths[i] + 'px';
+        }
+    });
+    tbl.style.tableLayout = 'fixed';
+
+    if (verCap > 0) {
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+            #docker_containers td.folder-update *,
+            #docker_containers tr:not(.folder) > td:nth-child(2) * {
+                max-width: ${verCap}px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    fv3Debug('WidthFix', `containerW=${containerW} targetW=${targetW} verCap=${verCap} measured=`, maxCols.map(Math.ceil), 'applied=', widths);
+};
+
+let _fv3WidthFixTimer;
+window.fv3ScheduleWidthFix = () => {
+    clearTimeout(_fv3WidthFixTimer);
+    _fv3WidthFixTimer = setTimeout(() => {
+        try { fv3InstallDockerTableWidthFix(); } catch (e) { fv3DebugWarn('WidthFix', e.message); }
+    }, 150);
+};
+
+// Folder name pill height matching — replaces the height: 1px / height: 100% table-cell
+// hack that worked in Chromium/WebKit but rendered the bordered pill far too short in
+// Firefox. JS measures the row's content area height and applies it as inline style.
+//
+// Two invariants that prevent the runaway growth seen in earlier ResizeObserver attempts:
+//   1. Clear-measure-reset: clear sub.style.height before measuring, so the reading
+//      reflects the row's *natural* height (driven by the preview cell). Without this
+//      the pill's own inline height props the cell open and the measurement stays at
+//      whatever value the pill was last set to — pill never shrinks back when chips
+//      re-fit on fewer rows.
+//   2. Observe the preview CELL, not the folder row. Preview cell is a sibling of the
+//      folder-name cell, so changing the pill height does not feed back into preview
+//      cell layout — the observer only fires on real chip reflow. Observing the row
+//      itself causes immediate growth loops (verified failure mode, do not retry).
+const _fv3PreviewObserved = new WeakSet();
+const _fv3PreviewRO = ('ResizeObserver' in window) ? new ResizeObserver(() => {
+    requestAnimationFrame(() => {
+        try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); }
+    });
+}) : null;
+if (_fv3PreviewRO) fv3Cleanups.push(() => _fv3PreviewRO.disconnect());
+
+window.fv3SizeFolderPills = () => {
+    if (!document.body.hasAttribute('data-fv3-preset')) return;
+    document.querySelectorAll('tr.folder > td.folder-name').forEach(td => {
+        const sub = td.querySelector('.folder-name-sub');
+        if (!sub) return;
+        const cs = getComputedStyle(td);
+        const pad = parseFloat(cs.paddingTop || '0') + parseFloat(cs.paddingBottom || '0');
+        sub.style.height = '';
+        const h = td.getBoundingClientRect().height - pad;
+        if (h > 0) sub.style.height = h + 'px';
+        const previewCell = td.parentElement?.querySelector('.folder-preview')?.closest('td');
+        if (_fv3PreviewRO && previewCell && !_fv3PreviewObserved.has(previewCell)) {
+            _fv3PreviewRO.observe(previewCell);
+            _fv3PreviewObserved.add(previewCell);
+        }
+    });
+};
+
+let _fv3PillTimer;
+window.fv3SchedulePillSize = () => {
+    clearTimeout(_fv3PillTimer);
+    _fv3PillTimer = setTimeout(() => {
+        try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); }
+    }, 50);
+};
+
+(function() {
+    if (typeof folderEvents !== 'undefined') {
+        folderEvents.addEventListener('docker-post-folders-creation', fv3SchedulePillSize);
+        folderEvents.addEventListener('vm-post-folders-creation', fv3SchedulePillSize);
+        folderEvents.addEventListener('docker-post-folder-expansion', fv3SchedulePillSize);
+        folderEvents.addEventListener('vm-post-folder-expansion', fv3SchedulePillSize);
+    }
+    window.addEventListener('resize', fv3SchedulePillSize);
+})();
 
 window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
     _fv3FolderMapGetter = folderMapGetter;

@@ -56,7 +56,8 @@ const createFolders = async () => {
             originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
             newOnes,
             order,
-            containersInfo: fv3SanitizeContainersInfo(containersInfo)
+            containersInfo: fv3SanitizeContainersInfo(containersInfo),
+            cssDebug: await fv3CollectCssDebug()
         });
         fv3DownloadDebugJSON('debug-DOCKER.json', debugData);
         fv3Debug('createFolders', 'Order:', [...order]);
@@ -143,6 +144,8 @@ const createFolders = async () => {
         order: order,
         containersInfo: containersInfo
     }}));
+
+    try { fv3InstallDockerTableWidthFix(); } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
 
     globalFolders = foldersDone;
     fv3Debug('createFolders', 'Assigned foldersDone to globalFolders:', {...globalFolders});
@@ -529,6 +532,42 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                         const triggerOriginEl = helper.origin;  // This is the jQuery object of the element that triggered the tooltip
                         const tooltipDomEl = helper.tooltip;  // This is the jQuery object of the tooltip's outermost DOM element
 
+                        const $loadIcon = $(`i#load-${ct.info.Name}`);
+                        if ($loadIcon.length) {
+                            const liveRunning = $loadIcon.hasClass('started') || $loadIcon.hasClass('paused');
+                            const livePaused = $loadIcon.hasClass('paused');
+                            const iconName = liveRunning ? (livePaused ? 'pause' : 'play') : 'square';
+                            const stateClass = liveRunning ? (livePaused ? 'paused' : 'started') : 'stopped';
+                            const colorClass = liveRunning ? (livePaused ? 'orange-text' : 'green-text') : 'red-text';
+                            const stateText = liveRunning ? (livePaused ? $.i18n('paused') : $.i18n('started')) : $.i18n('stopped');
+                            $(`.preview-outbox-${ct.shortId} .preview-actual-name i`, tooltipDomEl)
+                                .attr('class', `fa fa-${iconName} ${stateClass} ${colorClass}`);
+                            $(`.preview-outbox-${ct.shortId} .preview-actual-name .state`, tooltipDomEl)
+                                .text(' ' + stateText);
+
+                            const actionItems = [];
+                            if (liveRunning && !livePaused) {
+                                if (ct.info.State.WebUi) actionItems.push(`<li><a href="${escapeHtml(ct.info.State.WebUi)}" target="_blank"><i class="fa fa-globe" aria-hidden="true"></i> ${$.i18n('webui')}</a></li>`);
+                                if (ct.info.State.TSWebUi) actionItems.push(`<li><a href="${escapeHtml(ct.info.State.TSWebUi)}" target="_blank"><i class="fa fa-shield" aria-hidden="true"></i> ${$.i18n('tailscale-webui')}</a></li>`);
+                                actionItems.push(`<li><a onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i> ${$.i18n('console')}</a></li>`);
+                            }
+                            if (!liveRunning) {
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'start', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-play" aria-hidden="true"></i> ${$.i18n('start')}</a></li>`);
+                            } else if (livePaused) {
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'resume', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-play" aria-hidden="true"></i> ${$.i18n('resume')}</a></li>`);
+                            } else {
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'stop', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-stop" aria-hidden="true"></i> ${$.i18n('stop')}</a></li>`);
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'pause', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-pause" aria-hidden="true"></i> ${$.i18n('pause')}</a></li>`);
+                            }
+                            if (liveRunning) {
+                                actionItems.push(`<li><a onclick="event.preventDefault(); eventControl({action:'restart', container:'${ct.shortId}'}, 'loadlist');"><i class="fa fa-refresh" aria-hidden="true"></i> ${$.i18n('restart')}</a></li>`);
+                            }
+                            actionItems.push(`<li><a onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-navicon" aria-hidden="true"></i> ${$.i18n('logs')}</a></li>`);
+                            if (ct.info.template) actionItems.push(`<li><a onclick="event.preventDefault(); editContainer('${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.template.path)}');"><i class="fa fa-wrench" aria-hidden="true"></i> ${$.i18n('edit')}</a></li>`);
+                            actionItems.push(`<li><a onclick="event.preventDefault(); rmContainer('${escapeHtml(ct.info.Name)}', '${ct.shortImageId}', '${ct.shortId}');"><i class="fa fa-trash" aria-hidden="true"></i> ${$.i18n('remove')}</a></li>`);
+                            $(`.preview-outbox-${ct.shortId} .action-left ul.fa-ul`, tooltipDomEl).html(actionItems.join(''));
+                        }
+
                         fv3Debug('tooltipster', ct.shortId, 'functionReady. Instance:', instance, "Helper:", helper, "Trigger Origin Element:", triggerOriginEl[0], "Tooltip DOM Element:", tooltipDomEl[0]);
                         fv3Debug('tooltipster', ct.shortId, 'Dispatching docker-tooltip-ready-start event.');
                         
@@ -702,7 +741,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                              fv3DebugWarn('tooltipster', ct.shortId, 'Autostart switch placeholder not found as expected in tooltip.');
                         }
 
-                        // Mobile: wrap actions and graph in collapsible accordions
                         if (window.innerWidth <= 768) {
                             fv3Debug('tooltipster', ct.shortId, 'Mobile detected — applying hybrid accordion layout.');
                             const $secondRow = $(`.preview-outbox-${ct.shortId} .second-row`, tooltipDomEl);
@@ -710,23 +748,18 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                             const $infoSection = $secondRow.children('.info-section');
                             const $infoCt = $actionInfo.children('.info-ct');
 
-                            // Quick Actions accordion (open by default)
                             const $actionsDetails = $(`<details class="fv3-mobile-details" open><summary>${$.i18n('quick-actions') || 'Quick Actions'}</summary></details>`);
                             $actionInfo.before($actionsDetails);
                             $actionsDetails.append($actionInfo);
 
-                            // Graph & Details accordion (closed by default)
                             const $graphDetails = $(`<details class="fv3-mobile-details"><summary>${$.i18n('graph-details') || 'Graph & Details'}</summary></details>`);
                             $infoSection.before($graphDetails);
                             $graphDetails.append($infoSection);
 
-                            // Move container ID/registry to bottom of second-row
                             $secondRow.append($infoCt);
 
-                            // Mutual exclusion + chart resize on expand
                             const $allDetails = $secondRow.find('.fv3-mobile-details');
                             $allDetails.on('toggle', function () {
-                                // Disconnect any existing chart height guards
                                 chartHeightGuards.forEach(id => clearTimeout(id));
                                 chartHeightGuards = [];
 
@@ -735,7 +768,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                     $(this).find('canvas').each(function () {
                                         const canvas = this;
                                         const container = canvas.parentElement;
-                                        // Wait for layout to settle before resizing chart
+                                        // requestAnimationFrame: wait for layout to settle before resizing chart
                                         requestAnimationFrame(() => {
                                             if (!document.body.contains(canvas)) return;
                                             const chart = Chart.getChart(canvas);
@@ -743,8 +776,8 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                                 chart.resize();
                                                 chart.update();
                                             }
-                                            // Clear inline height once after chart settles,
-                                            // then once more after streaming plugin's first tick
+                                            // Clear inline height twice: once after chart settles,
+                                            // again at 1100ms to clear the streaming plugin's first tick
                                             container.style.height = 'auto';
                                             const guardId = setTimeout(() => {
                                                 if (document.body.contains(container)) {
@@ -757,7 +790,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                 }
                             });
 
-                            // ResizeObserver repositions tooltip when content size changes (accordion, chart, etc.)
                             let resizeTimer;
                             tooltipResizeObserver = new ResizeObserver(() => {
                                 clearTimeout(resizeTimer);
@@ -1585,10 +1617,12 @@ window.loadlist = () => {
 
 // Folder stats aggregation
 const fv3UpdateFolderStats = (load, divideByCore) => {
+    const hostMemB = Math.max(0, ...Object.values(load || {}).map(c => memToB((c && c.mem ? c.mem : ['0B','0B'])[1])));
+
     for (const [id, value] of Object.entries(globalFolders)) {
         let loadCpu = 0;
-        let totalMemB = 0;
         let loadMemB = 0;
+        const limits = [];
 
         if (!value || !value.containers) continue;
 
@@ -1598,9 +1632,11 @@ const fv3UpdateFolderStats = (load, divideByCore) => {
             const cpuVal = typeof curLoad.cpu === 'number' ? curLoad.cpu : parseFloat(curLoad.cpu.replace('%', ''));
             loadCpu += divideByCore ? cpuVal / cpus : cpuVal;
             loadMemB += memToB(curLoad.mem[0]);
-            let tempTotalMem = memToB(curLoad.mem[1]);
-            totalMemB = Math.max(totalMemB, tempTotalMem);
+            limits.push(memToB(curLoad.mem[1]));
         }
+
+        const allLimited = hostMemB > 0 && limits.length > 0 && limits.every(l => l > 0 && l < hostMemB);
+        const totalMemB = allLimited ? limits.reduce((a, b) => a + b, 0) : Math.max(0, ...limits);
 
         $(`span.mem-folder-${id}`).text(`${bToMem(loadMemB)} / ${bToMem(totalMemB)}`);
         $(`span.cpu-folder-${id}`).text(`${loadCpu.toFixed(2)}%`);
@@ -1732,6 +1768,15 @@ fv3Debug('init', 'globals', {
 });
 
 fv3SetupResizeListeners(() => globalFolders, 'docker_listview_mode');
+
+window.addEventListener('resize', () => fv3ScheduleWidthFix());
+let _fv3LastAdvanced = $.cookie('docker_listview_mode') == 'advanced';
+document.addEventListener('click', () => {
+    setTimeout(() => {
+        const now = $.cookie('docker_listview_mode') == 'advanced';
+        if (now !== _fv3LastAdvanced) { _fv3LastAdvanced = now; fv3ScheduleWidthFix(); }
+    }, 100);
+}, true);
 
 // Add the button for creating a folder
 const createFolderBtn = () => fv3CreateFolderBtn('docker', '/Docker/Folder');

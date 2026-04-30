@@ -219,18 +219,15 @@ body[data-fv3-preset] .folder-preview.fv3-overflow-scroll:hover::-webkit-scrollb
     background: var(--fv3-scrollbar-color, var(--fv3-accent-color, rgba(255, 140, 47, 0.5)));
 }
 
-/* Bordered folder rows (activated by presets) */
-body[data-fv3-preset] td.folder-name {
-    height: 1px;
-}
-
+/* Bordered folder rows (activated by presets).
+   Pill height is set inline by fv3SizeFolderPills() — pure CSS height: 100%
+   against a table cell doesn't resolve correctly in Firefox. */
 body[data-fv3-preset] .folder-name-sub {
     border-style: solid;
     border-width: var(--fv3-folder-row-border-width);
     border-color: var(--fv3-folder-row-border-color);
     border-radius: var(--fv3-folder-row-radius);
     padding: var(--fv3-folder-row-padding);
-    height: 100%;
     box-sizing: border-box;
 }
 
@@ -396,6 +393,11 @@ body[data-fv3-toggle] .folder-autostart div[style*="clear"] {
     display: none;
 }
 
+#docker_containers tr.folder > td:nth-child(3),
+#kvm_table tr.folder > td:nth-child(3) {
+    max-width: 0;
+}
+
 .folder-preview {
     border-radius: var(--fv3-folder-preview-radius);
     height: var(--fv3-folder-preview-height);
@@ -403,7 +405,9 @@ body[data-fv3-toggle] .folder-autostart div[style*="clear"] {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    align-content: safe center;
     background: var(--fv3-folder-preview-bg);
+    min-width: 0;
 }
 
 .folder-preview.fv3-overflow-expand {

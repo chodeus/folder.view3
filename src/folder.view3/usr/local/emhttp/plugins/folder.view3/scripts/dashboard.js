@@ -52,7 +52,8 @@ const createFolders = async () => {
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
                 folders, unraidOrder,
                 originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
-                newOnes, order, containersInfo: fv3SanitizeContainersInfo(containersInfo)
+                newOnes, order, containersInfo: fv3SanitizeContainersInfo(containersInfo),
+                cssDebug: await fv3CollectCssDebug()
             });
             fv3DownloadDebugJSON('debug-DASHBOARD-DOCKER.json', debugData);
             fv3Debug('dashboard', 'Docker Order:', [...order]);
@@ -163,7 +164,8 @@ const createFolders = async () => {
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
                 folders, unraidOrder,
                 originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), []),
-                newOnes, order, vmInfo
+                newOnes, order, vmInfo,
+                cssDebug: await fv3CollectCssDebug()
             });
             fv3DownloadDebugJSON('debug-DASHBOARD-VM.json', debugData);
             fv3Debug('dashboard', 'VM Order:', [...order]);
