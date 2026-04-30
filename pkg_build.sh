@@ -88,7 +88,7 @@ fi
 chmod -R 0755 $tmpdir
 
 # Strip macOS extended attributes and touch all files for cache-busting
-xattr -cr $tmpdir 2>/dev/null
+xattr -cr $tmpdir 2>/dev/null || true
 find $tmpdir -type f -exec touch {} +
 
 cd $tmpdir
