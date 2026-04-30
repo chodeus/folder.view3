@@ -13,55 +13,13 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
-###2026.04.30.1
-- Shrink Dashboard `All Apps`/`All VMs` toggles to match Docker/VM tab and advanced-popup sizes (flat 30×16, rounded 32×18, material 28×10, pill 38×20) — previously rendered ~33% larger
-
-###2026.04.29.2
-- Strip inline styles from switches added after page load so custom toggle style applies to advanced popup autostart
-
-###2026.04.29.1
-- Refresh advanced popup state on open
-- Sum per-container `--memory=` limits for folder RAM total
-
-###2026.04.26.8
-- Folder-name pill height now tracks the row fluidly during window resize and shrinks back when expand-mode chips re-fit on fewer rows — fixes the lingering tall row when widening the window after chips wrapped at narrow viewports
-
-###2026.04.26.7
-- Re-run widthFix after CSS preset applies so APPLICATION column accounts for preset's added pill padding/border, fixing chevron alignment across folder names — replaces v6's `min-width: 0` rule which caused chevron-over-text overlap
-
-###2026.04.26.6
-- Align folder-name chevron across rows when a CSS preset is active by adding `min-width: 0` to .folder-outer — lets the flex shrink algorithm work, no name truncation
-
-###2026.04.26.5
-- Revert v2026.04.26.4 chevron-alignment rule — the truncation side effect on folder names was unwanted
-
-###2026.04.26.4
-- Fix folder-name chevron alignment with custom CSS preset — chevron now sits at the same x-position regardless of folder name length, instead of being pushed right by long names overflowing .folder-outer
-
-###2026.04.26.3
-- Fix volume mappings staying fully expanded with no chevron after toggling Basic↔Advanced view while a folder was collapsed — re-init readmore on folder expand so cells hidden during the toggle get rewrapped
-
-###2026.04.26.2
-- Replace the unreliable min-width column hint with table-layout: fixed so the preview row no longer shifts on folder expand/collapse or basic↔advanced toggle in either view
-- Include child-row Version content when sizing the Version column so long image tags (e.g. "release-5.1.4") get a proper cap instead of being truncated mid-text
-
-###2026.04.26.1
-- Fix Firefox-only bug where folder name border drew through the icon and text instead of around them — pill height now set in JS so it works in every browser
-
-###2026.04.25.2
-- Lock Docker table column widths in advanced view so columns no longer shift on folder expand/collapse and the table no longer triggers a horizontal scrollbar
-
-###2026.04.25.1
-- Capture CSS variable values, plugin stylesheet hrefs, folder-name border sample, active CSS preset config, and installed theme list in debug JSON
-
-###2026.04.22.1
-- Stabilize Docker table columns so the folder preview row doesn't shift when a folder is expanded/collapsed
-- Truncate oversized container version strings (e.g. "release-5.1.4") with ellipsis to keep VERSION column bounded
-
-###2026.04.21.1
-- Fix scroll/expand overflow modes inflating Docker/VM table width past viewport
-- Enrich debug JSON export with viewport, theme, foreign plugin detection, and computed preview styles
-- Defensive align-content on preview flex so row 1 stays put when other plugins mutate shared columns
+###2026.04.30
+- Docker table column lock and layout stability fixes
+- Folder-name pill and chevron polish (Firefox border fix, CSS preset alignment, fluid resize)
+- Advanced popup and dashboard toggle consistency
+- Folder RAM total now respects per-container `--memory=` limits
+- Richer debug JSON export for diagnostics
+- Misc bug fixes and cross-plugin robustness
 
 ###2026.04.17
 - Minor 7.0.x compatibility fix

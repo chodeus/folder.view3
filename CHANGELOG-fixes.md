@@ -6,114 +6,50 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
-## 2026.04.30.1 — Beta
+## 2026.04.30 — Stable Release
 
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 101 | Shrink Dashboard `All Apps`/`All VMs` toggles to match the sizes used everywhere else in the plugin (Docker/VM tabs and advanced-popup autostart switches). The dashboard rules at [dashboard.css:533](src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css:533) — added whole-cloth in the v2026.03.28 CSS Tool / Settings refactor — were ~33% larger than the matching `folder-common.css:242` rules: flat 40×22 → 30×16, rounded 44×24 → 32×18, material 36×14 → 28×10, pill 56×26 → 38×20. Inner button dimensions, top/left offsets, border-radii and the checked-position `left` end values updated to match. Also added `background: #fff` to the rounded-checked button rule for parity with `folder-common.css:294` — without it the button rendered gray (inheriting the new `#ccc` unchecked color) on the orange checked track. Single-file CSS change, no JS impact, only affects switches with the `.fv3-styled-switch` marker class added by [customEvents.js:155](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:155). | `dashboard.css` | 2026.04.30.1 |
+Consolidates beta builds v2026.04.21.1 through v2026.04.30.1.
 
----
-
-## 2026.04.26.8 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 100 | Folder-name pill height now tracks the row fluidly during window resize and shrinks back when expand-mode chips re-fit on fewer rows. Two-part fix in [shared.js:1339](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/shared.js:1339): (1) **Clear-measure-reset** in `fv3SizeFolderPills` — `sub.style.height = ''` before measuring `td.getBoundingClientRect().height`. Without this the pill's own inline height props the cell open, the measurement returns whatever the pill was last set to, and the pill never shrinks back when chips re-fit on fewer rows (the v7 lingering-tall-row bug). (2) **ResizeObserver attached to the preview CELL** (sibling of folder-name cell), not the folder row. Preview cell height is independent of the pill, so setting pill height does not feed back into the observer — it fires only on real chip reflow. Observing the row itself (or any ancestor of the pill) caused immediate runaway growth in earlier attempts (verified failure mode, see "preview-border-basic-view-failed-attempts" memory). Verified live in Chrome MCP: 1223 samples across resize sweep 1700→1100→900→1700, gap=8 throughout (one 30ms transient frame); 200 dispatched resize events plus 30 s idle, zero growth on all 10 folders. | `shared.js` | 2026.04.26.8 |
-
----
-
-## 2026.04.26.7 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 99 | Replace v6's `min-width: 0` chevron-alignment rule (which caused chevron-over-text overlap on long folder names) with a proper widthFix re-run. Inside `fv3LoadToggleStyle`'s success callback in [customEvents.js:197](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:197), call `window.fv3ScheduleWidthFix()` after the preset attribute is set/removed. This makes the APPLICATION column re-measure with the preset's extra pill padding/border accounted for, so the cell is wide enough for natural folder name widths plus the chevron without overflow. | `customEvents.js`, `folder-common.css` | 2026.04.26.7 |
-
----
-
-## 2026.04.26.6 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 98 | Re-fix the chevron-alignment issue from #97 without truncating names. Root cause: as a flex item, `.folder-outer` defaults to `min-width: min-content`, so the flex shrink algorithm can't shrink it below its natural content width. Long folder names then push the chevron right, varying chevron x by name length. Adding only `min-width: 0` (no `overflow: hidden`, no `text-overflow`) lets flex shrink the outer span when needed; the chevron's `margin-left: auto` then correctly pins it at the right edge for every row. Visually the names continue to render in full because the outer's `overflow: visible` (existing) lets the natural content stay visible. The widthFix may give the APPLICATION column a few extra px to fit, taking from Volume Mappings. Preset-only — default view untouched. | `folder-common.css` | 2026.04.26.6 |
-
----
-
-## 2026.04.26.5 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 97 | Revert #96. Adding `flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis` to `body[data-fv3-preset] td.folder-name .folder-outer` aligned the chevron but truncated longer folder names with an ellipsis — unwanted. Restoring v2026.04.26.3 behavior; chevron will again sit at varying x-positions when names are long. | `folder-common.css` | 2026.04.26.5 |
-
----
-
-## 2026.04.26.4 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 96 | Pin chevron to right edge of folder pill when a CSS preset is active. `.folder-outer` had `overflow: visible; width: auto`, so longer folder names ("Media Automation", "File Management") pushed it wider than its share of the flex container, shifting the chevron right by up to 18px. With the new column lock the cell width is fixed, making the misalignment visible. Adding `flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis` on `body[data-fv3-preset] td.folder-name .folder-outer` lets the inner span shrink, so `margin-left: auto` on the chevron always pins it to the right edge of the pill. Default view (no preset) is untouched. | `folder-common.css` | 2026.04.26.4 |
-
----
-
-## 2026.04.26.3 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 95 | Fix volume mappings rendering at full height with no chevron after toggling Basic↔Advanced view while a folder was collapsed. Unraid's `listview()` re-runs the readmore plugin on view toggle but skips elements that are currently hidden — child rows tucked inside `.folder-storage` (collapsed folder state) end up unwrapped, so when you later expand the folder the volumes show in full with no `readmore-js-collapsed` wrapper or chevron. Fix: in `fv3DropDownButton`, after revealing child rows, call `$readmoreEls.readmore('destroy').readmore({...})` with Unraid's canonical options (`maxHeight: 32`, chevron-down/up icons) on `.folder-${id}-element .docker_readmore`. Idempotent across multiple expand/collapse cycles. Gated to `eventPrefix === 'docker'`. | `shared.js` | 2026.04.26.3 |
-
----
-
-## 2026.04.26.2 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 92 | Replace `fv3InstallDockerTableWidthFix` min-width-hint mechanism with `table-layout: fixed` + explicit per-`<th>` widths. The old hint approach (min-width on a hidden tbody row covering only cols 1-6) was a soft floor that browsers ignored when actual content demanded more — col 9 (Uptime) wasn't covered, so it grew ~29px on expand and stole space from col 1 (Version), shifting the preview row. The new approach probes both collapsed and expanded-children widths, computes per-column widths summing to `containerW - 2`, and applies them as inline `<th>` widths under `table-layout: fixed` with `box-sizing: border-box`. Result: zero column shift across expand/collapse cycles AND across basic↔advanced view toggles, in both views. | `shared.js` | 2026.04.26.2 |
-| 93 | Extend Version column probe to include child-row Version cell content. Previously only the first folder's verCell was measured, missing child rows where image tags like "release-5.1.4" live. With the new probe loop measuring children's `td:nth-child(2) > *` while temporarily hoisted, `verCap` correctly accommodates the widest version string across all rows. | `shared.js` | 2026.04.26.2 |
-| 94 | Revert Issue B/C changes from v2026.04.26.1 that didn't actually work: the `getCookie('display')` check used a closure-scoped function out of scope at line 1215, so the basic-view early-return never fired; the `void tbl.offsetHeight` flush slightly altered verCap measurements without fixing toggle drift. Both removed in favor of #92's table-layout: fixed approach which solves both bugs (basic view fills, no toggle drift) more directly. | `shared.js` | 2026.04.26.2 |
-
----
-
-## 2026.04.26.1 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 89 | Fix Firefox-only folder pill border bug. Pre-existing CSS `body[data-fv3-preset] td.folder-name { height: 1px }` + `.folder-name-sub { height: 100% }` was a Chromium/WebKit table-cell stretch hack that Firefox doesn't honor, leaving the bordered pill ~20px tall and drawing through the icon and text. Replaced with a JS function `fv3SizeFolderPills()` that measures `tr.folder` row height, subtracts td vertical padding, and applies inline height. Hooked to `folderEvents` post-folders-creation, post-folder-expansion, and `window resize`. Pill now matches preview pill height in every browser. | `shared.js`, `folder-common.css` | 2026.04.26.1 |
-| 90 | Gate `fv3InstallDockerTableWidthFix` to advanced view only. (Reverted in v2026.04.26.2 — see #94.) | `shared.js` | 2026.04.26.1 |
-| 91 | Force a layout flush before re-measurement. (Reverted in v2026.04.26.2 — see #94.) | `shared.js` | 2026.04.26.1 |
-
----
-
-## 2026.04.25.2 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 88 | Lock Docker table columns in advanced view: bump `verHint` padding buffer from +2 to +12 to absorb auto-layout discrepancy between folder rows (2 stacked divs) and child rows (3 stacked divs) — kills the ~7px Version column shift on expand. Cap total column-sum to container width and proportionally scale cols 2-6 (NET/IP/PORT/LAN/VOL) when natural widths would overflow — kills the persistent horizontal scrollbar in advanced view | `shared.js` | 2026.04.25.2 |
-
----
-
-## 2026.04.25.1 — Beta
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 86 | Add CSS diagnostics to debug export: --fv3-* variable values from :root, plugin stylesheet hrefs (with autov tokens), `.folder-name-sub`/`td.folder-name` border samples, plus async fetch of `read_css_config.php` + `list_themes.php` — diagnoses preset/cache/theme issues without back-and-forth | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.25.1 |
-| 87 | Remove narration comments from mobile accordion block; kept two that explain non-obvious timing (requestAnimationFrame settle, 1100ms double-cleanup for streaming plugin) | `docker.js` | 2026.04.25.1 |
-
----
-
-## 2026.04.22.1 — Beta
+### Docker Table Column Lock & Layout Stability
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
 | 85 | Stabilize Docker table columns: probe expanded-child widths, inject zero-height hint row, cap VERSION cell content with ellipsis so preview row left edge stops shifting on folder expand/collapse (issue #31) | `shared.js`, `docker.js` | 2026.04.22.1 |
+| 88 | Lock Docker table columns in advanced view: bump `verHint` padding buffer from +2 to +12 to absorb auto-layout discrepancy between folder rows (2 stacked divs) and child rows (3 stacked divs) — kills the ~7px Version column shift on expand. Cap total column-sum to container width and proportionally scale cols 2-6 (NET/IP/PORT/LAN/VOL) when natural widths would overflow — kills the persistent horizontal scrollbar in advanced view | `shared.js` | 2026.04.25.2 |
+| 92 | Replace `fv3InstallDockerTableWidthFix` min-width-hint mechanism with `table-layout: fixed` + explicit per-`<th>` widths. The old hint approach (min-width on a hidden tbody row covering only cols 1-6) was a soft floor that browsers ignored when actual content demanded more — col 9 (Uptime) wasn't covered, so it grew ~29px on expand and stole space from col 1 (Version), shifting the preview row. The new approach probes both collapsed and expanded-children widths, computes per-column widths summing to `containerW - 2`, and applies them as inline `<th>` widths under `table-layout: fixed` with `box-sizing: border-box`. Result: zero column shift across expand/collapse cycles AND across basic↔advanced view toggles, in both views. | `shared.js` | 2026.04.26.2 |
+| 93 | Extend Version column probe to include child-row Version cell content. Previously only the first folder's verCell was measured, missing child rows where image tags like "release-5.1.4" live. With the new probe loop measuring children's `td:nth-child(2) > *` while temporarily hoisted, `verCap` correctly accommodates the widest version string across all rows. | `shared.js` | 2026.04.26.2 |
 
----
+### Folder-Name Pill & Chevron
 
-## 2026.04.21.1 — Beta
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 89 | Fix Firefox-only folder pill border bug. Pre-existing CSS `body[data-fv3-preset] td.folder-name { height: 1px }` + `.folder-name-sub { height: 100% }` was a Chromium/WebKit table-cell stretch hack that Firefox doesn't honor, leaving the bordered pill ~20px tall and drawing through the icon and text. Replaced with a JS function `fv3SizeFolderPills()` that measures `tr.folder` row height, subtracts td vertical padding, and applies inline height. Hooked to `folderEvents` post-folders-creation, post-folder-expansion, and `window resize`. Pill now matches preview pill height in every browser. | `shared.js`, `folder-common.css` | 2026.04.26.1 |
+| 99 | Fix folder-name chevron alignment under CSS preset by re-running widthFix after preset apply. Inside `fv3LoadToggleStyle`'s success callback in [customEvents.js:197](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:197), call `window.fv3ScheduleWidthFix()` after the preset attribute is set/removed. This makes the APPLICATION column re-measure with the preset's extra pill padding/border accounted for, so the cell is wide enough for natural folder name widths plus the chevron without overflow. (Final fix after #96–#98 iteration that explored truncation/min-width approaches.) | `customEvents.js`, `folder-common.css` | 2026.04.26.7 |
+| 100 | Folder-name pill height now tracks the row fluidly during window resize and shrinks back when expand-mode chips re-fit on fewer rows. Two-part fix in [shared.js:1339](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/shared.js:1339): (1) **Clear-measure-reset** in `fv3SizeFolderPills` — `sub.style.height = ''` before measuring `td.getBoundingClientRect().height`. Without this the pill's own inline height props the cell open, the measurement returns whatever the pill was last set to, and the pill never shrinks back when chips re-fit on fewer rows (the v7 lingering-tall-row bug). (2) **ResizeObserver attached to the preview CELL** (sibling of folder-name cell), not the folder row. Preview cell height is independent of the pill, so setting pill height does not feed back into the observer — it fires only on real chip reflow. Observing the row itself (or any ancestor of the pill) caused immediate runaway growth in earlier attempts (verified failure mode, see "preview-border-basic-view-failed-attempts" memory). Verified live in Chrome MCP: 1223 samples across resize sweep 1700→1100→900→1700, gap=8 throughout (one 30ms transient frame); 200 dispatched resize events plus 30 s idle, zero growth on all 10 folders. | `shared.js` | 2026.04.26.8 |
+
+### Advanced Popup & Toggles
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 102 | Refresh advanced popup state on open and sum per-container `--memory=` limits when computing the folder RAM total — popup state was previously stale on re-open, and folder RAM total ignored explicit per-container memory caps | `docker.js` | 2026.04.29.1 |
+| 103 | Strip inline styles from switches added to the DOM after page load so the custom toggle style applies to advanced-popup autostart switches (which are added dynamically and inherited Unraid's inline `width`/`height` props that overrode the styled-switch CSS) | `customEvents.js` | 2026.04.29.2 |
+| 101 | Shrink Dashboard `All Apps`/`All VMs` toggles to match the sizes used everywhere else in the plugin (Docker/VM tabs and advanced-popup autostart switches). The dashboard rules at [dashboard.css:533](src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css:533) — added whole-cloth in the v2026.03.28 CSS Tool / Settings refactor — were ~33% larger than the matching `folder-common.css:242` rules: flat 40×22 → 30×16, rounded 44×24 → 32×18, material 36×14 → 28×10, pill 56×26 → 38×20. Inner button dimensions, top/left offsets, border-radii and the checked-position `left` end values updated to match. Also added `background: #fff` to the rounded-checked button rule for parity with `folder-common.css:294` — without it the button rendered gray (inheriting the new `#ccc` unchecked color) on the orange checked track. Single-file CSS change, no JS impact, only affects switches with the `.fv3-styled-switch` marker class added by [customEvents.js:155](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:155). | `dashboard.css` | 2026.04.30.1 |
+
+### Bug Fixes
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
 | 82 | Fix scroll/expand overflow modes inflating Docker/VM table past viewport (max-width:0 on preview td, min-width:0 on preview flex) | `folder-common.css` | 2026.04.21.1 |
-| 83 | Enrich debug export: viewport, theme, foreign plugin detection, computed preview/ct-name/updatecolumn styles, timestamp+theme in filename | `shared.js` | 2026.04.21.1 |
 | 84 | `align-content: safe center` on preview flex — stops row 1 shifting when row 2 briefly appears before `clipPreview()` runs | `folder-common.css` | 2026.04.21.1 |
+| 95 | Fix volume mappings rendering at full height with no chevron after toggling Basic↔Advanced view while a folder was collapsed. Unraid's `listview()` re-runs the readmore plugin on view toggle but skips elements that are currently hidden — child rows tucked inside `.folder-storage` (collapsed folder state) end up unwrapped, so when you later expand the folder the volumes show in full with no `readmore-js-collapsed` wrapper or chevron. Fix: in `fv3DropDownButton`, after revealing child rows, call `$readmoreEls.readmore('destroy').readmore({...})` with Unraid's canonical options (`maxHeight: 32`, chevron-down/up icons) on `.folder-${id}-element .docker_readmore`. Idempotent across multiple expand/collapse cycles. Gated to `eventPrefix === 'docker'`. | `shared.js` | 2026.04.26.3 |
+
+### Diagnostics
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 83 | Enrich debug export: viewport, theme, foreign plugin detection, computed preview/ct-name/updatecolumn styles, timestamp+theme in filename | `shared.js` | 2026.04.21.1 |
+| 86 | Add CSS diagnostics to debug export: `--fv3-*` variable values from `:root`, plugin stylesheet hrefs (with autov tokens), `.folder-name-sub`/`td.folder-name` border samples, plus async fetch of `read_css_config.php` + `list_themes.php` and Unraid version — diagnoses preset/cache/theme issues without back-and-forth | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.25.1 |
+| 87 | Remove narration comments from mobile accordion block; kept two that explain non-obvious timing (requestAnimationFrame settle, 1100ms double-cleanup for streaming plugin) | `docker.js` | 2026.04.25.1 |
 
 ---
 
