@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.04.30.1 — Beta
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 101 | Shrink Dashboard `All Apps`/`All VMs` toggles to match the sizes used everywhere else in the plugin (Docker/VM tabs and advanced-popup autostart switches). The dashboard rules at [dashboard.css:533](src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css:533) — added whole-cloth in the v2026.03.28 CSS Tool / Settings refactor — were ~33% larger than the matching `folder-common.css:242` rules: flat 40×22 → 30×16, rounded 44×24 → 32×18, material 36×14 → 28×10, pill 56×26 → 38×20. Inner button dimensions, top/left offsets, border-radii and the checked-position `left` end values updated to match. Also added `background: #fff` to the rounded-checked button rule for parity with `folder-common.css:294` — without it the button rendered gray (inheriting the new `#ccc` unchecked color) on the orange checked track. Single-file CSS change, no JS impact, only affects switches with the `.fv3-styled-switch` marker class added by [customEvents.js:155](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:155). | `dashboard.css` | 2026.04.30.1 |
+
+---
+
 ## 2026.04.26.8 — Beta
 
 | # | Change | File(s) | Version |
