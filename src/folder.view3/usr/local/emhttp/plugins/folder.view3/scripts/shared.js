@@ -807,6 +807,14 @@ window.fv3SyncPreviewHeights = (cookieName) => {
         clearTimeout(_fv3SepTimer);
         _fv3SepTimer = setTimeout(() => fv3UpdateRowSeparators(_fv3FolderMapGetter()), 300);
     }
+    // Toggling advanced view (or any other resize that triggers this path) can change
+    // the preview cell's available width, causing chips in fv3-overflow-expand mode to
+    // wrap to a 2nd line. The preview's flex-auto height won't grow past the App-cell
+    // pill's previously-pinned inline height — pill locks the row, preview can't
+    // recompute, RO on preview cell never fires (catch-22). Re-schedule pill sizing
+    // so fv3SizeFolderPills clears each pill, lets the row settle to its true natural
+    // height (driven by the now-wrapped preview), and re-pins the pill to match.
+    if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
 window.fv3ApiAvailable = null;
