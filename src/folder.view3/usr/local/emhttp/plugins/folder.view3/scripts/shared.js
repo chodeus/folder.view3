@@ -1268,8 +1268,14 @@ window.fv3InstallDockerTableWidthFix = () => {
             const verPad = parseFloat(verCs.paddingLeft || '0') + parseFloat(verCs.paddingRight || '0');
             // +12px buffer absorbs auto-layout discrepancy between folder rows (2 stacked divs)
             // and child rows (3 stacked divs) — without it Version column shifts ~7px on expand.
+            // Authoritative, not a floor: verHint is computed from scrollWidth of every
+            // version cell across all folders (line 1245-1251 above) plus cell padding plus
+            // buffer. The earlier maxCols[1] reading is the natural TH width under
+            // table-layout:auto, which inflates by ~50px when only folder rows are visible
+            // (Uptime collapsed to 0). Using verHint as the source of truth pins col 1 to
+            // its true content width regardless of folder open/closed state.
             const verHint = Math.ceil(verCap + verPad + 12);
-            if (verHint > maxCols[1]) maxCols[1] = verHint;
+            maxCols[1] = verHint;
         }
     }
 
