@@ -1271,8 +1271,16 @@ window.fv3InstallDockerTableWidthFix = () => {
         children.forEach(row => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
+            // Use visible bounding rect, not scrollWidth. The version cell can hold
+            // multiple sibling spans for status states ("up-to-date", "apply update",
+            // "force update", "latest") with only one display:block at a time. scrollWidth
+            // would aggregate hidden siblings' content widths and inflate verHint by
+            // ~40px in advanced view, widening col 1 (Version) and reopening the gap to
+            // the Network header. Filter to currently-visible children only.
             Array.from(verTd.children).forEach(el => {
-                const w = el.scrollWidth || el.getBoundingClientRect().width;
+                const cs = getComputedStyle(el);
+                if (cs.display === 'none' || cs.visibility === 'hidden') return;
+                const w = el.getBoundingClientRect().width;
                 if (w > verContentMax) verContentMax = w;
             });
         });
@@ -1282,7 +1290,9 @@ window.fv3InstallDockerTableWidthFix = () => {
     void tbl.offsetHeight;
 
     tbl.querySelectorAll('td.folder-update > *, tr:not(.folder) > td:nth-child(2) > *').forEach(el => {
-        const w = el.scrollWidth || el.getBoundingClientRect().width;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return;
+        const w = el.getBoundingClientRect().width;
         if (w > verContentMax) verContentMax = w;
     });
 
