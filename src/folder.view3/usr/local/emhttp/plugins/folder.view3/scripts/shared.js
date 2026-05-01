@@ -1128,18 +1128,37 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
         if (folder.settings.preview_row_separator) {
             $preview.addClass('fv3-has-separators');
         }
+        // checkExpand runs (rAF + RO) whenever preview size changes — initial layout,
+        // image load, advanced/basic toggle, folder expand/collapse. It does two things:
+        //   1. Toggle the .fv3-overflow-expand class based on whether chips wrap.
+        //   2. When wrapped, pin inline min-height to scrollHeight so the row grows to
+        //      fit. Without this, flex-auto-height with align-content:safe center fails
+        //      to size the container to the sum of wrapped lines (verified live: chips
+        //      need 81px scrollHeight but flex computes only 55px content area, leaving
+        //      the wrapped chip overflowing into the next folder row). When unwrapped,
+        //      clear the inline min-height so the CSS rule's --fv3-folder-preview-height
+        //      takes over again. Universal — works regardless of whether a custom CSS
+        //      preset is active.
         const checkExpand = () => {
-            if (el.classList.contains('fv3-overflow-expand')) {
-                const wrappers = el.querySelectorAll('.folder-preview-wrapper');
-                if (wrappers.length < 2) return;
-                if (wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop <= wrappers[0].offsetHeight / 2) {
-                    el.classList.remove('fv3-overflow-expand');
-                }
-            } else {
-                const wrappers = el.querySelectorAll('.folder-preview-wrapper');
-                if (wrappers.length >= 2 && wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop > wrappers[0].offsetHeight / 2) {
-                    el.classList.add('fv3-overflow-expand');
-                }
+            const wrappers = el.querySelectorAll('.folder-preview-wrapper');
+            const isWrapped = wrappers.length >= 2 &&
+                wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop > wrappers[0].offsetHeight / 2;
+            const wasExpand = el.classList.contains('fv3-overflow-expand');
+            if (isWrapped && !wasExpand) el.classList.add('fv3-overflow-expand');
+            else if (!isWrapped && wasExpand) el.classList.remove('fv3-overflow-expand');
+            if (isWrapped) {
+                // Clear-measure-reset, mirroring the pill-height-fix-v8 invariant: clear
+                // first so scrollHeight reads the natural needed height, not whatever
+                // we last pinned. Compare to current inline minHeight to avoid resetting
+                // unchanged values (would oscillate the RO).
+                const prev = el.style.minHeight;
+                el.style.minHeight = '';
+                void el.offsetHeight;
+                const needed = el.scrollHeight + 'px';
+                if (prev !== needed) el.style.minHeight = needed;
+                else el.style.minHeight = prev;
+            } else if (el.style.minHeight) {
+                el.style.minHeight = '';
             }
         };
         el._fv3CheckExpand = checkExpand;
