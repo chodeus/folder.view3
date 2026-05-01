@@ -5,9 +5,9 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.04.30.1">
-<!ENTITY md5 "5ed987674be4a8b81996d85e107e7f8c">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/claude/fix-uptime-column-folders-FoQnI/&name;.plg">
+<!ENTITY version "2026.05.01.901">
+<!ENTITY md5 "a2528c7e8f056bf871e173998c783598">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
@@ -563,7 +563,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/claude/fix-uptime-column-folders-FoQnI/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
