@@ -1356,6 +1356,33 @@ window.fv3InstallDockerTableWidthFix = () => {
         }
     }
 
+    // Clamp the Autostart column. Unraid's DockerContainers.css pins th.nine to
+    // width: 9%, which on a ~1680px table reserves ~152px — far wider than the
+    // toggle actually needs (switch-button-background ~27px + ON/OFF label ~22px).
+    // The cell's two empty wrapper divs from the switchButton plugin take whatever
+    // width the cell offers, so they don't shrink the natural read on their own.
+    // Measure the visible toggle width and clamp so freed space redistributes into
+    // the cols-2-6 flex pool (which is also the folder preview area — wider preview
+    // means fewer chip wrap rows under custom CSS presets).
+    const autostartIdx = headers.findIndex(h => h.classList && h.classList.contains('nine'));
+    if (autostartIdx >= 0 && !displayHidden[autostartIdx]) {
+        const folderRow = tbl.querySelector('tr.folder');
+        const cell = folderRow?.children[folderRow.children.length - 2];
+        let visibleNeed = 100; // fallback / floor
+        if (cell) {
+            const switchBg = cell.querySelector('.switch-button-background');
+            const labels = Array.from(cell.querySelectorAll('.switch-button-label'))
+                .filter(l => getComputedStyle(l).display !== 'none');
+            let total = 0;
+            if (switchBg) total += switchBg.getBoundingClientRect().width;
+            for (const l of labels) total += l.getBoundingClientRect().width;
+            // Floor of 100px reserves room for the "Autostart" header text (~67-70px
+            // + th padding) so it doesn't wrap or clip when the toggle is narrower.
+            if (total > 0) visibleNeed = Math.max(Math.ceil(total) + 24, 100);
+        }
+        if (maxCols[autostartIdx] > visibleNeed) maxCols[autostartIdx] = visibleNeed;
+    }
+
     const sum = maxCols.reduce((a, b) => a + b, 0);
     const widths = maxCols.map(Math.ceil);
     if (sum > targetW) {
