@@ -1273,9 +1273,55 @@ window.fv3InstallDockerTableWidthFix = () => {
         }
     }
 
-    headers.forEach((h, i) => {
-        if (h.offsetParent === null && h.getBoundingClientRect().width === 0) maxCols[i] = 0;
+    const displayHidden = headers.map(h => h.offsetParent === null && h.getBoundingClientRect().width === 0);
+    displayHidden.forEach((hidden, i) => { if (hidden) maxCols[i] = 0; });
+
+    // Trailing columns (advanced, autostart, uptime) get individual cells in folder rows
+    // — the last of which is the empty `<td></td>` placeholder for Uptime. With
+    // table-layout: auto (pre-2026.04.26.2) the browser collapsed empty columns to 0;
+    // with table-layout: fixed the column reserves space based on header text width and
+    // hoisted-child measurements, so the Uptime column stays present even when every
+    // container is inside a closed folder. Probe each visible non-folder tbody row plus
+    // each folder row's matching trailing TD for actual content; if neither side has
+    // any, zero the column so the table doesn't reserve dead space.
+    const colHasContent = headers.map(() => false);
+    Array.from(tbl.querySelectorAll('tbody > tr')).forEach(row => {
+        if (row.classList.contains('folder')) return;
+        if (row.id === 'fv3-width-hint') return;
+        if (getComputedStyle(row).display === 'none') return;
+        const cells = row.children;
+        for (let i = 0; i < cells.length && i < headers.length; i++) {
+            const cell = cells[i];
+            if (!cell) continue;
+            if (cell.children.length || cell.textContent.trim()) colHasContent[i] = true;
+        }
     });
+    // The folder row ends with [..., advanced, autostart, empty-trailing] — three
+    // individual TDs that map 1:1 to the last three columns of the table. Walk from the
+    // last TD backwards so we don't have to reason about the folder row's leading
+    // colspan cell or whether the update column was removed by `update_column` setting.
+    const folderRows = Array.from(tbl.querySelectorAll('tr.folder'));
+    if (folderRows.length) {
+        const trailingChecks = Math.min(3, folderRows[0].children.length);
+        for (let offset = 0; offset < trailingChecks; offset++) {
+            const colIdx = headers.length - 1 - offset;
+            if (colIdx < 0) break;
+            if (displayHidden[colIdx]) continue;
+            if (colHasContent[colIdx]) continue;
+            if (maxCols[colIdx] === 0) continue;
+            let folderCellHasContent = false;
+            for (const folder of folderRows) {
+                let cell = folder.lastElementChild;
+                for (let j = 0; j < offset && cell; j++) cell = cell.previousElementSibling;
+                if (!cell) continue;
+                if (cell.children.length || cell.textContent.trim()) {
+                    folderCellHasContent = true;
+                    break;
+                }
+            }
+            if (!folderCellHasContent) maxCols[colIdx] = 0;
+        }
+    }
 
     const sum = maxCols.reduce((a, b) => a + b, 0);
     const widths = maxCols.map(Math.ceil);
@@ -1304,9 +1350,18 @@ window.fv3InstallDockerTableWidthFix = () => {
     }
 
     headers.forEach((th, i) => {
-        if (maxCols[i] > 0) {
-            th.style.boxSizing = 'border-box';
-            th.style.width = widths[i] + 'px';
+        if (displayHidden[i]) return; // leave CSS-hidden columns alone
+        th.style.boxSizing = 'border-box';
+        th.style.width = widths[i] + 'px';
+        if (widths[i] === 0) {
+            // Collapse the header text too so it doesn't overflow into the next column
+            // (table cells default to overflow:visible). Matches the user-CSS pattern of
+            // `th.five { width: 0; font-size: 0; padding: 0; }` for hiding Uptime.
+            th.style.padding = '0';
+            th.style.fontSize = '0';
+        } else {
+            th.style.padding = '';
+            th.style.fontSize = '';
         }
     });
     tbl.style.tableLayout = 'fixed';
@@ -1390,6 +1445,10 @@ window.fv3SchedulePillSize = () => {
         folderEvents.addEventListener('vm-post-folders-creation', fv3SchedulePillSize);
         folderEvents.addEventListener('docker-post-folder-expansion', fv3SchedulePillSize);
         folderEvents.addEventListener('vm-post-folder-expansion', fv3SchedulePillSize);
+        // Re-run widthFix on expand/collapse so trailing columns (Uptime) can collapse
+        // to 0 when no row needs them, and grow back when an expansion adds child rows
+        // with content.
+        folderEvents.addEventListener('docker-post-folder-expansion', fv3ScheduleWidthFix);
     }
     window.addEventListener('resize', fv3SchedulePillSize);
 })();
