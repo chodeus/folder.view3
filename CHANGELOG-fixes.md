@@ -6,6 +6,33 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.02 — Stable Release
+
+Single-day stable consolidating beta builds v2026.05.01.901 through v2026.05.02.914.
+
+### Docker Table Column Lock & Layout Stability
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 104 | **Two-snapshot column-width model.** `fv3InstallDockerTableWidthFix` now computes both `widthsExpanded` (Uptime present) and `widthsCollapsed` (Uptime = 0, freed space → Volume Mappings only) once per page-load / resize / view-toggle, using the state-independent hoist loop as the only measurement source. New `fv3ApplyCachedWidths` swaps between cached snapshots on `docker-post-folder-expansion` — no re-measurement, no drift. Cols 0–5, 7, 8 are byte-stable across every folder open/close transition; only col 6 (Volume Mappings) and col 9 (Uptime) change. Eliminates the perceived "Version column shrinks" jump and fixes a real ~38px Version drift in advanced view after expand→collapse cycles that had survived through `.901`–`.908`. | `shared.js` | 2026.05.02.909 |
+| 105 | Reduce verHint buffer from `+12` to `+2`. The `+12` cushion was protecting against folder-state drift the snapshot model now prevents. Result: ~10px of horizontal space transferred from Version column to preview area. | `shared.js` | 2026.05.02.910 |
+| 106 | Drop dead `fv3-width-hint` references — the hint element was created by the trailing-collapse logic deleted in `.909`, so the cleanup line and the corresponding `id === 'fv3-width-hint'` skip in `fv3AnyNonFolderRowVisible` were orphaned. | `shared.js` | 2026.05.02.911 |
+| 107 | Fix `verHint = 0` in hoist loop. The `.908` filter excluded `visibility:hidden` status spans to skip hidden update-state siblings — but `visibility` is inherited, and the hoist loop applies `visibility:hidden` to the entire `<tr>` while measuring. Every status span inherited hidden visibility and got filtered out, leaving `verContentMax = 0` and the Version column stuck at its natural ~197px table-layout:auto width. Switched to `display:none`-only filtering inside the hoist sub-scan; `getBoundingClientRect()` returns layout width regardless of visibility. | `shared.js` | 2026.05.02.912 |
+
+### Folder-Name Pill
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 108 | Tail-call `fv3SchedulePillSize` from `fv3ApplyCachedWidths` so collapse can shrink stuck rows. `docker-post-folder-expansion` queues both `fv3SchedulePillSize` (50ms) and `fv3ScheduleApplyCachedWidths` (50ms). When pill-sizing won the race, it measured the still-narrow Volume Mappings column (chips wrapped, preview tall) and re-pinned the pill at the expanded value (e.g. 95px). When `fv3ApplyCachedWidths` then widened the column and chips unwrapped, the pill was already locked, leaving the row stuck at 103px instead of dropping back to 67px. Tail-call fires a second pass after column widths settle. Mirrors the `.905` fix for basic↔advanced toggle path. | `shared.js` | 2026.05.02.913 |
+
+### Code Hygiene
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 109 | Plugin-wide comment cleanup. Stripped explanation lines across all eight JS files (`shared.js`, `docker.js`, `vm.js`, `dashboard.js`, `folder.js`, `folderview3.js`, `csstool.js`, `include/customEvents.js`); kept only single-line section markers and architectural do-not-retry warnings (e.g. pill height invariants, `switchButton` deferred init, ajaxPrefilter rationale). Added navigational section markers throughout `shared.js` (Row separators, Preview height sync, Unraid GraphQL API, Preview mode, Docker table column-width lock, Resize / view-mode listeners) and `docker.js` (Folder rendering, Folder controls, Bulk actions, Custom actions, Context menu, SSE stats fallback, Memory unit conversion). Net: -268 / +86 lines. | all 8 JS files | 2026.05.02.914 |
+
+---
+
 ## 2026.04.30 — Stable Release
 
 Consolidates beta builds v2026.04.21.1 through v2026.04.30.1.
