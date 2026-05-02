@@ -13,6 +13,10 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.05.02
+- Uptime column now only appears as required
+- Other various fixes/cleanup from this implementation
+
 ###2026.04.30
 - Docker table column lock and layout stability fixes
 - Folder-name pill and chevron polish (Firefox border fix, CSS preset alignment, fluid resize)
