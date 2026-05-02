@@ -5,7 +5,7 @@
     let cssDefaults = {};
     let currentScope = 'global';
     let dirty = false;
-    let fv3ThemeName = null; // 'azure' | 'black' | 'gray' | 'white' | 'dark' | 'light'
+    let fv3ThemeName = null;
     window.fv3IsCssDirty = () => dirty;
     window.fv3ResetCssDirty = () => { dirty = false; loadConfig(); };
 
@@ -272,7 +272,6 @@
                 });
             }
         } else {
-            // Remove any switchButton wrappers first
             document.querySelectorAll('.switch-button-background').forEach(function(el) {
                 var input = el.parentNode.querySelector('input[type="checkbox"]');
                 if (input) {
@@ -440,7 +439,6 @@
     }
 
     function previewPresetOnSettings(presetName) {
-        // Clear all tracked vars AND all varMeta keys (covers vars set by customEvents.js on page load)
         (window._fv3AppliedVars || []).forEach(function(k) {
             document.documentElement.style.removeProperty('--' + k);
         });
@@ -449,7 +447,6 @@
         });
         window._fv3AppliedVars = [];
 
-        // Re-apply global variable overrides first
         if (cssConfig.global && typeof cssConfig.global === 'object') {
             Object.entries(cssConfig.global).forEach(function(entry) {
                 document.documentElement.style.setProperty('--' + entry[0], entry[1]);
@@ -457,7 +454,6 @@
             });
         }
 
-        // Apply preset values on top (overrides globals)
         var allPresets = presets.concat(cssConfig.custom_presets || []);
         var preset = allPresets.find(function(p) { return p.name === presetName; });
         if (preset && presetName !== 'Default') {
@@ -473,14 +469,12 @@
 
     function resolveSwatchColor(val, presetValues, fallback) {
         if (!val) return fallback;
-        // Resolve var(--fv3-*) by looking up in preset's own values
         var varMatch = val.match(/^var\(--([^,)]+)(?:,\s*([^)]+))?\)\s*$/);
         if (varMatch) {
             var varName = varMatch[1];
             var varFallback = varMatch[2] ? varMatch[2].trim() : fallback;
             return resolveSwatchColor(presetValues[varName] || varFallback, presetValues, fallback);
         }
-        // Make rgba opaque for swatch display (semi-transparent colors look washed out)
         var rgbaMatch = val.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,[\s\d.]+)?\)$/);
         if (rgbaMatch) return 'rgb(' + rgbaMatch[1] + ',' + rgbaMatch[2] + ',' + rgbaMatch[3] + ')';
         return val;
@@ -555,7 +549,6 @@
             resolveSwatchColor(pv['folder-view3-graph-mem'] || cssDefaults['folder-view3-graph-mem'], pv, themeGraphMem),
             resolveSwatchColor(pv['fv3-toggle-hover-color'] || cssDefaults['fv3-toggle-hover-color'], pv, themeAccent)
         ];
-        // Deduplicate — skip swatch if identical to a prior one
         var seen = [];
         swatchColors.forEach(function(c) {
             if (seen.indexOf(c) === -1) seen.push(c);
@@ -715,14 +708,12 @@
         }
         Object.keys(varMeta).forEach(k => document.documentElement.style.removeProperty('--' + k));
 
-        // Apply global scope variables first
         if (cssConfig.global && typeof cssConfig.global === 'object') {
             Object.entries(cssConfig.global).forEach(function(entry) {
                 document.documentElement.style.setProperty('--' + entry[0], entry[1]);
             });
         }
 
-        // Apply settings page preset (overrides globals)
         var settingsPreset = cssConfig.page_presets && cssConfig.page_presets.settings;
         _selectedPreset = settingsPreset || null;
         if (settingsPreset && settingsPreset !== 'Default') {
@@ -1178,7 +1169,6 @@
         }
     }
 
-    // Auto-check on page load if 1+ hour since last check
     function maybeAutoCheckThemes() {
         try {
             const last = parseInt(localStorage.getItem('fv3_last_theme_check')) || 0;
@@ -1187,7 +1177,6 @@
         runThemeUpdateCheck();
     }
 
-    // Schedule hourly update checks for long-lived sessions
     (function scheduleThemeUpdateChecks() {
         if (window._fv3ThemeCheckInterval) return;
         window._fv3ThemeCheckInterval = setInterval(runThemeUpdateCheck, 60 * 60 * 1000);

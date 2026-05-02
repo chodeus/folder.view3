@@ -744,6 +744,7 @@ window.fv3RunUserScript = async (act, prom) => {
     }
 };
 
+// Row separators
 window.fv3UpdateRowSeparators = (folderMap, folderId) => {
     const ids = folderId ? [folderId] : Object.keys(folderMap);
     ids.forEach(id => {
@@ -786,6 +787,7 @@ window.fv3UpdateRowSeparators = (folderMap, folderId) => {
 window._fv3FolderMapGetter = null;
 let _fv3SepTimer;
 
+// Preview height sync
 window.fv3SyncPreviewHeights = (cookieName) => {
     const isAdvanced = $.cookie(cookieName) == 'advanced';
     document.querySelectorAll('tr.folder div.folder-preview:not(.fv3-overflow-expand)').forEach(el => {
@@ -807,11 +809,13 @@ window.fv3SyncPreviewHeights = (cookieName) => {
         clearTimeout(_fv3SepTimer);
         _fv3SepTimer = setTimeout(() => fv3UpdateRowSeparators(_fv3FolderMapGetter()), 300);
     }
+    if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
+// Unraid GraphQL API detection + helpers
 window.fv3ApiAvailable = null;
 window.fv3CpuCores = null;
-window.fv3UnraidTheme = null; // 'azure' | 'black' | 'gray' | 'white' — null until detected
+window.fv3UnraidTheme = null;
 
 window.fv3DetectApi = async () => {
     if (fv3ApiAvailable !== null) return fv3ApiAvailable;
@@ -1110,6 +1114,7 @@ fv3Cleanups.push(fv3DisconnectStats);
 
 fv3DetectApi().then(() => fv3DetectTheme());
 
+// Preview mode setup (overflow: expand / overflow: scroll)
 window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     const $preview = $(`tr.folder-id-${id} div.folder-preview`);
     const el = $preview[0];
@@ -1121,17 +1126,21 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
             $preview.addClass('fv3-has-separators');
         }
         const checkExpand = () => {
-            if (el.classList.contains('fv3-overflow-expand')) {
-                const wrappers = el.querySelectorAll('.folder-preview-wrapper');
-                if (wrappers.length < 2) return;
-                if (wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop <= wrappers[0].offsetHeight / 2) {
-                    el.classList.remove('fv3-overflow-expand');
-                }
-            } else {
-                const wrappers = el.querySelectorAll('.folder-preview-wrapper');
-                if (wrappers.length >= 2 && wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop > wrappers[0].offsetHeight / 2) {
-                    el.classList.add('fv3-overflow-expand');
-                }
+            const wrappers = el.querySelectorAll('.folder-preview-wrapper');
+            const isWrapped = wrappers.length >= 2 &&
+                wrappers[wrappers.length - 1].offsetTop - wrappers[0].offsetTop > wrappers[0].offsetHeight / 2;
+            const wasExpand = el.classList.contains('fv3-overflow-expand');
+            if (isWrapped && !wasExpand) el.classList.add('fv3-overflow-expand');
+            else if (!isWrapped && wasExpand) el.classList.remove('fv3-overflow-expand');
+            if (isWrapped) {
+                const prev = el.style.minHeight;
+                el.style.minHeight = '';
+                void el.offsetHeight;
+                const needed = el.scrollHeight + 'px';
+                if (prev !== needed) el.style.minHeight = needed;
+                else el.style.minHeight = prev;
+            } else if (el.style.minHeight) {
+                el.style.minHeight = '';
             }
         };
         el._fv3CheckExpand = checkExpand;
@@ -1204,8 +1213,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     }
 };
 
-// Locks Docker table column widths via `table-layout: fixed` so the preview row
-// doesn't shift on folder expand/collapse or basic↔advanced toggle.
+// Docker table column-width lock
 window.fv3InstallDockerTableWidthFix = () => {
     const STYLE_ID = 'fv3-width-style';
     const tbl = document.querySelector('#docker_containers');
@@ -1214,7 +1222,6 @@ window.fv3InstallDockerTableWidthFix = () => {
     if (!headers.length) return;
 
     document.getElementById(STYLE_ID)?.remove();
-    document.getElementById('fv3-width-hint')?.remove();
     headers.forEach(th => { th.style.width = ''; th.style.boxSizing = ''; });
     tbl.style.tableLayout = '';
     void tbl.offsetHeight;
@@ -1224,7 +1231,7 @@ window.fv3InstallDockerTableWidthFix = () => {
     if (!firstFolder) return;
 
     const containerW = (tbl.parentElement && tbl.parentElement.clientWidth) || tbl.clientWidth;
-    const targetW = containerW - 2; // subpixel safety
+    const targetW = containerW - 2;
 
     const maxCols = headers.map(h => h.getBoundingClientRect().width);
     let verContentMax = 0;
@@ -1245,7 +1252,8 @@ window.fv3InstallDockerTableWidthFix = () => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
             Array.from(verTd.children).forEach(el => {
-                const w = el.scrollWidth || el.getBoundingClientRect().width;
+                if (getComputedStyle(el).display === 'none') return;
+                const w = el.getBoundingClientRect().width;
                 if (w > verContentMax) verContentMax = w;
             });
         });
@@ -1254,11 +1262,6 @@ window.fv3InstallDockerTableWidthFix = () => {
     });
     void tbl.offsetHeight;
 
-    tbl.querySelectorAll('td.folder-update > *, tr:not(.folder) > td:nth-child(2) > *').forEach(el => {
-        const w = el.scrollWidth || el.getBoundingClientRect().width;
-        if (w > verContentMax) verContentMax = w;
-    });
-
     let verCap = 0;
     if (verContentMax > 0) {
         verCap = Math.ceil(verContentMax + 2);
@@ -1266,50 +1269,81 @@ window.fv3InstallDockerTableWidthFix = () => {
         if (verCell) {
             const verCs = getComputedStyle(verCell);
             const verPad = parseFloat(verCs.paddingLeft || '0') + parseFloat(verCs.paddingRight || '0');
-            // +12px buffer absorbs auto-layout discrepancy between folder rows (2 stacked divs)
-            // and child rows (3 stacked divs) — without it Version column shifts ~7px on expand.
-            const verHint = Math.ceil(verCap + verPad + 12);
-            if (verHint > maxCols[1]) maxCols[1] = verHint;
+            const verHint = Math.ceil(verCap + verPad + 2);
+            maxCols[1] = verHint;
         }
     }
 
-    headers.forEach((h, i) => {
-        if (h.offsetParent === null && h.getBoundingClientRect().width === 0) maxCols[i] = 0;
-    });
+    const displayHidden = headers.map(h => h.offsetParent === null && h.getBoundingClientRect().width === 0);
+    displayHidden.forEach((hidden, i) => { if (hidden) maxCols[i] = 0; });
 
-    const sum = maxCols.reduce((a, b) => a + b, 0);
-    const widths = maxCols.map(Math.ceil);
-    if (sum > targetW) {
-        const overflow = sum - targetW;
-        let flex = 0;
-        for (let i = 2; i <= 6; i++) flex += maxCols[i];
-        if (flex > overflow) {
-            const scale = (flex - overflow) / flex;
-            for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(maxCols[i] * scale));
+    const autostartIdx = headers.findIndex(h => h.classList && h.classList.contains('nine'));
+    if (autostartIdx >= 0 && !displayHidden[autostartIdx]) {
+        const folderRow = tbl.querySelector('tr.folder');
+        const cell = folderRow?.children[folderRow.children.length - 2];
+        let visibleNeed = 100;
+        if (cell) {
+            const switchBg = cell.querySelector('.switch-button-background');
+            const labels = Array.from(cell.querySelectorAll('.switch-button-label'))
+                .filter(l => getComputedStyle(l).display !== 'none');
+            let total = 0;
+            if (switchBg) total += switchBg.getBoundingClientRect().width;
+            for (const l of labels) total += l.getBoundingClientRect().width;
+            if (total > 0) visibleNeed = Math.max(Math.ceil(total) + 24, 100);
         }
-    } else if (sum < targetW) {
-        const extra = targetW - sum;
-        let flex = 0;
-        for (let i = 2; i <= 6; i++) if (maxCols[i] > 0) flex += maxCols[i];
-        if (flex > 0) {
-            for (let i = 2; i <= 6; i++) {
-                if (maxCols[i] > 0) widths[i] = Math.floor(maxCols[i] + extra * (maxCols[i] / flex));
+        if (maxCols[autostartIdx] > visibleNeed) maxCols[autostartIdx] = visibleNeed;
+    }
+
+    const distributeSlack = (cols) => {
+        const sum = cols.reduce((a, b) => a + b, 0);
+        const widths = cols.map(Math.ceil);
+        if (sum > targetW) {
+            const overflow = sum - targetW;
+            let flex = 0;
+            for (let i = 2; i <= 6; i++) flex += cols[i];
+            if (flex > overflow) {
+                const scale = (flex - overflow) / flex;
+                for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(cols[i] * scale));
+            }
+        } else if (sum < targetW) {
+            const extra = targetW - sum;
+            let flex = 0;
+            for (let i = 2; i <= 6; i++) if (cols[i] > 0) flex += cols[i];
+            if (flex > 0) {
+                for (let i = 2; i <= 6; i++) {
+                    if (cols[i] > 0) widths[i] = Math.floor(cols[i] + extra * (cols[i] / flex));
+                }
             }
         }
-    }
-    let finalSum = widths.reduce((a, b) => a + b, 0);
-    if (finalSum !== targetW) {
-        const diff = targetW - finalSum;
-        if (widths[6] + diff >= 60) widths[6] += diff;
+        let finalSum = widths.reduce((a, b) => a + b, 0);
+        if (finalSum !== targetW) {
+            const diff = targetW - finalSum;
+            if (widths[6] + diff >= 60) widths[6] += diff;
+        }
+        return widths;
+    };
+
+    const widthsExpanded = distributeSlack(maxCols);
+
+    const uptimeIdx = headers.findIndex(h => h.classList && h.classList.contains('five'));
+    const volMappingsIdx = 6;
+    const widthsCollapsed = widthsExpanded.slice();
+    if (uptimeIdx >= 0 && !displayHidden[uptimeIdx] && widthsExpanded[uptimeIdx] > 0
+        && volMappingsIdx >= 0 && volMappingsIdx < widthsCollapsed.length) {
+        const freed = widthsCollapsed[uptimeIdx];
+        widthsCollapsed[uptimeIdx] = 0;
+        widthsCollapsed[volMappingsIdx] += freed;
     }
 
-    headers.forEach((th, i) => {
-        if (maxCols[i] > 0) {
-            th.style.boxSizing = 'border-box';
-            th.style.width = widths[i] + 'px';
-        }
-    });
-    tbl.style.tableLayout = 'fixed';
+    _fv3WidthSnapshots = {
+        expanded: widthsExpanded,
+        collapsed: widthsCollapsed,
+        displayHidden,
+        verCap,
+        headerCount: headers.length,
+    };
+
+    fv3ApplyCachedWidths();
 
     if (verCap > 0) {
         const style = document.createElement('style');
@@ -1325,7 +1359,44 @@ window.fv3InstallDockerTableWidthFix = () => {
         `;
         document.head.appendChild(style);
     }
-    fv3Debug('WidthFix', `containerW=${containerW} targetW=${targetW} verCap=${verCap} measured=`, maxCols.map(Math.ceil), 'applied=', widths);
+    fv3Debug('WidthFix', `containerW=${containerW} targetW=${targetW} verCap=${verCap} expanded=`, widthsExpanded, 'collapsed=', widthsCollapsed);
+};
+
+let _fv3WidthSnapshots = null;
+
+window.fv3AnyNonFolderRowVisible = () => {
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl) return false;
+    const rows = tbl.querySelectorAll('tbody > tr:not(.folder)');
+    for (const r of rows) {
+        if (getComputedStyle(r).display === 'none') continue;
+        return true;
+    }
+    return false;
+};
+
+window.fv3ApplyCachedWidths = () => {
+    const snap = _fv3WidthSnapshots;
+    if (!snap) return;
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl) return;
+    const headers = Array.from(tbl.querySelectorAll('thead > tr > th'));
+    if (headers.length !== snap.headerCount) return;
+    const widths = fv3AnyNonFolderRowVisible() ? snap.expanded : snap.collapsed;
+    headers.forEach((th, i) => {
+        if (snap.displayHidden[i]) return;
+        th.style.boxSizing = 'border-box';
+        th.style.width = widths[i] + 'px';
+        if (widths[i] === 0) {
+            th.style.padding = '0';
+            th.style.fontSize = '0';
+        } else {
+            th.style.padding = '';
+            th.style.fontSize = '';
+        }
+    });
+    tbl.style.tableLayout = 'fixed';
+    if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
 let _fv3WidthFixTimer;
@@ -1336,20 +1407,17 @@ window.fv3ScheduleWidthFix = () => {
     }, 150);
 };
 
-// Folder name pill height matching — replaces the height: 1px / height: 100% table-cell
-// hack that worked in Chromium/WebKit but rendered the bordered pill far too short in
-// Firefox. JS measures the row's content area height and applies it as inline style.
-//
-// Two invariants that prevent the runaway growth seen in earlier ResizeObserver attempts:
-//   1. Clear-measure-reset: clear sub.style.height before measuring, so the reading
-//      reflects the row's *natural* height (driven by the preview cell). Without this
-//      the pill's own inline height props the cell open and the measurement stays at
-//      whatever value the pill was last set to — pill never shrinks back when chips
-//      re-fit on fewer rows.
-//   2. Observe the preview CELL, not the folder row. Preview cell is a sibling of the
-//      folder-name cell, so changing the pill height does not feed back into preview
-//      cell layout — the observer only fires on real chip reflow. Observing the row
-//      itself causes immediate growth loops (verified failure mode, do not retry).
+let _fv3ApplyTimer;
+window.fv3ScheduleApplyCachedWidths = () => {
+    clearTimeout(_fv3ApplyTimer);
+    _fv3ApplyTimer = setTimeout(() => {
+        try { fv3ApplyCachedWidths(); } catch (e) { fv3DebugWarn('ApplyWidths', e.message); }
+    }, 50);
+};
+
+// Pill height invariants (do not break):
+//   1. Clear inline height before measuring; otherwise the pill props the cell open.
+//   2. Observe preview CELL not row — observing the row causes growth loops.
 const _fv3PreviewObserved = new WeakSet();
 const _fv3PreviewRO = ('ResizeObserver' in window) ? new ResizeObserver(() => {
     requestAnimationFrame(() => {
@@ -1390,10 +1458,12 @@ window.fv3SchedulePillSize = () => {
         folderEvents.addEventListener('vm-post-folders-creation', fv3SchedulePillSize);
         folderEvents.addEventListener('docker-post-folder-expansion', fv3SchedulePillSize);
         folderEvents.addEventListener('vm-post-folder-expansion', fv3SchedulePillSize);
+        folderEvents.addEventListener('docker-post-folder-expansion', fv3ScheduleApplyCachedWidths);
     }
     window.addEventListener('resize', fv3SchedulePillSize);
 })();
 
+// Resize / view-mode listeners (per-page)
 window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
     _fv3FolderMapGetter = folderMapGetter;
     let recalcTimer;

@@ -176,7 +176,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         foldersDone: foldersDone
     }}));
 
-    // default varibles
     let started = 0;
     let autostart = 0;
     let autostartStarted = 0;
@@ -192,21 +191,17 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         }
     }
 
-    // the HTML template for the folder
     const totalCols = document.querySelector("#kvm_table > thead > tr").childElementCount;
-    const colspan = totalCols - 2; // minus name + autostart columns
+    const colspan = totalCols - 2;
     const fld = `<tr parent-id="${id}" class="sortable folder-id-${id} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="vm-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${id}" onclick='addVMFolderContext("${id}")' class="hand folder-hand"><img src="${escapeHtml(folder.icon)}" class="img folder-img" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><a class="folder-appname" href="#" onclick='editFolder("${id}")'>${escapeHtml(folder.name)}</a><a class="folder-appname-id">folder-${id}</a><br><i id="load-folder-${id}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${id} folder-dropdown" onclick='dropDownButton("${id}")'><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="folder-autostart"><input class="autostart" type="checkbox" id="folder-${id}-auto" style="display:none"></td></tr>`;
 
-    // insertion at position of the folder
     if (position === 0) {
         $('#kvm_list > tr.sortable').eq(position).before($(fld));
     } else {
         $('#kvm_list > tr.sortable').eq(position - 1).next().after($(fld));
     }
 
-    // NOTE: switchButton initialization is deferred until after autostart state is known (see below).
-    // This avoids the bug where initializing with checked:false then clicking ON could
-    // fire a change event that resets VM autostart settings.
+    // switchButton init deferred until autostart state is known — early init can reset VM autostart.
 
     if(folder.settings.preview_border) {
         const preview = $(`tr.folder-id-${id} div.folder-preview`);
@@ -224,7 +219,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
     $(`tr.folder-id-${id} div.folder-preview`).addClass(`folder-preview-${folder.settings.preview}`);
 
-    // select the preview function to use
     let addPreview;
     switch (folder.settings.preview) {
         case 1:
@@ -258,21 +252,16 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             break;
     }
 
-    // new folder is needed for not altering the old containers
     let newFolder = {};
 
-    // foldersDone is and array of only ids there is the need to add the 'folder-' in front
     foldersDone = foldersDone.map(e => 'folder-'+e);
 
-    // remove the undone folders from the order, needed because they can cause an offset when grabbing the containers
     const cutomOrder = order.filter((e) => {
         return e && (foldersDone.includes(e) || !(folderRegex.test(e) && e !== `folder-${id}`));
     });
 
-    // loop over the containers
     for (const container of folder.containers) {
 
-        // get both index, tis is needed for removing from the orders later
         const index = cutomOrder.indexOf(container);
         const offsetIndex = order.indexOf(container);
 
@@ -296,21 +285,17 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                 continue;
             }
 
-            // Keep track of removed elements before the folder to set back the for loop for creating folders, otherwise folder will be skipped
             if(offsetIndex < position) {
                 remBefore += 1;
             }
 
-            // remove the containers from the order
             cutomOrder.splice(index, 1);
             order.splice(offsetIndex, 1);
 
-            // add the id to the container name
             newFolder[container] = {};
             newFolder[container].id = ct.uuid;
             newFolder[container].state = ct.state;
 
-            // grab the container by name and put it onto the storage
             let $vmTR = $('#kvm_list > tr.sortable').filter(function() {
                 return $(this).find('td.vm-name span.outer span.inner a').first().text().trim() === container;
             }).first();
@@ -332,13 +317,9 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                 addPreview(id, ct.autostart);
                 $(`tr.folder-id-${id} div.folder-preview span.inner > a`).css("width", folder.settings.preview_text_width || '');
 
-                // element to set the preview options
                 const element = $(`tr.folder-id-${id} div.folder-preview > span:last`);
 
-                //temp var
                 let sel;
-
-                //set the preview option
 
                 if (folder.settings.preview_grayscale) {
                     sel = element.children('span.hand').children('img.img');
@@ -365,7 +346,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                 }
             }
 
-            // set the status of the folder
             started += ct.state!=="shutoff" ? 1 : 0;
             autostart += ct.autostart ? 1 : 0;
             autostartStarted += (ct.autostart && ct.state!=="shutoff") ? 1 : 0;
@@ -390,13 +370,10 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         }
     }
 
-    // set the border on the last element
     $(`.folder-${id}-element:last`).css('border-bottom', '1px solid rgba(128, 128, 128, 0.3)');
 
-    // replace the old containers array with the newFolder object
     folder.containers = newFolder;
 
-    // wrap the preview with a div
     $(`tr.folder-id-${id} div.folder-preview > span`).wrap('<div class="folder-preview-wrapper"></div>');
 
     fv3SetupPreviewMode(folder, id, globalFolders);
@@ -410,8 +387,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         }
         $(`tr.folder-id-${id} div.folder-preview > div`).not(':last').after(`<div class="folder-preview-divider" style="${barStyle}"></div>`);
     }
-
-    //set tehe status of a folder
 
     if (started) {
         $(`tr.folder-id-${id} i#load-folder-${id}`).attr('class', 'fa fa-play started green-text folder-load-status');
@@ -431,7 +406,6 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
         $(`tr.folder-id-${id}`).addClass('autostart-full');
     }
 
-    // set the status
     folder.status = {};
     folder.status.started = started;
     folder.status.autostart = autostart;
@@ -754,11 +728,10 @@ const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
 let folderReq = [];
 
-// Patching the original function to make sure the containers are rendered before insering the folder
+// Unraid loadlist patch — inject folder rendering after VMs render
 window.loadlist_original = window.loadlist;
 let fv3FolderReqPending = false;
 window.loadlist = (x) => {
-    // Only create new PHP requests if previous ones have been consumed
     if (!fv3FolderReqPending) {
         fv3FolderReqPending = true;
         loadedFolder = false;
@@ -775,12 +748,11 @@ window.loadlist = (x) => {
 
 fv3SetupResizeListeners(() => globalFolders, 'vm_listview_mode');
 
-// Add the button for creating a folder
 const createFolderBtn = () => fv3CreateFolderBtn('vm', '/VMs/Folder');
 
 
+// Intercept Unraid's UserPrefs request to rewrite folder/order numbers — required for autostart and draw order.
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
-    // This is needed because unraid don't like the folder and the number are set incorrectly, this intercept the request and change the numbers to make the order appear right, this is important for the autostart and to draw the folders
     if (options.url === "/plugins/dynamix.vm.manager/include/UserPrefs.php") {
         const data = new URLSearchParams(options.data);
         const containers = data.get('names').split(';');
