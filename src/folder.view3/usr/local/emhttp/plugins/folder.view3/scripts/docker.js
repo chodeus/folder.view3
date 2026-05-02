@@ -14,6 +14,7 @@ let folderReq = [];
 /**
  * Handles the creation of all folders
  */
+// Folder rendering — orchestrate (createFolders) and per-folder build (createFolder)
 const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
     await fv3LoadFolderDefaults();
@@ -100,10 +101,8 @@ const createFolders = async () => {
             fv3Debug('createFolders', `Is a folder: id=${id}`);
             if (folders[id]) {
                 fv3Debug('createFolders', `Folder ${id} exists in folders data. Calling createFolder. Position in order: ${key}`);
-                // Pass 'order' (the live array) to createFolder.
-                // 'position' is the current 'key' (index of the folder placeholder in the 'order' array).
                 const removedCount = createFolder(folders[id], id, key, order, containersInfo, Object.keys(foldersDone));
-                key -= removedCount; // Adjust key by the number of items that were before the folder and moved into it.
+                key -= removedCount;
                 fv3Debug('createFolders', `createFolder for ${id} returned remBefore=${removedCount}. Adjusted main loop key to ${key}.`);
                 foldersDone[id] = folders[id];
                 delete folders[id];
@@ -140,7 +139,7 @@ const createFolders = async () => {
 
     fv3Debug('createFolders', 'Dispatching docker-post-folders-creation event.');
     folderEvents.dispatchEvent(new CustomEvent('docker-post-folders-creation', {detail: {
-        folders: folders, // Note: this `folders` object will be empty here if all were processed
+        folders: folders,
         order: order,
         containersInfo: containersInfo
     }}));
@@ -195,8 +194,6 @@ const createFolders = async () => {
 const createFolder = (folder, id, positionInMainOrder, liveOrderArray, containersInfo, foldersDone) => {
     fv3Debug('createFolder', id, 'Entry', { folder: JSON.parse(JSON.stringify(folder)), id, positionInMainOrder, orderInitialSnapshot: [...liveOrderArray], containersInfoKeys: Object.keys(containersInfo).length, foldersDone: [...foldersDone] });
 
-    // --- Store a snapshot of the live order array AT THE START of this folder's processing ---
-    // This snapshot is crucial for correctly calculating `remBefore` based on original positions.
     const orderSnapshotAtFolderStart = [...liveOrderArray];
     if (FV3_DEBUG && id === "2l2rPNIkZHWN5WLqAuzPaCZHSqI") {
         fv3Debug('createFolder', 'Network folder containers', JSON.parse(JSON.stringify(folder.containers)));
@@ -206,10 +203,10 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
     fv3Debug('createFolder', id, 'Dispatching docker-pre-folder-creation event.');
     folderEvents.dispatchEvent(new CustomEvent('docker-pre-folder-creation', {detail: {
-        folder: folder, // Be aware: if 'folder' object is modified by listeners, it affects this function
+        folder: folder,
         id: id,
-        position: positionInMainOrder, // Use the more descriptive name
-        order: liveOrderArray,         // Pass the live array
+        position: positionInMainOrder,
+        order: liveOrderArray,
         containersInfo: containersInfo,
         foldersDone: foldersDone
     }}));
@@ -220,13 +217,12 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     let autostartStarted = 0;
     let managed = 0;
     let managerTypes = new Set();
-    let remBefore = 0; // This will count items *from this folder* that were originally before its placeholder
+    let remBefore = 0;
     fv3Debug('createFolder', id, 'Initialized local state variables', { upToDate, started, autostart, autostartStarted, managed, remBefore });
 
     const advanced = $.cookie('docker_listview_mode') == 'advanced';
     fv3Debug('createFolder', id, `Advanced view enabled: ${advanced}`);
 
-    // --- Correctly build combinedContainers ---
     const originalContainersFromDefinition = Array.isArray(folder.containers) ? [...folder.containers] : [];
     let combinedContainers = [...originalContainersFromDefinition];
     fv3Debug('createFolder', id, 'Initial containers from definition for combinedContainers:', [...originalContainersFromDefinition]);
@@ -250,7 +246,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
     fv3Debug('createFolder', id, 'label matches', labelMatches);
     fv3Debug('createFolder', id, 'combinedContainers', [...combinedContainers]);
-    // --- End of combinedContainers build ---
 
     const colspan = document.querySelector("#docker_containers > thead > tr").childElementCount - 5;
     const fld = `<tr class="sortable folder-id-${id} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="ct-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${id}" onclick="addDockerFolderContext('${id}')" class="hand folder-hand"><img src="${escapeHtml(folder.icon)}" class="img folder-img" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><span class="appname" style="display: none;"><a>folder-${id}</a></span><a class="exec folder-appname" onclick='editFolder("${id}")'>${escapeHtml(folder.name)}</a><br><i id="load-folder-${id}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${id} folder-dropdown" onclick="dropDownButton('${id}')" ><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td class="updatecolumn folder-update"><span class="green-text folder-update-text"><i class="fa fa-check fa-fw"></i> ${$.i18n('up-to-date')}</span><div class="advanced" style="display: ${advanced ? 'block' : 'none'};"><a class="exec" onclick="forceUpdateFolder('${id}');"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i> ${$.i18n('force-update')}</span></a></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="advanced folder-advanced" ${advanced ? 'style="display: table-cell;"' : ''}><span class="cpu-folder-${id} folder-cpu">0%</span><div class="usage-disk mm folder-load"><span id="cpu-folder-${id}" class="folder-cpu-bar" style="width:0%"></span><span></span></div><br><span class="mem-folder-${id} folder-mem">0 / 0</span></td><td class="folder-autostart"><input type="checkbox" id="folder-${id}-auto" class="autostart" style="display:none"><div style="clear:left"></div></td><td></td></tr>`;
@@ -258,29 +253,21 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
     if (positionInMainOrder === 0) {
         fv3Debug('createFolder', id, 'Inserting folder HTML at position 0 (before).');
-        $('#docker_list > tr.sortable').eq(0).before($(fld)); // Always eq(0) for 'before' the first sortable
+        $('#docker_list > tr.sortable').eq(0).before($(fld));
     } else {
-        // Find the actual DOM element that is currently at positionInMainOrder - 1 in the *visible sortable list*
-        // This needs to be robust to items already having been moved.
-        // A safer bet is to find the *last processed item* or *first non-folder item* if the folder is inserted later.
-        // For now, using the direct index, assuming other sortables are still in place.
         if ($('#docker_list > tr.sortable').length > 0 && positionInMainOrder > 0) {
              fv3Debug('createFolder', id, `Inserting folder HTML at position ${positionInMainOrder} (after eq ${positionInMainOrder-1} of current sortables).`);
              $('#docker_list > tr.sortable').eq(positionInMainOrder - 1).after($(fld));
         } else if ($('#docker_list > tr.sortable').length === 0 && positionInMainOrder === 0) {
-            // If no sortables exist yet (e.g., first folder, all others are new)
              fv3Debug('createFolder', id, 'No sortables found, inserting folder at the beginning of #docker_list.');
             $('#docker_list').prepend($(fld));
         } else {
              fv3DebugWarn('createFolder', id, `Could not determine insertion point for folder. Position: ${positionInMainOrder}, Sortables count: ${$('#docker_list > tr.sortable').length}`);
-             // Fallback: append to the list if other logic fails
              $('#docker_list').append($(fld));
         }
     }
 
-    // NOTE: switchButton initialization is deferred until after autostart state is known (see below).
-    // This avoids the bug where initializing with checked:false then clicking ON could
-    // fire a change event that resets container autostart settings.
+    // switchButton init deferred until autostart state is known — early init can reset container autostart.
     fv3Debug('createFolder', id, 'switchButton init deferred until autostart state is calculated.');
 
     if(folder.settings.preview_border) {
@@ -376,9 +363,8 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     let newFolder = {};
     fv3Debug('createFolder', id, 'Initialized newFolder for processed containers.');
 
-    // Note: `cutomOrder` is not used in the critical logic below, but kept for potential other uses or debugging.
     const mappedFoldersDone = foldersDone.map(e => 'folder-'+e);
-    const cutomOrder = orderSnapshotAtFolderStart.filter((e) => { // Based on snapshot, as original code
+    const cutomOrder = orderSnapshotAtFolderStart.filter((e) => {
         return e && (mappedFoldersDone.includes(e) || !(folderRegex.test(e) && e !== `folder-${id}`));
     });
     fv3Debug('createFolder', id, '(Informational) Filtered cutomOrder based on orderSnapshotAtFolderStart:', [...cutomOrder]);
@@ -390,7 +376,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
         const ct = containersInfo[container_name_in_folder];
         if (!ct) {
             fv3DebugWarn('createFolder', id, `CRITICAL - Container info for '${container_name_in_folder}' not found in containersInfo! Skipping further processing for this container.`);
-            continue; // Skip this container if info is missing
+            continue;
         }
         const indexInCustomOrder = cutomOrder.indexOf(container_name_in_folder);
         const indexInLiveOrderArray = liveOrderArray.indexOf(container_name_in_folder);
@@ -422,7 +408,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                 position: positionInMainOrder,
                 order: liveOrderArray,
                 containersInfo: containersInfo,
-                foldersDone: foldersDone, // Original foldersDone
+                foldersDone: foldersDone,
                 container: container_name_in_folder,
                 ct: ct,
                 index: indexInCustomOrder,
@@ -499,38 +485,30 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                     theme: ['tooltipster-docker-folder'],
                     trigger: (folder.settings.context_trigger===1 ? 'hover' : 'click') || 'click',
                     zIndex: 99998,
-                    // --- START OF MODIFIED functionBefore ---
                     functionBefore: function(instance, helper) {
-                        // instance: The Tooltipster instance.
-                        // helper: An object, helper.origin is the triggering element.
-                        const origin = helper.origin; // Get the triggering element
+                        const origin = helper.origin;
 
                         fv3Debug('tooltipster', ct.shortId, 'functionBefore', instance, helper, origin);
                         fv3Debug('tooltipster', ct.shortId, 'folder settings', {...folder.settings});
 
-                        // Dispatch your custom event
                         fv3Debug('tooltipster', ct.shortId, 'Dispatching docker-tooltip-before event.');
                         folderEvents.dispatchEvent(new CustomEvent('docker-tooltip-before', {detail: {
                             folder: folder,
-                            id: id, // Folder ID
-                            containerInfo: ct, // Container info
+                            id: id,
+                            containerInfo: ct,
                             origin: origin,
-                            charts: charts, 
+                            charts: charts,
                             stats: {
-                                CPU: CPU, 
+                                CPU: CPU,
                                 MEM: MEM
                             }
                         }}));
 
                         fv3Debug('tooltipster', ct.shortId, 'functionBefore completed. Allowing tooltip to proceed by default.');
-                        // By not returning false, Tooltipster should proceed.
                     },
                     functionReady: function(instance, helper) {
-                        // instance: The Tooltipster instance
-                        // helper: An object with helper.origin (trigger element) and helper.tooltip (tooltip DOM element)
-
-                        const triggerOriginEl = helper.origin;  // This is the jQuery object of the element that triggered the tooltip
-                        const tooltipDomEl = helper.tooltip;  // This is the jQuery object of the tooltip's outermost DOM element
+                        const triggerOriginEl = helper.origin;
+                        const tooltipDomEl = helper.tooltip;
 
                         const $loadIcon = $(`i#load-${ct.info.Name}`);
                         if ($loadIcon.length) {
@@ -768,7 +746,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                     $(this).find('canvas').each(function () {
                                         const canvas = this;
                                         const container = canvas.parentElement;
-                                        // requestAnimationFrame: wait for layout to settle before resizing chart
                                         requestAnimationFrame(() => {
                                             if (!document.body.contains(canvas)) return;
                                             const chart = Chart.getChart(canvas);
@@ -776,8 +753,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                                                 chart.resize();
                                                 chart.update();
                                             }
-                                            // Clear inline height twice: once after chart settles,
-                                            // again at 1100ms to clear the streaming plugin's first tick
                                             container.style.height = 'auto';
                                             const guardId = setTimeout(() => {
                                                 if (document.body.contains(container)) {
@@ -955,13 +930,13 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             fv3Debug('createFolder', id, container_name_in_folder, 'Stored in newFolder:', JSON.parse(JSON.stringify(newFolder[container_name_in_folder])));
 
             if (!isHiddenFromPreview) {
-                const elementForPreviewOpts = $(`tr.folder-id-${id} div.folder-preview > span:last`); // Re-check if this is always correct
+                const elementForPreviewOpts = $(`tr.folder-id-${id} div.folder-preview > span:last`);
                 fv3Debug('createFolder', id, container_name_in_folder, 'Preview element for options:', elementForPreviewOpts[0]);
                 let sel_preview_opt;
                 fv3Debug('createFolder', id, container_name_in_folder, 'Applying preview options based on folder.settings:', JSON.parse(JSON.stringify(folder.settings)));
 
-                const $previewElementTarget = $(`tr.folder-id-${id} div.folder-preview > span:last`); // Or elementForPreviewOpts if you prefer
-                let $targetForAppend; // Used for WebUI, Console, Logs icons
+                const $previewElementTarget = $(`tr.folder-id-${id} div.folder-preview > span:last`);
+                let $targetForAppend;
 
                 if (folder.settings.preview_grayscale) {
                     let $imgToGrayscale = $previewElementTarget.children('span.hand').children('img.img');
@@ -990,10 +965,9 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                     }
                 }
 
-                // Determine the element to append WebUI/Console/Logs icons to
                 $targetForAppend = $previewElementTarget.children('span.inner').last();
                 if (!$targetForAppend.length) {
-                    $targetForAppend = $previewElementTarget; // Fallback to the main span if no inner span
+                    $targetForAppend = $previewElementTarget;
                 }
 
                 if (folder.settings.preview_webui && ct.info.State.WebUi) {
@@ -1038,7 +1012,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                 position: positionInMainOrder,
                 order: liveOrderArray,
                 containersInfo: containersInfo,
-                foldersDone: foldersDone, // Original foldersDone
+                foldersDone: foldersDone,
                 container: container_name_in_folder,
                 ct: ct,
                 index: indexInCustomOrder,
@@ -1179,7 +1153,7 @@ const hideAllTips = () => {
 const advancedAutostart = (el) => {
     fv3Debug('advancedAutostart', 'Entry. Event target:', el.target);
     const outbox = $(el.target).parents('.preview-outbox')[0];
-    const ctid = outbox.className.match(/preview-outbox-([a-zA-Z0-9]+)/)[1]; // Ensure ctid is captured correctly
+    const ctid = outbox.className.match(/preview-outbox-([a-zA-Z0-9]+)/)[1];
     fv3Debug('advancedAutostart', 'outbox:', outbox, `ctid: ${ctid}`);
     $(`#${ctid}`).parents('.folder-element').find('.switch-button-background').click();
     fv3Debug('advancedAutostart', `Clicked main autostart switch for container ${ctid}. Exit.`);
@@ -1217,6 +1191,7 @@ const folderAutostart = async (el) => {
     fv3Debug('folderAutostart', id, 'Exit.');
 };
 
+// Folder controls (dropdown, autostart, edit, remove, force-update)
 const dropDownButton = (id) => fv3DropDownButton('docker', globalFolders, id);
 const rmFolder = (id) => fv3RmFolder('docker', globalFolders, loadlist, id);
 const editFolder = (id) => fv3EditFolder('docker', '/Docker/Folder', id);
@@ -1254,6 +1229,7 @@ const updateFolder = (id) => {
  * @param {string} id The id of the folder
  * @param {string} action the desired action
  */
+// Bulk folder actions (start/stop/restart all containers in folder)
 const actionFolder = async (id, action) => {
     fv3Debug('actionFolder', id, action, 'Entry.');
     const folder = globalFolders[id];
@@ -1299,7 +1275,7 @@ const actionFolder = async (id, action) => {
                 pass = true;
                 break;
             default:
-                pass = false; // Should not happen with predefined actions
+                pass = false;
                 fv3DebugWarn('actionFolder', id, `Unknown action '${action}'.`);
                 break;
         }
@@ -1316,7 +1292,6 @@ const actionFolder = async (id, action) => {
 
     errors = results.filter(e => e.success !== true);
     fv3Debug('actionFolder', id, 'Filtered errors:', errors);
-    // errors = errors.map(e => e.success); // This line seems to map to boolean, original used `e.text` or similar for swal
 
     if(errors.length > 0) {
         const errorMessages = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
@@ -1341,6 +1316,7 @@ const actionFolder = async (id, action) => {
  * @param {string} id
  * @param {number} actionIndex
  */
+// Custom user-defined action runner
 const folderCustomAction = async (id, actionIndex) => {
     fv3Debug('folderCustomAction', id, 'Entry.');
     $('div.spinner.fixed').show('slow');
@@ -1355,67 +1331,66 @@ const folderCustomAction = async (id, actionIndex) => {
     fv3Debug('folderCustomAction', id, 'Action details:', {...act});
     let prom = [];
 
-    if(act.type === 0) { // Standard Docker action
+    if(act.type === 0) {
         fv3Debug('folderCustomAction', id, 'Action type 0 (Standard Docker).');
-        // act.conatiners is an array of names. Need to map to folder.containers[name]
         const cts = act.conatiners.map(name => folder.containers[name]).filter(e => e);
         fv3Debug('folderCustomAction', id, 'Targeted containers data:', [...cts]);
 
-        let ctAction = (e) => {}; // Placeholder
-        if(act.action === 0) { // Cycle
+        let ctAction = (e) => {};
+        if(act.action === 0) {
             fv3Debug('folderCustomAction', id, `Standard action type 0 (Cycle). Mode: ${act.modes}.`);
-            if(act.modes === 0) { // Start - Stop
+            if(act.modes === 0) {
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Cycle Start-Stop: State: ${e_ct.state}`);
-                    if(e_ct.state) { // if running
+                    if(e_ct.state) {
                         prom.push(fv3DockerAction('stop', e_ct.id, e_ct.fullId));
-                    } else { // if stopped
+                    } else {
                         prom.push(fv3DockerAction('start', e_ct.id, e_ct.fullId));
                     }
                 };
-            } else if(act.modes === 1) { // Pause - Resume
+            } else if(act.modes === 1) {
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Cycle Pause-Resume: State: ${e_ct.state}, Paused: ${e_ct.pause}`);
-                    if(e_ct.state) { // if running (can be paused or not)
-                        if(e_ct.pause) { // if paused
+                    if(e_ct.state) {
+                        if(e_ct.pause) {
                             prom.push(fv3DockerAction('resume', e_ct.id, e_ct.fullId));
-                        } else { // if running but not paused
+                        } else {
                             prom.push(fv3DockerAction('pause', e_ct.id, e_ct.fullId));
                         }
                     }
                 };
             }
-        } else if(act.action === 1) { // Set
+        } else if(act.action === 1) {
             fv3Debug('folderCustomAction', id, `Standard action type 1 (Set). Mode: ${act.modes}.`);
-            if(act.modes === 0) { // Start
+            if(act.modes === 0) {
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Set Start: State: ${e_ct.state}`);
                     if(!e_ct.state) { prom.push(fv3DockerAction('start', e_ct.id, e_ct.fullId)); }
                 };
-            } else if(act.modes === 1) { // Stop
+            } else if(act.modes === 1) {
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Set Stop: State: ${e_ct.state}`);
                     if(e_ct.state) { prom.push(fv3DockerAction('stop', e_ct.id, e_ct.fullId)); }
                 };
-            } else if(act.modes === 2) { // Pause
+            } else if(act.modes === 2) {
                 ctAction = (e_ct) => {
                     fv3Debug('customAction', e_ct.id, `Set Pause: State: ${e_ct.state}, Paused: ${e_ct.pause}`);
                     if(e_ct.state && !e_ct.pause) { prom.push(fv3DockerAction('pause', e_ct.id, e_ct.fullId)); }
                 };
-            } else if(act.modes === 3) { // Resume
+            } else if(act.modes === 3) {
                 ctAction = (e_ct) => {
                      fv3Debug('customAction', e_ct.id, `Set Resume: State: ${e_ct.state}, Paused: ${e_ct.pause}`);
                     if(e_ct.state && e_ct.pause) { prom.push(fv3DockerAction('resume', e_ct.id, e_ct.fullId)); }
                 };
             }
-        } else if(act.action === 2) { // Restart
+        } else if(act.action === 2) {
             fv3Debug('folderCustomAction', id, 'Standard action type 2 (Restart).');
             ctAction = (e_ct) => {
                 fv3Debug('customAction', e_ct.id, 'restart');
                 prom.push(fv3DockerAction('restart', e_ct.id, e_ct.fullId));
             };
         }
-        cts.forEach((e_ct_data) => { // e_ct_data is like {id: "...", state: true, ...}
+        cts.forEach((e_ct_data) => {
             fv3Debug('folderCustomAction', id, 'Applying defined ctAction to container data:', e_ct_data);
             ctAction(e_ct_data);
         });
@@ -1439,6 +1414,7 @@ const folderCustomAction = async (id, actionIndex) => {
  * Atach the menu when clicking the folder icon
  * @param {string} id the id of the folder
  */
+// Folder context menu
 const addDockerFolderContext = (id) => {
     fv3Debug('addDockerFolderContext', id, 'Entry.');
     let opts = [];
@@ -1473,12 +1449,12 @@ const addDockerFolderContext = (id) => {
                 return {
                     text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
-                    action: (evt) => { evt.preventDefault(); folderCustomAction(id, i); } // evt for event
+                    action: (evt) => { evt.preventDefault(); folderCustomAction(id, i); }
                 }
             })
         );
         opts.push({ divider: true });
-    } else if(!folderData.settings.default_action) { // if default actions are NOT hidden
+    } else if(!folderData.settings.default_action) {
         fv3Debug('addDockerFolderContext', id, 'Adding default action menu items.');
         opts.push({
             text: $.i18n('start'),
@@ -1561,8 +1537,8 @@ const addDockerFolderContext = (id) => {
     fv3Debug('addDockerFolderContext', id, `Context menu attached to #${id}. Exit.`);
 };
 
-// Patching the original function to make sure the containers are rendered before insering the folder
-window.listview_original = window.listview; // Ensure original is captured
+// Unraid listview/loadlist patches — inject folder rendering after containers render
+window.listview_original = window.listview;
 window.listview = () => {
     fv3Debug('Patched listview', 'Entry.');
     if (typeof window.listview_original === 'function') {
@@ -1574,7 +1550,7 @@ window.listview = () => {
 
     if (!loadedFolder) {
         fv3Debug('Patched listview', 'loadedFolder is false. Calling createFolders.');
-        createFolders(); // This is async, but original listview isn't, so this runs after.
+        createFolders();
         loadedFolder = true;
          fv3Debug('Patched listview', 'Set loadedFolder to true.');
     } else {
@@ -1583,12 +1559,11 @@ window.listview = () => {
     fv3Debug('Patched listview', 'Exit.');
 };
 
-window.loadlist_original = window.loadlist; // Ensure original is captured
+window.loadlist_original = window.loadlist;
 let fv3FolderReqPending = false;
 window.loadlist = () => {
     fv3Debug('Patched loadlist', 'Entry.');
 
-    // Only create new PHP requests if previous ones have been consumed
     if (!fv3FolderReqPending) {
         fv3FolderReqPending = true;
         loadedFolder = false;
@@ -1649,6 +1624,7 @@ let fv3WsLoad = {};
 let fv3WsDebounceTimer = null;
 let fv3UsingWebSocket = false;
 
+// SSE stats fallback (when GraphQL WebSocket isn't available)
 const fv3InitSSEStats = () => {
     fv3Debug('init', 'requesting CPU count for SSE fallback');
     $.get('/plugins/folder.view3/server/cpu.php').promise().then((data) => {
@@ -1702,13 +1678,14 @@ if (fv3ApiAvailable && fv3CpuCores) {
  * @param {string} mem the unraid memory notation
  * @returns {number} number of bytes
  */
+// Memory unit conversion
 const memToB = (mem) => {
     if (typeof mem !== 'string') {
         fv3DebugWarn('memToB', `Input is not a string: ${mem}. Returning 0.`);
         return 0;
     }
-    const unitMatch = mem.match(/[a-zA-Z]+/); // Get all letters for unit
-    const unit = unitMatch ? unitMatch[0] : 'B'; // Default to B if no letters
+    const unitMatch = mem.match(/[a-zA-Z]+/);
+    const unit = unitMatch ? unitMatch[0] : 'B';
     const numPart = parseFloat(mem.replace(unit, ''));
 
     if (isNaN(numPart)) {
@@ -1718,19 +1695,18 @@ const memToB = (mem) => {
 
     let multiplier = 1;
     switch (unit) {
-        case 'Bytes': case 'B': multiplier = 1; break; // Added Bytes
+        case 'Bytes': case 'B': multiplier = 1; break;
         case 'KiB': multiplier = 2 ** 10; break;
         case 'MiB': multiplier = 2 ** 20; break;
         case 'GiB': multiplier = 2 ** 30; break;
         case 'TiB': multiplier = 2 ** 40; break;
         case 'PiB': multiplier = 2 ** 50; break;
         case 'EiB': multiplier = 2 ** 60; break;
-        // ZiB and YiB are rare for container mem but kept for completeness
         case 'ZiB': multiplier = 2 ** 70; break;
         case 'YiB': multiplier = 2 ** 80; break;
         default:
             fv3DebugWarn('memToB', `Unknown memory unit '${unit}' in '${mem}'. Assuming Bytes.`);
-            multiplier = 1; // Default to Bytes if unit is unknown
+            multiplier = 1;
             break;
     }
     const result = numPart * multiplier;
@@ -1778,10 +1754,9 @@ document.addEventListener('click', () => {
     }, 100);
 }, true);
 
-// Add the button for creating a folder
 const createFolderBtn = () => fv3CreateFolderBtn('docker', '/Docker/Folder');
 
-// This is needed because unraid don't like the folder and the number are set incorrectly, this intercept the request and change the numbers to make the order appear right, this is important for the autostart and to draw the folders
+// Intercept Unraid's UserPrefs request to rewrite folder/order numbers — required for autostart and draw order.
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
     if (options.url === "/plugins/dynamix.docker.manager/include/UserPrefs.php") {
         fv3Debug('ajaxPrefilter', 'UserPrefs intercepted', {...options});

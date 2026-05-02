@@ -11,9 +11,9 @@ window.escapeHtml = window.escapeHtml || ((str) => {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 });
 
+// Rename detection: VMs match by UUID (persists across renames). Docker matches by image
+// (Unraid recreates containers with new IDs on rename).
 window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((folders, containersInfo, type) => {
-    // VMs: match by UUID (persists across renames)
-    // Docker: match by image (Unraid recreates containers with new IDs on rename)
     const uuidIndex = {};
     const imageIndex = {};
     for (const [name, ct] of Object.entries(containersInfo)) {
@@ -27,7 +27,6 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
             }
         }
     }
-    // Build set of all names currently claimed by any folder
     const claimedNames = new Set();
     for (const folder of Object.values(folders)) {
         if (!Array.isArray(folder.containers)) continue;
@@ -43,11 +42,9 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
             if (containersInfo[oldName]) continue;
             let newName = null;
             if (type === 'vm') {
-                // VM: match by stored UUID
                 const storedId = folder.containerIds?.[oldName];
                 if (storedId) newName = uuidIndex[storedId];
             } else {
-                // Docker: match by stored image — find unclaimed container with same image
                 const storedImage = folder.containerImages?.[oldName];
                 if (storedImage) {
                     const candidates = (imageIndex[storedImage] || []).filter(n => !claimedNames.has(n));
@@ -171,13 +168,12 @@ window.fv3LoadToggleStyle = window.fv3LoadToggleStyle || (() => {
             var path = location.pathname.toLowerCase();
             var currentPage = path.includes('/docker') ? 'docker' : path.includes('/vms') ? 'vm' : path.includes('/dashboard') ? 'dashboard' : path.includes('/folderview3') ? 'settings' : 'other';
 
-            // Clear previously applied variables
             window._fv3AppliedVars.forEach(function(k) {
                 document.documentElement.style.removeProperty('--' + k);
             });
             window._fv3AppliedVars = [];
 
-            // Apply variables in priority order: global → page-scoped → preset (highest wins)
+            // CSS variable precedence: global → page-scoped → preset (preset wins).
             var applyVars = function(vars) {
                 if (vars && typeof vars === 'object' && !Array.isArray(vars)) {
                     Object.entries(vars).forEach(function(entry) {
@@ -187,13 +183,9 @@ window.fv3LoadToggleStyle = window.fv3LoadToggleStyle || (() => {
                 }
             };
 
-            // 1. Global scope variables
             applyVars(config.global);
-
-            // 2. Page-scoped variables from variable editor (override globals)
             if (currentPage !== 'other') applyVars(config[currentPage]);
 
-            // 3. Preset page values (highest priority override)
             var pagePresets = (!config.page_presets || Array.isArray(config.page_presets)) ? {} : config.page_presets;
             var presetName = pagePresets[currentPage];
             var pageValuesMap = (!config.page_values || Array.isArray(config.page_values)) ? {} : config.page_values;

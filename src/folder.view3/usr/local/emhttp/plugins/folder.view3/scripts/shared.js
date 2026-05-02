@@ -744,6 +744,7 @@ window.fv3RunUserScript = async (act, prom) => {
     }
 };
 
+// Row separators
 window.fv3UpdateRowSeparators = (folderMap, folderId) => {
     const ids = folderId ? [folderId] : Object.keys(folderMap);
     ids.forEach(id => {
@@ -786,6 +787,7 @@ window.fv3UpdateRowSeparators = (folderMap, folderId) => {
 window._fv3FolderMapGetter = null;
 let _fv3SepTimer;
 
+// Preview height sync
 window.fv3SyncPreviewHeights = (cookieName) => {
     const isAdvanced = $.cookie(cookieName) == 'advanced';
     document.querySelectorAll('tr.folder div.folder-preview:not(.fv3-overflow-expand)').forEach(el => {
@@ -807,19 +809,13 @@ window.fv3SyncPreviewHeights = (cookieName) => {
         clearTimeout(_fv3SepTimer);
         _fv3SepTimer = setTimeout(() => fv3UpdateRowSeparators(_fv3FolderMapGetter()), 300);
     }
-    // Toggling advanced view (or any other resize that triggers this path) can change
-    // the preview cell's available width, causing chips in fv3-overflow-expand mode to
-    // wrap to a 2nd line. The preview's flex-auto height won't grow past the App-cell
-    // pill's previously-pinned inline height — pill locks the row, preview can't
-    // recompute, RO on preview cell never fires (catch-22). Re-schedule pill sizing
-    // so fv3SizeFolderPills clears each pill, lets the row settle to its true natural
-    // height (driven by the now-wrapped preview), and re-pins the pill to match.
     if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
+// Unraid GraphQL API detection + helpers
 window.fv3ApiAvailable = null;
 window.fv3CpuCores = null;
-window.fv3UnraidTheme = null; // 'azure' | 'black' | 'gray' | 'white' — null until detected
+window.fv3UnraidTheme = null;
 
 window.fv3DetectApi = async () => {
     if (fv3ApiAvailable !== null) return fv3ApiAvailable;
@@ -1118,6 +1114,7 @@ fv3Cleanups.push(fv3DisconnectStats);
 
 fv3DetectApi().then(() => fv3DetectTheme());
 
+// Preview mode setup (overflow: expand / overflow: scroll)
 window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     const $preview = $(`tr.folder-id-${id} div.folder-preview`);
     const el = $preview[0];
@@ -1128,17 +1125,6 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
         if (folder.settings.preview_row_separator) {
             $preview.addClass('fv3-has-separators');
         }
-        // checkExpand runs (rAF + RO) whenever preview size changes — initial layout,
-        // image load, advanced/basic toggle, folder expand/collapse. It does two things:
-        //   1. Toggle the .fv3-overflow-expand class based on whether chips wrap.
-        //   2. When wrapped, pin inline min-height to scrollHeight so the row grows to
-        //      fit. Without this, flex-auto-height with align-content:safe center fails
-        //      to size the container to the sum of wrapped lines (verified live: chips
-        //      need 81px scrollHeight but flex computes only 55px content area, leaving
-        //      the wrapped chip overflowing into the next folder row). When unwrapped,
-        //      clear the inline min-height so the CSS rule's --fv3-folder-preview-height
-        //      takes over again. Universal — works regardless of whether a custom CSS
-        //      preset is active.
         const checkExpand = () => {
             const wrappers = el.querySelectorAll('.folder-preview-wrapper');
             const isWrapped = wrappers.length >= 2 &&
@@ -1147,10 +1133,6 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
             if (isWrapped && !wasExpand) el.classList.add('fv3-overflow-expand');
             else if (!isWrapped && wasExpand) el.classList.remove('fv3-overflow-expand');
             if (isWrapped) {
-                // Clear-measure-reset, mirroring the pill-height-fix-v8 invariant: clear
-                // first so scrollHeight reads the natural needed height, not whatever
-                // we last pinned. Compare to current inline minHeight to avoid resetting
-                // unchanged values (would oscillate the RO).
                 const prev = el.style.minHeight;
                 el.style.minHeight = '';
                 void el.offsetHeight;
@@ -1231,8 +1213,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     }
 };
 
-// Locks Docker table column widths via `table-layout: fixed` so the preview row
-// doesn't shift on folder expand/collapse or basic↔advanced toggle.
+// Docker table column-width lock
 window.fv3InstallDockerTableWidthFix = () => {
     const STYLE_ID = 'fv3-width-style';
     const tbl = document.querySelector('#docker_containers');
@@ -1250,7 +1231,7 @@ window.fv3InstallDockerTableWidthFix = () => {
     if (!firstFolder) return;
 
     const containerW = (tbl.parentElement && tbl.parentElement.clientWidth) || tbl.clientWidth;
-    const targetW = containerW - 2; // subpixel safety
+    const targetW = containerW - 2;
 
     const maxCols = headers.map(h => h.getBoundingClientRect().width);
     let verContentMax = 0;
@@ -1270,10 +1251,6 @@ window.fv3InstallDockerTableWidthFix = () => {
         children.forEach(row => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
-            // Skip display:none (hidden status spans). Don't filter visibility:hidden —
-            // hoisted rows inherit visibility:hidden from the row TR, which would
-            // exclude every status span. getBoundingClientRect still returns the
-            // layout width for visibility:hidden, so it measures correctly.
             Array.from(verTd.children).forEach(el => {
                 if (getComputedStyle(el).display === 'none') return;
                 const w = el.getBoundingClientRect().width;
@@ -1300,8 +1277,6 @@ window.fv3InstallDockerTableWidthFix = () => {
     const displayHidden = headers.map(h => h.offsetParent === null && h.getBoundingClientRect().width === 0);
     displayHidden.forEach((hidden, i) => { if (hidden) maxCols[i] = 0; });
 
-    // Clamp Autostart to actual toggle width. Unraid pins th.nine: 9% which is much
-    // wider than the toggle needs; clamp frees that space into the cols-2-6 pool.
     const autostartIdx = headers.findIndex(h => h.classList && h.classList.contains('nine'));
     if (autostartIdx >= 0 && !displayHidden[autostartIdx]) {
         const folderRow = tbl.querySelector('tr.folder');
@@ -1421,9 +1396,6 @@ window.fv3ApplyCachedWidths = () => {
         }
     });
     tbl.style.tableLayout = 'fixed';
-    // Column widths just changed — chips may have wrapped/unwrapped, preview height may
-    // have shifted. Re-run pill sizing after layout settles so the pill matches the new
-    // row height instead of staying locked at the prior state's value.
     if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
@@ -1443,20 +1415,9 @@ window.fv3ScheduleApplyCachedWidths = () => {
     }, 50);
 };
 
-// Folder name pill height matching — replaces the height: 1px / height: 100% table-cell
-// hack that worked in Chromium/WebKit but rendered the bordered pill far too short in
-// Firefox. JS measures the row's content area height and applies it as inline style.
-//
-// Two invariants that prevent the runaway growth seen in earlier ResizeObserver attempts:
-//   1. Clear-measure-reset: clear sub.style.height before measuring, so the reading
-//      reflects the row's *natural* height (driven by the preview cell). Without this
-//      the pill's own inline height props the cell open and the measurement stays at
-//      whatever value the pill was last set to — pill never shrinks back when chips
-//      re-fit on fewer rows.
-//   2. Observe the preview CELL, not the folder row. Preview cell is a sibling of the
-//      folder-name cell, so changing the pill height does not feed back into preview
-//      cell layout — the observer only fires on real chip reflow. Observing the row
-//      itself causes immediate growth loops (verified failure mode, do not retry).
+// Pill height invariants (do not break):
+//   1. Clear inline height before measuring; otherwise the pill props the cell open.
+//   2. Observe preview CELL not row — observing the row causes growth loops.
 const _fv3PreviewObserved = new WeakSet();
 const _fv3PreviewRO = ('ResizeObserver' in window) ? new ResizeObserver(() => {
     requestAnimationFrame(() => {
@@ -1502,6 +1463,7 @@ window.fv3SchedulePillSize = () => {
     window.addEventListener('resize', fv3SchedulePillSize);
 })();
 
+// Resize / view-mode listeners (per-page)
 window.fv3SetupResizeListeners = (folderMapGetter, cookieName) => {
     _fv3FolderMapGetter = folderMapGetter;
     let recalcTimer;

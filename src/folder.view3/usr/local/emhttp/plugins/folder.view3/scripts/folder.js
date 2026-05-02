@@ -27,17 +27,11 @@ if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
     });
 }
 
-// list of element to select
 let choose = [];
-// element selected by the regex string
 let selectedRegex = [];
-// element selected manually
 let selected = [];
-// containers hidden from folder preview
 let hiddenPreview = [];
-// docker or vm?
 const type = new URLSearchParams(location.search).get('type');
-//id of the folder if present
 const folderId = new URLSearchParams(location.search).get('id');
 
 const rgbToHex = (rgb) => {
@@ -70,13 +64,10 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         });
     };
 
-    // if editing a vm hide docker related settings
     if (type !== 'docker') {
         $('[constraint*="docker"]').hide();
     }
-    // get folders
     let folders = fv3SafeParse(await $.get(`/plugins/folder.view3/server/read.php?type=${type}`).promise(), {});
-    // get the list of element docker/vm
     let typeFilter;
     if (type === 'docker') {
         typeFilter = (e) => {
@@ -100,14 +91,11 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
     choose = Object.values(fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_info.php?type=${type}`).promise(), {})).map(typeFilter);
 
-    // if editing a folder and not creating one
     if (folderId) {
-        // select the folder and delete it from the list
         const currFolder = folders[folderId];
         delete folders[folderId];
         if (!currFolder.settings) currFolder.settings = {};
 
-        // set the value of the form
         const form = $('div.canvas > form')[0];
         form.name.value = currFolder.name;
         form.icon.value = currFolder.icon;
@@ -154,7 +142,6 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         });
 
 
-        // make the ui respond to the previus changes
         updateForm();
         updateRegex(form.regex);
         updateIcon(form.icon);
@@ -185,7 +172,6 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         } catch (e) {}
     }
 
-    // "Use Global Defaults" toggle handler
     let _fv3ApplyingDefaults = false;
     window.fv3ToggleGlobalDefaults = async (checked) => {
         if (!checked) return;
@@ -233,9 +219,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     });
 
 
-    // iterate over the folders
     for (const [folderId, value] of Object.entries(folders)) {
-        // match the element to the regex
         if (value.regex) {
             try {
                 const regex = new RegExp(value.regex);
@@ -247,7 +231,6 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             } catch (e) { console.error('[FV3] Invalid regex:', value.regex, e); }
         }
 
-        // remove the containers from the order
         for (const container of value.containers) {
             const index = choose.findIndex((e) => e.Name === container);
             if (index > -1) {
@@ -260,7 +243,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
     updateList();
 
-    // Initialize toggle style AFTER checkbox states are set to avoid race condition
+    // Toggle style init must run AFTER checkbox states are set — order matters.
     try {
         const cssConfig = await (await fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })).json();
         const style = cssConfig.toggle_style || 'default';
@@ -367,23 +350,18 @@ const updateForm = () => {
  * Create the element select table
  */
 const updateList = () => {
-    // select the table
     const table = $('.sortable > tbody');
-    // empty the table
     table.empty();
 
-    // append the selected elements
     for (const el of selected) {
         const isHidden = hiddenPreview.includes(el.Name);
         table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
     }
 
-    // append the rest of the elements
     for (const el of choose) {
         table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
     }
 
-    // prepend the selected regex element
     for (const el of selectedRegex) {
         const isHidden = hiddenPreview.includes(el.Name);
         table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
@@ -391,15 +369,12 @@ const updateList = () => {
 
     $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().css('opacity', '0.5').css('cursor', 'default');
 
-    // sync hide preview toggle when included state changes
     $('table.sortable').off('change', 'input.container-switch').on('change', 'input.container-switch', function() {
         syncHidePreview($(this).closest('tr'));
     });
 
-    // stuff for the sort table
     $('.item').css('border-color', $('body').css('color'));
 
-    // cursor: move only on name content, not entire row
     $('.sortable > tbody > .item[draggable="true"] > td:first-child').wrapInner('<span style="cursor: move;"></span>');
 
     $('.sortable').on('dragover', sortTable).on('dragenter', (e) => { e.preventDefault(); });
@@ -479,7 +454,6 @@ const syncHidePreview = ($row) => {
  */
 const submitForm = async (e) => {
     const actions = $('input[name*="custom_action"]').map((i, e) => fv3SafeParse(atob($(e).val()), {})).get();
-    // this is easy, no need for a comment :)
     const folder = {
         name: e.name.value.toString(),
         icon: e.icon.value.toString(),
@@ -536,7 +510,6 @@ const submitForm = async (e) => {
         hidden_preview: [...$('input.preview-switch:checked').map((i, e) => $(e).val())],
         actions
     }
-    // send the data to the right endpoint
     if (folderId) {
         await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: folderId });
     } else {
@@ -547,7 +520,6 @@ const submitForm = async (e) => {
         await $.post('/plugins/folder.view3/server/sync_order.php', { type: type });
     }
 
-    // return to the right tab
     let loc = location.pathname.split('/');
     loc.pop();
     location.href = loc.join('/');

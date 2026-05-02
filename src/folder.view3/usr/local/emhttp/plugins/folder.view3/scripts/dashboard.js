@@ -251,7 +251,6 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
         foldersDone: foldersDone
     }}));
 
-    // default varibles
     let upToDate = true;
     let started = 0;
     let autostart = 0;
@@ -269,30 +268,23 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
     folder.containers = folder.containers.concat(order.filter(el => containersInfo[el]?.Labels['folder.view3'] === folder.name));
 
-    // the HTML template for the folder
     const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${id}" onclick='addDockerFolderContext("${id}")' class="hand docker folder-hand-docker fv3-folder-hand fv3-folder-hand-docker"><img src="${escapeHtml(folder.icon)}" class="img folder-img-docker fv3-folder-icon fv3-folder-icon-docker" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker fv3-folder-inner fv3-folder-inner-docker"><span class="folder-appname-docker fv3-folder-appname fv3-folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker fv3-folder-status-icon fv3-folder-status-icon-docker"></i><span class="state folder-state-docker fv3-folder-state fv3-folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage"></div></span><div class="folder-showcase-${id} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
-    // insertion at position of the folder
     if (position === 0) {
         $('tbody#docker_view > tr.updated > td').children().eq(position).before($(fld));
     } else {
         $('tbody#docker_view > tr.updated > td').children().eq(position - 1).after($(fld));
     }
 
-    // new folder is needed for not altering the old containers
     let newFolder = {};
 
-    // foldersDone is and array of only ids there is the need to add the 'folder-' in front
     foldersDone = foldersDone.map(e => 'folder-'+e);
 
-    // remove the undone folders from the order, needed because they can cause an offset when grabbing the containers
     const cutomOrder = order.filter((e) => {
         return e && (foldersDone.includes(e) || !(folderRegex.test(e) && e !== `folder-${id}`));
     });
 
-    // loop over the containers
     for (const container of folder.containers) {
-        // get both index, tis is needed for removing from the orders later
         const index = cutomOrder.indexOf(container);
         const offsetIndex = order.indexOf(container);
 
@@ -311,19 +303,15 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
         if (index > -1) {
 
-            // Keep track of removed elements before the folder to set back the for loop for creating folders, otherwise folder will be skipped
             if(offsetIndex < position) {
                 remBefore += 1;
             }
 
-            // remove the containers from the order
             cutomOrder.splice(index, 1);
             order.splice(offsetIndex, 1);
             const ct = containersInfo[container];
 
-            // grab the storage folder
             const element = $(`tbody#docker_view span#folder-id-${id}`).siblings('div.folder-storage');
-            // grab the container by name match (not positional index, which drifts as folders remove elements)
             const $containerEl = $('tbody#docker_view > tr.updated > td').children('span.outer').not('.folder-docker').filter(function() {
                 const innerText = $(this).find('span.inner').contents().first().text().trim();
                 return innerText === container;
@@ -350,7 +338,6 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
                 fv3Debug('dashboard', `Docker ${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
             }
 
-            // set the status of the folder
             upToDate = upToDate && !newFolder[container].update;
             started += newFolder[container].state ? 1 : 0;
             const isDockerMan = ct.info.State.manager === 'dockerman';
@@ -381,13 +368,9 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
         }
     }
 
-    // replace the old containers array with the newFolder object
     folder.containers = newFolder;
 
-    //temp var
     const sel = $(`tbody#docker_view span#folder-id-${id}`)
-    
-    //set the status of a folder
 
     if (!upToDate && managerTypes.has('dockerman')) {
         sel.next('span.inner').children().first().addClass(folder.settings?.preview_update ? 'orange-text' : 'blue-text');
@@ -417,7 +400,6 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
         $(`.folder-showcase-outer-${id}, .folder-showcase-outer-${id} > span.outer`).addClass('managed-full');
     }
 
-    // set the status
     folder.status = {};
     folder.status.upToDate = upToDate;
     folder.status.started = started;
@@ -460,7 +442,6 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
         foldersDone: foldersDone
     }}));
 
-    // default varibles
     let started = 0;
     let autostart = 0;
     let autostartStarted = 0;
@@ -473,30 +454,23 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
         } catch (e) { console.error('[FV3] Invalid regex:', folder.regex, e); }
     }
 
-    // the HTML template for the folder
     const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${id}" onclick='addVMFolderContext("${id}")' class="hand vm folder-hand-vm fv3-folder-hand fv3-folder-hand-vm"><img src="${escapeHtml(folder.icon)}" class="img folder-img-vm fv3-folder-icon fv3-folder-icon-vm" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm fv3-folder-inner fv3-folder-inner-vm"><span class="folder-appname-vm fv3-folder-appname fv3-folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm fv3-folder-status-icon fv3-folder-status-icon-vm"></i><span class="state folder-state-vm fv3-folder-state fv3-folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage" style="display:none"></div></span><div class="folder-showcase-${id} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
-    // insertion at position of the folder
     if (position === 0) {
         $('tbody#vm_view > tr.updated > td').children().eq(position).before($(fld));
     } else {
         $('tbody#vm_view > tr.updated > td').children().eq(position - 1).after($(fld));
     }
 
-    // new folder is needed for not altering the old containers
     let newFolder = {};
 
-    // foldersDone is and array of only ids there is the need to add the 'folder-' in front
     foldersDone = foldersDone.map(e => 'folder-'+e);
 
-    // remove the undone folders from the order, needed because they can cause an offset when grabbing the containers
     const cutomOrder = order.filter((e) => {
         return e && (foldersDone.includes(e) || !(folderRegex.test(e) && e !== `folder-${id}`));
     });
 
-    // loop over the containers
     for (const container of folder.containers) {
-        // get both index, tis is needed for removing from the orders later
         const index = cutomOrder.indexOf(container);
         const offsetIndex = order.indexOf(container);
 
@@ -515,22 +489,18 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
 
         if (index > -1) {
 
-            // Keep track of removed elements before the folder to set back the for loop for creating folders, otherwise folder will be skipped
             if(offsetIndex < position) {
                 remBefore += 1;
             }
 
-            // remove the containers from the order
             cutomOrder.splice(index, 1);
             order.splice(offsetIndex, 1);
 
-            // add the id to the container name 
             const ct = vmInfo[container];
             newFolder[container] = {};
             newFolder[container].id = ct.uuid;
             newFolder[container].state = ct.state;
 
-            // grab the container by name match (not positional index, which drifts as folders remove elements)
             const $vmEl = $('tbody#vm_view > tr.updated > td').children('span.outer').not('.folder-vm').filter(function() {
                 const innerText = $(this).find('span.inner').contents().first().text().trim();
                 return innerText === container;
@@ -542,8 +512,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
             if(folderDebugMode) {
                 fv3Debug('dashboard', `VM ${newFolder[container].id}(${offsetIndex}, ${index}) => ${id}`);
             }
-            
-            // set the status of the folder
+
             started += ct.state!=="shutoff" ? 1 : 0;
             autostart += ct.autostart ? 1 : 0;
             autostartStarted += (ct.autostart && ct.state!=="shutoff") ? 1 : 0;
@@ -568,11 +537,8 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
         }
     }
 
-    // replace the old containers array with the newFolder object
     folder.containers = newFolder;
 
-    
-    //set tehe status of a folder
     if (started) {
         const sel = $(`tbody#vm_view span#folder-id-${id}`);
         sel.parent().removeClass('stopped').addClass('started');
@@ -590,7 +556,6 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
         $(`.folder-showcase-outer-${id}, .folder-showcase-outer-${id} > span.outer`).addClass('autostart-full');
     }
 
-    // set the status
     folder.status = {};
     folder.status.started = started;
     folder.status.autostart = autostart;
@@ -942,7 +907,6 @@ const folderDockerCustomAction = async (id, action) => {
  * @param {string} id the id of the folder
  */
 const addDockerFolderContext = (id) => {
-    // get the expanded status, needed to swap expand/ compress
     const exp = $(`tbody#docker_view .folder-showcase-outer-${id}`).attr('expanded') === "true";
     let opts = [];
     context.settings({
@@ -1257,7 +1221,6 @@ const folderVMCustomAction = async (id, action) => {
  * @param {string} id the id of the folder
  */
 const addVMFolderContext = (id) => {
-    // get the expanded status, needed to swap expand/ compress
     const exp = $(`tbody#vm_view .folder-showcase-outer-${id}`).attr('expanded') === "true";
     let opts = [];
     context.settings({
@@ -1803,7 +1766,7 @@ const fv3FullwidthExpand = (id, type) => {
     }
 };
 
-// Patching the original function to make sure the containers are rendered before insering the folder
+// Unraid dashboard patches — inject folder rendering after containers/VMs render
 window.loadlist_original = window.loadlist;
 window.loadlist = (x) => {
     loadedFolder = false;

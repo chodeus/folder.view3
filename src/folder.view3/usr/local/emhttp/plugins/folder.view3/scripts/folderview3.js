@@ -145,16 +145,13 @@ const importDocker = () => {
     let input = document.getElementById('fv3-import-docker-file');
     input.onchange = (e) => {
 
-        // getting a hold of the file reference
         let file = e.target.files[0];
 
-        // setting up the reader
         let reader = new FileReader();
         reader.readAsText(file, 'UTF-8');
 
-        // here we tell the reader what to do when it's done reading...
         reader.onload = async (readerEvent) => {
-            let content = readerEvent.target.result; // this is the content!
+            let content = readerEvent.target.result;
             $(input).off();
             try {
                 content = JSON.parse(content);
@@ -185,16 +182,13 @@ const importVm = () => {
     let input = document.getElementById('fv3-import-vm-file');
     input.onchange = (e) => {
 
-        // getting a hold of the file reference
         let file = e.target.files[0];
 
-        // setting up the reader
         let reader = new FileReader();
         reader.readAsText(file, 'UTF-8');
 
-        // here we tell the reader what to do when it's done reading...
         reader.onload = async (readerEvent) => {
-            let content = readerEvent.target.result; // this is the content!
+            let content = readerEvent.target.result;
             $(input).off();
             try {
                 content = JSON.parse(content);
@@ -668,7 +662,6 @@ window.fv3SwitchTab = (function() {
         panels.forEach(function(p) {
             p.style.display = p.id === 'fv3-panel-' + tabName ? '' : 'none';
         });
-        // Tab state not persisted — always start on Backup
     }
 
     tabs.forEach(function(t) {
