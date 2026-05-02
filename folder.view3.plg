@@ -567,11 +567,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-<<<<<<< HEAD
         <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
-=======
-        <URL>https://raw.githubusercontent.com/&github;/claude/fix-uptime-column-folders-FoQnI/archive/&name;-&version;.txz</URL>
->>>>>>> claude/fix-uptime-column-folders-FoQnI
         <MD5>&md5;</MD5>
     </FILE>
 
