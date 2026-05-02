@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/claude/fix-uptime-column-folders-FoQnI/&name;.plg">
-<!ENTITY version "2026.05.01.908">
-<!ENTITY md5 "cff51d7babe926b2a5c544317072c9ff">
+<!ENTITY version "2026.05.02.909">
+<!ENTITY md5 "182f5c06c5322876d070b715125dd362">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">

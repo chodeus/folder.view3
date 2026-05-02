@@ -1289,13 +1289,6 @@ window.fv3InstallDockerTableWidthFix = () => {
     });
     void tbl.offsetHeight;
 
-    tbl.querySelectorAll('td.folder-update > *, tr:not(.folder) > td:nth-child(2) > *').forEach(el => {
-        const cs = getComputedStyle(el);
-        if (cs.display === 'none' || cs.visibility === 'hidden') return;
-        const w = el.getBoundingClientRect().width;
-        if (w > verContentMax) verContentMax = w;
-    });
-
     let verCap = 0;
     if (verContentMax > 0) {
         verCap = Math.ceil(verContentMax + 2);
@@ -1318,53 +1311,6 @@ window.fv3InstallDockerTableWidthFix = () => {
 
     const displayHidden = headers.map(h => h.offsetParent === null && h.getBoundingClientRect().width === 0);
     displayHidden.forEach((hidden, i) => { if (hidden) maxCols[i] = 0; });
-
-    // Trailing columns (advanced, autostart, uptime) get individual cells in folder rows
-    // — the last of which is the empty `<td></td>` placeholder for Uptime. With
-    // table-layout: auto (pre-2026.04.26.2) the browser collapsed empty columns to 0;
-    // with table-layout: fixed the column reserves space based on header text width and
-    // hoisted-child measurements, so the Uptime column stays present even when every
-    // container is inside a closed folder. Probe each visible non-folder tbody row plus
-    // each folder row's matching trailing TD for actual content; if neither side has
-    // any, zero the column so the table doesn't reserve dead space.
-    const colHasContent = headers.map(() => false);
-    Array.from(tbl.querySelectorAll('tbody > tr')).forEach(row => {
-        if (row.classList.contains('folder')) return;
-        if (row.id === 'fv3-width-hint') return;
-        if (getComputedStyle(row).display === 'none') return;
-        const cells = row.children;
-        for (let i = 0; i < cells.length && i < headers.length; i++) {
-            const cell = cells[i];
-            if (!cell) continue;
-            if (cell.children.length || cell.textContent.trim()) colHasContent[i] = true;
-        }
-    });
-    // The folder row ends with [..., advanced, autostart, empty-trailing] — three
-    // individual TDs that map 1:1 to the last three columns of the table. Walk from the
-    // last TD backwards so we don't have to reason about the folder row's leading
-    // colspan cell or whether the update column was removed by `update_column` setting.
-    const folderRows = Array.from(tbl.querySelectorAll('tr.folder'));
-    if (folderRows.length) {
-        const trailingChecks = Math.min(3, folderRows[0].children.length);
-        for (let offset = 0; offset < trailingChecks; offset++) {
-            const colIdx = headers.length - 1 - offset;
-            if (colIdx < 0) break;
-            if (displayHidden[colIdx]) continue;
-            if (colHasContent[colIdx]) continue;
-            if (maxCols[colIdx] === 0) continue;
-            let folderCellHasContent = false;
-            for (const folder of folderRows) {
-                let cell = folder.lastElementChild;
-                for (let j = 0; j < offset && cell; j++) cell = cell.previousElementSibling;
-                if (!cell) continue;
-                if (cell.children.length || cell.textContent.trim()) {
-                    folderCellHasContent = true;
-                    break;
-                }
-            }
-            if (!folderCellHasContent) maxCols[colIdx] = 0;
-        }
-    }
 
     // Clamp the Autostart column. Unraid's DockerContainers.css pins th.nine to
     // width: 9%, which on a ~1680px table reserves ~152px — far wider than the
@@ -1393,48 +1339,56 @@ window.fv3InstallDockerTableWidthFix = () => {
         if (maxCols[autostartIdx] > visibleNeed) maxCols[autostartIdx] = visibleNeed;
     }
 
-    const sum = maxCols.reduce((a, b) => a + b, 0);
-    const widths = maxCols.map(Math.ceil);
-    if (sum > targetW) {
-        const overflow = sum - targetW;
-        let flex = 0;
-        for (let i = 2; i <= 6; i++) flex += maxCols[i];
-        if (flex > overflow) {
-            const scale = (flex - overflow) / flex;
-            for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(maxCols[i] * scale));
-        }
-    } else if (sum < targetW) {
-        const extra = targetW - sum;
-        let flex = 0;
-        for (let i = 2; i <= 6; i++) if (maxCols[i] > 0) flex += maxCols[i];
-        if (flex > 0) {
-            for (let i = 2; i <= 6; i++) {
-                if (maxCols[i] > 0) widths[i] = Math.floor(maxCols[i] + extra * (maxCols[i] / flex));
+    const distributeSlack = (cols) => {
+        const sum = cols.reduce((a, b) => a + b, 0);
+        const widths = cols.map(Math.ceil);
+        if (sum > targetW) {
+            const overflow = sum - targetW;
+            let flex = 0;
+            for (let i = 2; i <= 6; i++) flex += cols[i];
+            if (flex > overflow) {
+                const scale = (flex - overflow) / flex;
+                for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(cols[i] * scale));
+            }
+        } else if (sum < targetW) {
+            const extra = targetW - sum;
+            let flex = 0;
+            for (let i = 2; i <= 6; i++) if (cols[i] > 0) flex += cols[i];
+            if (flex > 0) {
+                for (let i = 2; i <= 6; i++) {
+                    if (cols[i] > 0) widths[i] = Math.floor(cols[i] + extra * (cols[i] / flex));
+                }
             }
         }
-    }
-    let finalSum = widths.reduce((a, b) => a + b, 0);
-    if (finalSum !== targetW) {
-        const diff = targetW - finalSum;
-        if (widths[6] + diff >= 60) widths[6] += diff;
+        let finalSum = widths.reduce((a, b) => a + b, 0);
+        if (finalSum !== targetW) {
+            const diff = targetW - finalSum;
+            if (widths[6] + diff >= 60) widths[6] += diff;
+        }
+        return widths;
+    };
+
+    const widthsExpanded = distributeSlack(maxCols);
+
+    const uptimeIdx = headers.findIndex(h => h.classList && h.classList.contains('five'));
+    const volMappingsIdx = 6;
+    const widthsCollapsed = widthsExpanded.slice();
+    if (uptimeIdx >= 0 && !displayHidden[uptimeIdx] && widthsExpanded[uptimeIdx] > 0
+        && volMappingsIdx >= 0 && volMappingsIdx < widthsCollapsed.length) {
+        const freed = widthsCollapsed[uptimeIdx];
+        widthsCollapsed[uptimeIdx] = 0;
+        widthsCollapsed[volMappingsIdx] += freed;
     }
 
-    headers.forEach((th, i) => {
-        if (displayHidden[i]) return; // leave CSS-hidden columns alone
-        th.style.boxSizing = 'border-box';
-        th.style.width = widths[i] + 'px';
-        if (widths[i] === 0) {
-            // Collapse the header text too so it doesn't overflow into the next column
-            // (table cells default to overflow:visible). Matches the user-CSS pattern of
-            // `th.five { width: 0; font-size: 0; padding: 0; }` for hiding Uptime.
-            th.style.padding = '0';
-            th.style.fontSize = '0';
-        } else {
-            th.style.padding = '';
-            th.style.fontSize = '';
-        }
-    });
-    tbl.style.tableLayout = 'fixed';
+    _fv3WidthSnapshots = {
+        expanded: widthsExpanded,
+        collapsed: widthsCollapsed,
+        displayHidden,
+        verCap,
+        headerCount: headers.length,
+    };
+
+    fv3ApplyCachedWidths();
 
     if (verCap > 0) {
         const style = document.createElement('style');
@@ -1450,7 +1404,44 @@ window.fv3InstallDockerTableWidthFix = () => {
         `;
         document.head.appendChild(style);
     }
-    fv3Debug('WidthFix', `containerW=${containerW} targetW=${targetW} verCap=${verCap} measured=`, maxCols.map(Math.ceil), 'applied=', widths);
+    fv3Debug('WidthFix', `containerW=${containerW} targetW=${targetW} verCap=${verCap} expanded=`, widthsExpanded, 'collapsed=', widthsCollapsed);
+};
+
+let _fv3WidthSnapshots = null;
+
+window.fv3AnyNonFolderRowVisible = () => {
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl) return false;
+    const rows = tbl.querySelectorAll('tbody > tr:not(.folder)');
+    for (const r of rows) {
+        if (r.id === 'fv3-width-hint') continue;
+        if (getComputedStyle(r).display === 'none') continue;
+        return true;
+    }
+    return false;
+};
+
+window.fv3ApplyCachedWidths = () => {
+    const snap = _fv3WidthSnapshots;
+    if (!snap) return;
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl) return;
+    const headers = Array.from(tbl.querySelectorAll('thead > tr > th'));
+    if (headers.length !== snap.headerCount) return;
+    const widths = fv3AnyNonFolderRowVisible() ? snap.expanded : snap.collapsed;
+    headers.forEach((th, i) => {
+        if (snap.displayHidden[i]) return;
+        th.style.boxSizing = 'border-box';
+        th.style.width = widths[i] + 'px';
+        if (widths[i] === 0) {
+            th.style.padding = '0';
+            th.style.fontSize = '0';
+        } else {
+            th.style.padding = '';
+            th.style.fontSize = '';
+        }
+    });
+    tbl.style.tableLayout = 'fixed';
 };
 
 let _fv3WidthFixTimer;
@@ -1459,6 +1450,14 @@ window.fv3ScheduleWidthFix = () => {
     _fv3WidthFixTimer = setTimeout(() => {
         try { fv3InstallDockerTableWidthFix(); } catch (e) { fv3DebugWarn('WidthFix', e.message); }
     }, 150);
+};
+
+let _fv3ApplyTimer;
+window.fv3ScheduleApplyCachedWidths = () => {
+    clearTimeout(_fv3ApplyTimer);
+    _fv3ApplyTimer = setTimeout(() => {
+        try { fv3ApplyCachedWidths(); } catch (e) { fv3DebugWarn('ApplyWidths', e.message); }
+    }, 50);
 };
 
 // Folder name pill height matching — replaces the height: 1px / height: 100% table-cell
@@ -1515,10 +1514,7 @@ window.fv3SchedulePillSize = () => {
         folderEvents.addEventListener('vm-post-folders-creation', fv3SchedulePillSize);
         folderEvents.addEventListener('docker-post-folder-expansion', fv3SchedulePillSize);
         folderEvents.addEventListener('vm-post-folder-expansion', fv3SchedulePillSize);
-        // Re-run widthFix on expand/collapse so trailing columns (Uptime) can collapse
-        // to 0 when no row needs them, and grow back when an expansion adds child rows
-        // with content.
-        folderEvents.addEventListener('docker-post-folder-expansion', fv3ScheduleWidthFix);
+        folderEvents.addEventListener('docker-post-folder-expansion', fv3ScheduleApplyCachedWidths);
     }
     window.addEventListener('resize', fv3SchedulePillSize);
 })();
