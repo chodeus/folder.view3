@@ -1241,7 +1241,6 @@ window.fv3InstallDockerTableWidthFix = () => {
     if (!headers.length) return;
 
     document.getElementById(STYLE_ID)?.remove();
-    document.getElementById('fv3-width-hint')?.remove();
     headers.forEach(th => { th.style.width = ''; th.style.boxSizing = ''; });
     tbl.style.tableLayout = '';
     void tbl.offsetHeight;
@@ -1271,12 +1270,7 @@ window.fv3InstallDockerTableWidthFix = () => {
         children.forEach(row => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
-            // Use visible bounding rect, not scrollWidth. The version cell can hold
-            // multiple sibling spans for status states ("up-to-date", "apply update",
-            // "force update", "latest") with only one display:block at a time. scrollWidth
-            // would aggregate hidden siblings' content widths and inflate verHint by
-            // ~40px in advanced view, widening col 1 (Version) and reopening the gap to
-            // the Network header. Filter to currently-visible children only.
+            // Filter hidden status spans — scrollWidth aggregates them and inflates verHint.
             Array.from(verTd.children).forEach(el => {
                 const cs = getComputedStyle(el);
                 if (cs.display === 'none' || cs.visibility === 'hidden') return;
@@ -1304,19 +1298,13 @@ window.fv3InstallDockerTableWidthFix = () => {
     const displayHidden = headers.map(h => h.offsetParent === null && h.getBoundingClientRect().width === 0);
     displayHidden.forEach((hidden, i) => { if (hidden) maxCols[i] = 0; });
 
-    // Clamp the Autostart column. Unraid's DockerContainers.css pins th.nine to
-    // width: 9%, which on a ~1680px table reserves ~152px — far wider than the
-    // toggle actually needs (switch-button-background ~27px + ON/OFF label ~22px).
-    // The cell's two empty wrapper divs from the switchButton plugin take whatever
-    // width the cell offers, so they don't shrink the natural read on their own.
-    // Measure the visible toggle width and clamp so freed space redistributes into
-    // the cols-2-6 flex pool (which is also the folder preview area — wider preview
-    // means fewer chip wrap rows under custom CSS presets).
+    // Clamp Autostart to actual toggle width. Unraid pins th.nine: 9% which is much
+    // wider than the toggle needs; clamp frees that space into the cols-2-6 pool.
     const autostartIdx = headers.findIndex(h => h.classList && h.classList.contains('nine'));
     if (autostartIdx >= 0 && !displayHidden[autostartIdx]) {
         const folderRow = tbl.querySelector('tr.folder');
         const cell = folderRow?.children[folderRow.children.length - 2];
-        let visibleNeed = 100; // fallback / floor
+        let visibleNeed = 100;
         if (cell) {
             const switchBg = cell.querySelector('.switch-button-background');
             const labels = Array.from(cell.querySelectorAll('.switch-button-label'))
@@ -1324,8 +1312,6 @@ window.fv3InstallDockerTableWidthFix = () => {
             let total = 0;
             if (switchBg) total += switchBg.getBoundingClientRect().width;
             for (const l of labels) total += l.getBoundingClientRect().width;
-            // Floor of 100px reserves room for the "Autostart" header text (~67-70px
-            // + th padding) so it doesn't wrap or clip when the toggle is narrower.
             if (total > 0) visibleNeed = Math.max(Math.ceil(total) + 24, 100);
         }
         if (maxCols[autostartIdx] > visibleNeed) maxCols[autostartIdx] = visibleNeed;
@@ -1406,7 +1392,6 @@ window.fv3AnyNonFolderRowVisible = () => {
     if (!tbl) return false;
     const rows = tbl.querySelectorAll('tbody > tr:not(.folder)');
     for (const r of rows) {
-        if (r.id === 'fv3-width-hint') continue;
         if (getComputedStyle(r).display === 'none') continue;
         return true;
     }
