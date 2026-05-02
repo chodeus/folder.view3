@@ -1421,6 +1421,10 @@ window.fv3ApplyCachedWidths = () => {
         }
     });
     tbl.style.tableLayout = 'fixed';
+    // Column widths just changed — chips may have wrapped/unwrapped, preview height may
+    // have shifted. Re-run pill sizing after layout settles so the pill matches the new
+    // row height instead of staying locked at the prior state's value.
+    if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
 let _fv3WidthFixTimer;
