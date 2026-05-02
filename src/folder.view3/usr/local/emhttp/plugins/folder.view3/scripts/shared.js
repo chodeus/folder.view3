@@ -1270,10 +1270,12 @@ window.fv3InstallDockerTableWidthFix = () => {
         children.forEach(row => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
-            // Filter hidden status spans — scrollWidth aggregates them and inflates verHint.
+            // Skip display:none (hidden status spans). Don't filter visibility:hidden —
+            // hoisted rows inherit visibility:hidden from the row TR, which would
+            // exclude every status span. getBoundingClientRect still returns the
+            // layout width for visibility:hidden, so it measures correctly.
             Array.from(verTd.children).forEach(el => {
-                const cs = getComputedStyle(el);
-                if (cs.display === 'none' || cs.visibility === 'hidden') return;
+                if (getComputedStyle(el).display === 'none') return;
                 const w = el.getBoundingClientRect().width;
                 if (w > verContentMax) verContentMax = w;
             });
