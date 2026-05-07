@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.05.02">
-<!ENTITY md5 "090ab8db7d065368c7e28f80c1b80fdc">
+<!ENTITY version "2026.05.07">
+<!ENTITY md5 "be11853f0e8ec184172fd98c6d24f793">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.05.07
+- Fix folder editor failing to load when a container has no Docker labels
 
 ###2026.05.02
 - Uptime column now only appears as required

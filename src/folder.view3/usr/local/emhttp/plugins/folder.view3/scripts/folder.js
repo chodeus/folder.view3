@@ -73,9 +73,9 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         typeFilter = (e) => {
             return {
                 'Name': e.info.Name,
-                'Icon': e.info.Config.Labels['net.unraid.docker.icon'],
-                'Label': e.info.Config.Labels['folder.view3'],
-                'Image': e.info.Config.Image || ''
+                'Icon': e.info.Config?.Labels?.['net.unraid.docker.icon'],
+                'Label': e.info.Config?.Labels?.['folder.view3'],
+                'Image': e.info.Config?.Image || ''
             }
         };
     } else if (type === 'vm') {
