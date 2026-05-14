@@ -6,12 +6,17 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.05.07">
-<!ENTITY md5 "be11853f0e8ec184172fd98c6d24f793">
+<!ENTITY version "2026.05.15">
+<!ENTITY md5 "77d09b767450733c2bf5efcfbee3da0c">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.05.15
+- Fix Reset Order button (was silently broken by FV3's request interceptor)
+- Folders now sort alphabetically when no manual order is set
+- VM tab Reset Order also fixed
 
 ###2026.05.07
 - Fix folder editor failing to load when a container has no Docker labels

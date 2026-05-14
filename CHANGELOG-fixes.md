@@ -6,6 +6,34 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.15 — Stable Release
+
+Consolidates beta builds v2026.05.15.1 through v2026.05.15.3.
+
+### Reset Order restored
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 110 | Fix Unraid's Reset Order button — silently broken on every server running FV3 since the userprefs.cfg interceptor was added. FV3's `$.ajaxPrefilter` for `/plugins/dynamix.docker.manager/include/UserPrefs.php` assumed a save-order payload with `names=…`; the Reset Order POST is `{reset:true}` with no `names` field, so `data.get('names').split(';')` threw `TypeError: Cannot read properties of null (reading 'split')` synchronously inside the prefilter and the request never reached Unraid. Added early-return guard `if (!data.has('names')) return;`. Same fix applied to the VM tab prefilter. | `docker.js`, `vm.js` | 2026.05.15.1 |
+| 111 | Patch `resetSorting()` to chain a `sync_order.php` POST between Unraid's reset and `loadlist()`. Stock Unraid's reset deletes `userprefs.cfg` and natcasesorts the autostart file alphabetically. The patch restores folder-grouped autostart before the page re-renders. | `docker.js` | 2026.05.15.1 |
+
+### Render order ownership returned to Unraid
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 112 | Stop auto-writing `userprefs.cfg` on folder save. The pre-existing `syncContainerOrder()` rewrote `userprefs.cfg` after every folder edit, which permanently flipped Unraid into "manual order mode" — silently disabling Unraid's native alphabetical sort for new containers and pinning new folders to the bottom of the list. The function now only rewrites the autostart file; render order is left entirely to Unraid (alphabetical when `userprefs.cfg` is absent, manual when the user drag-reorders). | `lib.php` | 2026.05.15.1 |
+| 113 | Client-side `createFolders()` synthesizes an alphabetical-intermix order when `read_order.php` returns empty. Folder names and orphan container names sort together using natural case-insensitive comparison (`localeCompare(name, undefined, {numeric: true, sensitivity: 'base'})`), so folders slot into their natural alphabetical position alongside containers instead of stacking at the top in reverse JSON-key order. | `docker.js` | 2026.05.15.2 |
+| 114 | Add post-sort pass for alpha-synthesis mode. `createFolder()`'s `positionInMainOrder` is an index into the order array, but the DOM has containers in pure alphabetical order while the synthesized array has folders interleaved with orphans — the indices don't map cleanly. Final pass reattaches top-level sortable rows alphabetically by name after all folders are built. Manual mode is unaffected. | `docker.js` | 2026.05.15.3 |
+| 115 | Server-side `syncContainerOrder()` matches the client-side alpha-intermix when `userprefs.cfg` is absent. New items not present in `userprefs.cfg` are now prepended (not appended) so the autostart file mirrors what's on screen, including Unraid's native sort=0 "top placement" for items missing from `userprefs.cfg` in manual mode. | `lib.php` | 2026.05.15.1 |
+
+### Autostart sync expanded
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 116 | New `ajaxComplete` hook fires `sync_order.php` after Unraid's autostart-toggle (`UpdateConfig.php?action=autostart` / `action=wait`) and drag-reorder save (`UserPrefs.php` with `names=…`). Without this, Unraid resorts the autostart file (natcasesort when `userprefs.cfg` is absent, by `userprefs.cfg` position when present) and silently breaks folder grouping on every autostart toggle. The hook re-establishes folder grouping by walking the current render order and rewriting the autostart file. Combined with the Reset Order patch, the autostart file now stays in sync across all four state-changing events: folder save, Reset Order, drag-reorder, and autostart toggle. | `docker.js` | 2026.05.15.1 |
+
+---
+
 ## 2026.05.02 — Stable Release
 
 Single-day stable consolidating beta builds v2026.05.01.901 through v2026.05.02.914.

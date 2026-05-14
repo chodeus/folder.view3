@@ -755,6 +755,10 @@ const createFolderBtn = () => fv3CreateFolderBtn('vm', '/VMs/Folder');
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
     if (options.url === "/plugins/dynamix.vm.manager/include/UserPrefs.php") {
         const data = new URLSearchParams(options.data);
+        if (!data.has('names')) {
+            // Reset Order POST has only {reset:true} — nothing to renumber, let it through.
+            return;
+        }
         const containers = data.get('names').split(';');
         const folderFixRegex = /^(.*?)(?=folder-)/g;
         let num = "";

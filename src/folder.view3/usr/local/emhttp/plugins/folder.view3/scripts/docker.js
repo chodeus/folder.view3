@@ -29,6 +29,27 @@ const createFolders = async () => {
     fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
     Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
+    // When userprefs.cfg is absent (no manual reorder), synthesize an alphabetical intermix
+    // of folder names + orphan container names so folders slot into their natural position.
+    // Folder members stay in their editor-chosen order inside the folder.
+    // Variable naming is reversed from intuition: `unraidOrder` is read_order.php (raw
+    // userprefs.cfg, including folder placeholders); `order` is read_unraid_order.php
+    // (containers only, alphabetical when userprefs.cfg is absent). So the empty check
+    // goes on unraidOrder, and orphans are drawn from order.
+    if (unraidOrder.length === 0) {
+        const memberSet = new Set(
+            Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : [])
+        );
+        const orphans = order.filter(name => !memberSet.has(name));
+        const entries = [
+            ...Object.entries(folders).map(([id, f]) => ({ key: `folder-${id}`, name: f.name || `folder-${id}` })),
+            ...orphans.map(c => ({ key: c, name: c }))
+        ];
+        entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+        order = entries.map(e => e.key);
+        fv3Debug('createFolders', 'order synthesized (alpha intermix)', [...order]);
+    }
+
     fv3Debug('createFolders', 'unraidOrder', JSON.parse(JSON.stringify(unraidOrder)));
     fv3Debug('createFolders', 'order (UI)', JSON.parse(JSON.stringify(order)));
     fv3Debug('createFolders', 'folders', JSON.parse(JSON.stringify(folders)));
@@ -125,6 +146,22 @@ const createFolders = async () => {
         fv3Debug('createFolders', `Remaining folder ${id} moved to foldersDone. Updated foldersDone:`, {...foldersDone}, "Remaining folders:", {...folders});
     }
     fv3Debug('createFolders', 'Finished loop for remaining folders.');
+
+    // In alpha-synthesis mode (no manual order), the createFolder() insertion math leaves
+    // folders and orphan containers in roughly-but-not-quite alphabetical positions because
+    // positionInMainOrder is an index into our synthesized `order`, which doesn't map cleanly
+    // to DOM positions when Unraid PHP rendered containers in pure alphabetical order.
+    // Final pass: reattach top-level sortable rows in alphabetical order by name.
+    if (unraidOrder.length === 0) {
+        const $list = $('#docker_list');
+        const rows = $list.children('tr.sortable').toArray();
+        const nameOf = (el) => $(el).hasClass('folder')
+            ? $(el).find('.folder-appname').text().trim()
+            : ($(el).find('td.ct-name .appname').text().trim() || ($(el).attr('id') || '').replace('ct-', ''));
+        rows.sort((a, b) => nameOf(a).localeCompare(nameOf(b), undefined, { numeric: true, sensitivity: 'base' }));
+        rows.forEach(r => $list.append(r));
+        fv3Debug('createFolders', 'alpha-synthesis: re-sorted top-level rows', rows.map(nameOf));
+    }
 
     fv3Debug('createFolders', 'Expanding folders set to expand by default.');
     for (const [id, value] of Object.entries(foldersDone)) {
@@ -1761,6 +1798,11 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
     if (options.url === "/plugins/dynamix.docker.manager/include/UserPrefs.php") {
         fv3Debug('ajaxPrefilter', 'UserPrefs intercepted', {...options});
         const data = new URLSearchParams(options.data);
+        if (!data.has('names')) {
+            // Reset Order POST has only {reset:true} — nothing to renumber, let it through.
+            fv3Debug('ajaxPrefilter', 'no names param, passing through');
+            return;
+        }
         const containers = data.get('names').split(';');
         let num = "";
         for (let index = 0; index < containers.length - 1; index++) {
@@ -1769,6 +1811,39 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
         data.set('index', num);
         options.data = data.toString();
         fv3Debug('ajaxPrefilter', 'modified data', options.data);
+    }
+});
+
+// Patch Unraid's resetSorting to rebuild folder-grouped autostart before loadlist re-renders.
+// Stock resetSorting POSTs {reset:true} (which deletes userprefs.cfg and natcasesorts autostart),
+// then calls loadlist(). We chain a sync_order POST in between so FV3's folder-grouped autostart
+// is re-established before the page re-renders.
+if (typeof resetSorting === 'function') {
+    window.resetSorting = function() {
+        if ($.cookie('lockbutton') == null) return;
+        $('input[type=button]').prop('disabled', true);
+        $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true}, function() {
+            $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}, function() {
+                loadlist();
+            });
+        });
+    };
+    fv3Debug('init', 'resetSorting patched for folder-grouped autostart');
+}
+
+// After Unraid mutates order or autostart, re-run sync_order so autostart matches screen.
+$(document).ajaxComplete((event, jqXHR, settings) => {
+    if (!settings || !settings.url) return;
+    const url = settings.url;
+    const data = typeof settings.data === 'string' ? settings.data : '';
+    const isAutostartToggle = url.indexOf('/plugins/dynamix.docker.manager/include/UpdateConfig.php') !== -1
+        && (data.indexOf('action=autostart') !== -1 || data.indexOf('action=wait') !== -1);
+    const isOrderSave = url.indexOf('/plugins/dynamix.docker.manager/include/UserPrefs.php') !== -1
+        && jqXHR.status === 200
+        && data.indexOf('names=') !== -1;
+    if (isAutostartToggle || isOrderSave) {
+        fv3Debug('autostartSync', 'Rebuilding autostart after Unraid event', {url, sample: data.slice(0, 80)});
+        $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'});
     }
 });
 

@@ -170,17 +170,16 @@
     }
 
     function syncContainerOrder(string $type): void {
+        // Rewrites the autostart file to match what FV3 renders on screen — top-to-bottom,
+        // folder members left-to-right in their editor-chosen order. Render order itself is
+        // owned by Unraid (userprefs.cfg if user drag-reordered, alphabetical otherwise);
+        // FV3 no longer auto-writes userprefs.cfg from this function.
         global $configDir;
         fv3_debug_log("syncContainerOrder called for type: $type");
 
         if ($type !== 'docker') { return; }
 
         $prefsFile = "/boot/config/plugins/dockerMan/userprefs.cfg";
-        if (!file_exists($prefsFile)) { return; }
-
-        $currentPrefs = @parse_ini_file($prefsFile);
-        $currentOrder = $currentPrefs ? array_values($currentPrefs) : [];
-
         $foldersFile = "$configDir/docker.json";
         $folders = fv3_read_json($foldersFile);
 
@@ -188,6 +187,7 @@
         $allContainerNames = array_column($dockerClient->getDockerContainers(), 'Name');
 
         $folderContainers = [];
+        $folderNames = [];
         $assignedContainers = [];
         foreach ($folders as $folderId => $folder) {
             $members = $folder['containers'] ?? [];
@@ -203,60 +203,94 @@
                 return in_array($m, $allContainerNames) && !in_array($m, $assignedContainers);
             }));
             $folderContainers["folder-$folderId"] = $members;
+            $folderNames["folder-$folderId"] = $folder['name'] ?? "folder-$folderId";
             $assignedContainers = array_merge($assignedContainers, $members);
         }
 
-        $newOrder = [];
+        // Build $currentOrder. Source:
+        //   - userprefs.cfg if it exists (user has drag-reordered at some point)
+        //   - otherwise alphabetical intermix of folder names + orphan containers (matches the
+        //     alpha synthesis in createFolders() client-side)
+        $currentPrefs = file_exists($prefsFile) ? @parse_ini_file($prefsFile) : false;
+        if ($currentPrefs) {
+            $currentOrder = array_values($currentPrefs);
+            fv3_debug_log("syncContainerOrder: using userprefs.cfg order (" . count($currentOrder) . " entries)");
+        } else {
+            $entries = [];
+            foreach ($folderContainers as $placeholder => $_members) {
+                $entries[] = ['key' => $placeholder, 'name' => $folderNames[$placeholder]];
+            }
+            foreach ($allContainerNames as $name) {
+                if (!in_array($name, $assignedContainers)) {
+                    $entries[] = ['key' => $name, 'name' => $name];
+                }
+            }
+            usort($entries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
+            $currentOrder = array_column($entries, 'key');
+            fv3_debug_log("syncContainerOrder: synthesized alpha-intermix order (" . count($currentOrder) . " entries)");
+        }
+
+        // Walk $currentOrder, build the existing-layout portion of $newOrder.
+        $existingOrder = [];
         $seen = [];
         foreach ($currentOrder as $item) {
             if (isset($folderContainers[$item])) {
                 foreach ($folderContainers[$item] as $ct) {
-                    if (!in_array($ct, $seen)) { $newOrder[] = $ct; $seen[] = $ct; }
+                    if (!in_array($ct, $seen)) { $existingOrder[] = $ct; $seen[] = $ct; }
                 }
-                $newOrder[] = $item;
+                $existingOrder[] = $item;
                 $seen[] = $item;
             } elseif (in_array($item, $assignedContainers)) {
                 continue;
             } elseif (in_array($item, $allContainerNames) && !in_array($item, $seen)) {
-                $newOrder[] = $item;
+                $existingOrder[] = $item;
                 $seen[] = $item;
             }
         }
 
+        // New items (not in $currentOrder): mirrors Unraid's render-time placement of
+        // "missing from userprefs.cfg = sort key 0 = top of table". For FV3's folder
+        // client-side rendering, new folder placeholders also land at the top via the
+        // remaining-folders unshift loop. We prepend them in alphabetical order among
+        // themselves so the autostart file matches what's on screen.
+        $newItemEntries = [];
+        foreach ($folderContainers as $placeholder => $members) {
+            if (!in_array($placeholder, $seen)) {
+                $newItemEntries[] = ['key' => $placeholder, 'name' => $folderNames[$placeholder]];
+            }
+        }
         foreach ($allContainerNames as $name) {
             if (!in_array($name, $seen) && !in_array($name, $assignedContainers)) {
-                $newOrder[] = $name;
+                $newItemEntries[] = ['key' => $name, 'name' => $name];
             }
         }
-        foreach (array_keys($folderContainers) as $placeholder) {
-            if (!in_array($placeholder, $seen)) {
-                foreach ($folderContainers[$placeholder] as $ct) {
-                    if (!in_array($ct, $seen)) { $newOrder[] = $ct; $seen[] = $ct; }
-                }
-                $newOrder[] = $placeholder;
-                $seen[] = $placeholder;
+        usort($newItemEntries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
+
+        $newItemsExpanded = [];
+        foreach ($newItemEntries as $entry) {
+            $key = $entry['key'];
+            if (isset($folderContainers[$key])) {
+                foreach ($folderContainers[$key] as $ct) { $newItemsExpanded[] = $ct; }
+                $newItemsExpanded[] = $key;
+            } else {
+                $newItemsExpanded[] = $key;
             }
         }
 
-        $ini = "";
-        foreach ($newOrder as $i => $name) {
-            $ini .= ($i + 1) . '="' . $name . '"' . "\n";
-        }
-        file_put_contents($prefsFile, $ini);
-        fv3_debug_log("syncContainerOrder: wrote userprefs.cfg with " . count($newOrder) . " entries");
+        $newOrder = array_merge($newItemsExpanded, $existingOrder);
+        fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . count($newItemsExpanded) . " new prepended)");
 
-        // Reorder autostart file to match new container order
+        // Rewrite autostart file in $newOrder sequence. userprefs.cfg is NOT touched —
+        // Unraid owns it, and writes it only when the user explicitly drag-reorders.
         $dockerManPaths = @parse_ini_file('/boot/config/plugins/dockerMan/dockerMan.cfg') ?: [];
         $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
         if (file_exists($autoStartFile)) {
             $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-            // Build name→line map to preserve delay values (format: "name" or "name delay")
             $autoStartMap = [];
             foreach ($autoStartLines as $line) {
                 $parts = explode(' ', $line, 2);
                 $autoStartMap[$parts[0]] = $line;
             }
-            // Remove stale entries (containers that no longer exist)
             foreach ($autoStartMap as $name => $line) {
                 if (!in_array($name, $allContainerNames)) {
                     fv3_debug_log("syncContainerOrder: removing stale autostart entry '$name' (container no longer exists)");
@@ -264,7 +298,6 @@
                 }
             }
 
-            // Rebuild autostart file in $newOrder sequence, only for containers already in autostart
             $newAutoStart = [];
             foreach ($newOrder as $name) {
                 if (isset($autoStartMap[$name])) {
@@ -272,7 +305,6 @@
                     unset($autoStartMap[$name]);
                 }
             }
-            // Append any autostart containers not in $newOrder (shouldn't happen, but safety net)
             foreach ($autoStartMap as $line) {
                 $newAutoStart[] = $line;
             }
