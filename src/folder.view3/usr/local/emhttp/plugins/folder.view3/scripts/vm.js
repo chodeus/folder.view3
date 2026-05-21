@@ -218,6 +218,11 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     }
 
     $(`tr.folder-id-${id} div.folder-preview`).addClass(`folder-preview-${folder.settings.preview}`);
+    if (folder.settings.preview === 2 && folder.settings.preview_status && folder.settings.preview_status !== 'none') {
+        $(`tr.folder-id-${id}`).attr('data-fv3-preview-status', folder.settings.preview_status);
+    } else {
+        $(`tr.folder-id-${id}`).removeAttr('data-fv3-preview-status');
+    }
 
     let addPreview;
     switch (folder.settings.preview) {
@@ -343,6 +348,20 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                         sel = element;
                     }
                     sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                }
+
+                const isVmRunning = ct.state !== 'shutoff';
+                element.attr('data-fv3-state', isVmRunning ? 'running' : 'stopped');
+                if (folder.settings.preview === 2) {
+                    const fv3StatusIconCls = isVmRunning
+                        ? 'fa fa-play started green-text fv3-status-icon'
+                        : 'fa fa-square stopped red-text fv3-status-icon';
+                    let target = element.children('span.inner').last();
+                    if (!target.length) target = element;
+                    if (target.length) {
+                        target.append('<br class="fv3-status-line">');
+                        target.append(`<i class="${fv3StatusIconCls}" aria-hidden="true"></i>`);
+                    }
                 }
             }
 

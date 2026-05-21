@@ -393,8 +393,12 @@
             'dashboard_vm_expand_toggle'     => ['yes', 'no'],
             'dashboard_vm_greyscale'         => ['yes', 'no'],
             'dashboard_vm_folder_label'      => ['yes', 'no'],
+            'dashboard_context'              => ['0', '1', '2'],
+            'dashboard_context_trigger'      => ['0', '1'],
+            'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
             'default_preview'          => ['0', '1', '2', '3', '4'],
             'default_preview_hover'    => ['yes', 'no'],
+            'default_preview_status'   => ['none', 'symbol', 'grayscale'],
             'default_preview_grayscale'=> ['yes', 'no'],
             'default_preview_webui'    => ['yes', 'no'],
             'default_preview_logs'     => ['yes', 'no'],
@@ -409,7 +413,7 @@
             'default_context_graph'    => ['0', '1', '2', '3', '4'],
             'default_update_column'    => ['yes', 'no']
         ];
-        $freeformUpdate = ['default_context_graph_time'];
+        $freeformUpdate = ['default_context_graph_time', 'dashboard_context_graph_time'];
         if (in_array($key, $freeformUpdate, true)) {
             $value = preg_replace('/[^0-9]/', '', $value);
             if ($value === '') { http_response_code(400); exit; }
@@ -445,8 +449,12 @@
             'dashboard_vm_expand_toggle'     => ['yes', 'no'],
             'dashboard_vm_greyscale'         => ['yes', 'no'],
             'dashboard_vm_folder_label'      => ['yes', 'no'],
+            'dashboard_context'              => ['0', '1', '2'],
+            'dashboard_context_trigger'      => ['0', '1'],
+            'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
             'default_preview'          => ['0', '1', '2', '3', '4'],
             'default_preview_hover'    => ['yes', 'no'],
+            'default_preview_status'   => ['none', 'symbol', 'grayscale'],
             'default_preview_grayscale'=> ['yes', 'no'],
             'default_preview_webui'    => ['yes', 'no'],
             'default_preview_logs'     => ['yes', 'no'],
@@ -461,7 +469,7 @@
             'default_context_graph'    => ['0', '1', '2', '3', '4'],
             'default_update_column'    => ['yes', 'no']
         ];
-        $freeform = ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width', 'default_context_graph_time'];
+        $freeform = ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width', 'default_context_graph_time', 'dashboard_context_graph_time'];
         $path = "$configDir/settings.json";
         $fp = fopen($path, 'c+');
         if (!$fp) { http_response_code(500); exit; }

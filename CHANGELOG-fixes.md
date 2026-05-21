@@ -6,6 +6,174 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.21.13 — Beta hotfix
+
+### Popup background actually theme-aware
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 146 | v.12 used `hsl(var(--background, 0 0% 11%))` thinking `--background` was Unraid's theme background variable. It isn't — `--background` is hardcoded to `0 0% 3.9%` on both light and dark themes (not theme-aware). The ACTUAL theme-aware variable is `--background-color` (with hyphen), defined in `default-base.css` as the `body { background-color: ... }` source. On light themes it's `#f2f2f2`, on dark themes it's `#1d1b1b`-ish. Switched popup background to `var(--background-color, rgb(29, 27, 27))`. Light themes now get a light popup, dark themes a dark popup. The 1px border + box-shadow keep it visually distinct from the page. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.13 |
+
+---
+
+## 2026.05.21.12 — Beta hotfix
+
+### Popup transparent (regression from v.11)
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 145 | v.11 used `background-color: hsla(var(--background, 0 0% 11%), 1)` to make the popup opaque. That syntax is invalid CSS — `hsla()` expects either all-comma (`hsla(H, S%, L%, A)`) or modern slash separator inside `hsl()` (`hsl(H S% L% / A)`). Mixing space-separated HSL components with a comma-separated alpha produced an invalid color, browsers fell back to `rgba(0,0,0,0)` (transparent), and the popup looked transparent again. Switched to `hsl(var(--background, 0 0% 11%))` (no alpha needed since we want fully opaque). Verified `computedBg: rgb(10, 10, 10)` after fix. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.12 |
+
+---
+
+## 2026.05.21.11 — Beta review fixes
+
+### Popup bleed-through
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 138 | `.preview-outbox` had `background-color: inherit`, which after v.10's `.tooltipster-base` transparency change inherited transparency all the way up to body. Page content showed through the popup. Replaced with `hsla(var(--background, 0 0% 11%), 1)` (theme-aware via Unraid's HSL background variable, opaque fallback for older themes) + a soft box-shadow for elevation and a subtle 1px border. Applied to both docker.css and dashboard.css for consistency. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.11 |
+
+### Review-found issues (independent code review pass)
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 139 | C1: CPU% wrong on servers without GraphQL API. dashboard.js was passing `cpus: window.fv3CpuCores || 1`. `fv3CpuCores` only gets set by the GraphQL probe in shared.js; on Unraid <7.2 or with API disabled it stays null, so SSE-path `cpuVal / cpus` rendered CPU as `cores× actual`. Added `$.get('/plugins/folder.view3/server/cpu.php')` fetch inside `fv3InitDashboardStats()` populating `dashboardCpus` as fallback. | `scripts/dashboard.js` | 2026.05.21.11 |
+| 140 | C2: Dropped non-functional Default Preview context option. v.5 added a 3-state select but `dashboard.js` only branched on `=== 2`, so value `1` silently did nothing while help text claimed it would show basic info. Reduced to 2 options: `value="0"` Default (Unraid native menu) and `value="2"` Advanced (FV3 popup). Allowlist keeps `[0,1,2]` for forward compat. | `FolderView3.page`, `langs/*.json` | 2026.05.21.11 |
+| 141 | H2: escapeHtml on Docker icon label. `<img src="${ct.Labels['net.unraid.docker.icon']}">` wrapped in escapeHtml. Not exploitable on Unraid today, consistent with rest of popup. | `scripts/advanced-preview.js` | 2026.05.21.11 |
+| 142 | H3: escapeHtml on port mappings and volume mounts. `e.PrivateIP`, `e.PublicIP`, `e.PrivatePort`, `e.PublicPort`, `e.Type.toUpperCase()`, `e.Destination`, `e.Source` all wrapped in escapeHtml. Defense in depth. | `scripts/advanced-preview.js` | 2026.05.21.11 |
+| 143 | H4: Tooltipster availability guard. Added `if (!$.fn.tooltipster) return;` at the top of `fv3AttachAdvancedPreview`. Cheap insurance against future Unraid changes. | `scripts/advanced-preview.js` | 2026.05.21.11 |
+| 144 | H7: Graph time input validation. Added `min="5" max="600" step="5"` to all three `context_graph_time` inputs (per-folder + Folder Defaults + Dashboard). | `Folder.page`, `FolderView3.page` | 2026.05.21.11 |
+
+---
+
+## 2026.05.21.10 — Beta hotfix
+
+### Tooltip backdrop on Docker tab
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 137 | v.9 added the `.tooltipster-base { background: transparent; }` override to dashboard.css only — the symmetric edit to docker.css failed silently (Edit tool error from skipping the Read step). v.10 applies the same override to docker.css so the Docker tab also drops the black backdrop. | `styles/docker.css` | 2026.05.21.10 |
+
+---
+
+## 2026.05.21.9 — Beta hotfix
+
+### Graph colors + tooltip backdrop
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 135 | Load `folder-common.css` on Dashboard.page (previously only Docker.page / VMs.page / Folder.page loaded it — Dashboard was an oversight). This restores the shared CSS variables the popup styles reference: `--folder-view3-graph-cpu` / `--folder-view3-graph-mem` (the Chart.js line colors were resolving to empty string and falling back to Chart defaults — wrong colors), `--fv3-tooltip-min-width` / `-max-height` / `-action-pane-width`, `--fv3-surface-tint` / `-hover-bg` / `-border` / `-tab-active-bg` / `-tab-active-border`, `--tooltip-spacing`. | `folder.view3.Dashboard.page` | 2026.05.21.9 |
+| 136 | Override `.tooltipster-docker-folder.tooltipster-base { background: transparent; }` in both docker.css and dashboard.css. Unraid's default `.tooltipster-sidetip` theme paints the outer base with `rgb(29, 27, 27)` (dark backdrop) — visible as a black box surrounding the popup content with the arrow attached to it. Setting it transparent removes the backdrop while the arrow and orange top accent on `.tooltipster-box` remain. Both pages get this for consistency. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.9 |
+
+---
+
+## 2026.05.21.8 — Beta hotfix
+
+### Dashboard popup CSS — cleaner separation
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 134 | v.7 loaded docker.css on Dashboard.page as a quick fix for popup styling, which mixed Docker-tab-specific rules into the Dashboard page (~424 lines of unrelated CSS). Per-user request, duplicated only the popup-related rules into dashboard.css (378 lines copied verbatim — `.preview-outbox`, `.preview-name`, `.preview-status`, `.action-info`, `.info-section`, `.tooltipster-docker-folder`, `.fv3-mobile-details`, graph canvas styles, mobile @media block). docker.css unchanged; both files now contain the popup styles. Dashboard.page reverts to loading only dashboard.css. Trade-off accepted: popup CSS fixes now need to be applied in two places. | `styles/dashboard.css`, `folder.view3.Dashboard.page` | 2026.05.21.8 |
+
+---
+
+## 2026.05.21.7 — Beta hotfix (Dashboard advanced popup)
+
+### Popup styling missing on Dashboard
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 132 | Add `docker.css` to the Dashboard.page stylesheet loads. The advanced preview popup HTML template uses `.preview-outbox`, `.preview-name`, `.action-info`, `.info-section`, etc. — all defined in docker.css. Dashboard.page previously only loaded dashboard.css, so on Dashboard the popup rendered with no styling at all. | `folder.view3.Dashboard.page` | 2026.05.21.7 |
+
+### Native context menu opened alongside Advanced popup
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 133 | When attaching the advanced preview tooltipster to a Dashboard container's `span.hand` in Advanced mode, strip its inline `onclick="addDockerContainerContext(...)"` attribute. Unraid's native click handler fires synchronously alongside tooltipster's click handler, so without this both the default Unraid context menu AND our advanced popup would open on the same click. In Default mode the helper isn't attached, so the native menu still works. | `scripts/dashboard.js` | 2026.05.21.7 |
+
+---
+
+## 2026.05.21.6 — Beta hotfix
+
+### Phantom dirty-state (round 2)
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 131 | Add `selected` attribute to the Combined option of `<select id="dashboard-context-graph">`. v.5 introduced the new dashboard Graph mode select with no `selected` on any option (HTML defaults to first = `value="0"`/None), but `fv3SettingDefaults.dashboard_context_graph = '1'`. With no saved value yet, the dirty-check resolved fallback to `'1'` while the actual select value was `'0'` — permanent phantom dirty flag the moment the page loaded. Matches how the Folder Defaults equivalent (`default-context-graph`) handles its initial state. | `FolderView3.page` | 2026.05.21.6 |
+
+---
+
+## 2026.05.21.5 — Beta UX polish
+
+### Dashboard Preview context UI
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 128 | Move the Dashboard "Preview context" select from the General section to the Docker column on Settings → FolderView3 → Dashboard. It was a Docker-only setting living in a cross-cutting section; relocating it groups it with the other Docker dashboard settings and drops the now-redundant "Docker only" scope badge. | `FolderView3.page` | 2026.05.21.5 |
+| 129 | Add three dashboard-specific sub-options that mirror the per-folder context settings, shown only when `dashboard_context = Advanced`: **Activation mode** (`dashboard_context_trigger`, Click/Hover), **Graph mode** (`dashboard_context_graph`, None/Combined/Split/CPU/MEM), **Time Frame (s)** (`dashboard_context_graph_time`, freeform number). These are separate from the per-folder context values so Dashboard popup behavior can be configured independently. | `FolderView3.page`, `server/lib.php` (allowlist + freeform list), `scripts/folderview3.js` (selectMap, defaults, applyFormState, collectSettings, change listener), `scripts/shared.js` (fv3LoadFolderDefaults) | 2026.05.21.5 |
+| 130 | Wire dashboard.js to pass `dashboardContextTrigger` / `dashboardContextGraph` / `dashboardContextGraphTime` to `fv3AttachAdvancedPreview` instead of folder-specific context values. Dashboard popups now honor the new dashboard-specific sub-option settings. | `scripts/dashboard.js` | 2026.05.21.5 |
+
+---
+
+## 2026.05.21.4 — Beta (issue #35)
+
+### Advanced preview popup on Dashboard
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 121 | Extract the ~480-line advanced-preview tooltipster block from docker.js into a new shared helper `window.fv3AttachAdvancedPreview({triggerEl, ct, folder, id, container_name_in_folder, cpus})` in a new file `scripts/advanced-preview.js`. Verbatim lift — internal logic unchanged, only the outer wrapper became a function and the lone `tooltip_trigger_element` reference inside the mobile ResizeObserver was renamed to `triggerEl`. Net effect: `docker.js` shrinks from 1865 → 1401 lines. | `scripts/advanced-preview.js` (new), `scripts/docker.js` | 2026.05.21.4 |
+| 122 | Move helper utilities (`memToB`, `hideAllTips`, `advancedAutostart`) and the `fv3UsingWebSocket` flag from `docker.js` to `advanced-preview.js` as `window.*` globals so Dashboard can access them without loading docker.js. Both files now reference them via the global scope chain. | `scripts/advanced-preview.js`, `scripts/docker.js` | 2026.05.21.4 |
+| 123 | Add `typeof dockerload !== 'undefined'` guard to the SSE listener subscription inside the helper. Dashboard has no `dockerload` SSE source — the guard prevents a `ReferenceError` on Dashboard when WebSocket stats are unavailable; the popup still renders but graphs degrade to 0% (acceptable). | `scripts/advanced-preview.js` | 2026.05.21.4 |
+| 124 | Add `dashboard_context` global setting (`0/1/2` = None/Default/Advanced) to the backend allowlist and a new row on the FolderView3 settings page → Dashboard panel → General section. When set to Advanced (2), all Docker containers on the Dashboard get the same popup the Docker tab shows. | `server/lib.php`, `FolderView3.page`, `scripts/folderview3.js`, `langs/*.json` | 2026.05.21.4 |
+| 125 | Wire dashboard.js to read `dashboard_context` (via existing `fv3SettingsReq` parse), initialize a WebSocket stats subscription via shared.js's `fv3ConnectStats` (no SSE fallback on Dashboard), and attach `fv3AttachAdvancedPreview` to each Docker container's `span.hand` inside folder storage when `dashboard_context === 2`. | `scripts/dashboard.js` | 2026.05.21.4 |
+| 126 | Load Chart.js + chartjs-plugin-streaming + chartjs-adapter-moment + moment.js on `folder.view3.Dashboard.page` (previously Docker-tab-only). +300 KB on Dashboard first load, cached thereafter. Also load `advanced-preview.js`. | `folder.view3.Dashboard.page`, `folder.view3.Docker.page` | 2026.05.21.4 |
+| 127 | Add `dashboard_context: '0'` to `fv3SettingDefaults` to avoid phantom dirty-state on the settings page (same regression pattern as v2026.05.21.2 — without this entry, the dirty-check resolves the new field's fallback to `''`, conflicting with the select's actual value `'0'`). | `scripts/folderview3.js` | 2026.05.21.4 |
+
+---
+
+## 2026.05.21.3 — Beta hotfix
+
+### Top-nav discard prompt didn't actually block navigation
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 120 | Unraid's top-nav links are `<a href="/Docker" onclick="initab('/Docker')">…</a>`. The intercepted `initab()` returned `false` to block the SPA tab switch, but because the inline `onclick` attribute lacks `return`, the return value is discarded and the browser still follows the `href` — so the swal fired alongside a full page load. Added a capture-phase document click listener that intercepts clicks on `a[onclick*="initab"]` before the inline `onclick` runs, calls `preventDefault` + `stopPropagation` when the form is dirty, shows the swal, and navigates manually via `window.location.href` only after the user picks Discard. | `folderview3.js` | 2026.05.21.3 |
+
+---
+
+## 2026.05.21.2 — Beta hotfix
+
+### Phantom dirty-state on settings page
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 119 | Add `default_preview_status: 'none'` to `fv3SettingDefaults`. The map is the fallback the dirty-check (`fv3IsSettingsDirty`) uses when `fv3LoadedSettings[key]` is undefined. The new field had no entry, so the fallback chain resolved to `''`, and the select's actual value `'none'` was permanently flagged as a pending change — triggering the "You have unsaved changes. Discard them?" prompt on every tab switch / SPA navigation away from the FolderView3 settings page even when the user had touched nothing. | `folderview3.js` | 2026.05.21.2 |
+
+---
+
+## 2026.05.21.1 — Beta
+
+### Container/VM status indicator (Only icon preview)
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 116 | Add `preview_status` setting (`none` / `symbol` / `grayscale`) shown only when Preview = Only icon. **Symbol**: appends `<br>` + `<i class="fa fa-play started green-text">` (running) or `<i class="fa fa-square stopped red-text">` (stopped) inside `span.hand` after the WebUI/console/log action buttons; CSS floats the icon left so the right column stacks: action buttons on line 1, status icon on line 2. **Grayscale stopped**: applies `filter: grayscale(100%)` to the entire `span.hand` of stopped wrappers, desaturating icon and action buttons together. Per-folder via Folder.page select, global default via FolderView3.page. Backward-compatible — existing folders without the field show no indicator. | `Folder.page`, `FolderView3.page`, `docker.js`, `vm.js`, `folder.js`, `folderview3.js`, `shared.js`, `lib.php`, `folder-common.css`, 7 lang files | 2026.05.21.1 |
+
+### Folder editor: Delete button
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 117 | Add red "Delete folder" button to the folder editor footer, far-right on the same row as Submit/Cancel for visual separation. PHP-conditional render — only appears when `?id=` is present (editing, not creating). swal confirm dialog with Cancel default and the folder name interpolated into the warning text; POST to existing `delete.php` on confirm, then redirects back to /Docker or /VMs. | `Folder.page`, `folder.js`, `folder.css`, 7 lang files | 2026.05.21.1 |
+
+### Defaults page constraint engine
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 118 | Defaults page (`FolderView3.page`) previously left preview-related settings visible regardless of the Preview mode, even when they'd have no effect (e.g. "Orange text on update" with Preview = Only icon, or all preview options with Preview = None). New `fv3ApplyConstraints()` reads `data-fv3-show-preview="…"` on each setting row's `<div class="basic">` and toggles `display` based on the master Preview dropdown, with combinatoric AND for `.fv3-expand-only` (Overflow = Expand) and `.fv3-context-advanced` (Context = Advanced). Replaces two single-purpose change listeners. 13 setting rows now show/hide correctly. | `FolderView3.page`, `folderview3.js` | 2026.05.21.1 |
+
+---
+
 ## 2026.05.15 — Stable Release
 
 Consolidates beta builds v2026.05.15.1 through v2026.05.15.3.

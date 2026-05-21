@@ -366,7 +366,11 @@ const fv3ToggleMap = {
 const fv3SelectMap = {
     'dashboard-docker-layout': 'dashboard_docker_layout',
     'dashboard-vm-layout': 'dashboard_vm_layout',
+    'dashboard-context': 'dashboard_context',
+    'dashboard-context-trigger': 'dashboard_context_trigger',
+    'dashboard-context-graph': 'dashboard_context_graph',
     'default-preview': 'default_preview',
+    'default-preview-status': 'default_preview_status',
     'default-overflow': 'default_overflow',
     'default-context': 'default_context',
     'default-context-trigger': 'default_context_trigger',
@@ -406,7 +410,23 @@ const fv3ApplyFormState = (settings) => {
     else $(`#default-preview-text-width`).val('');
     if (settings.default_context_graph_time) $(`#default-context-graph-time`).val(settings.default_context_graph_time);
     else $(`#default-context-graph-time`).val('60');
-    $('.fv3-context-advanced').css('display', ($('select#default-context').val() === '2') ? '' : 'none');
+    if (settings.dashboard_context_graph_time) $(`#dashboard-context-graph-time`).val(settings.dashboard_context_graph_time);
+    else $(`#dashboard-context-graph-time`).val('60');
+    $('.fv3-dashboard-context-advanced').css('display', ($('select#dashboard-context').val() === '2') ? '' : 'none');
+    fv3ApplyConstraints();
+};
+
+const fv3ApplyConstraints = () => {
+    const preview = $('select#default-preview').val();
+    const overflow = $('select#default-overflow').val();
+    const context = $('select#default-context').val();
+    $('[data-fv3-show-preview]').each(function() {
+        const allowed = ($(this).attr('data-fv3-show-preview') || '').split(/\s+/);
+        let show = allowed.includes(preview);
+        if (show && this.classList.contains('fv3-expand-only')) show = overflow === 'expand';
+        if (show && this.classList.contains('fv3-context-advanced')) show = context === '2';
+        $(this).css('display', show ? '' : 'none');
+    });
 };
 
 const fv3CollectSettings = () => {
@@ -422,6 +442,7 @@ const fv3CollectSettings = () => {
     });
     settings.default_preview_text_width = $(`#default-preview-text-width`).val() || '';
     settings.default_context_graph_time = $(`#default-context-graph-time`).val() || '';
+    settings.dashboard_context_graph_time = $(`#dashboard-context-graph-time`).val() || '';
     return settings;
 };
 
@@ -477,11 +498,9 @@ const fv3CancelSettings = () => {
 
 // UI side effects (no save, just visual)
 $('select#dashboard-docker-layout, select#dashboard-vm-layout').on('change', fv3ToggleNonClassicSettings);
-$('select#default-overflow').on('change', function() {
-    $('.fv3-expand-only').css('display', this.value === 'expand' ? '' : 'none');
-});
-$('select#default-context').on('change', function() {
-    $('.fv3-context-advanced').css('display', this.value === '2' ? '' : 'none');
+$('select#default-preview, select#default-overflow, select#default-context').on('change', fv3ApplyConstraints);
+$('select#dashboard-context').on('change', function() {
+    $('.fv3-dashboard-context-advanced').css('display', this.value === '2' ? '' : 'none');
 });
 fv3ColorFields.forEach(cf => {
     $(`#${cf.toggleId}`).on('change', function() { $(`#${cf.rowId}`).css('display', this.checked ? 'flex' : 'none'); });
@@ -503,6 +522,7 @@ $('#fv3-apply-defaults').on('click', function() {
         const defaultMap = {
             preview: parseInt(settings.default_preview !== undefined ? settings.default_preview : '1', 10),
             preview_hover: settings.default_preview_hover === 'yes',
+            preview_status: settings.default_preview_status || 'none',
             preview_grayscale: settings.default_preview_grayscale === 'yes',
             preview_webui: settings.default_preview_webui === 'yes',
             preview_logs: settings.default_preview_logs === 'yes',
@@ -605,7 +625,8 @@ $('#fv3-import-all').on('change', function() {
 // Page-level tab switching
 const fv3SettingDefaults = {
     dashboard_docker_layout: 'classic', dashboard_vm_layout: 'classic',
-    default_preview: '0', default_overflow: 'default', default_context: '0',
+    dashboard_context: '0', dashboard_context_trigger: '0', dashboard_context_graph: '1', dashboard_context_graph_time: '60',
+    default_preview: '0', default_preview_status: 'none', default_overflow: 'default', default_context: '0',
     default_context_trigger: '0', default_context_graph: '1', default_context_graph_time: '60'
 };
 
@@ -696,3 +717,28 @@ if (typeof initab === 'function') {
         return _origInitab(url);
     };
 }
+
+// Unraid top-nav links use inline onclick="initab(...)" alongside an href, so the
+// onclick return value is discarded and the browser still follows the href.
+// Catch the click in the capture phase, preventDefault when dirty, and navigate
+// manually after the user picks Discard.
+document.addEventListener('click', function(e) {
+    const a = e.target.closest && e.target.closest('a[onclick*="initab"]');
+    if (!a) return;
+    const cssDirty = window.fv3IsCssDirty && window.fv3IsCssDirty();
+    const settingsDirty = typeof fv3IsSettingsDirty === 'function' && fv3IsSettingsDirty();
+    if (!(cssDirty || settingsDirty)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const href = a.getAttribute('href') || '';
+    swal({
+        title: 'Unsaved Changes',
+        text: 'You have unsaved changes. Discard them?',
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Discard',
+        cancelButtonText: 'Stay'
+    }, function(confirmed) {
+        if (confirmed === true && href) window.location.href = href;
+    });
+}, true);

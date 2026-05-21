@@ -27,6 +27,10 @@ div.folder-preview-4 span.outer {
 }
 
 /* --- Tooltipster Base Styling --- */
+.tooltipster-docker-folder.tooltipster-base {
+    background: transparent;
+}
+
 .tooltipster-docker-folder>.tooltipster-box {
     border: initial;
     background: initial;
@@ -45,10 +49,11 @@ div.folder-preview-4 span.outer {
     min-height: 400px;
     max-height: var(--fv3-tooltip-max-height);
     padding: var(--tooltip-spacing);
-    background-color: inherit;
+    background-color: var(--background-color, rgb(29, 27, 27));
     color: inherit;
-    border: 1px solid currentColor;
-    border-radius: 5px;
+    border: 1px solid rgba(128, 128, 128, 0.4);
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -332,7 +337,7 @@ div.folder-preview-4 span.outer {
 @media (max-width: 768px) {
     .preview-outbox {
         min-height: 200px;
-        background-color: hsl(var(--background, 0 0% 11%));
+        background-color: var(--background-color, rgb(29, 27, 27));
     }
 
     .first-row {

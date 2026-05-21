@@ -185,6 +185,26 @@ Markdown="false"
                         </blockquote>
                     </div>
                 </li>
+                <li constraint="preview-2">
+                    <div class="basic">
+                        <dl>
+                            <dt data-i18n="<?= ($_GET['type'] ?? 'docker') === 'vm' ? 'preview-status-vm' : 'preview-status' ?>"><?= ($_GET['type'] ?? 'docker') === 'vm' ? 'VM status:' : 'Container status:' ?></dt>
+                            <dd>
+                                <img class="img" style="visibility: hidden;">
+                                <select name="preview_status">
+                                    <option value="none" data-i18n="preview-status-0" selected>None</option>
+                                    <option value="symbol" data-i18n="preview-status-1">Symbol</option>
+                                    <option value="grayscale" data-i18n="preview-status-2">Greyscale stopped</option>
+                                </select>
+                            </dd>
+                        </dl>
+                        <blockquote class="inline_help">
+                            <p data-i18n="[html]preview-status-tooltip">
+                                Status indicator for containers in <b>Only icon</b> preview mode. <b>Symbol</b> shows a green play / red square next to each icon. <b>Greyscale stopped</b> desaturates stopped container icons and buttons.
+                            </p>
+                        </blockquote>
+                    </div>
+                </li>
                 <li constraint="preview-1 preview-2">
                     <div class="basic">
                         <dl>
@@ -468,7 +488,7 @@ Markdown="false"
                                     <dt data-i18n="context-graph-time">Time Frame (s):</dt>
                                     <dd>
                                         <img class="img" style="visibility: hidden;">
-                                        <input type="number" name="context_graph_time" value="60">
+                                        <input type="number" name="context_graph_time" value="60" min="5" max="600" step="5">
                                     </dd>
                                 </dl>
                                 <blockquote class="inline_help">
@@ -610,10 +630,17 @@ Markdown="false"
             </dl>
         </details>
 
-        <span class="buttons-spaced">
-            <input type="submit" value="Submit" data-i18n="[value]submit">
-            <input type="button" value="Cancel" data-i18n="[value]cancel" onclick="cancelBtn()">
-        </span>
+        <div class="fv3-form-actions">
+            <span class="buttons-spaced">
+                <input type="submit" value="Submit" data-i18n="[value]submit">
+                <input type="button" value="Cancel" data-i18n="[value]cancel" onclick="cancelBtn()">
+            </span>
+            <?php if (!empty($_GET['id'])): ?>
+            <span class="buttons-spaced fv3-form-actions-right">
+                <input type="button" class="fv3-delete-folder-btn" value="Delete folder" data-i18n="[value]delete-folder" onclick="deleteFolderBtn()">
+            </span>
+            <?php endif; ?>
+        </div>
     </form>
 </div>
 

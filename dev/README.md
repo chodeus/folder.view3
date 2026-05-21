@@ -425,6 +425,105 @@ The `.solid` / `.apps` suffix provides enough specificity to override Unraid's b
 </div>
 ```
 
+### Container Status Indicator (Only icon preview, added 2026.05.21)
+
+When a folder's Preview is set to **Only icon** and Container/VM status is **Symbol**, each container icon in the preview row gets a small play/square indicator next to it on a second line (similar to how the icon-and-label preview shows them).
+
+```html
+<tr class="folder folder-id-{id}"
+    data-fv3-preview-status="symbol">              <!-- "symbol" | "grayscale" | absent -->
+  <td>
+    <div class="folder-preview folder-preview-2">
+      <div class="folder-preview-wrapper">
+        <span class="hand autostart"               <!-- the preview span -->
+              data-fv3-state="running"             <!-- "running" | "stopped" -->
+              data-fv3-name="qbittorrent">
+          <img class="img">
+          <span class="folder-element-custom-btn folder-element-webui">...</span>
+          <br class="fv3-status-line">
+          <i class="fa fa-play started green-text fv3-status-icon"></i>
+        </span>
+      </div>
+    </div>
+  </td>
+</tr>
+```
+
+**Selectors:**
+
+| Selector | Purpose |
+|----------|---------|
+| `tr.folder[data-fv3-preview-status="symbol"]` | Folder row in icon-only mode with status icons enabled |
+| `tr.folder[data-fv3-preview-status="grayscale"]` | Folder row in icon-only mode with stopped-greyscale enabled (desaturates `span.hand` of stopped containers) |
+| `.folder-preview-wrapper[data-fv3-state="running"]` | Per-container preview wrapper, running state |
+| `.folder-preview-wrapper[data-fv3-state="stopped"]` | Per-container preview wrapper, stopped state |
+| `.fv3-status-icon` | The `<i class="fa">` element. **Distinct from the folder-level `.fv3-folder-status-icon`** — this one lives per-container inside the preview row, not on the folder pill on Dashboard. Running uses `fa-play.started.green-text`, stopped uses `fa-square.stopped.red-text`. |
+| `.fv3-status-line` | The `<br>` element that pushes the status icon to a second line |
+
+**Example: Change the running indicator from green play to a checkmark**
+
+```css
+.folder-preview-wrapper[data-fv3-state="running"] .fv3-status-icon::before {
+  content: "\f00c"; /* fa-check */
+  color: limegreen;
+}
+.folder-preview-wrapper[data-fv3-state="running"] .fv3-status-icon { color: limegreen; }
+```
+
+**Example: Replace symbol with a colored dot**
+
+```css
+.fv3-status-icon { font-size: 0; width: 8px; height: 8px; border-radius: 50%; }
+.folder-preview-wrapper[data-fv3-state="running"] .fv3-status-icon { background: #4caf50; }
+.folder-preview-wrapper[data-fv3-state="stopped"] .fv3-status-icon { background: #e53935; }
+```
+
+### Folder Editor Form (added 2026.05.21)
+
+The folder editor page (`/Docker/Folder` or `/VMs/Folder`) gained a Delete button in the form footer.
+
+```html
+<div class="fv3-form-actions">
+  <span class="buttons-spaced">
+    <input type="submit" value="Submit">
+    <input type="button" value="Cancel">
+  </span>
+  <span class="buttons-spaced fv3-form-actions-right">   <!-- only when editing -->
+    <input type="button" class="fv3-delete-folder-btn" value="Delete folder">
+  </span>
+</div>
+```
+
+**Selectors:**
+
+| Selector | Purpose |
+|----------|---------|
+| `.fv3-form-actions` | Flex row holding the form's footer buttons (Submit/Cancel on left, Delete on right) |
+| `.fv3-form-actions-right` | Container for the right-aligned Delete button. Only rendered when editing an existing folder (not on create). |
+| `.fv3-delete-folder-btn` | The Delete button itself. Default red; override `background`, `color`, `border-color` to restyle. |
+
+### Settings Page Constraint Engine (added 2026.05.21)
+
+The Settings → FolderView3 → Folder Defaults panel uses a declarative visibility system. Each setting row's `<div class="basic">` carries a `data-fv3-show-preview="..."` attribute listing the Preview values (0/1/2/3/4) for which it's relevant. JS toggles `display` accordingly. Customizers can target these conditionally:
+
+```css
+/* Style settings rows that are currently hidden by the constraint engine */
+.fv3-page-panel .basic[style*="display: none"] { /* won't normally apply since display:none hides */ }
+
+/* Style row when active for a specific preview mode */
+.basic[data-fv3-show-preview~="2"] { /* matches rows shown in Only icon mode */ }
+```
+
+The Dashboard panel also adds:
+- `dashboard-context` select (Default / Advanced) — global toggle for the Dashboard advanced preview popup
+- `.fv3-dashboard-context-advanced` — sub-option rows visible only when context = Advanced
+
+### Advanced Preview Tooltip Background (changed 2026.05.21)
+
+The popup background used to inherit (often resolving to transparent). It now resolves to `var(--background-color, rgb(29, 27, 27))` — Unraid's theme-aware page background. Customizers who were previously setting `.preview-outbox { background-color: ... }` continue to work; the change just gives a sensible default when no override is present.
+
+The outer `.tooltipster-base` is now `background: transparent;` so the tooltipster arrow appears clean without a surrounding box. The actual popup surface comes from `.preview-outbox`.
+
 ---
 
 ## Common Styling Recipes

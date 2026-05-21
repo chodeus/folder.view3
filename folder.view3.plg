@@ -6,12 +6,19 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.05.15">
-<!ENTITY md5 "77d09b767450733c2bf5efcfbee3da0c">
+<!ENTITY version "2026.05.21">
+<!ENTITY md5 "80bf1e125b959d68c6965b13dcc8f2d5">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.05.21
+- Add Advanced Preview popup (CPU/MEM graphs + quick actions) to Docker containers on the Dashboard
+- Add Container/VM status indicator (play/square symbol or greyscale-stopped) for Only icon preview mode
+- Add Delete folder button to the folder editor
+- Defaults page now hides options irrelevant to the chosen Preview mode
+- Various tooltip styling, theme-awareness, and reliability fixes
 
 ###2026.05.15
 - Fix Reset Order button (was silently broken by FV3's request interceptor)

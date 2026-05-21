@@ -143,6 +143,70 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <p>Shows collapsed folder icons in greyscale to visually distinguish them from expanded folders.</p>
                 </blockquote>
             </div>
+
+            <div class="basic">
+                <dl>
+                    <dt><label for="dashboard-context" data-i18n="dashboard-context">Preview context</label></dt>
+                    <dd>
+                        <img class="img" style="visibility: hidden;">
+                        <select id="dashboard-context">
+                            <option value="0" data-i18n="dashboard-context-default">Default</option>
+                            <option value="2" data-i18n="context-option-2">Advanced</option>
+                        </select>
+                    </dd>
+                </dl>
+                <blockquote class="inline_help">
+                    <p><b>Default</b> uses Unraid's built-in container menu (the existing behavior). <b>Advanced</b> replaces it with FolderView3's popup showing CPU/MEM graphs, container info, and quick actions.</p>
+                </blockquote>
+            </div>
+
+            <div class="basic fv3-dashboard-context-advanced" style="display:none">
+                <dl>
+                    <dt class="fv3-setting-sub"><label for="dashboard-context-trigger" data-i18n="context-trigger">Activation mode</label></dt>
+                    <dd>
+                        <img class="img" style="visibility: hidden;">
+                        <select id="dashboard-context-trigger">
+                            <option value="0" data-i18n="context-trigger-option-0">Click</option>
+                            <option value="1" data-i18n="context-trigger-option-1">Hover</option>
+                        </select>
+                    </dd>
+                </dl>
+                <blockquote class="inline_help">
+                    <p>How the Dashboard advanced popup opens. <b>Click</b> requires clicking a container, <b>Hover</b> opens it on mouse-over.</p>
+                </blockquote>
+            </div>
+
+            <div class="basic fv3-dashboard-context-advanced" style="display:none">
+                <dl>
+                    <dt class="fv3-setting-sub"><label for="dashboard-context-graph" data-i18n="context-graph">Graph mode</label></dt>
+                    <dd>
+                        <img class="img" style="visibility: hidden;">
+                        <select id="dashboard-context-graph">
+                            <option value="0" data-i18n="context-graph-option-0">None</option>
+                            <option value="1" data-i18n="context-graph-option-1" selected>Combined</option>
+                            <option value="2" data-i18n="context-graph-option-2">Split</option>
+                            <option value="3" data-i18n="context-graph-option-3">CPU only</option>
+                            <option value="4" data-i18n="context-graph-option-4">MEM only</option>
+                        </select>
+                    </dd>
+                </dl>
+                <blockquote class="inline_help">
+                    <p>Which real-time graphs to display in the Dashboard advanced popup.</p>
+                </blockquote>
+            </div>
+
+            <div class="basic fv3-dashboard-context-advanced" style="display:none">
+                <dl>
+                    <dt class="fv3-setting-sub"><label for="dashboard-context-graph-time" data-i18n="context-graph-time">Time Frame (s)</label></dt>
+                    <dd>
+                        <img class="img" style="visibility: hidden;">
+                        <input type="number" id="dashboard-context-graph-time" value="60" min="5" max="600" step="5">
+                    </dd>
+                </dl>
+                <blockquote class="inline_help">
+                    <p>How many seconds of history the Dashboard popup graph displays. 5–600 seconds.</p>
+                </blockquote>
+            </div>
         </div>
 
         <div class="fv3-dashboard-col">
@@ -211,6 +275,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                 <p>Enables a smooth slide animation when expanding or collapsing folders on the Dashboard.</p>
             </blockquote>
         </div>
+
     </div>
 
     <div class="fv3-button-bar">
@@ -241,7 +306,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
             <dt><label for="default-overflow" data-i18n="overflow">Overflow</label></dt>
             <dd>
@@ -258,7 +323,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
             <dt><label for="default-preview-hover" data-i18n="preview-hover">Show preview only on hover</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-hover" type="checkbox" /></dd>
@@ -268,7 +333,24 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="2">
+        <dl>
+            <dt><label for="default-preview-status" data-i18n="preview-status">Container/VM status</label></dt>
+            <dd>
+                <img class="img" style="visibility: hidden;">
+                <select id="default-preview-status">
+                    <option value="none" data-i18n="preview-status-0">None</option>
+                    <option value="symbol" data-i18n="preview-status-1">Symbol</option>
+                    <option value="grayscale" data-i18n="preview-status-2">Greyscale stopped</option>
+                </select>
+            </dd>
+        </dl>
+        <blockquote class="inline_help">
+            <p>Status indicator for containers in <b>Only icon</b> preview mode. <b>Symbol</b> shows a green play / red square next to each icon. <b>Greyscale stopped</b> desaturates stopped container icons and buttons.</p>
+        </blockquote>
+    </div>
+
+    <div class="basic" data-fv3-show-preview="1 2">
         <dl>
             <dt><label for="default-preview-grayscale" data-i18n="preview-grayscale">Preview icon grayscale</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-grayscale" type="checkbox" /></dd>
@@ -278,7 +360,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
             <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-preview-webui" data-i18n="preview-webui">Show WebUI icon in preview</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-webui" type="checkbox" /></dd>
@@ -288,7 +370,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
             <dt><label for="default-preview-logs" data-i18n="preview-logs">Show logs icon in preview</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-logs" type="checkbox" /></dd>
@@ -298,7 +380,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
             <dt><label for="default-preview-console" data-i18n="preview-console">Show console icon in preview</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-console" type="checkbox" /></dd>
@@ -308,7 +390,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 3 4">
         <dl>
             <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-preview-update" data-i18n="preview-update">Orange text on update</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-update" type="checkbox" /></dd>
@@ -318,7 +400,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
             <dt><label for="default-preview-vertical-bars" data-i18n="preview-vertical-bars">Preview vertical bars</label></dt>
             <dd>
@@ -337,7 +419,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
             <dt><label for="default-preview-border" data-i18n="border">Show preview border</label></dt>
             <dd>
@@ -356,7 +438,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic fv3-expand-only" style="display:none">
+    <div class="basic fv3-expand-only" data-fv3-show-preview="1 2 3 4" style="display:none">
         <dl>
             <dt><label for="default-row-separator" data-i18n="row-separator">Row separator (expand mode)</label></dt>
             <dd>
@@ -375,7 +457,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 3 4">
         <dl>
             <dt><label for="default-preview-text-width" data-i18n="preview-text-width">Preview text width</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input type="text" id="default-preview-text-width" placeholder="e.g. 80px, 6rem (blank = no limit)" style="max-width:200px;"></dd>
@@ -385,7 +467,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic">
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
             <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-context" data-i18n="context">Preview context</label></dt>
             <dd>
@@ -402,7 +484,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic fv3-context-advanced" style="display:none">
+    <div class="basic fv3-context-advanced" data-fv3-show-preview="1 2 3 4" style="display:none">
         <dl>
             <dt><label for="default-context-trigger" data-i18n="context-trigger">Activation mode</label></dt>
             <dd>
@@ -418,7 +500,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic fv3-context-advanced" style="display:none">
+    <div class="basic fv3-context-advanced" data-fv3-show-preview="1 2 3 4" style="display:none">
         <dl>
             <dt><label for="default-context-graph" data-i18n="context-graph">Graph mode</label></dt>
             <dd>
@@ -437,12 +519,12 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic fv3-context-advanced" style="display:none">
+    <div class="basic fv3-context-advanced" data-fv3-show-preview="1 2 3 4" style="display:none">
         <dl>
             <dt><label for="default-context-graph-time" data-i18n="context-graph-time">Time Frame (s)</label></dt>
             <dd>
                 <img class="img" style="visibility: hidden;">
-                <input type="number" id="default-context-graph-time" value="60">
+                <input type="number" id="default-context-graph-time" value="60" min="5" max="600" step="5">
             </dd>
         </dl>
         <blockquote class="inline_help">

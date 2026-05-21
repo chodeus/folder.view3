@@ -13,6 +13,11 @@ let fv3DockerShowLabel = false;
 let fv3VmShowLabel = false;
 let fv3AnimationEnabled = false;
 let fv3LayoutReady = false;
+let dashboardContext = 0;
+let dashboardContextTrigger = 0;
+let dashboardContextGraph = 1;
+let dashboardContextGraphTime = 60;
+let dashboardStatsInitialized = false;
 let folderReq = {
     docker: [],
     vm: []
@@ -332,6 +337,24 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
             if (folder.settings?.preview_update && newFolder[container].update) {
                 $containerEl.find('.blue-text').addClass('orange-text');
+            }
+
+            if (dashboardContext === 2 && typeof fv3AttachAdvancedPreview === 'function') {
+                fv3InitDashboardStats();
+                const $trigger = $containerEl.find('span.hand').first();
+                if ($trigger.length) {
+                    // Suppress Unraid's native inline onclick (addDockerContainerContext)
+                    // so it doesn't open the default context menu alongside our popup.
+                    $trigger.removeAttr('onclick');
+                    fv3AttachAdvancedPreview({
+                        triggerEl: $trigger,
+                        ct,
+                        folder: { ...folder, settings: { ...(folder.settings || {}), context: 2, context_trigger: dashboardContextTrigger, context_graph: dashboardContextGraph, context_graph_time: dashboardContextGraphTime } },
+                        id,
+                        container_name_in_folder: container,
+                        cpus: window.fv3CpuCores || dashboardCpus || 1
+                    });
+                }
             }
 
             if(folderDebugMode) {
@@ -1425,8 +1448,32 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         fv3DockerShowLabel = s.dashboard_docker_folder_label === 'yes';
         fv3VmShowLabel = s.dashboard_vm_folder_label === 'yes';
         fv3AnimationEnabled = s.dashboard_animation === 'yes';
+        dashboardContext = parseInt(s.dashboard_context || '0', 10);
+        dashboardContextTrigger = parseInt(s.dashboard_context_trigger || '0', 10);
+        dashboardContextGraph = parseInt(s.dashboard_context_graph || '1', 10);
+        dashboardContextGraphTime = parseInt(s.dashboard_context_graph_time || '60', 10);
     } catch(e) {}
 });
+
+let dashboardCpus = 1;
+const fv3InitDashboardStats = () => {
+    if (dashboardStatsInitialized) return;
+    dashboardStatsInitialized = true;
+    // Fetch CPU core count from PHP — fv3CpuCores comes from GraphQL and may be null on
+    // servers without the Unraid API. Falling back to 1 would render CPU% as cores× actual.
+    $.get('/plugins/folder.view3/server/cpu.php').then((data) => {
+        const n = parseInt(data, 10);
+        if (n > 0) dashboardCpus = n;
+    });
+    if (typeof fv3ConnectStats !== 'function') return;
+    fv3ConnectStats(
+        (stat) => {
+            window.fv3UsingWebSocket = true;
+            folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { stat, source: 'ws' } }));
+        },
+        () => {} // no SSE fallback on Dashboard — popup graphs degrade to 0% if WS unavailable
+    );
+};
 
 const applyDashboardLayouts = () => {
     const layouts = ['fv3-layout-classic', 'fv3-layout-fullwidth', 'fv3-layout-accordion', 'fv3-layout-inset', 'fv3-layout-embossed'];

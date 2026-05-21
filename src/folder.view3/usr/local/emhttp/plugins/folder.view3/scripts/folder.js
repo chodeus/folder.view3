@@ -106,6 +106,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         form.preview_update.checked = currFolder.settings.preview_update;
         form.preview_text_width.value = currFolder.settings.preview_text_width || '';
         form.preview_grayscale.checked = currFolder.settings.preview_grayscale;
+        if (form.preview_status) form.preview_status.value = currFolder.settings.preview_status || 'none';
         form.preview_webui.checked = currFolder.settings.preview_webui;
         form.preview_logs.checked = currFolder.settings.preview_logs;
         form.preview_console.checked = currFolder.settings.preview_console || false;
@@ -154,6 +155,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             if (s.default_preview_hover === 'yes') form.preview_hover.checked = true;
             if (s.default_preview_update === 'yes') form.preview_update.checked = true;
             if (s.default_preview_grayscale === 'yes') form.preview_grayscale.checked = true;
+            if (form.preview_status && s.default_preview_status) form.preview_status.value = s.default_preview_status;
             if (s.default_preview_webui === 'yes') form.preview_webui.checked = true;
             if (s.default_preview_logs === 'yes') form.preview_logs.checked = true;
             if (s.default_preview_console === 'yes') form.preview_console.checked = true;
@@ -184,6 +186,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             form.preview_hover.checked = s.default_preview_hover === 'yes';
             form.preview_update.checked = s.default_preview_update === 'yes';
             form.preview_grayscale.checked = s.default_preview_grayscale === 'yes';
+            if (form.preview_status) form.preview_status.value = s.default_preview_status || 'none';
             form.preview_webui.checked = s.default_preview_webui === 'yes';
             form.preview_logs.checked = s.default_preview_logs === 'yes';
             form.preview_console.checked = s.default_preview_console === 'yes';
@@ -465,6 +468,7 @@ const submitForm = async (e) => {
             preview_update: e.preview_update.checked,
             preview_text_width: e.preview_text_width.value,
             preview_grayscale: e.preview_grayscale.checked,
+            preview_status: e.preview_status?.value || 'none',
             preview_webui: e.preview_webui.checked,
             preview_logs: e.preview_logs.checked,
             preview_console: e.preview_console.checked,
@@ -534,6 +538,35 @@ const cancelBtn = () => {
     let loc = location.pathname.split('/');
     loc.pop();
     location.href = loc.join('/');
+};
+
+/**
+ * Handles the Delete folder button — confirmation dialog + POST to delete.php
+ */
+const deleteFolderBtn = () => {
+    if (!folderId) return;
+    const folderName = $('div.canvas > form')[0]?.name?.value || folderId;
+    swal({
+        title: $.i18n('delete-folder-confirm-title') || 'Delete folder?',
+        text: ($.i18n('delete-folder-confirm-text') || 'This will permanently delete the folder "$1" and remove all its contained containers/VMs back to the main list. Containers/VMs themselves are NOT deleted.').replace('$1', folderName),
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: $.i18n('delete') || 'Delete',
+        cancelButtonText: $.i18n('cancel') || 'Cancel',
+        confirmButtonColor: '#a02020',
+        closeOnConfirm: true
+    }, async (confirmed) => {
+        if (!confirmed) return;
+        try {
+            await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: folderId }).promise();
+            let loc = location.pathname.split('/');
+            loc.pop();
+            location.href = loc.join('/');
+        } catch (err) {
+            const msg = err.responseText || err.statusText || err.message || 'Unknown error';
+            swal({ title: 'Error', text: 'Failed to delete folder: ' + msg, type: 'error' });
+        }
+    });
 };
 
 /**

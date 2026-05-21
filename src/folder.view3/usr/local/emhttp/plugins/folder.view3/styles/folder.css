@@ -465,3 +465,20 @@ table.sortable tbody tr td:first-child::before {
         transform: translateX(22px);
     }
 }
+
+/* Form actions row: Submit/Cancel on left, Delete on far-right */
+.fv3-form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 12px;
+}
+.fv3-form-actions-right { margin-left: auto; }
+.fv3-delete-folder-btn {
+    background: #a02020 !important;
+    color: #fff !important;
+    border-color: #7a1818 !important;
+}
+.fv3-delete-folder-btn:hover { background: #b92828 !important; }

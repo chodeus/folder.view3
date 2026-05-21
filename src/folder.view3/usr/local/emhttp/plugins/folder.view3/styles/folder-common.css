@@ -649,3 +649,22 @@ body[data-fv3-preset] .fv3-toggle.fv3-toggle-material:checked::before { backgrou
 .fv3-toggle.fv3-toggle-pill:checked { background: #f0a30a; }
 .fv3-toggle.fv3-toggle-pill:checked::before { background: #fff; transform: translateX(24px); }
 body[data-fv3-preset] .fv3-toggle.fv3-toggle-pill:checked { background: var(--fv3-accent-color, #f0a30a); }
+
+/* === Container/VM status indicator (Only icon preview, preview_status setting) === */
+
+/* Symbol mode: float the icon left so action buttons + status icon stack on the right column */
+tr[data-fv3-preview-status="symbol"] .folder-preview-wrapper > span[data-fv3-state] > img.img,
+tr[data-fv3-preview-status="symbol"] .folder-preview-wrapper > span[data-fv3-state] > span.hand > img.img {
+    float: left;
+    margin-right: 4px;
+}
+
+/* Hide status icon by default; only show when symbol mode is active */
+.fv3-status-icon, .fv3-status-line { display: none; }
+tr[data-fv3-preview-status="symbol"] .fv3-status-icon { display: inline-block; font-size: 13px; line-height: 13px; }
+tr[data-fv3-preview-status="symbol"] .fv3-status-line { display: inline; }
+
+/* Grayscale stopped: desaturate the entire preview span (icon + action buttons) for stopped containers */
+tr[data-fv3-preview-status="grayscale"] .folder-preview-wrapper > span[data-fv3-state="stopped"] {
+    filter: grayscale(100%);
+}

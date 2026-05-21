@@ -71,6 +71,7 @@ window.fv3LoadFolderDefaults = async () => {
         fv3FolderDefaults = {
             preview: parseInt(settings.default_preview !== undefined ? settings.default_preview : '1', 10),
             preview_hover: settings.default_preview_hover === 'yes',
+            preview_status: settings.default_preview_status || 'none',
             preview_grayscale: settings.default_preview_grayscale === 'yes',
             preview_webui: settings.default_preview_webui === 'yes',
             preview_logs: settings.default_preview_logs === 'yes',
@@ -85,7 +86,11 @@ window.fv3LoadFolderDefaults = async () => {
             preview_text_width: settings.default_preview_text_width || '',
             preview_overflow: settings.default_overflow === 'scroll' ? 2 : settings.default_overflow === 'expand' ? 1 : 0,
             context: parseInt(settings.default_context !== undefined ? settings.default_context : '1', 10),
-            update_column: settings.default_update_column === 'yes'
+            update_column: settings.default_update_column === 'yes',
+            dashboard_context: parseInt(settings.dashboard_context !== undefined ? settings.dashboard_context : '0', 10),
+            dashboard_context_trigger: parseInt(settings.dashboard_context_trigger !== undefined ? settings.dashboard_context_trigger : '0', 10),
+            dashboard_context_graph: parseInt(settings.dashboard_context_graph !== undefined ? settings.dashboard_context_graph : '1', 10),
+            dashboard_context_graph_time: parseInt(settings.dashboard_context_graph_time !== undefined ? settings.dashboard_context_graph_time : '60', 10)
         };
     } catch (e) {
         fv3FolderDefaults = {};
