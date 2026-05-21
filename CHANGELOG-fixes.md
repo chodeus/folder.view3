@@ -6,7 +6,31 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
-## 2026.05.21.13 — Beta hotfix
+## 2026.05.21 — Stable Release
+
+Consolidates beta builds v2026.05.21.1 through v2026.05.21.16. Closes [issue #35](https://github.com/chodeus/folder.view3/issues/35) (Dashboard advanced preview). Per-beta detail entries below preserved as the change ledger for the release.
+
+### Listener leak in advanced preview (root cause)
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 149 | Two leaks in the advanced preview tooltipster's stats-listener lifecycle: (a) `functionReady` can fire more than once per popup lifecycle (esp. hover trigger), each call added another listener; `functionAfter`'s `removeEventListener` only matched one closure reference, so duplicates accumulated; (b) `functionAfter` decided which listener to remove based on the CURRENT `fv3UsingWebSocket` flag, which may have flipped between attach and remove time. Introduced an `attachedListener` closure-scoped tracker (`'ws' \| 'sse' \| null`) so attach is idempotent and remove uses the tracked type. The v.15 try/catch in `pushChartData` stays as defense-in-depth. | `scripts/advanced-preview.js` | 2026.05.21.16 |
+
+### Stale chart update after popup close (symptom suppression)
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 148 | `pushChartData()` called `chart.update('quiet')` unconditionally on each entry of the `charts` array. When a WS stats event fired after tooltipster's `functionAfter` had begun destroying charts, the call hit a destroyed chart and chartjs-plugin-streaming threw `TypeError: Cannot set properties of null (setting '_setStyle')`. Wrapped the update loop with try/catch and added a `chart.canvas && document.body.contains(chart.canvas)` guard to skip stale references silently. | `scripts/advanced-preview.js` | 2026.05.21.15 |
+
+### Popup background — actually theme-aware (the third try)
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 147 | v.13's CSS edit silently failed because the `background-color: hsl(var(--background, 0 0% 11%));` string matched twice per file (main rule + mobile @media block) and Edit tool refused without `replace_all: true`. v.13 was built and pushed without the actual change. v.14 re-ran with `replace_all: true` on both docker.css and dashboard.css. Lesson learned: when Edit fails, the build can still ship with stale CSS — always verify the change made it into the build before pushing. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.14 |
+
+---
+
+## 2026.05.21.13 — Beta hotfix (Popup theme variable)
 
 ### Popup background actually theme-aware
 
