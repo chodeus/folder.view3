@@ -6,6 +6,28 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.23-beta1 — Orange-on-update split + settings reorganisation
+
+Splits the single per-folder "Orange text on update" toggle into four distinct controls so Docker page and Dashboard can be tuned independently, and reorganises the Defaults page to mirror the Folder editor layout.
+
+### Toggle split
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 150 | Per-folder `preview_update` (Docker page container names in preview) kept and relabelled "Orange container text on update". Added new per-folder `preview_update_folder` (Docker page folder name on update). Both live in the Folder editor and as defaults on the Defaults page. New toggle defaults OFF. | `Folder.page`, `FolderView3.page`, `scripts/folder.js`, `scripts/folderview3.js`, `scripts/docker.js`, `server/lib.php`, all 7 lang files | 2026.05.23-beta1 |
+| 151 | New global Dashboard settings `dashboard_update_container` and `dashboard_update_folder` (Settings → Dashboard → Docker column). Replaces the implicit dashboard behaviour that piggybacked on per-folder `preview_update`. Stored once in `settings.json`, read by dashboard.js into `fv3DashboardUpdateContainer` / `fv3DashboardUpdateFolder` vars. Default OFF — existing folders that previously turned orange on the Dashboard via `preview_update=true` will no longer do so until the new global toggles are enabled. | `FolderView3.page`, `scripts/dashboard.js`, `scripts/folderview3.js`, `server/lib.php` | 2026.05.23-beta1 |
+| 152 | New behaviour: on Docker page, the folder name (`.folder-appname`) gets `.orange-text` when any child container has `Updated === false` AND `preview_update_folder` is enabled. Added to `createFolder()`'s `!upToDate` branch in docker.js. | `scripts/docker.js` | 2026.05.23-beta1 |
+
+### Settings page reorganisation
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 153 | Defaults panel split into Basic / Preview / Behavior sub-sections. Item order under Preview now mirrors the Folder editor (preview mode → orange container → text width → status → hover → greyscale → webui/logs/console → vertical bars / border → overflow → row separator → context popup). `default-update-column` moved into the new Behavior section. | `FolderView3.page` | 2026.05.23-beta1 |
+| 154 | Folder editor: `preview_update_folder` placed in Basic section (works regardless of preview mode). `preview_hover` moved closer to other display toggles, directly above `preview_grayscale`. | `Folder.page` | 2026.05.23-beta1 |
+| 155 | Spelling: "grayscale" → "greyscale" in English UI text only (label + tooltip in en.json, Folder.page, FolderView3.page). Variable names (`preview_grayscale`, `dashboard_docker_greyscale`), the CSS function `grayscale(100%)`, and non-English translations were intentionally left alone. | `langs/en.json`, `Folder.page`, `FolderView3.page` | 2026.05.23-beta1 |
+
+---
+
 ## 2026.05.21 — Stable Release
 
 Consolidates beta builds v2026.05.21.1 through v2026.05.21.16. Closes [issue #35](https://github.com/chodeus/folder.view3/issues/35) (Dashboard advanced preview). Per-beta detail entries below preserved as the change ledger for the release.

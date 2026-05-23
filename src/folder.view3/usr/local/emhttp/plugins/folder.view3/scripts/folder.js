@@ -104,6 +104,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         form.preview.value = currFolder.settings.preview.toString();
         form.preview_hover.checked = currFolder.settings.preview_hover;
         form.preview_update.checked = currFolder.settings.preview_update;
+        form.preview_update_folder.checked = currFolder.settings.preview_update_folder || false;
         form.preview_text_width.value = currFolder.settings.preview_text_width || '';
         form.preview_grayscale.checked = currFolder.settings.preview_grayscale;
         if (form.preview_status) form.preview_status.value = currFolder.settings.preview_status || 'none';
@@ -154,6 +155,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             if (s.default_preview) form.preview.value = s.default_preview;
             if (s.default_preview_hover === 'yes') form.preview_hover.checked = true;
             if (s.default_preview_update === 'yes') form.preview_update.checked = true;
+            if (s.default_preview_update_folder === 'yes') form.preview_update_folder.checked = true;
             if (s.default_preview_grayscale === 'yes') form.preview_grayscale.checked = true;
             if (form.preview_status && s.default_preview_status) form.preview_status.value = s.default_preview_status;
             if (s.default_preview_webui === 'yes') form.preview_webui.checked = true;
@@ -185,6 +187,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             form.preview.value = s.default_preview || '1';
             form.preview_hover.checked = s.default_preview_hover === 'yes';
             form.preview_update.checked = s.default_preview_update === 'yes';
+            form.preview_update_folder.checked = s.default_preview_update_folder === 'yes';
             form.preview_grayscale.checked = s.default_preview_grayscale === 'yes';
             if (form.preview_status) form.preview_status.value = s.default_preview_status || 'none';
             form.preview_webui.checked = s.default_preview_webui === 'yes';
@@ -215,7 +218,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         _fv3ApplyingDefaults = false;
     };
 
-    $(document).on('change input', 'select[name="preview"], select[name="preview_overflow"], select[name="context"], input[name="preview_hover"], input[name="preview_update"], input[name="preview_grayscale"], input[name="preview_webui"], input[name="preview_logs"], input[name="preview_console"], input[name="preview_vertical_bars"], input[name="preview_vertical_bars_color"], input[name="preview_border"], input[name="preview_border_color"], input[name="preview_row_separator"], input[name="preview_row_separator_color"], input[name="preview_text_width"], input[name="lock_colors"], input[name="update_column"], select[name="context_trigger"], select[name="context_graph"], input[name="context_graph_time"]', function() {
+    $(document).on('change input', 'select[name="preview"], select[name="preview_overflow"], select[name="context"], input[name="preview_hover"], input[name="preview_update"], input[name="preview_update_folder"], input[name="preview_grayscale"], input[name="preview_webui"], input[name="preview_logs"], input[name="preview_console"], input[name="preview_vertical_bars"], input[name="preview_vertical_bars_color"], input[name="preview_border"], input[name="preview_border_color"], input[name="preview_row_separator"], input[name="preview_row_separator_color"], input[name="preview_text_width"], input[name="lock_colors"], input[name="update_column"], select[name="context_trigger"], select[name="context_graph"], input[name="context_graph_time"]', function() {
         if (_fv3ApplyingDefaults) return;
         const cb = document.querySelector('input[name="use_global_defaults"]');
         if (cb && cb.checked) cb.checked = false;
@@ -466,6 +469,7 @@ const submitForm = async (e) => {
             preview: parseInt(e.preview.value.toString()),
             preview_hover: e.preview_hover.checked,
             preview_update: e.preview_update.checked,
+            preview_update_folder: e.preview_update_folder.checked,
             preview_text_width: e.preview_text_width.value,
             preview_grayscale: e.preview_grayscale.checked,
             preview_status: e.preview_status?.value || 'none',

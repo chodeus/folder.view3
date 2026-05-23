@@ -676,6 +676,10 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
         $(`tr.folder-id-${id} > td.updatecolumn > div.advanced:has(a)`).remove();
         $(`tr.folder-id-${id} > td.updatecolumn`).append($(`<a class="exec" onclick="updateFolder('${id}');"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i> ${$.i18n('apply-update')}</span></a>`));
         fv3Debug('createFolder', id, 'Set update ready status in update column.');
+        if (folder.settings && folder.settings.preview_update_folder) {
+            $(`tr.folder-id-${id} a.folder-appname`).addClass('orange-text');
+            fv3Debug('createFolder', id, 'Applied orange-text to folder name (preview_update_folder).');
+        }
     }
     if (started) {
         $(`tr.folder-id-${id} i#load-folder-${id}`).attr('class', 'fa fa-play started green-text folder-load-status');

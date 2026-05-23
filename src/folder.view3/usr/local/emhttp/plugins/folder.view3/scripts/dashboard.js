@@ -12,6 +12,8 @@ let fv3VmGreyscale = false;
 let fv3DockerShowLabel = false;
 let fv3VmShowLabel = false;
 let fv3AnimationEnabled = false;
+let fv3DashboardUpdateContainer = false;
+let fv3DashboardUpdateFolder = false;
 let fv3LayoutReady = false;
 let dashboardContext = 0;
 let dashboardContextTrigger = 0;
@@ -335,7 +337,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
             newFolder[container].managed = ct.info.State.manager === 'dockerman';
             newFolder[container].manager = ct.info.State.manager;
 
-            if (folder.settings?.preview_update && newFolder[container].update) {
+            if (fv3DashboardUpdateContainer && newFolder[container].update) {
                 $containerEl.find('.blue-text').addClass('orange-text');
             }
 
@@ -396,7 +398,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     const sel = $(`tbody#docker_view span#folder-id-${id}`)
 
     if (!upToDate && managerTypes.has('dockerman')) {
-        sel.next('span.inner').children().first().addClass(folder.settings?.preview_update ? 'orange-text' : 'blue-text');
+        sel.next('span.inner').children().first().addClass(fv3DashboardUpdateFolder ? 'orange-text' : 'blue-text');
     }
 
     if (started) {
@@ -1448,6 +1450,8 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         fv3DockerShowLabel = s.dashboard_docker_folder_label === 'yes';
         fv3VmShowLabel = s.dashboard_vm_folder_label === 'yes';
         fv3AnimationEnabled = s.dashboard_animation === 'yes';
+        fv3DashboardUpdateContainer = s.dashboard_update_container === 'yes';
+        fv3DashboardUpdateFolder = s.dashboard_update_folder === 'yes';
         dashboardContext = parseInt(s.dashboard_context || '0', 10);
         dashboardContextTrigger = parseInt(s.dashboard_context_trigger || '0', 10);
         dashboardContextGraph = parseInt(s.dashboard_context_graph || '1', 10);

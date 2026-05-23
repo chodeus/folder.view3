@@ -13,6 +13,14 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.05.23-beta1
+- Split "Orange text on update" into separate Docker page and Dashboard toggles for both container and folder names
+- New "Orange folder text on update" — highlights folder names on Docker page when a contained container has an update
+- Dashboard orange-on-update is now global (Settings → Dashboard), not per-folder; default OFF (existing folders no longer turn orange on Dashboard until toggled on)
+- Defaults page reorganised into Basic / Preview / Behavior sub-sections matching the Folder editor order
+- Show preview only on hover moved closer to other display-style toggles in the Folder editor
+- Spelling: grayscale → greyscale in English UI text (CSS function and internal keys unchanged)
+
 ###2026.05.21
 - Add Advanced Preview popup (CPU/MEM graphs + quick actions) to Docker containers on the Dashboard
 - Add Container/VM status indicator (play/square symbol or greyscale-stopped) for Only icon preview mode

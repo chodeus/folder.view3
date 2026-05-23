@@ -146,6 +146,26 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 
             <div class="basic">
                 <dl>
+                    <dt><label for="dashboard-update-folder" data-i18n="dashboard-update-folder">Orange folder text on update</label></dt>
+                    <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-update-folder" type="checkbox" /></dd>
+                </dl>
+                <blockquote class="inline_help">
+                    <p>On the Dashboard, highlights the folder name in orange when any container in the folder has an update available.</p>
+                </blockquote>
+            </div>
+
+            <div class="basic">
+                <dl>
+                    <dt><label for="dashboard-update-container" data-i18n="dashboard-update-container">Orange container text on update</label></dt>
+                    <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-update-container" type="checkbox" /></dd>
+                </dl>
+                <blockquote class="inline_help">
+                    <p>On the Dashboard, highlights container names in the folder showcase in orange when an update is available.</p>
+                </blockquote>
+            </div>
+
+            <div class="basic">
+                <dl>
                     <dt><label for="dashboard-context" data-i18n="dashboard-context">Preview context</label></dt>
                     <dd>
                         <img class="img" style="visibility: hidden;">
@@ -287,6 +307,20 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <div class="fv3-page-panel" id="fv3-panel-defaults" style="display:none">
     <dt class="fv3-section-heading" data-i18n="folder-defaults-info">Default settings for new folders and any folder set to "Use default"</dt>
 
+    <dt class="fv3-section-heading" data-i18n="folder-basic">Basic</dt>
+
+    <div class="basic">
+        <dl>
+            <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-preview-update-folder" data-i18n="preview-update-folder">Orange folder text on update</label></dt>
+            <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-update-folder" type="checkbox" /></dd>
+        </dl>
+        <blockquote class="inline_help">
+            <p>On the Docker page, highlights the folder name in orange when any container in the folder has an update available.</p>
+        </blockquote>
+    </div>
+
+    <dt class="fv3-section-heading" data-i18n="preview">Preview</dt>
+
     <div class="basic">
         <dl>
             <dt><label for="default-preview" data-i18n="preview">Preview</label></dt>
@@ -306,30 +340,23 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
-    <div class="basic" data-fv3-show-preview="1 2 3 4">
+    <div class="basic" data-fv3-show-preview="1 3 4">
         <dl>
-            <dt><label for="default-overflow" data-i18n="overflow">Overflow</label></dt>
-            <dd>
-                <img class="img" style="visibility: hidden;">
-                <select id="default-overflow">
-                    <option value="default" data-i18n="overflow-default">Default</option>
-                    <option value="scroll" data-i18n="overflow-scroll">Scroll</option>
-                    <option value="expand" data-i18n="overflow-expand">Expand</option>
-                </select>
-            </dd>
+            <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-preview-update" data-i18n="preview-update">Orange container text on update</label></dt>
+            <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-update" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>What happens when there are too many containers to fit in the preview. <b>Expand</b> grows the row, <b>Scroll</b> adds a horizontal scrollbar.</p>
+            <p>On the Docker page, highlights container names in the folder preview in orange when an update is available.</p>
         </blockquote>
     </div>
 
-    <div class="basic" data-fv3-show-preview="1 2 3 4">
+    <div class="basic" data-fv3-show-preview="1 3 4">
         <dl>
-            <dt><label for="default-preview-hover" data-i18n="preview-hover">Show preview only on hover</label></dt>
-            <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-hover" type="checkbox" /></dd>
+            <dt><label for="default-preview-text-width" data-i18n="preview-text-width">Preview text width</label></dt>
+            <dd><img class="img" style="visibility: hidden;"><input type="text" id="default-preview-text-width" placeholder="e.g. 80px, 6rem (blank = no limit)" style="max-width:200px;"></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Hides the preview until you hover over the folder row.</p>
+            <p>Maximum width for container names in the preview. Long names are truncated with an ellipsis. Leave blank for no limit.</p>
         </blockquote>
     </div>
 
@@ -350,13 +377,23 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
+        <dl>
+            <dt><label for="default-preview-hover" data-i18n="preview-hover">Show preview only on hover</label></dt>
+            <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-hover" type="checkbox" /></dd>
+        </dl>
+        <blockquote class="inline_help">
+            <p>Hides the preview until you hover over the folder row.</p>
+        </blockquote>
+    </div>
+
     <div class="basic" data-fv3-show-preview="1 2">
         <dl>
-            <dt><label for="default-preview-grayscale" data-i18n="preview-grayscale">Preview icon grayscale</label></dt>
+            <dt><label for="default-preview-grayscale" data-i18n="preview-grayscale">Preview icon greyscale</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-grayscale" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Displays container icons in grayscale instead of color.</p>
+            <p>Displays container icons in greyscale instead of color.</p>
         </blockquote>
     </div>
 
@@ -387,16 +424,6 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </dl>
         <blockquote class="inline_help">
             <p>Shows a console icon next to each container for quick terminal access.</p>
-        </blockquote>
-    </div>
-
-    <div class="basic" data-fv3-show-preview="1 3 4">
-        <dl>
-            <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-preview-update" data-i18n="preview-update">Orange text on update</label></dt>
-            <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-update" type="checkbox" /></dd>
-        </dl>
-        <blockquote class="inline_help">
-            <p>Highlights container names in orange when an update is available.</p>
         </blockquote>
     </div>
 
@@ -438,6 +465,23 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
+    <div class="basic" data-fv3-show-preview="1 2 3 4">
+        <dl>
+            <dt><label for="default-overflow" data-i18n="overflow">Overflow</label></dt>
+            <dd>
+                <img class="img" style="visibility: hidden;">
+                <select id="default-overflow">
+                    <option value="default" data-i18n="overflow-default">Default</option>
+                    <option value="scroll" data-i18n="overflow-scroll">Scroll</option>
+                    <option value="expand" data-i18n="overflow-expand">Expand</option>
+                </select>
+            </dd>
+        </dl>
+        <blockquote class="inline_help">
+            <p>What happens when there are too many containers to fit in the preview. <b>Expand</b> grows the row, <b>Scroll</b> adds a horizontal scrollbar.</p>
+        </blockquote>
+    </div>
+
     <div class="basic fv3-expand-only" data-fv3-show-preview="1 2 3 4" style="display:none">
         <dl>
             <dt><label for="default-row-separator" data-i18n="row-separator">Row separator (expand mode)</label></dt>
@@ -454,16 +498,6 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </dl>
         <blockquote class="inline_help">
             <p>Shows a horizontal line between rows when the preview expands to multiple lines (expand overflow mode only).</p>
-        </blockquote>
-    </div>
-
-    <div class="basic" data-fv3-show-preview="1 3 4">
-        <dl>
-            <dt><label for="default-preview-text-width" data-i18n="preview-text-width">Preview text width</label></dt>
-            <dd><img class="img" style="visibility: hidden;"><input type="text" id="default-preview-text-width" placeholder="e.g. 80px, 6rem (blank = no limit)" style="max-width:200px;"></dd>
-        </dl>
-        <blockquote class="inline_help">
-            <p>Maximum width for container names in the preview. Long names are truncated with an ellipsis. Leave blank for no limit.</p>
         </blockquote>
     </div>
 
@@ -531,6 +565,8 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <p>How many seconds of history the graph displays. Default is 60.</p>
         </blockquote>
     </div>
+
+    <dt class="fv3-section-heading" data-i18n="folder-behavior">Behavior</dt>
 
     <div class="basic">
         <dl>

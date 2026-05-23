@@ -93,6 +93,21 @@ Markdown="false"
                 </li>
             </ul>
 
+            <div class="basic" constraint="docker">
+                <dl>
+                    <dt data-i18n="preview-update-folder">Orange folder text on update:</dt>
+                    <dd>
+                        <img class="img" style="visibility: hidden;">
+                        <input class="fv3-checkbox" name="preview_update_folder" type="checkbox" />
+                    </dd>
+                </dl>
+                <blockquote class="inline_help">
+                    <p data-i18n="[html]preview-update-folder-tooltip">
+                        On the Docker page, highlights the folder name in orange when any container in the folder has an update available.
+                    </p>
+                </blockquote>
+            </div>
+
             <div class="basic">
                 <dl>
                     <dt data-i18n="regex">Regex:</dt>
@@ -137,26 +152,10 @@ Markdown="false"
                 </blockquote>
             </div>
             <ul>
-                <li constraint="preview-1 preview-2 preview-3 preview-4">
-                    <div class="basic">
-                        <dl>
-                            <dt data-i18n="preview-hover">Show preview only on hover:</dt>
-                            <dd>
-                                <img class="img" style="visibility: hidden;">
-                                <input class="fv3-checkbox" name="preview_hover" type="checkbox" />
-                            </dd>
-                        </dl>
-                        <blockquote class="inline_help">
-                            <p data-i18n="[html]preview-hover-tooltip">
-                                Hides the preview until you hover over the folder row. Useful for keeping the table compact.
-                            </p>
-                        </blockquote>
-                    </div>
-                </li>
                 <li constraint="preview-1 preview-3 preview-4 docker">
                     <div class="basic">
                         <dl>
-                            <dt data-i18n="preview-update">Orange text on update:</dt>
+                            <dt data-i18n="preview-update">Orange container text on update:</dt>
                             <dd>
                                 <img class="img" style="visibility: hidden;">
                                 <input class="fv3-checkbox" name="preview_update" type="checkbox" />
@@ -164,7 +163,7 @@ Markdown="false"
                         </dl>
                         <blockquote class="inline_help">
                             <p data-i18n="[html]preview-update-tooltip">
-                                Highlights container names in orange when an update is available, so you can spot outdated containers at a glance.
+                                On the Docker page, highlights container names in the folder preview in orange when an update is available.
                             </p>
                         </blockquote>
                     </div>
@@ -205,10 +204,26 @@ Markdown="false"
                         </blockquote>
                     </div>
                 </li>
+                <li constraint="preview-1 preview-2 preview-3 preview-4">
+                    <div class="basic">
+                        <dl>
+                            <dt data-i18n="preview-hover">Show preview only on hover:</dt>
+                            <dd>
+                                <img class="img" style="visibility: hidden;">
+                                <input class="fv3-checkbox" name="preview_hover" type="checkbox" />
+                            </dd>
+                        </dl>
+                        <blockquote class="inline_help">
+                            <p data-i18n="[html]preview-hover-tooltip">
+                                Hides the preview until you hover over the folder row. Useful for keeping the table compact.
+                            </p>
+                        </blockquote>
+                    </div>
+                </li>
                 <li constraint="preview-1 preview-2">
                     <div class="basic">
                         <dl>
-                            <dt data-i18n="preview-grayscale">Preview icon grayscale:</dt>
+                            <dt data-i18n="preview-grayscale">Preview icon greyscale:</dt>
                             <dd>
                                 <img class="img" style="visibility: hidden;">
                                 <input class="fv3-checkbox" name="preview_grayscale" type="checkbox" />
@@ -216,7 +231,7 @@ Markdown="false"
                         </dl>
                         <blockquote class="inline_help">
                             <p data-i18n="[html]preview-grayscale-tooltip">
-                                Displays container icons in grayscale instead of color.
+                                Displays container icons in greyscale instead of color.
                             </p>
                         </blockquote>
                     </div>
