@@ -156,8 +156,8 @@ td.folder-name .folder-outer {
     font-weight: var(--fv3-folder-name-weight);
 }
 
-body[data-fv3-preset] .folder-appname,
-body[data-fv3-preset] .fv3-folder-appname {
+body[data-fv3-preset] .folder-appname:not(.orange-text),
+body[data-fv3-preset] .fv3-folder-appname:not(.orange-text) {
     color: var(--fv3-folder-name-color, var(--fv3-accent-color));
 }
 

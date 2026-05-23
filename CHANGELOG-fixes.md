@@ -6,6 +6,14 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.23-beta2 — Preset override fix for orange folder names
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 156 | The `body[data-fv3-preset] .folder-appname` rule (specificity 0,2,1) was beating `.orange-text` (0,1,0), so folder names on Docker page and Dashboard stayed the preset accent color even when `preview_update_folder` / `dashboard_update_folder` were on. Added `:not(.orange-text)` to the preset folder-name selector to mirror the existing pattern used for preview-wrapper container names in the same file. | `styles/folder-common.css` | 2026.05.23-beta2 |
+
+---
+
 ## 2026.05.23-beta1 — Orange-on-update split + settings reorganisation
 
 Splits the single per-folder "Orange text on update" toggle into four distinct controls so Docker page and Dashboard can be tuned independently, and reorganises the Defaults page to mirror the Folder editor layout.

@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.05.23-beta2
+- Fix: orange folder name on update was overridden by CSS preset accent color — added `:not(.orange-text)` exclusion to the preset folder-name rule
+
 ###2026.05.23-beta1
 - Split "Orange text on update" into separate Docker page and Dashboard toggles for both container and folder names
 - New "Orange folder text on update" — highlights folder names on Docker page when a contained container has an update
