@@ -13,16 +13,12 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
-###2026.05.23-beta2
-- Fix: orange folder name on update was overridden by CSS preset accent color — added `:not(.orange-text)` exclusion to the preset folder-name rule
-
-###2026.05.23-beta1
-- Split "Orange text on update" into separate Docker page and Dashboard toggles for both container and folder names
-- New "Orange folder text on update" — highlights folder names on Docker page when a contained container has an update
-- Dashboard orange-on-update is now global (Settings → Dashboard), not per-folder; default OFF (existing folders no longer turn orange on Dashboard until toggled on)
+###2026.05.23
+- New "Orange folder text on update" toggle for folders on the docker and dashboard page
+- Dashboard orange-on-update is now its own pair of global toggles (Settings → Dashboard)
 - Defaults page reorganised into Basic / Preview / Behavior sub-sections matching the Folder editor order
-- Show preview only on hover moved closer to other display-style toggles in the Folder editor
-- Spelling: grayscale → greyscale in English UI text (CSS function and internal keys unchanged)
+- Minor changes to folder settings page wording and order
+- Fix: CSS preset accent color no longer overrides orange folder name on update
 
 ###2026.05.21
 - Add Advanced Preview popup (CPU/MEM graphs + quick actions) to Docker containers on the Dashboard

@@ -6,6 +6,12 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.23 — Stable Release
+
+Consolidates beta builds v2026.05.23.1 and v2026.05.23.2. Per-beta detail entries below preserved as the change ledger for the release.
+
+---
+
 ## 2026.05.23-beta2 — Preset override fix for orange folder names
 
 | # | Change | File(s) | Version |
