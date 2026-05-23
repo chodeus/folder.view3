@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.05.24
+- Updated German translation (thank you kennymc-c, #36)
+
 ###2026.05.23
 - New "Orange folder text on update" toggle for folders on the docker and dashboard page
 - Dashboard orange-on-update is now its own pair of global toggles (Settings → Dashboard)
