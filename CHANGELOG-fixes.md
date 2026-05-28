@@ -6,485 +6,32 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
-## 2026.05.28 — Stable Release
-
-Consolidates beta builds v2026.05.28.1 and v2026.05.28.2. Per-beta detail entries below preserved as the change ledger for the release.
-
----
-
-## 2026.05.28-beta2 — Conditional folder context menus
-
-Folder context menus now hide actions that wouldn't act on any child container/VM, matching Unraid's native per-container `addDockerContainerContext` behaviour. Previously the full set of Start/Stop/Pause/Resume/Restart was always shown; `pass` predicates inside `actionFolderDocker`/`actionFolderVM` then silently skipped non-eligible containers. UX-inconsistent with Unraid native, especially noticeable when a folder had Resume visible despite nothing being paused.
+## Security
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 162 | Dashboard docker folder menu: compute `running`, `paused`, `runningNotPaused`, `stopped` from `folder.containers` at menu-build time. Hide Start when nothing is stopped, Stop/Restart when nothing is running, Pause when nothing is running-not-paused, Resume when nothing is paused. Trailing divider only added if at least one action survived gating. | `scripts/dashboard.js` | 2026.05.28-beta2 |
-| 163 | Dashboard VM folder menu: compute per-state counts (`running`, `shutoff`, `resumable` = paused+pmsuspended+unknown). Hide Start when no shutoff VM; hide Stop/Pause/Restart/Hibernate when no running VM; hide Resume when no resumable VM; hide Force-stop when no destroyable VM; Reset stays gated on both `fv3ApiAvailable` and running VM count. | `scripts/dashboard.js` | 2026.05.28-beta2 |
-| 164 | Docker tab folder menu (docker.js `addDockerFolderContext`): same docker gating logic as the Dashboard equivalent, applied at the per-row context menu. | `scripts/docker.js` | 2026.05.28-beta2 |
-| 165 | VM tab folder menu (vm.js `addVMFolderContext`): same VM gating logic as the Dashboard equivalent, applied at the per-row context menu. | `scripts/vm.js` | 2026.05.28-beta2 |
+| 141 | H2: escapeHtml on Docker icon label. `<img src="${ct.Labels['net.unraid.docker.icon']}">` wrapped in escapeHtml. Not exploitable on Unraid today, consistent with rest of popup. | `scripts/advanced-preview.js` | 2026.05.21 |
+| 142 | H3: escapeHtml on port mappings and volume mounts. `e.PrivateIP`, `e.PublicIP`, `e.PrivatePort`, `e.PublicPort`, `e.Type.toUpperCase()`, `e.Destination`, `e.Source` all wrapped in escapeHtml. Defense in depth. | `scripts/advanced-preview.js` | 2026.05.21 |
+| 144 | H7: Graph time input validation. Added `min="5" max="600" step="5"` to all three `context_graph_time` inputs (per-folder + Folder Defaults + Dashboard). | `Folder.page`, `FolderView3.page` | 2026.05.21 |
+| 12 | Content-Type: application/json on all JSON endpoints | All `server/*.php` | 2026.04.04 |
+| 13 | CSS injection sanitization (strips @import, url(), expression(), javascript:) | `lib.php` | 2026.04.04 |
+| 14 | Recursive delete for theme removal | `lib.php`, `delete_theme.php` | 2026.04.04 |
 
----
-
-## 2026.05.28-beta1 — Dashboard Restart / Pause-icon / custom-action bugs
-
-Audit of every folder context-menu wire on Dashboard, Docker tab, and VM tab. All five fixes are JS-only — Unraid backend was always working; the failures sat in the switch/aggregation logic in front of `fv3DockerAction` / `fv3VmAction`.
+## New Features
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 157 | `actionFolderDocker` switch had `case "resume"` duplicated; the second case (intended as `"restart"`) was unreachable, so the "restart" action fell into `default` with `pass = false` and zero `fv3DockerAction('restart', …)` calls fired. Spinner blipped, containers untouched. Confirmed live via instrumented `window.fv3DockerAction` / `window.fv3GraphQL`. Renamed the second case to `"restart"` and gated it on `ct.state` so stopped containers aren't sent restart (no more "Execution error" swal). | `scripts/dashboard.js` | 2026.05.28-beta1 |
-| 158 | `createFolderDocker` and `createFolderVM` captured each container's `pause` field but never aggregated it. The `if (started) { … fa-play … }` block ran whenever any container was running (Docker keeps `State.Running === true` while paused), so the folder icon stayed green even when all children were paused. Added `paused` counter; when `paused > 0 && paused === started` the icon swaps to `fa fa-pause … orange-text` and the state text uses the existing `paused` i18n key. `folder.status.paused` now persists alongside `started`. | `scripts/dashboard.js`, `scripts/docker.js`, `scripts/vm.js` | 2026.05.28-beta1 |
-| 159 | When a docker folder had `override_default_actions = true` with at least one custom action, the Dashboard context menu wired the menu item to a function named `folderCustomAction` — which is only defined inside docker.js (Docker tab) and vm.js (VM tab), not on the Dashboard. Clicking threw `ReferenceError: folderCustomAction is not defined`. Routed the override-mode docker entries to the page-local `folderDockerCustomAction` and the VM entries to `folderVMCustomAction`. | `scripts/dashboard.js` | 2026.05.28-beta1 |
-| 160 | The bulk Restart "pass" predicate in Docker's `actionFolder` (docker.js) and the Restart custom-action variant in both `folderDockerCustomAction` (dashboard.js) and `folderCustomAction` (docker.js) set `pass = true` / pushed unconditionally, so restart was sent to stopped containers too. Unraid's PHP `/update.htm action=restart` returns `{"success":"Server error"}` in that case, which `actionFolderDocker` surfaces as an "Execution error" swal. Added `ct.state` / `e.state` / `e_ct.state` guards on every restart push. | `scripts/dashboard.js`, `scripts/docker.js` | 2026.05.28-beta1 |
-| 161 | VM custom-action "Set Restart" mode (`act.action === 1, act.modes === 3`) gated `domain-restart` on `state === "paused" || state === "unknown"` — libvirt can't reboot a paused VM, so the custom action effectively never fired on the correct state. Changed the predicate to `state === "running"` in both `vm.js` and `dashboard.js`. | `scripts/vm.js`, `scripts/dashboard.js` | 2026.05.28-beta1 |
-
----
-
-## 2026.05.23 — Stable Release
-
-Consolidates beta builds v2026.05.23.1 and v2026.05.23.2. Per-beta detail entries below preserved as the change ledger for the release.
-
----
-
-## 2026.05.23-beta2 — Preset override fix for orange folder names
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 156 | The `body[data-fv3-preset] .folder-appname` rule (specificity 0,2,1) was beating `.orange-text` (0,1,0), so folder names on Docker page and Dashboard stayed the preset accent color even when `preview_update_folder` / `dashboard_update_folder` were on. Added `:not(.orange-text)` to the preset folder-name selector to mirror the existing pattern used for preview-wrapper container names in the same file. | `styles/folder-common.css` | 2026.05.23-beta2 |
-
----
-
-## 2026.05.23-beta1 — Orange-on-update split + settings reorganisation
-
-Splits the single per-folder "Orange text on update" toggle into four distinct controls so Docker page and Dashboard can be tuned independently, and reorganises the Defaults page to mirror the Folder editor layout.
-
-### Toggle split
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 150 | Per-folder `preview_update` (Docker page container names in preview) kept and relabelled "Orange container text on update". Added new per-folder `preview_update_folder` (Docker page folder name on update). Both live in the Folder editor and as defaults on the Defaults page. New toggle defaults OFF. | `Folder.page`, `FolderView3.page`, `scripts/folder.js`, `scripts/folderview3.js`, `scripts/docker.js`, `server/lib.php`, all 7 lang files | 2026.05.23-beta1 |
-| 151 | New global Dashboard settings `dashboard_update_container` and `dashboard_update_folder` (Settings → Dashboard → Docker column). Replaces the implicit dashboard behaviour that piggybacked on per-folder `preview_update`. Stored once in `settings.json`, read by dashboard.js into `fv3DashboardUpdateContainer` / `fv3DashboardUpdateFolder` vars. Default OFF — existing folders that previously turned orange on the Dashboard via `preview_update=true` will no longer do so until the new global toggles are enabled. | `FolderView3.page`, `scripts/dashboard.js`, `scripts/folderview3.js`, `server/lib.php` | 2026.05.23-beta1 |
-| 152 | New behaviour: on Docker page, the folder name (`.folder-appname`) gets `.orange-text` when any child container has `Updated === false` AND `preview_update_folder` is enabled. Added to `createFolder()`'s `!upToDate` branch in docker.js. | `scripts/docker.js` | 2026.05.23-beta1 |
-
-### Settings page reorganisation
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 153 | Defaults panel split into Basic / Preview / Behavior sub-sections. Item order under Preview now mirrors the Folder editor (preview mode → orange container → text width → status → hover → greyscale → webui/logs/console → vertical bars / border → overflow → row separator → context popup). `default-update-column` moved into the new Behavior section. | `FolderView3.page` | 2026.05.23-beta1 |
-| 154 | Folder editor: `preview_update_folder` placed in Basic section (works regardless of preview mode). `preview_hover` moved closer to other display toggles, directly above `preview_grayscale`. | `Folder.page` | 2026.05.23-beta1 |
-| 155 | Spelling: "grayscale" → "greyscale" in English UI text only (label + tooltip in en.json, Folder.page, FolderView3.page). Variable names (`preview_grayscale`, `dashboard_docker_greyscale`), the CSS function `grayscale(100%)`, and non-English translations were intentionally left alone. | `langs/en.json`, `Folder.page`, `FolderView3.page` | 2026.05.23-beta1 |
-
----
-
-## 2026.05.21 — Stable Release
-
-Consolidates beta builds v2026.05.21.1 through v2026.05.21.16. Closes [issue #35](https://github.com/chodeus/folder.view3/issues/35) (Dashboard advanced preview). Per-beta detail entries below preserved as the change ledger for the release.
-
-### Listener leak in advanced preview (root cause)
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 149 | Two leaks in the advanced preview tooltipster's stats-listener lifecycle: (a) `functionReady` can fire more than once per popup lifecycle (esp. hover trigger), each call added another listener; `functionAfter`'s `removeEventListener` only matched one closure reference, so duplicates accumulated; (b) `functionAfter` decided which listener to remove based on the CURRENT `fv3UsingWebSocket` flag, which may have flipped between attach and remove time. Introduced an `attachedListener` closure-scoped tracker (`'ws' \| 'sse' \| null`) so attach is idempotent and remove uses the tracked type. The v.15 try/catch in `pushChartData` stays as defense-in-depth. | `scripts/advanced-preview.js` | 2026.05.21.16 |
-
-### Stale chart update after popup close (symptom suppression)
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 148 | `pushChartData()` called `chart.update('quiet')` unconditionally on each entry of the `charts` array. When a WS stats event fired after tooltipster's `functionAfter` had begun destroying charts, the call hit a destroyed chart and chartjs-plugin-streaming threw `TypeError: Cannot set properties of null (setting '_setStyle')`. Wrapped the update loop with try/catch and added a `chart.canvas && document.body.contains(chart.canvas)` guard to skip stale references silently. | `scripts/advanced-preview.js` | 2026.05.21.15 |
-
-### Popup background — actually theme-aware (the third try)
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 147 | v.13's CSS edit silently failed because the `background-color: hsl(var(--background, 0 0% 11%));` string matched twice per file (main rule + mobile @media block) and Edit tool refused without `replace_all: true`. v.13 was built and pushed without the actual change. v.14 re-ran with `replace_all: true` on both docker.css and dashboard.css. Lesson learned: when Edit fails, the build can still ship with stale CSS — always verify the change made it into the build before pushing. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.14 |
-
----
-
-## 2026.05.21.13 — Beta hotfix (Popup theme variable)
-
-### Popup background actually theme-aware
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 146 | v.12 used `hsl(var(--background, 0 0% 11%))` thinking `--background` was Unraid's theme background variable. It isn't — `--background` is hardcoded to `0 0% 3.9%` on both light and dark themes (not theme-aware). The ACTUAL theme-aware variable is `--background-color` (with hyphen), defined in `default-base.css` as the `body { background-color: ... }` source. On light themes it's `#f2f2f2`, on dark themes it's `#1d1b1b`-ish. Switched popup background to `var(--background-color, rgb(29, 27, 27))`. Light themes now get a light popup, dark themes a dark popup. The 1px border + box-shadow keep it visually distinct from the page. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.13 |
-
----
-
-## 2026.05.21.12 — Beta hotfix
-
-### Popup transparent (regression from v.11)
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 145 | v.11 used `background-color: hsla(var(--background, 0 0% 11%), 1)` to make the popup opaque. That syntax is invalid CSS — `hsla()` expects either all-comma (`hsla(H, S%, L%, A)`) or modern slash separator inside `hsl()` (`hsl(H S% L% / A)`). Mixing space-separated HSL components with a comma-separated alpha produced an invalid color, browsers fell back to `rgba(0,0,0,0)` (transparent), and the popup looked transparent again. Switched to `hsl(var(--background, 0 0% 11%))` (no alpha needed since we want fully opaque). Verified `computedBg: rgb(10, 10, 10)` after fix. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.12 |
-
----
-
-## 2026.05.21.11 — Beta review fixes
-
-### Popup bleed-through
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 138 | `.preview-outbox` had `background-color: inherit`, which after v.10's `.tooltipster-base` transparency change inherited transparency all the way up to body. Page content showed through the popup. Replaced with `hsla(var(--background, 0 0% 11%), 1)` (theme-aware via Unraid's HSL background variable, opaque fallback for older themes) + a soft box-shadow for elevation and a subtle 1px border. Applied to both docker.css and dashboard.css for consistency. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.11 |
-
-### Review-found issues (independent code review pass)
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 139 | C1: CPU% wrong on servers without GraphQL API. dashboard.js was passing `cpus: window.fv3CpuCores || 1`. `fv3CpuCores` only gets set by the GraphQL probe in shared.js; on Unraid <7.2 or with API disabled it stays null, so SSE-path `cpuVal / cpus` rendered CPU as `cores× actual`. Added `$.get('/plugins/folder.view3/server/cpu.php')` fetch inside `fv3InitDashboardStats()` populating `dashboardCpus` as fallback. | `scripts/dashboard.js` | 2026.05.21.11 |
-| 140 | C2: Dropped non-functional Default Preview context option. v.5 added a 3-state select but `dashboard.js` only branched on `=== 2`, so value `1` silently did nothing while help text claimed it would show basic info. Reduced to 2 options: `value="0"` Default (Unraid native menu) and `value="2"` Advanced (FV3 popup). Allowlist keeps `[0,1,2]` for forward compat. | `FolderView3.page`, `langs/*.json` | 2026.05.21.11 |
-| 141 | H2: escapeHtml on Docker icon label. `<img src="${ct.Labels['net.unraid.docker.icon']}">` wrapped in escapeHtml. Not exploitable on Unraid today, consistent with rest of popup. | `scripts/advanced-preview.js` | 2026.05.21.11 |
-| 142 | H3: escapeHtml on port mappings and volume mounts. `e.PrivateIP`, `e.PublicIP`, `e.PrivatePort`, `e.PublicPort`, `e.Type.toUpperCase()`, `e.Destination`, `e.Source` all wrapped in escapeHtml. Defense in depth. | `scripts/advanced-preview.js` | 2026.05.21.11 |
-| 143 | H4: Tooltipster availability guard. Added `if (!$.fn.tooltipster) return;` at the top of `fv3AttachAdvancedPreview`. Cheap insurance against future Unraid changes. | `scripts/advanced-preview.js` | 2026.05.21.11 |
-| 144 | H7: Graph time input validation. Added `min="5" max="600" step="5"` to all three `context_graph_time` inputs (per-folder + Folder Defaults + Dashboard). | `Folder.page`, `FolderView3.page` | 2026.05.21.11 |
-
----
-
-## 2026.05.21.10 — Beta hotfix
-
-### Tooltip backdrop on Docker tab
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 137 | v.9 added the `.tooltipster-base { background: transparent; }` override to dashboard.css only — the symmetric edit to docker.css failed silently (Edit tool error from skipping the Read step). v.10 applies the same override to docker.css so the Docker tab also drops the black backdrop. | `styles/docker.css` | 2026.05.21.10 |
-
----
-
-## 2026.05.21.9 — Beta hotfix
-
-### Graph colors + tooltip backdrop
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 135 | Load `folder-common.css` on Dashboard.page (previously only Docker.page / VMs.page / Folder.page loaded it — Dashboard was an oversight). This restores the shared CSS variables the popup styles reference: `--folder-view3-graph-cpu` / `--folder-view3-graph-mem` (the Chart.js line colors were resolving to empty string and falling back to Chart defaults — wrong colors), `--fv3-tooltip-min-width` / `-max-height` / `-action-pane-width`, `--fv3-surface-tint` / `-hover-bg` / `-border` / `-tab-active-bg` / `-tab-active-border`, `--tooltip-spacing`. | `folder.view3.Dashboard.page` | 2026.05.21.9 |
-| 136 | Override `.tooltipster-docker-folder.tooltipster-base { background: transparent; }` in both docker.css and dashboard.css. Unraid's default `.tooltipster-sidetip` theme paints the outer base with `rgb(29, 27, 27)` (dark backdrop) — visible as a black box surrounding the popup content with the arrow attached to it. Setting it transparent removes the backdrop while the arrow and orange top accent on `.tooltipster-box` remain. Both pages get this for consistency. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21.9 |
-
----
-
-## 2026.05.21.8 — Beta hotfix
-
-### Dashboard popup CSS — cleaner separation
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 134 | v.7 loaded docker.css on Dashboard.page as a quick fix for popup styling, which mixed Docker-tab-specific rules into the Dashboard page (~424 lines of unrelated CSS). Per-user request, duplicated only the popup-related rules into dashboard.css (378 lines copied verbatim — `.preview-outbox`, `.preview-name`, `.preview-status`, `.action-info`, `.info-section`, `.tooltipster-docker-folder`, `.fv3-mobile-details`, graph canvas styles, mobile @media block). docker.css unchanged; both files now contain the popup styles. Dashboard.page reverts to loading only dashboard.css. Trade-off accepted: popup CSS fixes now need to be applied in two places. | `styles/dashboard.css`, `folder.view3.Dashboard.page` | 2026.05.21.8 |
-
----
-
-## 2026.05.21.7 — Beta hotfix (Dashboard advanced popup)
-
-### Popup styling missing on Dashboard
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 132 | Add `docker.css` to the Dashboard.page stylesheet loads. The advanced preview popup HTML template uses `.preview-outbox`, `.preview-name`, `.action-info`, `.info-section`, etc. — all defined in docker.css. Dashboard.page previously only loaded dashboard.css, so on Dashboard the popup rendered with no styling at all. | `folder.view3.Dashboard.page` | 2026.05.21.7 |
-
-### Native context menu opened alongside Advanced popup
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 133 | When attaching the advanced preview tooltipster to a Dashboard container's `span.hand` in Advanced mode, strip its inline `onclick="addDockerContainerContext(...)"` attribute. Unraid's native click handler fires synchronously alongside tooltipster's click handler, so without this both the default Unraid context menu AND our advanced popup would open on the same click. In Default mode the helper isn't attached, so the native menu still works. | `scripts/dashboard.js` | 2026.05.21.7 |
-
----
-
-## 2026.05.21.6 — Beta hotfix
-
-### Phantom dirty-state (round 2)
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 131 | Add `selected` attribute to the Combined option of `<select id="dashboard-context-graph">`. v.5 introduced the new dashboard Graph mode select with no `selected` on any option (HTML defaults to first = `value="0"`/None), but `fv3SettingDefaults.dashboard_context_graph = '1'`. With no saved value yet, the dirty-check resolved fallback to `'1'` while the actual select value was `'0'` — permanent phantom dirty flag the moment the page loaded. Matches how the Folder Defaults equivalent (`default-context-graph`) handles its initial state. | `FolderView3.page` | 2026.05.21.6 |
-
----
-
-## 2026.05.21.5 — Beta UX polish
-
-### Dashboard Preview context UI
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 128 | Move the Dashboard "Preview context" select from the General section to the Docker column on Settings → FolderView3 → Dashboard. It was a Docker-only setting living in a cross-cutting section; relocating it groups it with the other Docker dashboard settings and drops the now-redundant "Docker only" scope badge. | `FolderView3.page` | 2026.05.21.5 |
-| 129 | Add three dashboard-specific sub-options that mirror the per-folder context settings, shown only when `dashboard_context = Advanced`: **Activation mode** (`dashboard_context_trigger`, Click/Hover), **Graph mode** (`dashboard_context_graph`, None/Combined/Split/CPU/MEM), **Time Frame (s)** (`dashboard_context_graph_time`, freeform number). These are separate from the per-folder context values so Dashboard popup behavior can be configured independently. | `FolderView3.page`, `server/lib.php` (allowlist + freeform list), `scripts/folderview3.js` (selectMap, defaults, applyFormState, collectSettings, change listener), `scripts/shared.js` (fv3LoadFolderDefaults) | 2026.05.21.5 |
-| 130 | Wire dashboard.js to pass `dashboardContextTrigger` / `dashboardContextGraph` / `dashboardContextGraphTime` to `fv3AttachAdvancedPreview` instead of folder-specific context values. Dashboard popups now honor the new dashboard-specific sub-option settings. | `scripts/dashboard.js` | 2026.05.21.5 |
-
----
-
-## 2026.05.21.4 — Beta (issue #35)
-
-### Advanced preview popup on Dashboard
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 121 | Extract the ~480-line advanced-preview tooltipster block from docker.js into a new shared helper `window.fv3AttachAdvancedPreview({triggerEl, ct, folder, id, container_name_in_folder, cpus})` in a new file `scripts/advanced-preview.js`. Verbatim lift — internal logic unchanged, only the outer wrapper became a function and the lone `tooltip_trigger_element` reference inside the mobile ResizeObserver was renamed to `triggerEl`. Net effect: `docker.js` shrinks from 1865 → 1401 lines. | `scripts/advanced-preview.js` (new), `scripts/docker.js` | 2026.05.21.4 |
-| 122 | Move helper utilities (`memToB`, `hideAllTips`, `advancedAutostart`) and the `fv3UsingWebSocket` flag from `docker.js` to `advanced-preview.js` as `window.*` globals so Dashboard can access them without loading docker.js. Both files now reference them via the global scope chain. | `scripts/advanced-preview.js`, `scripts/docker.js` | 2026.05.21.4 |
-| 123 | Add `typeof dockerload !== 'undefined'` guard to the SSE listener subscription inside the helper. Dashboard has no `dockerload` SSE source — the guard prevents a `ReferenceError` on Dashboard when WebSocket stats are unavailable; the popup still renders but graphs degrade to 0% (acceptable). | `scripts/advanced-preview.js` | 2026.05.21.4 |
-| 124 | Add `dashboard_context` global setting (`0/1/2` = None/Default/Advanced) to the backend allowlist and a new row on the FolderView3 settings page → Dashboard panel → General section. When set to Advanced (2), all Docker containers on the Dashboard get the same popup the Docker tab shows. | `server/lib.php`, `FolderView3.page`, `scripts/folderview3.js`, `langs/*.json` | 2026.05.21.4 |
-| 125 | Wire dashboard.js to read `dashboard_context` (via existing `fv3SettingsReq` parse), initialize a WebSocket stats subscription via shared.js's `fv3ConnectStats` (no SSE fallback on Dashboard), and attach `fv3AttachAdvancedPreview` to each Docker container's `span.hand` inside folder storage when `dashboard_context === 2`. | `scripts/dashboard.js` | 2026.05.21.4 |
-| 126 | Load Chart.js + chartjs-plugin-streaming + chartjs-adapter-moment + moment.js on `folder.view3.Dashboard.page` (previously Docker-tab-only). +300 KB on Dashboard first load, cached thereafter. Also load `advanced-preview.js`. | `folder.view3.Dashboard.page`, `folder.view3.Docker.page` | 2026.05.21.4 |
-| 127 | Add `dashboard_context: '0'` to `fv3SettingDefaults` to avoid phantom dirty-state on the settings page (same regression pattern as v2026.05.21.2 — without this entry, the dirty-check resolves the new field's fallback to `''`, conflicting with the select's actual value `'0'`). | `scripts/folderview3.js` | 2026.05.21.4 |
-
----
-
-## 2026.05.21.3 — Beta hotfix
-
-### Top-nav discard prompt didn't actually block navigation
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 120 | Unraid's top-nav links are `<a href="/Docker" onclick="initab('/Docker')">…</a>`. The intercepted `initab()` returned `false` to block the SPA tab switch, but because the inline `onclick` attribute lacks `return`, the return value is discarded and the browser still follows the `href` — so the swal fired alongside a full page load. Added a capture-phase document click listener that intercepts clicks on `a[onclick*="initab"]` before the inline `onclick` runs, calls `preventDefault` + `stopPropagation` when the form is dirty, shows the swal, and navigates manually via `window.location.href` only after the user picks Discard. | `folderview3.js` | 2026.05.21.3 |
-
----
-
-## 2026.05.21.2 — Beta hotfix
-
-### Phantom dirty-state on settings page
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 119 | Add `default_preview_status: 'none'` to `fv3SettingDefaults`. The map is the fallback the dirty-check (`fv3IsSettingsDirty`) uses when `fv3LoadedSettings[key]` is undefined. The new field had no entry, so the fallback chain resolved to `''`, and the select's actual value `'none'` was permanently flagged as a pending change — triggering the "You have unsaved changes. Discard them?" prompt on every tab switch / SPA navigation away from the FolderView3 settings page even when the user had touched nothing. | `folderview3.js` | 2026.05.21.2 |
-
----
-
-## 2026.05.21.1 — Beta
-
-### Container/VM status indicator (Only icon preview)
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 116 | Add `preview_status` setting (`none` / `symbol` / `grayscale`) shown only when Preview = Only icon. **Symbol**: appends `<br>` + `<i class="fa fa-play started green-text">` (running) or `<i class="fa fa-square stopped red-text">` (stopped) inside `span.hand` after the WebUI/console/log action buttons; CSS floats the icon left so the right column stacks: action buttons on line 1, status icon on line 2. **Grayscale stopped**: applies `filter: grayscale(100%)` to the entire `span.hand` of stopped wrappers, desaturating icon and action buttons together. Per-folder via Folder.page select, global default via FolderView3.page. Backward-compatible — existing folders without the field show no indicator. | `Folder.page`, `FolderView3.page`, `docker.js`, `vm.js`, `folder.js`, `folderview3.js`, `shared.js`, `lib.php`, `folder-common.css`, 7 lang files | 2026.05.21.1 |
-
-### Folder editor: Delete button
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 117 | Add red "Delete folder" button to the folder editor footer, far-right on the same row as Submit/Cancel for visual separation. PHP-conditional render — only appears when `?id=` is present (editing, not creating). swal confirm dialog with Cancel default and the folder name interpolated into the warning text; POST to existing `delete.php` on confirm, then redirects back to /Docker or /VMs. | `Folder.page`, `folder.js`, `folder.css`, 7 lang files | 2026.05.21.1 |
-
-### Defaults page constraint engine
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 118 | Defaults page (`FolderView3.page`) previously left preview-related settings visible regardless of the Preview mode, even when they'd have no effect (e.g. "Orange text on update" with Preview = Only icon, or all preview options with Preview = None). New `fv3ApplyConstraints()` reads `data-fv3-show-preview="…"` on each setting row's `<div class="basic">` and toggles `display` based on the master Preview dropdown, with combinatoric AND for `.fv3-expand-only` (Overflow = Expand) and `.fv3-context-advanced` (Context = Advanced). Replaces two single-purpose change listeners. 13 setting rows now show/hide correctly. | `FolderView3.page`, `folderview3.js` | 2026.05.21.1 |
-
----
-
-## 2026.05.15 — Stable Release
-
-Consolidates beta builds v2026.05.15.1 through v2026.05.15.3.
-
-### Reset Order restored
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 110 | Fix Unraid's Reset Order button — silently broken on every server running FV3 since the userprefs.cfg interceptor was added. FV3's `$.ajaxPrefilter` for `/plugins/dynamix.docker.manager/include/UserPrefs.php` assumed a save-order payload with `names=…`; the Reset Order POST is `{reset:true}` with no `names` field, so `data.get('names').split(';')` threw `TypeError: Cannot read properties of null (reading 'split')` synchronously inside the prefilter and the request never reached Unraid. Added early-return guard `if (!data.has('names')) return;`. Same fix applied to the VM tab prefilter. | `docker.js`, `vm.js` | 2026.05.15.1 |
-| 111 | Patch `resetSorting()` to chain a `sync_order.php` POST between Unraid's reset and `loadlist()`. Stock Unraid's reset deletes `userprefs.cfg` and natcasesorts the autostart file alphabetically. The patch restores folder-grouped autostart before the page re-renders. | `docker.js` | 2026.05.15.1 |
-
-### Render order ownership returned to Unraid
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 112 | Stop auto-writing `userprefs.cfg` on folder save. The pre-existing `syncContainerOrder()` rewrote `userprefs.cfg` after every folder edit, which permanently flipped Unraid into "manual order mode" — silently disabling Unraid's native alphabetical sort for new containers and pinning new folders to the bottom of the list. The function now only rewrites the autostart file; render order is left entirely to Unraid (alphabetical when `userprefs.cfg` is absent, manual when the user drag-reorders). | `lib.php` | 2026.05.15.1 |
-| 113 | Client-side `createFolders()` synthesizes an alphabetical-intermix order when `read_order.php` returns empty. Folder names and orphan container names sort together using natural case-insensitive comparison (`localeCompare(name, undefined, {numeric: true, sensitivity: 'base'})`), so folders slot into their natural alphabetical position alongside containers instead of stacking at the top in reverse JSON-key order. | `docker.js` | 2026.05.15.2 |
-| 114 | Add post-sort pass for alpha-synthesis mode. `createFolder()`'s `positionInMainOrder` is an index into the order array, but the DOM has containers in pure alphabetical order while the synthesized array has folders interleaved with orphans — the indices don't map cleanly. Final pass reattaches top-level sortable rows alphabetically by name after all folders are built. Manual mode is unaffected. | `docker.js` | 2026.05.15.3 |
-| 115 | Server-side `syncContainerOrder()` matches the client-side alpha-intermix when `userprefs.cfg` is absent. New items not present in `userprefs.cfg` are now prepended (not appended) so the autostart file mirrors what's on screen, including Unraid's native sort=0 "top placement" for items missing from `userprefs.cfg` in manual mode. | `lib.php` | 2026.05.15.1 |
-
-### Autostart sync expanded
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 116 | New `ajaxComplete` hook fires `sync_order.php` after Unraid's autostart-toggle (`UpdateConfig.php?action=autostart` / `action=wait`) and drag-reorder save (`UserPrefs.php` with `names=…`). Without this, Unraid resorts the autostart file (natcasesort when `userprefs.cfg` is absent, by `userprefs.cfg` position when present) and silently breaks folder grouping on every autostart toggle. The hook re-establishes folder grouping by walking the current render order and rewriting the autostart file. Combined with the Reset Order patch, the autostart file now stays in sync across all four state-changing events: folder save, Reset Order, drag-reorder, and autostart toggle. | `docker.js` | 2026.05.15.1 |
-
----
-
-## 2026.05.02 — Stable Release
-
-Single-day stable consolidating beta builds v2026.05.01.901 through v2026.05.02.914.
-
-### Docker Table Column Lock & Layout Stability
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 104 | **Two-snapshot column-width model.** `fv3InstallDockerTableWidthFix` now computes both `widthsExpanded` (Uptime present) and `widthsCollapsed` (Uptime = 0, freed space → Volume Mappings only) once per page-load / resize / view-toggle, using the state-independent hoist loop as the only measurement source. New `fv3ApplyCachedWidths` swaps between cached snapshots on `docker-post-folder-expansion` — no re-measurement, no drift. Cols 0–5, 7, 8 are byte-stable across every folder open/close transition; only col 6 (Volume Mappings) and col 9 (Uptime) change. Eliminates the perceived "Version column shrinks" jump and fixes a real ~38px Version drift in advanced view after expand→collapse cycles that had survived through `.901`–`.908`. | `shared.js` | 2026.05.02.909 |
-| 105 | Reduce verHint buffer from `+12` to `+2`. The `+12` cushion was protecting against folder-state drift the snapshot model now prevents. Result: ~10px of horizontal space transferred from Version column to preview area. | `shared.js` | 2026.05.02.910 |
-| 106 | Drop dead `fv3-width-hint` references — the hint element was created by the trailing-collapse logic deleted in `.909`, so the cleanup line and the corresponding `id === 'fv3-width-hint'` skip in `fv3AnyNonFolderRowVisible` were orphaned. | `shared.js` | 2026.05.02.911 |
-| 107 | Fix `verHint = 0` in hoist loop. The `.908` filter excluded `visibility:hidden` status spans to skip hidden update-state siblings — but `visibility` is inherited, and the hoist loop applies `visibility:hidden` to the entire `<tr>` while measuring. Every status span inherited hidden visibility and got filtered out, leaving `verContentMax = 0` and the Version column stuck at its natural ~197px table-layout:auto width. Switched to `display:none`-only filtering inside the hoist sub-scan; `getBoundingClientRect()` returns layout width regardless of visibility. | `shared.js` | 2026.05.02.912 |
-
-### Folder-Name Pill
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 108 | Tail-call `fv3SchedulePillSize` from `fv3ApplyCachedWidths` so collapse can shrink stuck rows. `docker-post-folder-expansion` queues both `fv3SchedulePillSize` (50ms) and `fv3ScheduleApplyCachedWidths` (50ms). When pill-sizing won the race, it measured the still-narrow Volume Mappings column (chips wrapped, preview tall) and re-pinned the pill at the expanded value (e.g. 95px). When `fv3ApplyCachedWidths` then widened the column and chips unwrapped, the pill was already locked, leaving the row stuck at 103px instead of dropping back to 67px. Tail-call fires a second pass after column widths settle. Mirrors the `.905` fix for basic↔advanced toggle path. | `shared.js` | 2026.05.02.913 |
-
-### Code Hygiene
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 109 | Plugin-wide comment cleanup. Stripped explanation lines across all eight JS files (`shared.js`, `docker.js`, `vm.js`, `dashboard.js`, `folder.js`, `folderview3.js`, `csstool.js`, `include/customEvents.js`); kept only single-line section markers and architectural do-not-retry warnings (e.g. pill height invariants, `switchButton` deferred init, ajaxPrefilter rationale). Added navigational section markers throughout `shared.js` (Row separators, Preview height sync, Unraid GraphQL API, Preview mode, Docker table column-width lock, Resize / view-mode listeners) and `docker.js` (Folder rendering, Folder controls, Bulk actions, Custom actions, Context menu, SSE stats fallback, Memory unit conversion). Net: -268 / +86 lines. | all 8 JS files | 2026.05.02.914 |
-
----
-
-## 2026.04.30 — Stable Release
-
-Consolidates beta builds v2026.04.21.1 through v2026.04.30.1.
-
-### Docker Table Column Lock & Layout Stability
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 85 | Stabilize Docker table columns: probe expanded-child widths, inject zero-height hint row, cap VERSION cell content with ellipsis so preview row left edge stops shifting on folder expand/collapse (issue #31) | `shared.js`, `docker.js` | 2026.04.22.1 |
-| 88 | Lock Docker table columns in advanced view: bump `verHint` padding buffer from +2 to +12 to absorb auto-layout discrepancy between folder rows (2 stacked divs) and child rows (3 stacked divs) — kills the ~7px Version column shift on expand. Cap total column-sum to container width and proportionally scale cols 2-6 (NET/IP/PORT/LAN/VOL) when natural widths would overflow — kills the persistent horizontal scrollbar in advanced view | `shared.js` | 2026.04.25.2 |
-| 92 | Replace `fv3InstallDockerTableWidthFix` min-width-hint mechanism with `table-layout: fixed` + explicit per-`<th>` widths. The old hint approach (min-width on a hidden tbody row covering only cols 1-6) was a soft floor that browsers ignored when actual content demanded more — col 9 (Uptime) wasn't covered, so it grew ~29px on expand and stole space from col 1 (Version), shifting the preview row. The new approach probes both collapsed and expanded-children widths, computes per-column widths summing to `containerW - 2`, and applies them as inline `<th>` widths under `table-layout: fixed` with `box-sizing: border-box`. Result: zero column shift across expand/collapse cycles AND across basic↔advanced view toggles, in both views. | `shared.js` | 2026.04.26.2 |
-| 93 | Extend Version column probe to include child-row Version cell content. Previously only the first folder's verCell was measured, missing child rows where image tags like "release-5.1.4" live. With the new probe loop measuring children's `td:nth-child(2) > *` while temporarily hoisted, `verCap` correctly accommodates the widest version string across all rows. | `shared.js` | 2026.04.26.2 |
-
-### Folder-Name Pill & Chevron
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 89 | Fix Firefox-only folder pill border bug. Pre-existing CSS `body[data-fv3-preset] td.folder-name { height: 1px }` + `.folder-name-sub { height: 100% }` was a Chromium/WebKit table-cell stretch hack that Firefox doesn't honor, leaving the bordered pill ~20px tall and drawing through the icon and text. Replaced with a JS function `fv3SizeFolderPills()` that measures `tr.folder` row height, subtracts td vertical padding, and applies inline height. Hooked to `folderEvents` post-folders-creation, post-folder-expansion, and `window resize`. Pill now matches preview pill height in every browser. | `shared.js`, `folder-common.css` | 2026.04.26.1 |
-| 99 | Fix folder-name chevron alignment under CSS preset by re-running widthFix after preset apply. Inside `fv3LoadToggleStyle`'s success callback in [customEvents.js:197](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:197), call `window.fv3ScheduleWidthFix()` after the preset attribute is set/removed. This makes the APPLICATION column re-measure with the preset's extra pill padding/border accounted for, so the cell is wide enough for natural folder name widths plus the chevron without overflow. (Final fix after #96–#98 iteration that explored truncation/min-width approaches.) | `customEvents.js`, `folder-common.css` | 2026.04.26.7 |
-| 100 | Folder-name pill height now tracks the row fluidly during window resize and shrinks back when expand-mode chips re-fit on fewer rows. Two-part fix in [shared.js:1339](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/shared.js:1339): (1) **Clear-measure-reset** in `fv3SizeFolderPills` — `sub.style.height = ''` before measuring `td.getBoundingClientRect().height`. Without this the pill's own inline height props the cell open, the measurement returns whatever the pill was last set to, and the pill never shrinks back when chips re-fit on fewer rows (the v7 lingering-tall-row bug). (2) **ResizeObserver attached to the preview CELL** (sibling of folder-name cell), not the folder row. Preview cell height is independent of the pill, so setting pill height does not feed back into the observer — it fires only on real chip reflow. Observing the row itself (or any ancestor of the pill) caused immediate runaway growth in earlier attempts (verified failure mode, see "preview-border-basic-view-failed-attempts" memory). Verified live in Chrome MCP: 1223 samples across resize sweep 1700→1100→900→1700, gap=8 throughout (one 30ms transient frame); 200 dispatched resize events plus 30 s idle, zero growth on all 10 folders. | `shared.js` | 2026.04.26.8 |
-
-### Advanced Popup & Toggles
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 102 | Refresh advanced popup state on open and sum per-container `--memory=` limits when computing the folder RAM total — popup state was previously stale on re-open, and folder RAM total ignored explicit per-container memory caps | `docker.js` | 2026.04.29.1 |
-| 103 | Strip inline styles from switches added to the DOM after page load so the custom toggle style applies to advanced-popup autostart switches (which are added dynamically and inherited Unraid's inline `width`/`height` props that overrode the styled-switch CSS) | `customEvents.js` | 2026.04.29.2 |
-| 101 | Shrink Dashboard `All Apps`/`All VMs` toggles to match the sizes used everywhere else in the plugin (Docker/VM tabs and advanced-popup autostart switches). The dashboard rules at [dashboard.css:533](src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css:533) — added whole-cloth in the v2026.03.28 CSS Tool / Settings refactor — were ~33% larger than the matching `folder-common.css:242` rules: flat 40×22 → 30×16, rounded 44×24 → 32×18, material 36×14 → 28×10, pill 56×26 → 38×20. Inner button dimensions, top/left offsets, border-radii and the checked-position `left` end values updated to match. Also added `background: #fff` to the rounded-checked button rule for parity with `folder-common.css:294` — without it the button rendered gray (inheriting the new `#ccc` unchecked color) on the orange checked track. Single-file CSS change, no JS impact, only affects switches with the `.fv3-styled-switch` marker class added by [customEvents.js:155](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:155). | `dashboard.css` | 2026.04.30.1 |
-
-### Bug Fixes
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 82 | Fix scroll/expand overflow modes inflating Docker/VM table past viewport (max-width:0 on preview td, min-width:0 on preview flex) | `folder-common.css` | 2026.04.21.1 |
-| 84 | `align-content: safe center` on preview flex — stops row 1 shifting when row 2 briefly appears before `clipPreview()` runs | `folder-common.css` | 2026.04.21.1 |
-| 95 | Fix volume mappings rendering at full height with no chevron after toggling Basic↔Advanced view while a folder was collapsed. Unraid's `listview()` re-runs the readmore plugin on view toggle but skips elements that are currently hidden — child rows tucked inside `.folder-storage` (collapsed folder state) end up unwrapped, so when you later expand the folder the volumes show in full with no `readmore-js-collapsed` wrapper or chevron. Fix: in `fv3DropDownButton`, after revealing child rows, call `$readmoreEls.readmore('destroy').readmore({...})` with Unraid's canonical options (`maxHeight: 32`, chevron-down/up icons) on `.folder-${id}-element .docker_readmore`. Idempotent across multiple expand/collapse cycles. Gated to `eventPrefix === 'docker'`. | `shared.js` | 2026.04.26.3 |
-
-### Diagnostics
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 83 | Enrich debug export: viewport, theme, foreign plugin detection, computed preview/ct-name/updatecolumn styles, timestamp+theme in filename | `shared.js` | 2026.04.21.1 |
-| 86 | Add CSS diagnostics to debug export: `--fv3-*` variable values from `:root`, plugin stylesheet hrefs (with autov tokens), `.folder-name-sub`/`td.folder-name` border samples, plus async fetch of `read_css_config.php` + `list_themes.php` and Unraid version — diagnoses preset/cache/theme issues without back-and-forth | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.25.1 |
-| 87 | Remove narration comments from mobile accordion block; kept two that explain non-obvious timing (requestAnimationFrame settle, 1100ms double-cleanup for streaming plugin) | `docker.js` | 2026.04.25.1 |
-
----
-
-## 2026.04.14 — Stable Release
-
-### Unraid 7.0.x Compatibility
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 67 | Fix Add Folder button missing on Unraid 7.0.1 | `docker.js`, `vm.js`, `dashboard.js` | 2026.04.11 |
-| 68 | Fix incognito button placement on Unraid < 7.2 | `shared.js` | 2026.04.11 |
-| 69 | Fix VM page crash: load `libvirt_helpers.php` at top level | `lib.php` | 2026.04.11 |
-| 70 | Defensive loadlist patching in vm.js and dashboard.js | `vm.js`, `dashboard.js` | 2026.04.11 |
-| 71 | Fix CSS: incognito bar overlap, settings toggle alignment, button spacing | `folderview3.css`, `folder-common.css` | 2026.04.12 |
-| 72 | Fix grid layouts, incognito timing, float fixes for 7.0.x | `docker.js`, `shared.js`, CSS | 2026.04.13 |
-| 73 | Fix table margin overrides: incognito gap, backup table, folder accordion | `folderview3.css`, `docker.css` | 2026.04.14 |
-
-### Bug Fixes
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 74 | Fix TDZ errors on slow connections: hoist global variable declarations | `docker.js`, `dashboard.js` | 2026.04.13 |
-| 75 | Fix folder editor crash when editing legacy folders without settings | `folder.js` | 2026.04.14 |
-| 76 | Fix dashboard settings tab toggle/label alignment | `folderview3.css` | 2026.04.14 |
-| 77 | Fix media query breakpoint consistency (769px → 768px) | CSS | 2026.04.14 |
-| 78 | Fix incognito image tag scrubbing and tooltip DOM error | `shared.js` | 2026.04.14 |
-| 79 | Fix incognito folder name and update column scrubbing | `shared.js` | 2026.04.14 |
-
-### Improvements
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 21 | Atomic file writes: prevent config corruption on power loss or crash | `lib.php` | 2026.04.14 |
-| 22 | Safe JSON reads: validate file contents before parsing | `lib.php` | 2026.04.14 |
-| 23 | Error banner on settings page if folder data fails to load | `folderview3.js` | 2026.04.14 |
-| 24 | Extend incognito mode scrubbing to advanced preview tooltips | `docker.js`, `shared.js` | 2026.04.14 |
-| 25 | Remove all `!important` from CSS in favor of specificity | CSS | 2026.04.14 |
-| 26 | Reduce page title margin for tighter layout (issue #6) | `folder-common.css` | 2026.04.14 |
-| 27 | Improved post-install dialog with FV3 logo and maintainer credits | `.plg` | 2026.04.11 |
-| 28 | Updated bug report template with FV3 debug instructions | `bug_report.yml` | 2026.04.11 |
-
-### Mobile
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 29 | Advanced preview hybrid accordion layout with collapsible sections | `docker.js`, `docker.css` | 2026.04.14 |
-| 30 | Fix tooltip resize: ResizeObserver replaces setTimeout | `docker.js` | 2026.04.14 |
-| 31 | Fix dropdown chevrons and tooltip repositioning on accordion toggle | `docker.css`, `docker.js` | 2026.04.14 |
-| 32 | Fix graph axis label clipping and container overflow | `docker.css`, `docker.js` | 2026.04.14 |
-| 33 | Fix CSS preset cards to 2-column grid layout | `csstool.css` | 2026.04.14 |
-| 34 | Fix transparent tooltip background on advanced preview | `docker.css` | 2026.04.14 |
-
----
-
-## 2026.04.08 — Stable Release
-
-### Bug Fixes
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 61 | Fix preview clipping hiding containers due to sub-pixel rounding with custom CSS themes — `clipPreview` and `checkExpand` used strict `offsetTop` equality, replaced with `offsetHeight/2` tolerance | `shared.js` | 2026.04.08 |
-| 62 | Fix row separator false row breaks from sub-pixel rounding — same tolerance pattern as #61 | `shared.js` | 2026.04.08 |
-| 63 | Fix dashboard fullwidth panel row detection — replace `Math.round() ===` with `Math.abs() <= 2` tolerance | `dashboard.js` | 2026.04.08 |
-| 64 | Fix VM name column width selector targeting non-existent `#vm_list` — changed to `#kvm_table` (dead code since original fork) | `vm.js` | 2026.04.08 |
-| 65 | Fix incognito mode not hiding "By:" registry/image info — walk text nodes for both link and plain-text repos, label as `registry/image` | `shared.js` | 2026.04.08 |
-| 66 | Fix incognito race condition — remove 500ms auto-apply timeout that fired before `createFolders()`, causing VM name matching to fail. Now only applies via `folderEvents` post-creation listeners | `shared.js` | 2026.04.08 |
-
-### Improvements
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 19 | Compute VM name column width from actual icon size and cell padding instead of hardcoded +80px | `vm.js` | 2026.04.08 |
-| 20 | Add swal confirmation dialogs to settings Apply buttons (saved, no changes, error with details) | `folderview3.js` | 2026.04.08 |
-
----
-
-## 2026.04.07 — Stable Release
-
-### Bug Fixes
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 60 | Fix CSS presets overriding orange update-available text — removed accent override on `.folder-update-text`, added `:not(.orange-text)` exclusion on preview appname selectors | `folder-common.css` | 2026.04.07 |
-
----
-
-## 2026.04.06 — Stable Release
-
-### Bug Fixes
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 59 | Fix folder settings page toggles showing wrong ON/OFF state on load (race condition between CSS config fetch and folder data fetch) | `folder.js` | 2026.04.06 |
-
----
-
-## 2026.04.05 — Stable Release
-
-### Incognito Mode Improvements
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 51 | Scrub container/VM names in volume paths (preserves path structure) | `shared.js` | 2026.04.05 |
-| 52 | Hide public IPv6 addresses (keeps private fe80/fc/fd) | `shared.js` | 2026.04.05 |
-| 53 | Hide MAC addresses | `shared.js` | 2026.04.05 |
-| 54 | Scrub disk image filenames (qcow2/img/iso/raw/vmdk/vdi/vhd/vhdx) | `shared.js` | 2026.04.05 |
-| 55 | Scrub /domains/ directory names in VM disk paths | `shared.js` | 2026.04.05 |
-| 56 | Hide non-standard interface names (keeps eth/enp/docker/br/etc) | `shared.js` | 2026.04.05 |
-| 57 | VM folder previews show "VM 1" instead of "Container 1" | `shared.js` | 2026.04.05 |
-| 58 | Use text node walking instead of innerHTML for table cell scrubbing (preserves event handlers) | `shared.js` | 2026.04.05 |
-
----
-
-## 2026.04.04 — Stable Release
-
-### New Features
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
+| 150 | Per-folder `preview_update` (Docker page container names in preview) kept and relabelled "Orange container text on update". Added new per-folder `preview_update_folder` (Docker page folder name on update). Both live in the Folder editor and as defaults on the Defaults page. New toggle defaults OFF. | `Folder.page`, `FolderView3.page`, `scripts/folder.js`, `scripts/folderview3.js`, `scripts/docker.js`, `server/lib.php`, all 7 lang files | 2026.05.23 |
+| 151 | New global Dashboard settings `dashboard_update_container` and `dashboard_update_folder` (Settings → Dashboard → Docker column). Replaces the implicit dashboard behaviour that piggybacked on per-folder `preview_update`. Stored once in `settings.json`, read by dashboard.js into `fv3DashboardUpdateContainer` / `fv3DashboardUpdateFolder` vars. Default OFF — existing folders that previously turned orange on the Dashboard via `preview_update=true` will no longer do so until the new global toggles are enabled. | `FolderView3.page`, `scripts/dashboard.js`, `scripts/folderview3.js`, `server/lib.php` | 2026.05.23 |
+| 152 | New behaviour: on Docker page, the folder name (`.folder-appname`) gets `.orange-text` when any child container has `Updated === false` AND `preview_update_folder` is enabled. Added to `createFolder()`'s `!upToDate` branch in docker.js. | `scripts/docker.js` | 2026.05.23 |
+| 116 | Add `preview_status` setting (`none` / `symbol` / `grayscale`) shown only when Preview = Only icon. **Symbol**: appends `<br>` + `<i class="fa fa-play started green-text">` (running) or `<i class="fa fa-square stopped red-text">` (stopped) inside `span.hand` after the WebUI/console/log action buttons; CSS floats the icon left so the right column stacks: action buttons on line 1, status icon on line 2. **Grayscale stopped**: applies `filter: grayscale(100%)` to the entire `span.hand` of stopped wrappers, desaturating icon and action buttons together. Per-folder via Folder.page select, global default via FolderView3.page. Backward-compatible — existing folders without the field show no indicator. | `Folder.page`, `FolderView3.page`, `docker.js`, `vm.js`, `folder.js`, `folderview3.js`, `shared.js`, `lib.php`, `folder-common.css`, 7 lang files | 2026.05.21 |
+| 117 | Add red "Delete folder" button to the folder editor footer, far-right on the same row as Submit/Cancel for visual separation. PHP-conditional render — only appears when `?id=` is present (editing, not creating). swal confirm dialog with Cancel default and the folder name interpolated into the warning text; POST to existing `delete.php` on confirm, then redirects back to /Docker or /VMs. | `Folder.page`, `folder.js`, `folder.css`, 7 lang files | 2026.05.21 |
+| 118 | Defaults page (`FolderView3.page`) previously left preview-related settings visible regardless of the Preview mode, even when they'd have no effect (e.g. "Orange text on update" with Preview = Only icon, or all preview options with Preview = None). New `fv3ApplyConstraints()` reads `data-fv3-show-preview="…"` on each setting row's `<div class="basic">` and toggles `display` based on the master Preview dropdown, with combinatoric AND for `.fv3-expand-only` (Overflow = Expand) and `.fv3-context-advanced` (Context = Advanced). Replaces two single-purpose change listeners. 13 setting rows now show/hide correctly. | `FolderView3.page`, `folderview3.js` | 2026.05.21 |
+| 124 | Add `dashboard_context` global setting (`0/1/2` = None/Default/Advanced) to the backend allowlist and a new row on the FolderView3 settings page → Dashboard panel → General section. When set to Advanced (2), all Docker containers on the Dashboard get the same popup the Docker tab shows. | `server/lib.php`, `FolderView3.page`, `scripts/folderview3.js`, `langs/*.json` | 2026.05.21 |
+| 125 | Wire dashboard.js to read `dashboard_context` (via existing `fv3SettingsReq` parse), initialize a WebSocket stats subscription via shared.js's `fv3ConnectStats` (no SSE fallback on Dashboard), and attach `fv3AttachAdvancedPreview` to each Docker container's `span.hand` inside folder storage when `dashboard_context === 2`. | `scripts/dashboard.js` | 2026.05.21 |
+| 126 | Load Chart.js + chartjs-plugin-streaming + chartjs-adapter-moment + moment.js on `folder.view3.Dashboard.page` (previously Docker-tab-only). +300 KB on Dashboard first load, cached thereafter. Also load `advanced-preview.js`. | `folder.view3.Dashboard.page`, `folder.view3.Docker.page` | 2026.05.21 |
+| 129 | Add three dashboard-specific sub-options that mirror the per-folder context settings, shown only when `dashboard_context = Advanced`: **Activation mode** (`dashboard_context_trigger`, Click/Hover), **Graph mode** (`dashboard_context_graph`, None/Combined/Split/CPU/MEM), **Time Frame (s)** (`dashboard_context_graph_time`, freeform number). These are separate from the per-folder context values so Dashboard popup behavior can be configured independently. | `FolderView3.page`, `server/lib.php` (allowlist + freeform list), `scripts/folderview3.js` (selectMap, defaults, applyFormState, collectSettings, change listener), `scripts/shared.js` (fv3LoadFolderDefaults) | 2026.05.21 |
+| 130 | Wire dashboard.js to pass `dashboardContextTrigger` / `dashboardContextGraph` / `dashboardContextGraphTime` to `fv3AttachAdvancedPreview` instead of folder-specific context values. Dashboard popups now honor the new dashboard-specific sub-option settings. | `scripts/dashboard.js` | 2026.05.21 |
 | 29 | shared.js extraction (~930 lines): row separators, preview heights, resize listeners, debug system, JSON recovery | `shared.js` (new), `docker.js`, `vm.js`, `dashboard.js` | 2026.04.04 |
 | 30 | folder-common.css extraction (~622 lines): common folder layout rules from docker/vm CSS | `folder-common.css` (new), `docker.css`, `vm.css` | 2026.04.04 |
 | 31 | customEvents.js consolidation: event bus (`folderEvents`), `escapeHtml()`, CSRF ajaxPrefilter | `customEvents.js` (new) | 2026.04.04 |
@@ -508,18 +55,134 @@ Consolidates beta builds v2026.04.21.1 through v2026.04.30.1.
 | 49 | Build script cross-platform support (macOS sed, md5, cp detection) | `pkg_build.sh` | 2026.04.04 |
 | 50 | README updated with screenshots and missing feature descriptions | `README.md` | 2026.04.04 |
 
-### Security
+## Improvements
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
-| 12 | Content-Type: application/json on all JSON endpoints | All `server/*.php` | 2026.04.04 |
-| 13 | CSS injection sanitization (strips @import, url(), expression(), javascript:) | `lib.php` | 2026.04.04 |
-| 14 | Recursive delete for theme removal | `lib.php`, `delete_theme.php` | 2026.04.04 |
+| 162 | Dashboard docker folder menu: compute `running`, `paused`, `runningNotPaused`, `stopped` from `folder.containers` at menu-build time. Hide Start when nothing is stopped, Stop/Restart when nothing is running, Pause when nothing is running-not-paused, Resume when nothing is paused. Trailing divider only added if at least one action survived gating. | `scripts/dashboard.js` | 2026.05.28 |
+| 163 | Dashboard VM folder menu: compute per-state counts (`running`, `shutoff`, `resumable` = paused+pmsuspended+unknown). Hide Start when no shutoff VM; hide Stop/Pause/Restart/Hibernate when no running VM; hide Resume when no resumable VM; hide Force-stop when no destroyable VM; Reset stays gated on both `fv3ApiAvailable` and running VM count. | `scripts/dashboard.js` | 2026.05.28 |
+| 164 | Docker tab folder menu (docker.js `addDockerFolderContext`): same docker gating logic as the Dashboard equivalent, applied at the per-row context menu. | `scripts/docker.js` | 2026.05.28 |
+| 165 | VM tab folder menu (vm.js `addVMFolderContext`): same VM gating logic as the Dashboard equivalent, applied at the per-row context menu. | `scripts/vm.js` | 2026.05.28 |
+| 153 | Defaults panel split into Basic / Preview / Behavior sub-sections. Item order under Preview now mirrors the Folder editor (preview mode → orange container → text width → status → hover → greyscale → webui/logs/console → vertical bars / border → overflow → row separator → context popup). `default-update-column` moved into the new Behavior section. | `FolderView3.page` | 2026.05.23 |
+| 154 | Folder editor: `preview_update_folder` placed in Basic section (works regardless of preview mode). `preview_hover` moved closer to other display toggles, directly above `preview_grayscale`. | `Folder.page` | 2026.05.23 |
+| 155 | Spelling: "grayscale" → "greyscale" in English UI text only (label + tooltip in en.json, Folder.page, FolderView3.page). Variable names (`preview_grayscale`, `dashboard_docker_greyscale`), the CSS function `grayscale(100%)`, and non-English translations were intentionally left alone. | `langs/en.json`, `Folder.page`, `FolderView3.page` | 2026.05.23 |
+| 121 | Extract the ~480-line advanced-preview tooltipster block from docker.js into a new shared helper `window.fv3AttachAdvancedPreview({triggerEl, ct, folder, id, container_name_in_folder, cpus})` in a new file `scripts/advanced-preview.js`. Verbatim lift — internal logic unchanged, only the outer wrapper became a function and the lone `tooltip_trigger_element` reference inside the mobile ResizeObserver was renamed to `triggerEl`. Net effect: `docker.js` shrinks from 1865 → 1401 lines. | `scripts/advanced-preview.js` (new), `scripts/docker.js` | 2026.05.21 |
+| 122 | Move helper utilities (`memToB`, `hideAllTips`, `advancedAutostart`) and the `fv3UsingWebSocket` flag from `docker.js` to `advanced-preview.js` as `window.*` globals so Dashboard can access them without loading docker.js. Both files now reference them via the global scope chain. | `scripts/advanced-preview.js`, `scripts/docker.js` | 2026.05.21 |
+| 128 | Move the Dashboard "Preview context" select from the General section to the Docker column on Settings → FolderView3 → Dashboard. It was a Docker-only setting living in a cross-cutting section; relocating it groups it with the other Docker dashboard settings and drops the now-redundant "Docker only" scope badge. | `FolderView3.page` | 2026.05.21 |
+| 134 | v.7 loaded docker.css on Dashboard.page as a quick fix for popup styling, which mixed Docker-tab-specific rules into the Dashboard page (~424 lines of unrelated CSS). Per-user request, duplicated only the popup-related rules into dashboard.css (378 lines copied verbatim — `.preview-outbox`, `.preview-name`, `.preview-status`, `.action-info`, `.info-section`, `.tooltipster-docker-folder`, `.fv3-mobile-details`, graph canvas styles, mobile @media block). docker.css unchanged; both files now contain the popup styles. Dashboard.page reverts to loading only dashboard.css. Trade-off accepted: popup CSS fixes now need to be applied in two places. | `styles/dashboard.css`, `folder.view3.Dashboard.page` | 2026.05.21 |
+| 113 | Client-side `createFolders()` synthesizes an alphabetical-intermix order when `read_order.php` returns empty. Folder names and orphan container names sort together using natural case-insensitive comparison (`localeCompare(name, undefined, {numeric: true, sensitivity: 'base'})`), so folders slot into their natural alphabetical position alongside containers instead of stacking at the top in reverse JSON-key order. | `docker.js` | 2026.05.15 |
+| 115 | Server-side `syncContainerOrder()` matches the client-side alpha-intermix when `userprefs.cfg` is absent. New items not present in `userprefs.cfg` are now prepended (not appended) so the autostart file mirrors what's on screen, including Unraid's native sort=0 "top placement" for items missing from `userprefs.cfg` in manual mode. | `lib.php` | 2026.05.15 |
+| 104 | **Two-snapshot column-width model.** `fv3InstallDockerTableWidthFix` now computes both `widthsExpanded` (Uptime present) and `widthsCollapsed` (Uptime = 0, freed space → Volume Mappings only) once per page-load / resize / view-toggle, using the state-independent hoist loop as the only measurement source. New `fv3ApplyCachedWidths` swaps between cached snapshots on `docker-post-folder-expansion` — no re-measurement, no drift. Cols 0–5, 7, 8 are byte-stable across every folder open/close transition; only col 6 (Volume Mappings) and col 9 (Uptime) change. Eliminates the perceived "Version column shrinks" jump and fixes a real ~38px Version drift in advanced view after expand→collapse cycles that had survived through `.901`–`.908`. | `shared.js` | 2026.05.02 |
+| 105 | Reduce verHint buffer from `+12` to `+2`. The `+12` cushion was protecting against folder-state drift the snapshot model now prevents. Result: ~10px of horizontal space transferred from Version column to preview area. | `shared.js` | 2026.05.02 |
+| 106 | Drop dead `fv3-width-hint` references — the hint element was created by the trailing-collapse logic deleted in `.909`, so the cleanup line and the corresponding `id === 'fv3-width-hint'` skip in `fv3AnyNonFolderRowVisible` were orphaned. | `shared.js` | 2026.05.02 |
+| 109 | Plugin-wide comment cleanup. Stripped explanation lines across all eight JS files (`shared.js`, `docker.js`, `vm.js`, `dashboard.js`, `folder.js`, `folderview3.js`, `csstool.js`, `include/customEvents.js`); kept only single-line section markers and architectural do-not-retry warnings (e.g. pill height invariants, `switchButton` deferred init, ajaxPrefilter rationale). Added navigational section markers throughout `shared.js` (Row separators, Preview height sync, Unraid GraphQL API, Preview mode, Docker table column-width lock, Resize / view-mode listeners) and `docker.js` (Folder rendering, Folder controls, Bulk actions, Custom actions, Context menu, SSE stats fallback, Memory unit conversion). Net: -268 / +86 lines. | all 8 JS files | 2026.05.02 |
+| 92 | Replace `fv3InstallDockerTableWidthFix` min-width-hint mechanism with `table-layout: fixed` + explicit per-`<th>` widths. The old hint approach (min-width on a hidden tbody row covering only cols 1-6) was a soft floor that browsers ignored when actual content demanded more — col 9 (Uptime) wasn't covered, so it grew ~29px on expand and stole space from col 1 (Version), shifting the preview row. The new approach probes both collapsed and expanded-children widths, computes per-column widths summing to `containerW - 2`, and applies them as inline `<th>` widths under `table-layout: fixed` with `box-sizing: border-box`. Result: zero column shift across expand/collapse cycles AND across basic↔advanced view toggles, in both views. | `shared.js` | 2026.04.30 |
+| 93 | Extend Version column probe to include child-row Version cell content. Previously only the first folder's verCell was measured, missing child rows where image tags like "release-5.1.4" live. With the new probe loop measuring children's `td:nth-child(2) > *` while temporarily hoisted, `verCap` correctly accommodates the widest version string across all rows. | `shared.js` | 2026.04.30 |
+| 101 | Shrink Dashboard `All Apps`/`All VMs` toggles to match the sizes used everywhere else in the plugin (Docker/VM tabs and advanced-popup autostart switches). The dashboard rules at [dashboard.css:533](src/folder.view3/usr/local/emhttp/plugins/folder.view3/styles/dashboard.css:533) — added whole-cloth in the v2026.03.28 CSS Tool / Settings refactor — were ~33% larger than the matching `folder-common.css:242` rules: flat 40×22 → 30×16, rounded 44×24 → 32×18, material 36×14 → 28×10, pill 56×26 → 38×20. Inner button dimensions, top/left offsets, border-radii and the checked-position `left` end values updated to match. Also added `background: #fff` to the rounded-checked button rule for parity with `folder-common.css:294` — without it the button rendered gray (inheriting the new `#ccc` unchecked color) on the orange checked track. Single-file CSS change, no JS impact, only affects switches with the `.fv3-styled-switch` marker class added by [customEvents.js:155](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:155). | `dashboard.css` | 2026.04.30 |
+| 83 | Enrich debug export: viewport, theme, foreign plugin detection, computed preview/ct-name/updatecolumn styles, timestamp+theme in filename | `shared.js` | 2026.04.30 |
+| 86 | Add CSS diagnostics to debug export: `--fv3-*` variable values from `:root`, plugin stylesheet hrefs (with autov tokens), `.folder-name-sub`/`td.folder-name` border samples, plus async fetch of `read_css_config.php` + `list_themes.php` and Unraid version — diagnoses preset/cache/theme issues without back-and-forth | `shared.js`, `docker.js`, `vm.js`, `dashboard.js` | 2026.04.30 |
+| 87 | Remove narration comments from mobile accordion block; kept two that explain non-obvious timing (requestAnimationFrame settle, 1100ms double-cleanup for streaming plugin) | `docker.js` | 2026.04.30 |
+| 21 | Atomic file writes: prevent config corruption on power loss or crash | `lib.php` | 2026.04.14 |
+| 22 | Safe JSON reads: validate file contents before parsing | `lib.php` | 2026.04.14 |
+| 23 | Error banner on settings page if folder data fails to load | `folderview3.js` | 2026.04.14 |
+| 24 | Extend incognito mode scrubbing to advanced preview tooltips | `docker.js`, `shared.js` | 2026.04.14 |
+| 25 | Remove all `!important` from CSS in favor of specificity | CSS | 2026.04.14 |
+| 26 | Reduce page title margin for tighter layout (issue #6) | `folder-common.css` | 2026.04.14 |
+| 27 | Improved post-install dialog with FV3 logo and maintainer credits | `.plg` | 2026.04.14 |
+| 28 | Updated bug report template with FV3 debug instructions | `bug_report.yml` | 2026.04.14 |
+| 29 | Advanced preview hybrid accordion layout with collapsible sections | `docker.js`, `docker.css` | 2026.04.14 |
+| 19 | Compute VM name column width from actual icon size and cell padding instead of hardcoded +80px | `vm.js` | 2026.04.08 |
+| 20 | Add swal confirmation dialogs to settings Apply buttons (saved, no changes, error with details) | `folderview3.js` | 2026.04.08 |
+| 51 | Scrub container/VM names in volume paths (preserves path structure) | `shared.js` | 2026.04.05 |
+| 52 | Hide public IPv6 addresses (keeps private fe80/fc/fd) | `shared.js` | 2026.04.05 |
+| 53 | Hide MAC addresses | `shared.js` | 2026.04.05 |
+| 54 | Scrub disk image filenames (qcow2/img/iso/raw/vmdk/vdi/vhd/vhdx) | `shared.js` | 2026.04.05 |
+| 55 | Scrub /domains/ directory names in VM disk paths | `shared.js` | 2026.04.05 |
+| 56 | Hide non-standard interface names (keeps eth/enp/docker/br/etc) | `shared.js` | 2026.04.05 |
+| 57 | VM folder previews show "VM 1" instead of "Container 1" | `shared.js` | 2026.04.05 |
+| 1 | 44px dropdown tap targets for touch devices | `folder-common.css` | 2026.04.04 |
+| 2 | hover:none visibility for touch-only devices | `folder-common.css` | 2026.04.04 |
+| 3 | Firefox scrollbar fallback (`scrollbar-width`, `scrollbar-color`) | `folder-common.css` | 2026.04.04 |
+| 4 | Dashboard responsive breakpoints for all layouts | `dashboard.css` | 2026.04.04 |
+| 1 | ~40 new keys across all 7 language files (settings, CSS tool, folder defaults, incognito) | `langs/*.json` | 2026.04.04 |
+| 1 | PLG pre-install cleanup: removes stale package DB entries before install | `folder.view3.plg` | 2026.04.04 |
+| 2 | PLG post-install cleanup: safety net for lingering package entries | `folder.view3.plg` | 2026.04.04 |
+| 3 | PLG old .txz cleanup moved from post-install to pre-install | `folder.view3.plg` | 2026.04.04 |
+| 4 | .DS_Store files removed and added to .gitignore | `.gitignore` | 2026.04.04 |
 
-### Bug Fixes
+## Bug Fixes
 
 | # | Change | File(s) | Version |
 |---|--------|---------|---------|
+| 157 | `actionFolderDocker` switch had `case "resume"` duplicated; the second case (intended as `"restart"`) was unreachable, so the "restart" action fell into `default` with `pass = false` and zero `fv3DockerAction('restart', …)` calls fired. Spinner blipped, containers untouched. Confirmed live via instrumented `window.fv3DockerAction` / `window.fv3GraphQL`. Renamed the second case to `"restart"` and gated it on `ct.state` so stopped containers aren't sent restart (no more "Execution error" swal). | `scripts/dashboard.js` | 2026.05.28 |
+| 158 | `createFolderDocker` and `createFolderVM` captured each container's `pause` field but never aggregated it. The `if (started) { … fa-play … }` block ran whenever any container was running (Docker keeps `State.Running === true` while paused), so the folder icon stayed green even when all children were paused. Added `paused` counter; when `paused > 0 && paused === started` the icon swaps to `fa fa-pause … orange-text` and the state text uses the existing `paused` i18n key. `folder.status.paused` now persists alongside `started`. | `scripts/dashboard.js`, `scripts/docker.js`, `scripts/vm.js` | 2026.05.28 |
+| 159 | When a docker folder had `override_default_actions = true` with at least one custom action, the Dashboard context menu wired the menu item to a function named `folderCustomAction` — which is only defined inside docker.js (Docker tab) and vm.js (VM tab), not on the Dashboard. Clicking threw `ReferenceError: folderCustomAction is not defined`. Routed the override-mode docker entries to the page-local `folderDockerCustomAction` and the VM entries to `folderVMCustomAction`. | `scripts/dashboard.js` | 2026.05.28 |
+| 160 | The bulk Restart "pass" predicate in Docker's `actionFolder` (docker.js) and the Restart custom-action variant in both `folderDockerCustomAction` (dashboard.js) and `folderCustomAction` (docker.js) set `pass = true` / pushed unconditionally, so restart was sent to stopped containers too. Unraid's PHP `/update.htm action=restart` returns `{"success":"Server error"}` in that case, which `actionFolderDocker` surfaces as an "Execution error" swal. Added `ct.state` / `e.state` / `e_ct.state` guards on every restart push. | `scripts/dashboard.js`, `scripts/docker.js` | 2026.05.28 |
+| 161 | VM custom-action "Set Restart" mode (`act.action === 1, act.modes === 3`) gated `domain-restart` on `state === "paused" || state === "unknown"` — libvirt can't reboot a paused VM, so the custom action effectively never fired on the correct state. Changed the predicate to `state === "running"` in both `vm.js` and `dashboard.js`. | `scripts/vm.js`, `scripts/dashboard.js` | 2026.05.28 |
+| 156 | The `body[data-fv3-preset] .folder-appname` rule (specificity 0,2,1) was beating `.orange-text` (0,1,0), so folder names on Docker page and Dashboard stayed the preset accent color even when `preview_update_folder` / `dashboard_update_folder` were on. Added `:not(.orange-text)` to the preset folder-name selector to mirror the existing pattern used for preview-wrapper container names in the same file. | `styles/folder-common.css` | 2026.05.23 |
+| 119 | Add `default_preview_status: 'none'` to `fv3SettingDefaults`. The map is the fallback the dirty-check (`fv3IsSettingsDirty`) uses when `fv3LoadedSettings[key]` is undefined. The new field had no entry, so the fallback chain resolved to `''`, and the select's actual value `'none'` was permanently flagged as a pending change — triggering the "You have unsaved changes. Discard them?" prompt on every tab switch / SPA navigation away from the FolderView3 settings page even when the user had touched nothing. | `folderview3.js` | 2026.05.21 |
+| 120 | Unraid's top-nav links are `<a href="/Docker" onclick="initab('/Docker')">…</a>`. The intercepted `initab()` returned `false` to block the SPA tab switch, but because the inline `onclick` attribute lacks `return`, the return value is discarded and the browser still follows the `href` — so the swal fired alongside a full page load. Added a capture-phase document click listener that intercepts clicks on `a[onclick*="initab"]` before the inline `onclick` runs, calls `preventDefault` + `stopPropagation` when the form is dirty, shows the swal, and navigates manually via `window.location.href` only after the user picks Discard. | `folderview3.js` | 2026.05.21 |
+| 123 | Add `typeof dockerload !== 'undefined'` guard to the SSE listener subscription inside the helper. Dashboard has no `dockerload` SSE source — the guard prevents a `ReferenceError` on Dashboard when WebSocket stats are unavailable; the popup still renders but graphs degrade to 0% (acceptable). | `scripts/advanced-preview.js` | 2026.05.21 |
+| 127 | Add `dashboard_context: '0'` to `fv3SettingDefaults` to avoid phantom dirty-state on the settings page (same regression pattern as v2026.05.21.2 — without this entry, the dirty-check resolves the new field's fallback to `''`, conflicting with the select's actual value `'0'`). | `scripts/folderview3.js` | 2026.05.21 |
+| 131 | Add `selected` attribute to the Combined option of `<select id="dashboard-context-graph">`. v.5 introduced the new dashboard Graph mode select with no `selected` on any option (HTML defaults to first = `value="0"`/None), but `fv3SettingDefaults.dashboard_context_graph = '1'`. With no saved value yet, the dirty-check resolved fallback to `'1'` while the actual select value was `'0'` — permanent phantom dirty flag the moment the page loaded. Matches how the Folder Defaults equivalent (`default-context-graph`) handles its initial state. | `FolderView3.page` | 2026.05.21 |
+| 132 | Add `docker.css` to the Dashboard.page stylesheet loads. The advanced preview popup HTML template uses `.preview-outbox`, `.preview-name`, `.action-info`, `.info-section`, etc. — all defined in docker.css. Dashboard.page previously only loaded dashboard.css, so on Dashboard the popup rendered with no styling at all. | `folder.view3.Dashboard.page` | 2026.05.21 |
+| 133 | When attaching the advanced preview tooltipster to a Dashboard container's `span.hand` in Advanced mode, strip its inline `onclick="addDockerContainerContext(...)"` attribute. Unraid's native click handler fires synchronously alongside tooltipster's click handler, so without this both the default Unraid context menu AND our advanced popup would open on the same click. In Default mode the helper isn't attached, so the native menu still works. | `scripts/dashboard.js` | 2026.05.21 |
+| 135 | Load `folder-common.css` on Dashboard.page (previously only Docker.page / VMs.page / Folder.page loaded it — Dashboard was an oversight). This restores the shared CSS variables the popup styles reference: `--folder-view3-graph-cpu` / `--folder-view3-graph-mem` (the Chart.js line colors were resolving to empty string and falling back to Chart defaults — wrong colors), `--fv3-tooltip-min-width` / `-max-height` / `-action-pane-width`, `--fv3-surface-tint` / `-hover-bg` / `-border` / `-tab-active-bg` / `-tab-active-border`, `--tooltip-spacing`. | `folder.view3.Dashboard.page` | 2026.05.21 |
+| 136 | Override `.tooltipster-docker-folder.tooltipster-base { background: transparent; }` in both docker.css and dashboard.css. Unraid's default `.tooltipster-sidetip` theme paints the outer base with `rgb(29, 27, 27)` (dark backdrop) — visible as a black box surrounding the popup content with the arrow attached to it. Setting it transparent removes the backdrop while the arrow and orange top accent on `.tooltipster-box` remain. Both pages get this for consistency. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21 |
+| 137 | v.9 added the `.tooltipster-base { background: transparent; }` override to dashboard.css only — the symmetric edit to docker.css failed silently (Edit tool error from skipping the Read step). v.10 applies the same override to docker.css so the Docker tab also drops the black backdrop. | `styles/docker.css` | 2026.05.21 |
+| 138 | `.preview-outbox` had `background-color: inherit`, which after v.10's `.tooltipster-base` transparency change inherited transparency all the way up to body. Page content showed through the popup. Replaced with `hsla(var(--background, 0 0% 11%), 1)` (theme-aware via Unraid's HSL background variable, opaque fallback for older themes) + a soft box-shadow for elevation and a subtle 1px border. Applied to both docker.css and dashboard.css for consistency. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21 |
+| 139 | C1: CPU% wrong on servers without GraphQL API. dashboard.js was passing `cpus: window.fv3CpuCores || 1`. `fv3CpuCores` only gets set by the GraphQL probe in shared.js; on Unraid <7.2 or with API disabled it stays null, so SSE-path `cpuVal / cpus` rendered CPU as `cores× actual`. Added `$.get('/plugins/folder.view3/server/cpu.php')` fetch inside `fv3InitDashboardStats()` populating `dashboardCpus` as fallback. | `scripts/dashboard.js` | 2026.05.21 |
+| 140 | C2: Dropped non-functional Default Preview context option. v.5 added a 3-state select but `dashboard.js` only branched on `=== 2`, so value `1` silently did nothing while help text claimed it would show basic info. Reduced to 2 options: `value="0"` Default (Unraid native menu) and `value="2"` Advanced (FV3 popup). Allowlist keeps `[0,1,2]` for forward compat. | `FolderView3.page`, `langs/*.json` | 2026.05.21 |
+| 143 | H4: Tooltipster availability guard. Added `if (!$.fn.tooltipster) return;` at the top of `fv3AttachAdvancedPreview`. Cheap insurance against future Unraid changes. | `scripts/advanced-preview.js` | 2026.05.21 |
+| 145 | v.11 used `background-color: hsla(var(--background, 0 0% 11%), 1)` to make the popup opaque. That syntax is invalid CSS — `hsla()` expects either all-comma (`hsla(H, S%, L%, A)`) or modern slash separator inside `hsl()` (`hsl(H S% L% / A)`). Mixing space-separated HSL components with a comma-separated alpha produced an invalid color, browsers fell back to `rgba(0,0,0,0)` (transparent), and the popup looked transparent again. Switched to `hsl(var(--background, 0 0% 11%))` (no alpha needed since we want fully opaque). Verified `computedBg: rgb(10, 10, 10)` after fix. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21 |
+| 146 | v.12 used `hsl(var(--background, 0 0% 11%))` thinking `--background` was Unraid's theme background variable. It isn't — `--background` is hardcoded to `0 0% 3.9%` on both light and dark themes (not theme-aware). The ACTUAL theme-aware variable is `--background-color` (with hyphen), defined in `default-base.css` as the `body { background-color: ... }` source. On light themes it's `#f2f2f2`, on dark themes it's `#1d1b1b`-ish. Switched popup background to `var(--background-color, rgb(29, 27, 27))`. Light themes now get a light popup, dark themes a dark popup. The 1px border + box-shadow keep it visually distinct from the page. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21 |
+| 147 | v.13's CSS edit silently failed because the `background-color: hsl(var(--background, 0 0% 11%));` string matched twice per file (main rule + mobile @media block) and Edit tool refused without `replace_all: true`. v.13 was built and pushed without the actual change. v.14 re-ran with `replace_all: true` on both docker.css and dashboard.css. Lesson learned: when Edit fails, the build can still ship with stale CSS — always verify the change made it into the build before pushing. | `styles/docker.css`, `styles/dashboard.css` | 2026.05.21 |
+| 148 | `pushChartData()` called `chart.update('quiet')` unconditionally on each entry of the `charts` array. When a WS stats event fired after tooltipster's `functionAfter` had begun destroying charts, the call hit a destroyed chart and chartjs-plugin-streaming threw `TypeError: Cannot set properties of null (setting '_setStyle')`. Wrapped the update loop with try/catch and added a `chart.canvas && document.body.contains(chart.canvas)` guard to skip stale references silently. | `scripts/advanced-preview.js` | 2026.05.21 |
+| 149 | Two leaks in the advanced preview tooltipster's stats-listener lifecycle: (a) `functionReady` can fire more than once per popup lifecycle (esp. hover trigger), each call added another listener; `functionAfter`'s `removeEventListener` only matched one closure reference, so duplicates accumulated; (b) `functionAfter` decided which listener to remove based on the CURRENT `fv3UsingWebSocket` flag, which may have flipped between attach and remove time. Introduced an `attachedListener` closure-scoped tracker (`'ws' \| 'sse' \| null`) so attach is idempotent and remove uses the tracked type. The v.15 try/catch in `pushChartData` stays as defense-in-depth. | `scripts/advanced-preview.js` | 2026.05.21 |
+| 110 | Fix Unraid's Reset Order button — silently broken on every server running FV3 since the userprefs.cfg interceptor was added. FV3's `$.ajaxPrefilter` for `/plugins/dynamix.docker.manager/include/UserPrefs.php` assumed a save-order payload with `names=…`; the Reset Order POST is `{reset:true}` with no `names` field, so `data.get('names').split(';')` threw `TypeError: Cannot read properties of null (reading 'split')` synchronously inside the prefilter and the request never reached Unraid. Added early-return guard `if (!data.has('names')) return;`. Same fix applied to the VM tab prefilter. | `docker.js`, `vm.js` | 2026.05.15 |
+| 111 | Patch `resetSorting()` to chain a `sync_order.php` POST between Unraid's reset and `loadlist()`. Stock Unraid's reset deletes `userprefs.cfg` and natcasesorts the autostart file alphabetically. The patch restores folder-grouped autostart before the page re-renders. | `docker.js` | 2026.05.15 |
+| 112 | Stop auto-writing `userprefs.cfg` on folder save. The pre-existing `syncContainerOrder()` rewrote `userprefs.cfg` after every folder edit, which permanently flipped Unraid into "manual order mode" — silently disabling Unraid's native alphabetical sort for new containers and pinning new folders to the bottom of the list. The function now only rewrites the autostart file; render order is left entirely to Unraid (alphabetical when `userprefs.cfg` is absent, manual when the user drag-reorders). | `lib.php` | 2026.05.15 |
+| 114 | Add post-sort pass for alpha-synthesis mode. `createFolder()`'s `positionInMainOrder` is an index into the order array, but the DOM has containers in pure alphabetical order while the synthesized array has folders interleaved with orphans — the indices don't map cleanly. Final pass reattaches top-level sortable rows alphabetically by name after all folders are built. Manual mode is unaffected. | `docker.js` | 2026.05.15 |
+| 116 | New `ajaxComplete` hook fires `sync_order.php` after Unraid's autostart-toggle (`UpdateConfig.php?action=autostart` / `action=wait`) and drag-reorder save (`UserPrefs.php` with `names=…`). Without this, Unraid resorts the autostart file (natcasesort when `userprefs.cfg` is absent, by `userprefs.cfg` position when present) and silently breaks folder grouping on every autostart toggle. The hook re-establishes folder grouping by walking the current render order and rewriting the autostart file. Combined with the Reset Order patch, the autostart file now stays in sync across all four state-changing events: folder save, Reset Order, drag-reorder, and autostart toggle. | `docker.js` | 2026.05.15 |
+| 107 | Fix `verHint = 0` in hoist loop. The `.908` filter excluded `visibility:hidden` status spans to skip hidden update-state siblings — but `visibility` is inherited, and the hoist loop applies `visibility:hidden` to the entire `<tr>` while measuring. Every status span inherited hidden visibility and got filtered out, leaving `verContentMax = 0` and the Version column stuck at its natural ~197px table-layout:auto width. Switched to `display:none`-only filtering inside the hoist sub-scan; `getBoundingClientRect()` returns layout width regardless of visibility. | `shared.js` | 2026.05.02 |
+| 108 | Tail-call `fv3SchedulePillSize` from `fv3ApplyCachedWidths` so collapse can shrink stuck rows. `docker-post-folder-expansion` queues both `fv3SchedulePillSize` (50ms) and `fv3ScheduleApplyCachedWidths` (50ms). When pill-sizing won the race, it measured the still-narrow Volume Mappings column (chips wrapped, preview tall) and re-pinned the pill at the expanded value (e.g. 95px). When `fv3ApplyCachedWidths` then widened the column and chips unwrapped, the pill was already locked, leaving the row stuck at 103px instead of dropping back to 67px. Tail-call fires a second pass after column widths settle. Mirrors the `.905` fix for basic↔advanced toggle path. | `shared.js` | 2026.05.02 |
+| 85 | Stabilize Docker table columns: probe expanded-child widths, inject zero-height hint row, cap VERSION cell content with ellipsis so preview row left edge stops shifting on folder expand/collapse (issue #31) | `shared.js`, `docker.js` | 2026.04.30 |
+| 88 | Lock Docker table columns in advanced view: bump `verHint` padding buffer from +2 to +12 to absorb auto-layout discrepancy between folder rows (2 stacked divs) and child rows (3 stacked divs) — kills the ~7px Version column shift on expand. Cap total column-sum to container width and proportionally scale cols 2-6 (NET/IP/PORT/LAN/VOL) when natural widths would overflow — kills the persistent horizontal scrollbar in advanced view | `shared.js` | 2026.04.30 |
+| 89 | Fix Firefox-only folder pill border bug. Pre-existing CSS `body[data-fv3-preset] td.folder-name { height: 1px }` + `.folder-name-sub { height: 100% }` was a Chromium/WebKit table-cell stretch hack that Firefox doesn't honor, leaving the bordered pill ~20px tall and drawing through the icon and text. Replaced with a JS function `fv3SizeFolderPills()` that measures `tr.folder` row height, subtracts td vertical padding, and applies inline height. Hooked to `folderEvents` post-folders-creation, post-folder-expansion, and `window resize`. Pill now matches preview pill height in every browser. | `shared.js`, `folder-common.css` | 2026.04.30 |
+| 99 | Fix folder-name chevron alignment under CSS preset by re-running widthFix after preset apply. Inside `fv3LoadToggleStyle`'s success callback in [customEvents.js:197](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/include/customEvents.js:197), call `window.fv3ScheduleWidthFix()` after the preset attribute is set/removed. This makes the APPLICATION column re-measure with the preset's extra pill padding/border accounted for, so the cell is wide enough for natural folder name widths plus the chevron without overflow. (Final fix after #96–#98 iteration that explored truncation/min-width approaches.) | `customEvents.js`, `folder-common.css` | 2026.04.30 |
+| 100 | Folder-name pill height now tracks the row fluidly during window resize and shrinks back when expand-mode chips re-fit on fewer rows. Two-part fix in [shared.js:1339](src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/shared.js:1339): (1) **Clear-measure-reset** in `fv3SizeFolderPills` — `sub.style.height = ''` before measuring `td.getBoundingClientRect().height`. Without this the pill's own inline height props the cell open, the measurement returns whatever the pill was last set to, and the pill never shrinks back when chips re-fit on fewer rows (the v7 lingering-tall-row bug). (2) **ResizeObserver attached to the preview CELL** (sibling of folder-name cell), not the folder row. Preview cell height is independent of the pill, so setting pill height does not feed back into the observer — it fires only on real chip reflow. Observing the row itself (or any ancestor of the pill) caused immediate runaway growth in earlier attempts (verified failure mode, see "preview-border-basic-view-failed-attempts" memory). Verified live in Chrome MCP: 1223 samples across resize sweep 1700→1100→900→1700, gap=8 throughout (one 30ms transient frame); 200 dispatched resize events plus 30 s idle, zero growth on all 10 folders. | `shared.js` | 2026.04.30 |
+| 102 | Refresh advanced popup state on open and sum per-container `--memory=` limits when computing the folder RAM total — popup state was previously stale on re-open, and folder RAM total ignored explicit per-container memory caps | `docker.js` | 2026.04.30 |
+| 103 | Strip inline styles from switches added to the DOM after page load so the custom toggle style applies to advanced-popup autostart switches (which are added dynamically and inherited Unraid's inline `width`/`height` props that overrode the styled-switch CSS) | `customEvents.js` | 2026.04.30 |
+| 82 | Fix scroll/expand overflow modes inflating Docker/VM table past viewport (max-width:0 on preview td, min-width:0 on preview flex) | `folder-common.css` | 2026.04.30 |
+| 84 | `align-content: safe center` on preview flex — stops row 1 shifting when row 2 briefly appears before `clipPreview()` runs | `folder-common.css` | 2026.04.30 |
+| 95 | Fix volume mappings rendering at full height with no chevron after toggling Basic↔Advanced view while a folder was collapsed. Unraid's `listview()` re-runs the readmore plugin on view toggle but skips elements that are currently hidden — child rows tucked inside `.folder-storage` (collapsed folder state) end up unwrapped, so when you later expand the folder the volumes show in full with no `readmore-js-collapsed` wrapper or chevron. Fix: in `fv3DropDownButton`, after revealing child rows, call `$readmoreEls.readmore('destroy').readmore({...})` with Unraid's canonical options (`maxHeight: 32`, chevron-down/up icons) on `.folder-${id}-element .docker_readmore`. Idempotent across multiple expand/collapse cycles. Gated to `eventPrefix === 'docker'`. | `shared.js` | 2026.04.30 |
+| 67 | Fix Add Folder button missing on Unraid 7.0.1 | `docker.js`, `vm.js`, `dashboard.js` | 2026.04.14 |
+| 68 | Fix incognito button placement on Unraid < 7.2 | `shared.js` | 2026.04.14 |
+| 69 | Fix VM page crash: load `libvirt_helpers.php` at top level | `lib.php` | 2026.04.14 |
+| 70 | Defensive loadlist patching in vm.js and dashboard.js | `vm.js`, `dashboard.js` | 2026.04.14 |
+| 71 | Fix CSS: incognito bar overlap, settings toggle alignment, button spacing | `folderview3.css`, `folder-common.css` | 2026.04.14 |
+| 72 | Fix grid layouts, incognito timing, float fixes for 7.0.x | `docker.js`, `shared.js`, CSS | 2026.04.14 |
+| 73 | Fix table margin overrides: incognito gap, backup table, folder accordion | `folderview3.css`, `docker.css` | 2026.04.14 |
+| 74 | Fix TDZ errors on slow connections: hoist global variable declarations | `docker.js`, `dashboard.js` | 2026.04.14 |
+| 75 | Fix folder editor crash when editing legacy folders without settings | `folder.js` | 2026.04.14 |
+| 76 | Fix dashboard settings tab toggle/label alignment | `folderview3.css` | 2026.04.14 |
+| 77 | Fix media query breakpoint consistency (769px → 768px) | CSS | 2026.04.14 |
+| 78 | Fix incognito image tag scrubbing and tooltip DOM error | `shared.js` | 2026.04.14 |
+| 79 | Fix incognito folder name and update column scrubbing | `shared.js` | 2026.04.14 |
+| 30 | Fix tooltip resize: ResizeObserver replaces setTimeout | `docker.js` | 2026.04.14 |
+| 31 | Fix dropdown chevrons and tooltip repositioning on accordion toggle | `docker.css`, `docker.js` | 2026.04.14 |
+| 32 | Fix graph axis label clipping and container overflow | `docker.css`, `docker.js` | 2026.04.14 |
+| 33 | Fix CSS preset cards to 2-column grid layout | `csstool.css` | 2026.04.14 |
+| 34 | Fix transparent tooltip background on advanced preview | `docker.css` | 2026.04.14 |
+| 61 | Fix preview clipping hiding containers due to sub-pixel rounding with custom CSS themes — `clipPreview` and `checkExpand` used strict `offsetTop` equality, replaced with `offsetHeight/2` tolerance | `shared.js` | 2026.04.08 |
+| 62 | Fix row separator false row breaks from sub-pixel rounding — same tolerance pattern as #61 | `shared.js` | 2026.04.08 |
+| 63 | Fix dashboard fullwidth panel row detection — replace `Math.round() ===` with `Math.abs() <= 2` tolerance | `dashboard.js` | 2026.04.08 |
+| 64 | Fix VM name column width selector targeting non-existent `#vm_list` — changed to `#kvm_table` (dead code since original fork) | `vm.js` | 2026.04.08 |
+| 65 | Fix incognito mode not hiding "By:" registry/image info — walk text nodes for both link and plain-text repos, label as `registry/image` | `shared.js` | 2026.04.08 |
+| 66 | Fix incognito race condition — remove 500ms auto-apply timeout that fired before `createFolders()`, causing VM name matching to fail. Now only applies via `folderEvents` post-creation listeners | `shared.js` | 2026.04.08 |
+| 60 | Fix CSS presets overriding orange update-available text — removed accent override on `.folder-update-text`, added `:not(.orange-text)` exclusion on preview appname selectors | `folder-common.css` | 2026.04.07 |
+| 59 | Fix folder settings page toggles showing wrong ON/OFF state on load (race condition between CSS config fetch and folder data fetch) | `folder.js` | 2026.04.06 |
+| 58 | Use text node walking instead of innerHTML for table cell scrubbing (preserves event handlers) | `shared.js` | 2026.04.05 |
 | 101 | CSS-only chevron positioning (deleted `fv3PositionChevrons()` entirely) | `dashboard.js`, `dashboard.css` | 2026.04.04 |
 | 102 | Dashboard CSS variable gaps wired up | `dashboard.css`, `folder-common.css` | 2026.04.04 |
 | 103 | Switch button alignment/specificity fixes (beat ID selectors) | `folder-common.css`, `csstool.css` | 2026.04.04 |
@@ -534,30 +197,6 @@ Consolidates beta builds v2026.04.21.1 through v2026.04.30.1.
 | 112 | MutationObserver loop prevention for VM detail row adoption | `vm.js` | 2026.04.04 |
 | 113 | Non-folder VM detail rows stay in correct position | `vm.js` | 2026.04.04 |
 | 114 | Zebra striping preserved after VM detail toggle (event delegation) | `vm.js` | 2026.04.04 |
-
-### Mobile/Touch
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 1 | 44px dropdown tap targets for touch devices | `folder-common.css` | 2026.04.04 |
-| 2 | hover:none visibility for touch-only devices | `folder-common.css` | 2026.04.04 |
-| 3 | Firefox scrollbar fallback (`scrollbar-width`, `scrollbar-color`) | `folder-common.css` | 2026.04.04 |
-| 4 | Dashboard responsive breakpoints for all layouts | `dashboard.css` | 2026.04.04 |
-
-### i18n
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 1 | ~40 new keys across all 7 language files (settings, CSS tool, folder defaults, incognito) | `langs/*.json` | 2026.04.04 |
-
-### Infrastructure
-
-| # | Change | File(s) | Version |
-|---|--------|---------|---------|
-| 1 | PLG pre-install cleanup: removes stale package DB entries before install | `folder.view3.plg` | 2026.04.04 |
-| 2 | PLG post-install cleanup: safety net for lingering package entries | `folder.view3.plg` | 2026.04.04 |
-| 3 | PLG old .txz cleanup moved from post-install to pre-install | `folder.view3.plg` | 2026.04.04 |
-| 4 | .DS_Store files removed and added to .gitignore | `.gitignore` | 2026.04.04 |
 
 ---
 
