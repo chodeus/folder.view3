@@ -177,6 +177,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     }}));
 
     let started = 0;
+    let paused = 0;
     let autostart = 0;
     let autostartStarted = 0;
     let remBefore = 0;
@@ -366,6 +367,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             }
 
             started += ct.state!=="shutoff" ? 1 : 0;
+            paused += (ct.state === "paused" || ct.state === "pmsuspended") ? 1 : 0;
             autostart += ct.autostart ? 1 : 0;
             autostartStarted += (ct.autostart && ct.state!=="shutoff") ? 1 : 0;
 
@@ -408,8 +410,13 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     }
 
     if (started) {
-        $(`tr.folder-id-${id} i#load-folder-${id}`).attr('class', 'fa fa-play started green-text folder-load-status');
-        $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
+        const allPaused = paused > 0 && paused === started;
+        const iconCls = allPaused
+            ? 'fa fa-pause started orange-text folder-load-status'
+            : 'fa fa-play started green-text folder-load-status';
+        const stateKey = allPaused ? 'paused' : 'started';
+        $(`tr.folder-id-${id} i#load-folder-${id}`).attr('class', iconCls);
+        $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n(stateKey)}`);
     }
 
     const folderHasAutostart = autostart > 0;
@@ -427,6 +434,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
     folder.status = {};
     folder.status.started = started;
+    folder.status.paused = paused;
     folder.status.autostart = autostart;
     folder.status.autostartStarted = autostartStarted;
     folder.status.expanded = false;
@@ -590,7 +598,7 @@ const folderCustomAction = async (id, action) => {
                 };
             } else if(act.modes === 3) {
                 ctAction = (e) => {
-                    if(e.state === "paused" || e.state === "unknown") {
+                    if(e.state === "running") {
                         prom.push(fv3VmAction('domain-restart', e.id));
                     }
                 };

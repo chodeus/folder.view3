@@ -260,6 +260,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
     let upToDate = true;
     let started = 0;
+    let paused = 0;
     let autostart = 0;
     let autostartStarted = 0;
     let managed = 0;
@@ -365,6 +366,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
             upToDate = upToDate && !newFolder[container].update;
             started += newFolder[container].state ? 1 : 0;
+            paused += newFolder[container].pause ? 1 : 0;
             const isDockerMan = ct.info.State.manager === 'dockerman';
             autostart += (isDockerMan && !(ct.info.State.Autostart === false)) ? 1 : 0;
             autostartStarted += (isDockerMan && !(ct.info.State.Autostart === false) && newFolder[container].state) ? 1 : 0;
@@ -403,8 +405,13 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
     if (started) {
         sel.parent().removeClass('stopped').addClass('started');
-        sel.next('span.inner').children('i').replaceWith($('<i class="fa fa-play started green-text"></i>'));
-        sel.next('span.inner').children('span.state').text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
+        const allPaused = paused > 0 && paused === started;
+        const iconHtml = allPaused
+            ? '<i class="fa fa-pause started orange-text"></i>'
+            : '<i class="fa fa-play started green-text"></i>';
+        sel.next('span.inner').children('i').replaceWith($(iconHtml));
+        const stateKey = allPaused ? 'paused' : 'started';
+        sel.next('span.inner').children('span.state').text(`${started}/${Object.entries(folder.containers).length} ${$.i18n(stateKey)}`);
     }
 
     if(autostart === 0) {
@@ -428,6 +435,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     folder.status = {};
     folder.status.upToDate = upToDate;
     folder.status.started = started;
+    folder.status.paused = paused;
     folder.status.autostart = autostart;
     folder.status.autostartStarted = autostartStarted;
     folder.status.managed = managed;
@@ -468,6 +476,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     }}));
 
     let started = 0;
+    let paused = 0;
     let autostart = 0;
     let autostartStarted = 0;
     let remBefore = 0;
@@ -539,6 +548,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
             }
 
             started += ct.state!=="shutoff" ? 1 : 0;
+            paused += (ct.state === "paused" || ct.state === "pmsuspended") ? 1 : 0;
             autostart += ct.autostart ? 1 : 0;
             autostartStarted += (ct.autostart && ct.state!=="shutoff") ? 1 : 0;
 
@@ -567,8 +577,13 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     if (started) {
         const sel = $(`tbody#vm_view span#folder-id-${id}`);
         sel.parent().removeClass('stopped').addClass('started');
-        sel.next('span.inner').children('i').replaceWith($('<i class="fa fa-play started green-text"></i>'));
-        sel.next('span.inner').children('span.state').text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
+        const allPaused = paused > 0 && paused === started;
+        const iconHtml = allPaused
+            ? '<i class="fa fa-pause started orange-text"></i>'
+            : '<i class="fa fa-play started green-text"></i>';
+        sel.next('span.inner').children('i').replaceWith($(iconHtml));
+        const stateKey = allPaused ? 'paused' : 'started';
+        sel.next('span.inner').children('span.state').text(`${started}/${Object.entries(folder.containers).length} ${$.i18n(stateKey)}`);
     }
 
     if(autostart === 0) {
@@ -583,6 +598,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
 
     folder.status = {};
     folder.status.started = started;
+    folder.status.paused = paused;
     folder.status.autostart = autostart;
     folder.status.autostartStarted = autostartStarted;
     folder.status.expanded = false;
@@ -896,7 +912,9 @@ const folderDockerCustomAction = async (id, action) => {
         } else if(act.action === 2) {
 
             ctAction = (e) => {
-                prom.push(fv3DockerAction('restart', e.id, e.fullId));
+                if(e.state) {
+                    prom.push(fv3DockerAction('restart', e.id, e.fullId));
+                }
             };
 
         }
@@ -964,7 +982,7 @@ const addDockerFolderContext = (id) => {
                 return {
                     text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
-                    action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
+                    action: (e) => { e.preventDefault(); folderDockerCustomAction(id, i); }
                 }
             })
         );
@@ -1113,8 +1131,8 @@ const actionFolderDocker = async (id, action) => {
             case "resume":
                 pass = ct.state && ct.pause;
                 break;
-            case "resume":
-                pass = true;
+            case "restart":
+                pass = ct.state;
                 break;
             default:
                 pass = false;
@@ -1199,7 +1217,7 @@ const folderVMCustomAction = async (id, action) => {
                 };
             } else if(act.modes === 3) {
                 ctAction = (e) => {
-                    if(e.state === "paused" || e.state === "unknown") {
+                    if(e.state === "running") {
                         prom.push(fv3VmAction('domain-restart', e.id));
                     }
                 };
@@ -1269,7 +1287,7 @@ const addVMFolderContext = (id) => {
                 return {
                     text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
-                    action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
+                    action: (e) => { e.preventDefault(); folderVMCustomAction(id, i); }
                 }
             })
         );
