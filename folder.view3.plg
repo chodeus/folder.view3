@@ -6,12 +6,20 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.05.23.2">
-<!ENTITY md5 "6075bfe45e9bbd306ef3a888026976dc">
+<!ENTITY version "2026.05.28.1">
+<!ENTITY md5 "61a5a0ac67d86096d3907c3835b659e1">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.05.28
+- Fix: Restart on a Dashboard docker folder now actually restarts containers (duplicate "resume" case was swallowing "restart")
+- Fix: Dashboard folder status icon now turns orange pause when every started container is paused, returns to play on resume
+- Fix: Same pause-icon aggregation added to Docker tab and VM tab folder rows
+- Fix: ReferenceError when triggering a custom action on a Dashboard folder configured with "Override default actions" (docker and VM)
+- Fix: Restart no longer fires on stopped containers (no more spurious "Execution error" swal)
+- Fix: VM custom-action "Set Restart" mode now reboots running VMs (was checking for paused/unknown state)
 
 ###2026.05.23
 - New "Orange folder text on update" toggle for folders on the docker and dashboard page

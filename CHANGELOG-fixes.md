@@ -6,6 +6,20 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.28-beta1 — Dashboard Restart / Pause-icon / custom-action bugs
+
+Audit of every folder context-menu wire on Dashboard, Docker tab, and VM tab. All five fixes are JS-only — Unraid backend was always working; the failures sat in the switch/aggregation logic in front of `fv3DockerAction` / `fv3VmAction`.
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 157 | `actionFolderDocker` switch had `case "resume"` duplicated; the second case (intended as `"restart"`) was unreachable, so the "restart" action fell into `default` with `pass = false` and zero `fv3DockerAction('restart', …)` calls fired. Spinner blipped, containers untouched. Confirmed live via instrumented `window.fv3DockerAction` / `window.fv3GraphQL`. Renamed the second case to `"restart"` and gated it on `ct.state` so stopped containers aren't sent restart (no more "Execution error" swal). | `scripts/dashboard.js` | 2026.05.28-beta1 |
+| 158 | `createFolderDocker` and `createFolderVM` captured each container's `pause` field but never aggregated it. The `if (started) { … fa-play … }` block ran whenever any container was running (Docker keeps `State.Running === true` while paused), so the folder icon stayed green even when all children were paused. Added `paused` counter; when `paused > 0 && paused === started` the icon swaps to `fa fa-pause … orange-text` and the state text uses the existing `paused` i18n key. `folder.status.paused` now persists alongside `started`. | `scripts/dashboard.js`, `scripts/docker.js`, `scripts/vm.js` | 2026.05.28-beta1 |
+| 159 | When a docker folder had `override_default_actions = true` with at least one custom action, the Dashboard context menu wired the menu item to a function named `folderCustomAction` — which is only defined inside docker.js (Docker tab) and vm.js (VM tab), not on the Dashboard. Clicking threw `ReferenceError: folderCustomAction is not defined`. Routed the override-mode docker entries to the page-local `folderDockerCustomAction` and the VM entries to `folderVMCustomAction`. | `scripts/dashboard.js` | 2026.05.28-beta1 |
+| 160 | The bulk Restart "pass" predicate in Docker's `actionFolder` (docker.js) and the Restart custom-action variant in both `folderDockerCustomAction` (dashboard.js) and `folderCustomAction` (docker.js) set `pass = true` / pushed unconditionally, so restart was sent to stopped containers too. Unraid's PHP `/update.htm action=restart` returns `{"success":"Server error"}` in that case, which `actionFolderDocker` surfaces as an "Execution error" swal. Added `ct.state` / `e.state` / `e_ct.state` guards on every restart push. | `scripts/dashboard.js`, `scripts/docker.js` | 2026.05.28-beta1 |
+| 161 | VM custom-action "Set Restart" mode (`act.action === 1, act.modes === 3`) gated `domain-restart` on `state === "paused" || state === "unknown"` — libvirt can't reboot a paused VM, so the custom action effectively never fired on the correct state. Changed the predicate to `state === "running"` in both `vm.js` and `dashboard.js`. | `scripts/vm.js`, `scripts/dashboard.js` | 2026.05.28-beta1 |
+
+---
+
 ## 2026.05.23 — Stable Release
 
 Consolidates beta builds v2026.05.23.1 and v2026.05.23.2. Per-beta detail entries below preserved as the change ledger for the release.
