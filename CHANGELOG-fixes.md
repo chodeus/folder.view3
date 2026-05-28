@@ -6,6 +6,12 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.28 — Stable Release
+
+Consolidates beta builds v2026.05.28.1 and v2026.05.28.2. Per-beta detail entries below preserved as the change ledger for the release.
+
+---
+
 ## 2026.05.28-beta2 — Conditional folder context menus
 
 Folder context menus now hide actions that wouldn't act on any child container/VM, matching Unraid's native per-container `addDockerContainerContext` behaviour. Previously the full set of Start/Stop/Pause/Resume/Restart was always shown; `pass` predicates inside `actionFolderDocker`/`actionFolderVM` then silently skipped non-eligible containers. UX-inconsistent with Unraid native, especially noticeable when a folder had Resume visible despite nothing being paused.
