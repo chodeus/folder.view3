@@ -250,12 +250,13 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
     let upToDate = true;
     let started = 0;
+    let paused = 0;
     let autostart = 0;
     let autostartStarted = 0;
     let managed = 0;
     let managerTypes = new Set();
     let remBefore = 0;
-    fv3Debug('createFolder', id, 'Initialized local state variables', { upToDate, started, autostart, autostartStarted, managed, remBefore });
+    fv3Debug('createFolder', id, 'Initialized local state variables', { upToDate, started, paused, autostart, autostartStarted, managed, remBefore });
 
     const advanced = $.cookie('docker_listview_mode') == 'advanced';
     fv3Debug('createFolder', id, `Advanced view enabled: ${advanced}`);
@@ -588,12 +589,13 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
             upToDate = upToDate && !newFolder[container_name_in_folder].update;
             started += newFolder[container_name_in_folder].state ? 1 : 0;
+            paused += newFolder[container_name_in_folder].pause ? 1 : 0;
             const isDockerMan = ct.info.State.manager === 'dockerman';
             autostart += (isDockerMan && !(ct.info.State.Autostart === false)) ? 1 : 0;
             autostartStarted += (isDockerMan && !(ct.info.State.Autostart === false) && newFolder[container_name_in_folder].state) ? 1 : 0;
             managed += newFolder[container_name_in_folder].managed ? 1 : 0;
             managerTypes.add(ct.info.State.manager);
-            fv3Debug('createFolder', id, container_name_in_folder, 'Updated folder aggregate states:', { upToDate, started, autostart, autostartStarted, managed, managerTypes: Array.from(managerTypes) });
+            fv3Debug('createFolder', id, container_name_in_folder, 'Updated folder aggregate states:', { upToDate, started, paused, autostart, autostartStarted, managed, managerTypes: Array.from(managerTypes) });
             folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-preview', {detail: {
                 folder: folder,
                 id: id,
@@ -682,9 +684,14 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
         }
     }
     if (started) {
-        $(`tr.folder-id-${id} i#load-folder-${id}`).attr('class', 'fa fa-play started green-text folder-load-status');
-        $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
-        fv3Debug('createFolder', id, `Set 'started' status. Count: ${started}/${Object.entries(folder.containers).length}.`);
+        const allPaused = paused > 0 && paused === started;
+        const iconCls = allPaused
+            ? 'fa fa-pause started orange-text folder-load-status'
+            : 'fa fa-play started green-text folder-load-status';
+        const stateKey = allPaused ? 'paused' : 'started';
+        $(`tr.folder-id-${id} i#load-folder-${id}`).attr('class', iconCls);
+        $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n(stateKey)}`);
+        fv3Debug('createFolder', id, `Set '${stateKey}' status. Count: ${started}/${Object.entries(folder.containers).length}, paused: ${paused}.`);
     }
     if (!managerTypes.has('dockerman')) {
         $(`tr.folder-id-${id} td.folder-autostart`).empty();
@@ -708,7 +715,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     else if (managed > 0 && managed === Object.values(folder.containers).length) { $(`tr.folder-id-${id}`).addClass('managed-full'); }
     fv3Debug('createFolder', id, `Applied managed status class. Managed: ${managed}, Total: ${Object.values(folder.containers).length}.`);
 
-    folder.status = { upToDate, started, autostart, autostartStarted, managed, managerTypes: Array.from(managerTypes), expanded: false };
+    folder.status = { upToDate, started, paused, autostart, autostartStarted, managed, managerTypes: Array.from(managerTypes), expanded: false };
     fv3Debug('createFolder', id, 'Set final folder.status object:', JSON.parse(JSON.stringify(folder.status)));
     fv3Debug('createFolder', id, 'Dispatching docker-post-folder-creation event.');
     folderEvents.dispatchEvent(new CustomEvent('docker-post-folder-creation', {detail: {
@@ -839,7 +846,7 @@ const actionFolder = async (id, action) => {
                 pass = ct.state && ct.pause;
                 break;
             case "restart":
-                pass = true;
+                pass = ct.state;
                 break;
             default:
                 pass = false;
@@ -953,8 +960,10 @@ const folderCustomAction = async (id, actionIndex) => {
         } else if(act.action === 2) {
             fv3Debug('folderCustomAction', id, 'Standard action type 2 (Restart).');
             ctAction = (e_ct) => {
-                fv3Debug('customAction', e_ct.id, 'restart');
-                prom.push(fv3DockerAction('restart', e_ct.id, e_ct.fullId));
+                fv3Debug('customAction', e_ct.id, `restart: State: ${e_ct.state}`);
+                if(e_ct.state) {
+                    prom.push(fv3DockerAction('restart', e_ct.id, e_ct.fullId));
+                }
             };
         }
         cts.forEach((e_ct_data) => {
@@ -1023,32 +1032,54 @@ const addDockerFolderContext = (id) => {
         opts.push({ divider: true });
     } else if(!folderData.settings.default_action) {
         fv3Debug('addDockerFolderContext', id, 'Adding default action menu items.');
-        opts.push({
-            text: $.i18n('start'),
-            icon: 'fa-play',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "start"); }
-        });
-        opts.push({
-            text: $.i18n('stop'),
-            icon: 'fa-stop',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "stop"); }
-        });
-        opts.push({
-            text: $.i18n('pause'),
-            icon: 'fa-pause',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "pause"); }
-        });
-        opts.push({
-            text: $.i18n('resume'),
-            icon: 'fa-play-circle',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "resume"); }
-        });
-        opts.push({
-            text: $.i18n('restart'),
-            icon: 'fa-refresh',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "restart"); }
-        });
-        opts.push({ divider: true });
+        const _cts = Object.values(folderData.containers || {});
+        const _total = _cts.length;
+        const _running = _cts.filter(c => c.state).length;
+        const _paused = _cts.filter(c => c.state && c.pause).length;
+        const _stopped = _total - _running;
+        const _runningNotPaused = _running - _paused;
+        let _added = false;
+        if (_stopped > 0) {
+            opts.push({
+                text: $.i18n('start'),
+                icon: 'fa-play',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "start"); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('stop'),
+                icon: 'fa-stop',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "stop"); }
+            });
+            _added = true;
+        }
+        if (_runningNotPaused > 0) {
+            opts.push({
+                text: $.i18n('pause'),
+                icon: 'fa-pause',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "pause"); }
+            });
+            _added = true;
+        }
+        if (_paused > 0) {
+            opts.push({
+                text: $.i18n('resume'),
+                icon: 'fa-play-circle',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "resume"); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('restart'),
+                icon: 'fa-refresh',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "restart"); }
+            });
+            _added = true;
+        }
+        if (_added) opts.push({ divider: true });
     }
 
     if(folderData.status.managed > 0) {

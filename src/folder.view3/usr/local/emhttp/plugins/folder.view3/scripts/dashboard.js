@@ -260,6 +260,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
     let upToDate = true;
     let started = 0;
+    let paused = 0;
     let autostart = 0;
     let autostartStarted = 0;
     let managed = 0;
@@ -365,6 +366,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
             upToDate = upToDate && !newFolder[container].update;
             started += newFolder[container].state ? 1 : 0;
+            paused += newFolder[container].pause ? 1 : 0;
             const isDockerMan = ct.info.State.manager === 'dockerman';
             autostart += (isDockerMan && !(ct.info.State.Autostart === false)) ? 1 : 0;
             autostartStarted += (isDockerMan && !(ct.info.State.Autostart === false) && newFolder[container].state) ? 1 : 0;
@@ -403,8 +405,13 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
     if (started) {
         sel.parent().removeClass('stopped').addClass('started');
-        sel.next('span.inner').children('i').replaceWith($('<i class="fa fa-play started green-text"></i>'));
-        sel.next('span.inner').children('span.state').text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
+        const allPaused = paused > 0 && paused === started;
+        const iconHtml = allPaused
+            ? '<i class="fa fa-pause started orange-text"></i>'
+            : '<i class="fa fa-play started green-text"></i>';
+        sel.next('span.inner').children('i').replaceWith($(iconHtml));
+        const stateKey = allPaused ? 'paused' : 'started';
+        sel.next('span.inner').children('span.state').text(`${started}/${Object.entries(folder.containers).length} ${$.i18n(stateKey)}`);
     }
 
     if(autostart === 0) {
@@ -428,6 +435,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     folder.status = {};
     folder.status.upToDate = upToDate;
     folder.status.started = started;
+    folder.status.paused = paused;
     folder.status.autostart = autostart;
     folder.status.autostartStarted = autostartStarted;
     folder.status.managed = managed;
@@ -468,6 +476,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     }}));
 
     let started = 0;
+    let paused = 0;
     let autostart = 0;
     let autostartStarted = 0;
     let remBefore = 0;
@@ -539,6 +548,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
             }
 
             started += ct.state!=="shutoff" ? 1 : 0;
+            paused += (ct.state === "paused" || ct.state === "pmsuspended") ? 1 : 0;
             autostart += ct.autostart ? 1 : 0;
             autostartStarted += (ct.autostart && ct.state!=="shutoff") ? 1 : 0;
 
@@ -567,8 +577,13 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     if (started) {
         const sel = $(`tbody#vm_view span#folder-id-${id}`);
         sel.parent().removeClass('stopped').addClass('started');
-        sel.next('span.inner').children('i').replaceWith($('<i class="fa fa-play started green-text"></i>'));
-        sel.next('span.inner').children('span.state').text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
+        const allPaused = paused > 0 && paused === started;
+        const iconHtml = allPaused
+            ? '<i class="fa fa-pause started orange-text"></i>'
+            : '<i class="fa fa-play started green-text"></i>';
+        sel.next('span.inner').children('i').replaceWith($(iconHtml));
+        const stateKey = allPaused ? 'paused' : 'started';
+        sel.next('span.inner').children('span.state').text(`${started}/${Object.entries(folder.containers).length} ${$.i18n(stateKey)}`);
     }
 
     if(autostart === 0) {
@@ -583,6 +598,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
 
     folder.status = {};
     folder.status.started = started;
+    folder.status.paused = paused;
     folder.status.autostart = autostart;
     folder.status.autostartStarted = autostartStarted;
     folder.status.expanded = false;
@@ -896,7 +912,9 @@ const folderDockerCustomAction = async (id, action) => {
         } else if(act.action === 2) {
 
             ctAction = (e) => {
-                prom.push(fv3DockerAction('restart', e.id, e.fullId));
+                if(e.state) {
+                    prom.push(fv3DockerAction('restart', e.id, e.fullId));
+                }
             };
 
         }
@@ -964,7 +982,7 @@ const addDockerFolderContext = (id) => {
                 return {
                     text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
-                    action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
+                    action: (e) => { e.preventDefault(); folderDockerCustomAction(id, i); }
                 }
             })
         );
@@ -974,38 +992,54 @@ const addDockerFolderContext = (id) => {
         });
 
     } else if(!globalFolders.docker[id].settings.default_action) {
-        opts.push({
-            text: $.i18n('start'),
-            icon: 'fa-play',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "start"); }
-        });
-        opts.push({
-            text: $.i18n('stop'),
-            icon: 'fa-stop',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "stop"); }
-        });
-        
-        opts.push({
-            text: $.i18n('pause'),
-            icon: 'fa-pause',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "pause"); }
-        });
-    
-        opts.push({
-            text: $.i18n('resume'),
-            icon: 'fa-play-circle',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "resume"); }
-        });
-    
-        opts.push({
-            text: $.i18n('restart'),
-            icon: 'fa-refresh',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "restart"); }
-        });
-    
-        opts.push({
-            divider: true
-        });
+        const _cts = Object.values(globalFolders.docker[id].containers || {});
+        const _total = _cts.length;
+        const _running = _cts.filter(c => c.state).length;
+        const _paused = _cts.filter(c => c.state && c.pause).length;
+        const _stopped = _total - _running;
+        const _runningNotPaused = _running - _paused;
+        let _added = false;
+        if (_stopped > 0) {
+            opts.push({
+                text: $.i18n('start'),
+                icon: 'fa-play',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "start"); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('stop'),
+                icon: 'fa-stop',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "stop"); }
+            });
+            _added = true;
+        }
+        if (_runningNotPaused > 0) {
+            opts.push({
+                text: $.i18n('pause'),
+                icon: 'fa-pause',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "pause"); }
+            });
+            _added = true;
+        }
+        if (_paused > 0) {
+            opts.push({
+                text: $.i18n('resume'),
+                icon: 'fa-play-circle',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "resume"); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('restart'),
+                icon: 'fa-refresh',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "restart"); }
+            });
+            _added = true;
+        }
+        if (_added) opts.push({ divider: true });
     }
 
     if(globalFolders.docker[id].status.managed > 0) {
@@ -1113,8 +1147,8 @@ const actionFolderDocker = async (id, action) => {
             case "resume":
                 pass = ct.state && ct.pause;
                 break;
-            case "resume":
-                pass = true;
+            case "restart":
+                pass = ct.state;
                 break;
             default:
                 pass = false;
@@ -1199,7 +1233,7 @@ const folderVMCustomAction = async (id, action) => {
                 };
             } else if(act.modes === 3) {
                 ctAction = (e) => {
-                    if(e.state === "paused" || e.state === "unknown") {
+                    if(e.state === "running") {
                         prom.push(fv3VmAction('domain-restart', e.id));
                     }
                 };
@@ -1269,7 +1303,7 @@ const addVMFolderContext = (id) => {
                 return {
                     text: escapeHtml(e.name),
                     icon: e.script_icon || "fa-bolt",
-                    action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
+                    action: (e) => { e.preventDefault(); folderVMCustomAction(id, i); }
                 }
             })
         );
@@ -1279,59 +1313,71 @@ const addVMFolderContext = (id) => {
         });
 
     } else if(!globalFolders.vms[id].settings.default_action) {
-        opts.push({
-            text: $.i18n('start'),
-            icon: "fa-play",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-start'); }
-        });
-    
-        opts.push({
-            text: $.i18n('stop'),
-            icon: "fa-stop",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-stop'); }
-        });
-    
-        opts.push({
-            text: $.i18n('pause'),
-            icon: "fa-pause",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-pause'); }
-        });
-    
-        opts.push({
-            text: $.i18n('resume'),
-            icon: "fa-play-circle",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-resume'); }
-        });
-    
-        opts.push({
-            text: $.i18n('restart'),
-            icon: "fa-refresh",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-restart'); }
-        });
-    
-        opts.push({
-            text: $.i18n('hibernate'),
-            icon: "fa-bed",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-pmsuspend'); }
-        });
-    
-        opts.push({
-            text: $.i18n('force-stop'),
-            icon: "fa-bomb",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-destroy'); }
-        });
-
-        if (fv3ApiAvailable) {
+        const _cts = Object.values(globalFolders.vms[id].containers || {});
+        const _running = _cts.filter(c => c.state === "running").length;
+        const _shutoff = _cts.filter(c => c.state === "shutoff").length;
+        const _resumable = _cts.filter(c => c.state === "paused" || c.state === "pmsuspended" || c.state === "unknown").length;
+        const _destroyable = _running + _resumable;
+        let _added = false;
+        if (_shutoff > 0) {
+            opts.push({
+                text: $.i18n('start'),
+                icon: "fa-play",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-start'); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('stop'),
+                icon: "fa-stop",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-stop'); }
+            });
+            opts.push({
+                text: $.i18n('pause'),
+                icon: "fa-pause",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-pause'); }
+            });
+            _added = true;
+        }
+        if (_resumable > 0) {
+            opts.push({
+                text: $.i18n('resume'),
+                icon: "fa-play-circle",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-resume'); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('restart'),
+                icon: "fa-refresh",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-restart'); }
+            });
+            opts.push({
+                text: $.i18n('hibernate'),
+                icon: "fa-bed",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-pmsuspend'); }
+            });
+            _added = true;
+        }
+        if (_destroyable > 0) {
+            opts.push({
+                text: $.i18n('force-stop'),
+                icon: "fa-bomb",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-destroy'); }
+            });
+            _added = true;
+        }
+        if (fv3ApiAvailable && _running > 0) {
             opts.push({
                 text: $.i18n('reset'),
                 icon: "fa-bolt",
                 action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-reset'); }
             });
+            _added = true;
         }
-
-        opts.push({
-            divider: true
-        });
+        if (_added) opts.push({ divider: true });
     }
 
 

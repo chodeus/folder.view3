@@ -177,6 +177,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     }}));
 
     let started = 0;
+    let paused = 0;
     let autostart = 0;
     let autostartStarted = 0;
     let remBefore = 0;
@@ -366,6 +367,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             }
 
             started += ct.state!=="shutoff" ? 1 : 0;
+            paused += (ct.state === "paused" || ct.state === "pmsuspended") ? 1 : 0;
             autostart += ct.autostart ? 1 : 0;
             autostartStarted += (ct.autostart && ct.state!=="shutoff") ? 1 : 0;
 
@@ -408,8 +410,13 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     }
 
     if (started) {
-        $(`tr.folder-id-${id} i#load-folder-${id}`).attr('class', 'fa fa-play started green-text folder-load-status');
-        $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n('started')}`);
+        const allPaused = paused > 0 && paused === started;
+        const iconCls = allPaused
+            ? 'fa fa-pause started orange-text folder-load-status'
+            : 'fa fa-play started green-text folder-load-status';
+        const stateKey = allPaused ? 'paused' : 'started';
+        $(`tr.folder-id-${id} i#load-folder-${id}`).attr('class', iconCls);
+        $(`tr.folder-id-${id} span.folder-state`).text(`${started}/${Object.entries(folder.containers).length} ${$.i18n(stateKey)}`);
     }
 
     const folderHasAutostart = autostart > 0;
@@ -427,6 +434,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
     folder.status = {};
     folder.status.started = started;
+    folder.status.paused = paused;
     folder.status.autostart = autostart;
     folder.status.autostartStarted = autostartStarted;
     folder.status.expanded = false;
@@ -590,7 +598,7 @@ const folderCustomAction = async (id, action) => {
                 };
             } else if(act.modes === 3) {
                 ctAction = (e) => {
-                    if(e.state === "paused" || e.state === "unknown") {
+                    if(e.state === "running") {
                         prom.push(fv3VmAction('domain-restart', e.id));
                     }
                 };
@@ -649,59 +657,71 @@ const addVMFolderContext = (id) => {
         });
 
     } else if(!globalFolders[id].settings.default_action) {
-        opts.push({
-            text:$.i18n('start'),
-            icon:"fa-play",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-start'); }
-        });
-    
-        opts.push({
-            text:$.i18n('stop'),
-            icon:"fa-stop",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-stop'); }
-        });
-    
-        opts.push({
-            text:$.i18n('pause'),
-            icon:"fa-pause",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-pause'); }
-        });
-    
-        opts.push({
-            text:$.i18n('resume'),
-            icon:"fa-play-circle",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-resume'); }
-        });
-    
-        opts.push({
-            text:$.i18n('restart'),
-            icon:"fa-refresh",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-restart'); }
-        });
-    
-        opts.push({
-            text:$.i18n('hibernate'),
-            icon:"fa-bed",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-pmsuspend'); }
-        });
-    
-        opts.push({
-            text:$.i18n('force-stop'),
-            icon:"fa-bomb",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-destroy'); }
-        });
-
-        if (fv3ApiAvailable) {
+        const _cts = Object.values(globalFolders[id].containers || {});
+        const _running = _cts.filter(c => c.state === "running").length;
+        const _shutoff = _cts.filter(c => c.state === "shutoff").length;
+        const _resumable = _cts.filter(c => c.state === "paused" || c.state === "pmsuspended" || c.state === "unknown").length;
+        const _destroyable = _running + _resumable;
+        let _added = false;
+        if (_shutoff > 0) {
+            opts.push({
+                text:$.i18n('start'),
+                icon:"fa-play",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-start'); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text:$.i18n('stop'),
+                icon:"fa-stop",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-stop'); }
+            });
+            opts.push({
+                text:$.i18n('pause'),
+                icon:"fa-pause",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-pause'); }
+            });
+            _added = true;
+        }
+        if (_resumable > 0) {
+            opts.push({
+                text:$.i18n('resume'),
+                icon:"fa-play-circle",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-resume'); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text:$.i18n('restart'),
+                icon:"fa-refresh",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-restart'); }
+            });
+            opts.push({
+                text:$.i18n('hibernate'),
+                icon:"fa-bed",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-pmsuspend'); }
+            });
+            _added = true;
+        }
+        if (_destroyable > 0) {
+            opts.push({
+                text:$.i18n('force-stop'),
+                icon:"fa-bomb",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-destroy'); }
+            });
+            _added = true;
+        }
+        if (fv3ApiAvailable && _running > 0) {
             opts.push({
                 text:$.i18n('reset'),
                 icon:"fa-bolt",
                 action:(e) => { e.preventDefault(); actionFolder(id, 'domain-reset'); }
             });
+            _added = true;
         }
-
-        opts.push({
-            divider: true
-        });
+        if (_added) opts.push({ divider: true });
     }
 
 
