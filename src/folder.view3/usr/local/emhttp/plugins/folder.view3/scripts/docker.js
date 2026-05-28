@@ -1032,32 +1032,54 @@ const addDockerFolderContext = (id) => {
         opts.push({ divider: true });
     } else if(!folderData.settings.default_action) {
         fv3Debug('addDockerFolderContext', id, 'Adding default action menu items.');
-        opts.push({
-            text: $.i18n('start'),
-            icon: 'fa-play',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "start"); }
-        });
-        opts.push({
-            text: $.i18n('stop'),
-            icon: 'fa-stop',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "stop"); }
-        });
-        opts.push({
-            text: $.i18n('pause'),
-            icon: 'fa-pause',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "pause"); }
-        });
-        opts.push({
-            text: $.i18n('resume'),
-            icon: 'fa-play-circle',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "resume"); }
-        });
-        opts.push({
-            text: $.i18n('restart'),
-            icon: 'fa-refresh',
-            action: (evt) => { evt.preventDefault(); actionFolder(id, "restart"); }
-        });
-        opts.push({ divider: true });
+        const _cts = Object.values(folderData.containers || {});
+        const _total = _cts.length;
+        const _running = _cts.filter(c => c.state).length;
+        const _paused = _cts.filter(c => c.state && c.pause).length;
+        const _stopped = _total - _running;
+        const _runningNotPaused = _running - _paused;
+        let _added = false;
+        if (_stopped > 0) {
+            opts.push({
+                text: $.i18n('start'),
+                icon: 'fa-play',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "start"); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('stop'),
+                icon: 'fa-stop',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "stop"); }
+            });
+            _added = true;
+        }
+        if (_runningNotPaused > 0) {
+            opts.push({
+                text: $.i18n('pause'),
+                icon: 'fa-pause',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "pause"); }
+            });
+            _added = true;
+        }
+        if (_paused > 0) {
+            opts.push({
+                text: $.i18n('resume'),
+                icon: 'fa-play-circle',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "resume"); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('restart'),
+                icon: 'fa-refresh',
+                action: (evt) => { evt.preventDefault(); actionFolder(id, "restart"); }
+            });
+            _added = true;
+        }
+        if (_added) opts.push({ divider: true });
     }
 
     if(folderData.status.managed > 0) {

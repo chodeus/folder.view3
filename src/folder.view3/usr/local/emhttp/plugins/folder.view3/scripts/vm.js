@@ -657,59 +657,71 @@ const addVMFolderContext = (id) => {
         });
 
     } else if(!globalFolders[id].settings.default_action) {
-        opts.push({
-            text:$.i18n('start'),
-            icon:"fa-play",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-start'); }
-        });
-    
-        opts.push({
-            text:$.i18n('stop'),
-            icon:"fa-stop",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-stop'); }
-        });
-    
-        opts.push({
-            text:$.i18n('pause'),
-            icon:"fa-pause",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-pause'); }
-        });
-    
-        opts.push({
-            text:$.i18n('resume'),
-            icon:"fa-play-circle",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-resume'); }
-        });
-    
-        opts.push({
-            text:$.i18n('restart'),
-            icon:"fa-refresh",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-restart'); }
-        });
-    
-        opts.push({
-            text:$.i18n('hibernate'),
-            icon:"fa-bed",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-pmsuspend'); }
-        });
-    
-        opts.push({
-            text:$.i18n('force-stop'),
-            icon:"fa-bomb",
-            action:(e) => { e.preventDefault(); actionFolder(id, 'domain-destroy'); }
-        });
-
-        if (fv3ApiAvailable) {
+        const _cts = Object.values(globalFolders[id].containers || {});
+        const _running = _cts.filter(c => c.state === "running").length;
+        const _shutoff = _cts.filter(c => c.state === "shutoff").length;
+        const _resumable = _cts.filter(c => c.state === "paused" || c.state === "pmsuspended" || c.state === "unknown").length;
+        const _destroyable = _running + _resumable;
+        let _added = false;
+        if (_shutoff > 0) {
+            opts.push({
+                text:$.i18n('start'),
+                icon:"fa-play",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-start'); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text:$.i18n('stop'),
+                icon:"fa-stop",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-stop'); }
+            });
+            opts.push({
+                text:$.i18n('pause'),
+                icon:"fa-pause",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-pause'); }
+            });
+            _added = true;
+        }
+        if (_resumable > 0) {
+            opts.push({
+                text:$.i18n('resume'),
+                icon:"fa-play-circle",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-resume'); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text:$.i18n('restart'),
+                icon:"fa-refresh",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-restart'); }
+            });
+            opts.push({
+                text:$.i18n('hibernate'),
+                icon:"fa-bed",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-pmsuspend'); }
+            });
+            _added = true;
+        }
+        if (_destroyable > 0) {
+            opts.push({
+                text:$.i18n('force-stop'),
+                icon:"fa-bomb",
+                action:(e) => { e.preventDefault(); actionFolder(id, 'domain-destroy'); }
+            });
+            _added = true;
+        }
+        if (fv3ApiAvailable && _running > 0) {
             opts.push({
                 text:$.i18n('reset'),
                 icon:"fa-bolt",
                 action:(e) => { e.preventDefault(); actionFolder(id, 'domain-reset'); }
             });
+            _added = true;
         }
-
-        opts.push({
-            divider: true
-        });
+        if (_added) opts.push({ divider: true });
     }
 
 

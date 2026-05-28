@@ -992,38 +992,54 @@ const addDockerFolderContext = (id) => {
         });
 
     } else if(!globalFolders.docker[id].settings.default_action) {
-        opts.push({
-            text: $.i18n('start'),
-            icon: 'fa-play',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "start"); }
-        });
-        opts.push({
-            text: $.i18n('stop'),
-            icon: 'fa-stop',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "stop"); }
-        });
-        
-        opts.push({
-            text: $.i18n('pause'),
-            icon: 'fa-pause',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "pause"); }
-        });
-    
-        opts.push({
-            text: $.i18n('resume'),
-            icon: 'fa-play-circle',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "resume"); }
-        });
-    
-        opts.push({
-            text: $.i18n('restart'),
-            icon: 'fa-refresh',
-            action: (e) => { e.preventDefault(); actionFolderDocker(id, "restart"); }
-        });
-    
-        opts.push({
-            divider: true
-        });
+        const _cts = Object.values(globalFolders.docker[id].containers || {});
+        const _total = _cts.length;
+        const _running = _cts.filter(c => c.state).length;
+        const _paused = _cts.filter(c => c.state && c.pause).length;
+        const _stopped = _total - _running;
+        const _runningNotPaused = _running - _paused;
+        let _added = false;
+        if (_stopped > 0) {
+            opts.push({
+                text: $.i18n('start'),
+                icon: 'fa-play',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "start"); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('stop'),
+                icon: 'fa-stop',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "stop"); }
+            });
+            _added = true;
+        }
+        if (_runningNotPaused > 0) {
+            opts.push({
+                text: $.i18n('pause'),
+                icon: 'fa-pause',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "pause"); }
+            });
+            _added = true;
+        }
+        if (_paused > 0) {
+            opts.push({
+                text: $.i18n('resume'),
+                icon: 'fa-play-circle',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "resume"); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('restart'),
+                icon: 'fa-refresh',
+                action: (e) => { e.preventDefault(); actionFolderDocker(id, "restart"); }
+            });
+            _added = true;
+        }
+        if (_added) opts.push({ divider: true });
     }
 
     if(globalFolders.docker[id].status.managed > 0) {
@@ -1297,59 +1313,71 @@ const addVMFolderContext = (id) => {
         });
 
     } else if(!globalFolders.vms[id].settings.default_action) {
-        opts.push({
-            text: $.i18n('start'),
-            icon: "fa-play",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-start'); }
-        });
-    
-        opts.push({
-            text: $.i18n('stop'),
-            icon: "fa-stop",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-stop'); }
-        });
-    
-        opts.push({
-            text: $.i18n('pause'),
-            icon: "fa-pause",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-pause'); }
-        });
-    
-        opts.push({
-            text: $.i18n('resume'),
-            icon: "fa-play-circle",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-resume'); }
-        });
-    
-        opts.push({
-            text: $.i18n('restart'),
-            icon: "fa-refresh",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-restart'); }
-        });
-    
-        opts.push({
-            text: $.i18n('hibernate'),
-            icon: "fa-bed",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-pmsuspend'); }
-        });
-    
-        opts.push({
-            text: $.i18n('force-stop'),
-            icon: "fa-bomb",
-            action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-destroy'); }
-        });
-
-        if (fv3ApiAvailable) {
+        const _cts = Object.values(globalFolders.vms[id].containers || {});
+        const _running = _cts.filter(c => c.state === "running").length;
+        const _shutoff = _cts.filter(c => c.state === "shutoff").length;
+        const _resumable = _cts.filter(c => c.state === "paused" || c.state === "pmsuspended" || c.state === "unknown").length;
+        const _destroyable = _running + _resumable;
+        let _added = false;
+        if (_shutoff > 0) {
+            opts.push({
+                text: $.i18n('start'),
+                icon: "fa-play",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-start'); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('stop'),
+                icon: "fa-stop",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-stop'); }
+            });
+            opts.push({
+                text: $.i18n('pause'),
+                icon: "fa-pause",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-pause'); }
+            });
+            _added = true;
+        }
+        if (_resumable > 0) {
+            opts.push({
+                text: $.i18n('resume'),
+                icon: "fa-play-circle",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-resume'); }
+            });
+            _added = true;
+        }
+        if (_running > 0) {
+            opts.push({
+                text: $.i18n('restart'),
+                icon: "fa-refresh",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-restart'); }
+            });
+            opts.push({
+                text: $.i18n('hibernate'),
+                icon: "fa-bed",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-pmsuspend'); }
+            });
+            _added = true;
+        }
+        if (_destroyable > 0) {
+            opts.push({
+                text: $.i18n('force-stop'),
+                icon: "fa-bomb",
+                action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-destroy'); }
+            });
+            _added = true;
+        }
+        if (fv3ApiAvailable && _running > 0) {
             opts.push({
                 text: $.i18n('reset'),
                 icon: "fa-bolt",
                 action: (e) => { e.preventDefault(); actionFolderVM(id, 'domain-reset'); }
             });
+            _added = true;
         }
-
-        opts.push({
-            divider: true
-        });
+        if (_added) opts.push({ divider: true });
     }
 
 

@@ -6,6 +6,19 @@ This fork (`chodeus/folder.view3`) is a maintained continuation of `VladoPortos/
 
 ---
 
+## 2026.05.28-beta2 — Conditional folder context menus
+
+Folder context menus now hide actions that wouldn't act on any child container/VM, matching Unraid's native per-container `addDockerContainerContext` behaviour. Previously the full set of Start/Stop/Pause/Resume/Restart was always shown; `pass` predicates inside `actionFolderDocker`/`actionFolderVM` then silently skipped non-eligible containers. UX-inconsistent with Unraid native, especially noticeable when a folder had Resume visible despite nothing being paused.
+
+| # | Change | File(s) | Version |
+|---|--------|---------|---------|
+| 162 | Dashboard docker folder menu: compute `running`, `paused`, `runningNotPaused`, `stopped` from `folder.containers` at menu-build time. Hide Start when nothing is stopped, Stop/Restart when nothing is running, Pause when nothing is running-not-paused, Resume when nothing is paused. Trailing divider only added if at least one action survived gating. | `scripts/dashboard.js` | 2026.05.28-beta2 |
+| 163 | Dashboard VM folder menu: compute per-state counts (`running`, `shutoff`, `resumable` = paused+pmsuspended+unknown). Hide Start when no shutoff VM; hide Stop/Pause/Restart/Hibernate when no running VM; hide Resume when no resumable VM; hide Force-stop when no destroyable VM; Reset stays gated on both `fv3ApiAvailable` and running VM count. | `scripts/dashboard.js` | 2026.05.28-beta2 |
+| 164 | Docker tab folder menu (docker.js `addDockerFolderContext`): same docker gating logic as the Dashboard equivalent, applied at the per-row context menu. | `scripts/docker.js` | 2026.05.28-beta2 |
+| 165 | VM tab folder menu (vm.js `addVMFolderContext`): same VM gating logic as the Dashboard equivalent, applied at the per-row context menu. | `scripts/vm.js` | 2026.05.28-beta2 |
+
+---
+
 ## 2026.05.28-beta1 — Dashboard Restart / Pause-icon / custom-action bugs
 
 Audit of every folder context-menu wire on Dashboard, Docker tab, and VM tab. All five fixes are JS-only — Unraid backend was always working; the failures sat in the switch/aggregation logic in front of `fv3DockerAction` / `fv3VmAction`.
