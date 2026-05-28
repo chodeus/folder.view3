@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.05.28">
-<!ENTITY md5 "a3cdaad1a1823c4fd427842693be4813">
+<!ENTITY version "2026.05.28.1">
+<!ENTITY md5 "890e3ab10e1b6dad9b59d1aa069fb5e6">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.05.28.1
+- Fix VM tab crash when a folder is named the same as a VM (folder vanished and the VM was left out of any folder)
 
 ###2026.05.28
 - Restart on a Dashboard docker folder now actually restarts containers
@@ -601,7 +604,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 

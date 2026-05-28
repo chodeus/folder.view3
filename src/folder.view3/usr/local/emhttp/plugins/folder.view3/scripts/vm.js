@@ -302,7 +302,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             newFolder[container].id = ct.uuid;
             newFolder[container].state = ct.state;
 
-            let $vmTR = $('#kvm_list > tr.sortable').filter(function() {
+            let $vmTR = $('#kvm_list > tr.sortable:not(.folder)').filter(function() {
                 return $(this).find('td.vm-name span.outer span.inner a').first().text().trim() === container;
             }).first();
             let $detailRows = $vmTR.nextUntil('tr.sortable');
