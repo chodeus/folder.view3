@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.13.5">
-<!ENTITY md5 "3f51cdb7a96f2ce0af5847f9d7d7f721">
+<!ENTITY version "2026.06.13.6">
+<!ENTITY md5 "8ca5e408c2820650fd435933de1bacdb">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.13.6
+- Fix: live CPU/MEM stats now use the GraphQL WebSocket when available (an init-timing bug always fell back to SSE, even when the API was present)
 
 ###2026.06.13.5
 - Debug capture now records page-load timing: render milestones, per-icon load times, and browser navigation/resource timing

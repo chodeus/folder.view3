@@ -1258,25 +1258,31 @@ const fv3InitSSEStats = () => {
     });
 };
 
-if (fv3ApiAvailable && fv3CpuCores) {
-    cpus = fv3CpuCores;
-    fv3Debug('init', `CPU cores from API: ${cpus}. Trying WebSocket stats.`);
-    fv3ConnectStats(
-        (stat) => {
-            window.fv3UsingWebSocket = true;
-            fv3WsLoad[stat.shortId] = { cpu: stat.cpuPercent, mem: stat.mem };
-            folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { stat, source: 'ws' } }));
+// fv3ApiAvailable/fv3CpuCores are populated asynchronously by fv3DetectApi() (a /graphql
+// fetch). This block used to run synchronously at module-parse time, before detection
+// resolved, so the check was always false and the WebSocket stats path was never taken —
+// stats silently used SSE even when the API/WS was available. Wait for detection first.
+fv3DetectApi().then(() => {
+    if (fv3ApiAvailable && fv3CpuCores) {
+        cpus = fv3CpuCores;
+        fv3Debug('init', `CPU cores from API: ${cpus}. Trying WebSocket stats.`);
+        fv3ConnectStats(
+            (stat) => {
+                window.fv3UsingWebSocket = true;
+                fv3WsLoad[stat.shortId] = { cpu: stat.cpuPercent, mem: stat.mem };
+                folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { stat, source: 'ws' } }));
 
-            clearTimeout(fv3WsDebounceTimer);
-            fv3WsDebounceTimer = setTimeout(() => {
-                fv3UpdateFolderStats(fv3WsLoad, false);
-            }, 200);
-        },
-        fv3InitSSEStats
-    );
-} else {
-    fv3InitSSEStats();
-}
+                clearTimeout(fv3WsDebounceTimer);
+                fv3WsDebounceTimer = setTimeout(() => {
+                    fv3UpdateFolderStats(fv3WsLoad, false);
+                }, 200);
+            },
+            fv3InitSSEStats
+        );
+    } else {
+        fv3InitSSEStats();
+    }
+});
 
 // memToB() moved to advanced-preview.js (window global)
 
