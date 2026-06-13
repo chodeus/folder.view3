@@ -18,8 +18,10 @@ let folderReq = [];
 // Folder rendering — orchestrate (createFolders) and per-folder build (createFolder)
 const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
+    if (window.fv3Mark) window.fv3Mark('createFolders-start');
     await fv3LoadFolderDefaults();
     const prom = await Promise.all(folderReq);
+    if (window.fv3Mark) window.fv3Mark('folderReq-resolved');
     fv3Debug('createFolders', 'Promises resolved', prom);
 
     let folders = fv3SafeParseWithRecovery(prom[0], 'docker-folders', {});
@@ -184,6 +186,7 @@ const createFolders = async () => {
     }}));
 
     try { fv3InstallDockerTableWidthFix(); } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
+    if (window.fv3Mark) window.fv3Mark('createFolders-end');
 
     globalFolders = foldersDone;
     fv3Debug('createFolders', 'Assigned foldersDone to globalFolders:', {...globalFolders});

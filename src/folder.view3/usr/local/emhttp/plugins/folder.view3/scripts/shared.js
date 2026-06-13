@@ -8,7 +8,7 @@ window.FV3_DEBUG = (() => { try { return localStorage.getItem('fv3-debug') === '
 // Records only while debug mode is armed, and starts at script init so the early render
 // sequence is retained even when a capture is triggered late. Existing fv3Debug seam calls
 // (createFolders entry/exit, WidthFix, etc.) flow through here automatically.
-window.FV3_TRACE_MAX = 300;
+window.FV3_TRACE_MAX = 600;
 window.fv3TraceBuffer = [];
 window.fv3Trace = function(level, context) {
     if (!window.FV3_DEBUG) return;
@@ -44,12 +44,51 @@ window.fv3Error = function(context, error) {
     console.error('[FV3 ERROR] ' + context + ':', error);
 };
 
+// Eviction-proof render milestones — keyed by name so verbose per-container trace spam can
+// never push out the high-level page-load timeline (folderReq resolved, createFolders
+// start/end, width-fix runs, fonts ready, first stat). Each entry keeps {first,last,count}
+// in performance.now() ms, so repeated marks (e.g. width-fix on resize) stay compact.
+window.fv3Milestones = {};
+window.fv3Mark = function(name) {
+    if (!window.FV3_DEBUG) return;
+    var t = Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10;
+    var m = window.fv3Milestones[name];
+    if (!m) window.fv3Milestones[name] = { first: t, last: t, count: 1 };
+    else { m.last = t; m.count++; }
+};
+// Per-preview-icon load timestamps — when each icon actually finished, so icon-finish vs
+// width-fix-run ordering (the decisive load-order race signal) is directly recoverable.
+window.fv3IconLoads = [];
+window.fv3RecordIconLoads = function(root) {
+    if (!window.FV3_DEBUG || !root) return;
+    root.querySelectorAll('img').forEach(function(img) {
+        if (img._fv3LoadTracked) return;
+        img._fv3LoadTracked = true;
+        var src = img.currentSrc || img.src || '';
+        var rec = function(ev) {
+            if (window.fv3IconLoads.length > 200) return;
+            window.fv3IconLoads.push({
+                src: src.slice(0, 120),
+                at: Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10,
+                event: ev,
+                cached: img.complete && img.naturalWidth > 0 && ev === 'attach'
+            });
+        };
+        if (img.complete) rec('attach');
+        else {
+            img.addEventListener('load', function() { rec('load'); }, { once: true });
+            img.addEventListener('error', function() { rec('error'); }, { once: true });
+        }
+    });
+};
+
 // Record when web fonts finish loading, so the trace can show whether they settled before
 // or after the column width-fix ran (a late font swap reflows column widths after they lock).
 try {
     if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
         document.fonts.ready.then(function() {
             window.fv3FontsReadyAt = Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10;
+            window.fv3Mark('fonts-ready');
             window.fv3Trace('log', 'fonts', 'ready', window.fv3FontsReadyAt);
         });
     }
@@ -869,6 +908,35 @@ window.fv3CollectEnv = () => {
             widthFixDiff: (typeof window.fv3WidthFixDiff === 'function') ? window.fv3WidthFixDiff() : null
         };
     };
+    // Browser-measured load timing — navigation milestones + per-resource network timings for
+    // the plugin's own assets and the preview-icon hosts. Lets you compare "when did each icon
+    // finish downloading" against the width-fix run times in env.milestones (the race signal).
+    const collectPerf = () => {
+        const out = { navigation: null, resources: [] };
+        try {
+            const nav = performance.getEntriesByType('navigation')[0];
+            if (nav) out.navigation = {
+                type: nav.type,
+                responseStart: Math.round(nav.responseStart),
+                domContentLoaded: Math.round(nav.domContentLoadedEventEnd),
+                loadEventEnd: Math.round(nav.loadEventEnd),
+                duration: Math.round(nav.duration)
+            };
+            const want = /folder\.view3|githubusercontent|hotio\.dev|jsdelivr|lscr\.io|ghcr\.io|notifiarr|\.png|\.svg/i;
+            out.resources = performance.getEntriesByType('resource')
+                .filter(r => want.test(r.name))
+                .slice(-80)
+                .map(r => ({
+                    name: r.name.replace(/^https?:\/\//, '').slice(0, 90),
+                    type: r.initiatorType,
+                    start: Math.round(r.startTime),
+                    end: Math.round(r.responseEnd),
+                    dur: Math.round(r.duration),
+                    size: r.transferSize || 0
+                }));
+        } catch (_) {}
+        return out;
+    };
     return {
         capturedAt: new Date().toISOString(),
         viewport: { innerWidth: window.innerWidth, innerHeight: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
@@ -928,6 +996,11 @@ window.fv3CollectEnv = () => {
             customPhpLoaded: !!document.querySelector('link[href*="/folder.view3/custom.php"], script[src*="/folder.view3/custom.php"]'),
             fv3PresetStyles: [...document.querySelectorAll('style[id^="fv3-"], style.fv3-preset-styles')].map(s => s.id || s.className).slice(0, 10)
         },
+        // Eviction-proof page-load timeline + browser-measured timing, captured before
+        // renderSignals re-runs the width-fix (which would add a 'widthfix' mark).
+        milestones: Object.assign({}, window.fv3Milestones),
+        iconLoads: [...(window.fv3IconLoads || [])],
+        perf: collectPerf(),
         // renderSignals re-runs the width-fix to compute its diff, so it is evaluated last;
         // tableLayout/previewGeom above captured the original (pre-rerun) locked state.
         renderSignals: collectRenderSignals(),
@@ -1323,6 +1396,7 @@ window.fv3StatsMark = (transport) => {
     window.fv3StatsState.transport = transport;
     window.fv3StatsState.lastStatAt = Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10;
     window.fv3StatsState.statCount++;
+    window.fv3Mark('stats-first');
 };
 
 window.fv3ConnectStats = (onData, onFallback) => {
@@ -1419,6 +1493,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     const $preview = $(`tr.folder-id-${id} div.folder-preview`);
     const el = $preview[0];
     if (!el) return;
+    if (window.fv3RecordIconLoads) window.fv3RecordIconLoads(el);
 
     if (folder.settings.preview_overflow === 1) {
         $preview.addClass('fv3-overflow-expand');
@@ -1520,6 +1595,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
 // Docker table column-width lock
 window.fv3InstallDockerTableWidthFix = () => {
     _fv3WidthFixRuns++;
+    window.fv3Mark('widthfix');
     fv3Debug('WidthFix', 'run #' + _fv3WidthFixRuns);
     const STYLE_ID = 'fv3-width-style';
     const tbl = document.querySelector('#docker_containers');

@@ -6,12 +6,17 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.13.4">
-<!ENTITY md5 "39d428d53d9d778cf184cc0ec233b00f">
+<!ENTITY version "2026.06.13.5">
+<!ENTITY md5 "3f51cdb7a96f2ce0af5847f9d7d7f721">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.13.5
+- Debug capture now records page-load timing: render milestones, per-icon load times, and browser navigation/resource timing
+- Render milestones are kept separate so they survive regardless of log volume
+- Diagnostics only — no change to normal folder behaviour
 
 ###2026.06.13.4
 - Debug capture now covers VM and Dashboard layout (not just Docker) and records every folder, not just the first
