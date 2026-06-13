@@ -35,8 +35,8 @@ const createFolders = async () => {
         }
     }
 
-    if(folderDebugMode) {
-        const debugData = JSON.stringify({
+    if(window.FV3_DEBUG) {
+        window.fv3DebugPayloads['VM'] = JSON.stringify({
             version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
             folders,
             unraidOrder,
@@ -46,8 +46,7 @@ const createFolders = async () => {
             vmInfo,
             cssDebug: await fv3CollectCssDebug()
         });
-        fv3DownloadDebugJSON('debug-VM.json', debugData);
-        fv3Debug('vm', 'Order:', [...order]);
+        fv3Debug('vm', 'Debug payload stored for VM; click the FV3 Debug pill to download. Order:', [...order]);
     }
 
     let foldersDone = {};
@@ -765,6 +764,7 @@ let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
+window.fv3DebugSource = 'VM';
 let folderReq = [];
 
 // Unraid loadlist patch — inject folder rendering after VMs render

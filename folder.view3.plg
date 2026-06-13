@@ -6,12 +6,18 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.13.2">
-<!ENTITY md5 "b51bd422cdc59436c8339fa73b588dff">
+<!ENTITY version "2026.06.13.3">
+<!ENTITY md5 "ef18710e5afaa702e89394fe9ff5c2c5">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.13.3
+- Debug capture overhaul: arm with the "fv3debug" keyword, then a centered "FV3 Debug" pill captures the current rendered state on click (no reload needed)
+- Debug files now record column-layout geometry, a timestamped render timeline, and browser-rendering signals to diagnose layout/race issues
+- Debug files no longer include host filesystem paths and are roughly 10x smaller
+- Diagnostics only — no change to normal folder behaviour
 
 ###2026.06.13.2
 - Fix: folder, CSS and settings saves returned 403 (regression in 2026.06.13.1) — removed the plugin's redundant CSRF check, which ran after Unraid had already validated and consumed the token. CSRF stays enforced by Unraid's built-in layer.

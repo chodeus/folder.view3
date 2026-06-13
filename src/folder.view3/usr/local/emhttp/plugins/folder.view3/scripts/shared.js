@@ -3,17 +3,57 @@
 // Debug system
 window.FV3_DEBUG = (() => { try { return localStorage.getItem('fv3-debug') === 'true'; } catch (e) { return false; } })();
 
-window.fv3Debug = FV3_DEBUG ? function(context) {
-    console.log.apply(console, ['[FV3] ' + context + ':'].concat(Array.prototype.slice.call(arguments, 1)));
-} : function() {};
+// Timestamped ring buffer. A single post-hoc snapshot can't reveal a load-order race
+// (e.g. the column width-fix measuring before remote icons load); the ordered timeline can.
+// Records only while debug mode is armed, and starts at script init so the early render
+// sequence is retained even when a capture is triggered late. Existing fv3Debug seam calls
+// (createFolders entry/exit, WidthFix, etc.) flow through here automatically.
+window.FV3_TRACE_MAX = 300;
+window.fv3TraceBuffer = [];
+window.fv3Trace = function(level, context) {
+    if (!window.FV3_DEBUG) return;
+    try {
+        var rest = Array.prototype.slice.call(arguments, 2);
+        window.fv3TraceBuffer.push({
+            t: Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10,
+            level: level,
+            ctx: context,
+            msg: rest.map(function(a) {
+                if (a instanceof Error) return a.message;
+                if (a && typeof a === 'object') { try { return JSON.stringify(a); } catch (_) { return String(a); } }
+                return String(a);
+            }).join(' ').slice(0, 500)
+        });
+        if (window.fv3TraceBuffer.length > window.FV3_TRACE_MAX) window.fv3TraceBuffer.shift();
+    } catch (_) {}
+};
 
-window.fv3DebugWarn = FV3_DEBUG ? function(context) {
-    console.warn.apply(console, ['[FV3] ' + context + ':'].concat(Array.prototype.slice.call(arguments, 1)));
-} : function() {};
+window.fv3MakeLogger = function(level, sink) {
+    return function(context) {
+        var rest = Array.prototype.slice.call(arguments, 1);
+        window.fv3Trace.apply(null, [level, context].concat(rest));
+        sink.apply(console, ['[FV3] ' + context + ':'].concat(rest));
+    };
+};
+
+window.fv3Debug = FV3_DEBUG ? fv3MakeLogger('log', console.log) : function() {};
+window.fv3DebugWarn = FV3_DEBUG ? fv3MakeLogger('warn', console.warn) : function() {};
 
 window.fv3Error = function(context, error) {
+    window.fv3Trace('error', context, error);
     console.error('[FV3 ERROR] ' + context + ':', error);
 };
+
+// Record when web fonts finish loading, so the trace can show whether they settled before
+// or after the column width-fix ran (a late font swap reflows column widths after they lock).
+try {
+    if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
+        document.fonts.ready.then(function() {
+            window.fv3FontsReadyAt = Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10;
+            window.fv3Trace('log', 'fonts', 'ready', window.fv3FontsReadyAt);
+        });
+    }
+} catch (_) {}
 
 (function() {
     var buffer = [];
@@ -26,16 +66,70 @@ window.fv3Error = function(context, error) {
             var newState = !FV3_DEBUG;
             localStorage.setItem('fv3-debug', newState);
             window.FV3_DEBUG = newState;
-            window.fv3Debug = newState
-                ? function(ctx) { console.log.apply(console, ['[FV3] ' + ctx + ':'].concat(Array.prototype.slice.call(arguments, 1))); }
-                : function() {};
-            window.fv3DebugWarn = newState
-                ? function(ctx) { console.warn.apply(console, ['[FV3] ' + ctx + ':'].concat(Array.prototype.slice.call(arguments, 1))); }
-                : function() {};
-            console.log('[FV3] Debug mode ' + (newState ? 'ON' : 'OFF') + '. Reload page for full effect.');
+            window.fv3Debug = newState ? fv3MakeLogger('log', console.log) : function() {};
+            window.fv3DebugWarn = newState ? fv3MakeLogger('warn', console.warn) : function() {};
+            if (window.fv3SetDebugPill) window.fv3SetDebugPill(newState);
+            console.log('[FV3] Debug mode ' + (newState ? 'ON' : 'OFF') + '. Reload page for the full render timeline.');
         }
     });
 })();
+
+// Capture pill — only exists in the DOM while debug mode is armed (zero footprint for
+// normal users). Centered so it can't be missed; draggable so it can be moved off the data;
+// click downloads a snapshot of the CURRENT rendered state via fv3CaptureDebug. Loaded only
+// on the Docker/VM/Dashboard tabs (the pages that include shared.js).
+window.fv3SetDebugPill = function(on) {
+    var id = 'fv3-debug-pill';
+    var existing = document.getElementById(id);
+    if (!on) { if (existing) existing.remove(); return; }
+    if (existing || !document.body) return;
+    var pill = document.createElement('div');
+    var LABEL = '↓ FV3 Debug — capture';
+    pill.id = id;
+    pill.textContent = LABEL;
+    pill.title = 'FolderView3 debug. Drag to move. Click to download a snapshot of the current rendered state.';
+    pill.style.cssText = [
+        'position:fixed', 'top:50%', 'left:50%', 'transform:translate(-50%,-50%)',
+        'z-index:2147483647', 'padding:10px 16px', 'border-radius:20px',
+        'background:rgba(255,90,0,0.95)', 'color:#fff', 'font:600 13px/1.2 sans-serif',
+        'box-shadow:0 2px 12px rgba(0,0,0,0.45)', 'cursor:grab', 'user-select:none',
+        'white-space:nowrap', 'border:1px solid rgba(255,255,255,0.55)'
+    ].join(';');
+    var moved = false;
+    pill.addEventListener('mousedown', function(e) {
+        moved = false;
+        var sx = e.clientX, sy = e.clientY;
+        var r = pill.getBoundingClientRect(), ox = r.left, oy = r.top;
+        pill.style.transform = 'none'; pill.style.left = ox + 'px'; pill.style.top = oy + 'px';
+        pill.style.cursor = 'grabbing'; e.preventDefault();
+        function mv(ev) {
+            if (Math.abs(ev.clientX - sx) > 4 || Math.abs(ev.clientY - sy) > 4) moved = true;
+            pill.style.left = (ox + ev.clientX - sx) + 'px';
+            pill.style.top = (oy + ev.clientY - sy) + 'px';
+        }
+        function up() { pill.style.cursor = 'grab'; document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); }
+        document.addEventListener('mousemove', mv);
+        document.addEventListener('mouseup', up);
+    });
+    pill.addEventListener('click', function() {
+        if (moved) { moved = false; return; }
+        try {
+            window.fv3CaptureDebug(window.fv3DebugSource);
+            pill.textContent = '✓ Saved — capture again';
+        } catch (e) {
+            pill.textContent = '✕ Capture failed';
+            fv3Error('pill', e);
+        }
+        setTimeout(function() { pill.textContent = LABEL; }, 1800);
+    });
+    document.body.appendChild(pill);
+};
+
+// If debug was already armed before this page loaded, show the pill once the body exists.
+if (window.FV3_DEBUG) {
+    if (document.body) window.fv3SetDebugPill(true);
+    else document.addEventListener('DOMContentLoaded', function() { window.fv3SetDebugPill(true); });
+}
 
 if (window.fv3UnraidLegacy) fv3Debug('Init', 'Unraid legacy mode (pre-7.2)');
 
@@ -571,22 +665,52 @@ window.fv3DropDownButton = (eventPrefix, globalFolders, id, postCallback) => {
     if (postCallback) postCallback();
 };
 
+// Allowlist sanitizer: the debug JSON only needs the fields the renderer actually
+// consumes. Dumping the full Docker inspect blob leaked host volume paths (Binds/Mounts),
+// ZFS mountpoints, log/template paths, and bloated the file ~10x. Keep an explicit allowlist.
+// NOTE: this output feeds the debug JSON only, never rendering — dropping fields is safe.
 window.fv3SanitizeContainersInfo = (containersInfo) => {
     var redactIP = (str) => typeof str === 'string' ? str.replace(/\b(\d{1,3}\.){3}\d{1,3}\b/g, 'x.x.x.x') : str;
-    var clone = JSON.parse(JSON.stringify(containersInfo));
-    Object.values(clone).forEach(ct => {
-        delete ct.NetworkSettings;
-        if (ct.info) {
-            delete ct.info.Config?.Env;
-            delete ct.info.NetworkSettings;
-            delete ct.info.Ports;
-            if (ct.info.State) {
-                ct.info.State.WebUi = redactIP(ct.info.State.WebUi);
-                ct.info.State.TSWebUi = redactIP(ct.info.State.TSWebUi);
-            }
-        }
-    });
-    return clone;
+    var out = {};
+    try {
+        Object.keys(containersInfo || {}).forEach(key => {
+            var ct = containersInfo[key];
+            if (!ct || typeof ct !== 'object') { out[key] = ct; return; }
+            var info = ct.info || {};
+            var st = info.State || {};
+            var labels = ct.Labels || {};
+            out[key] = {
+                shortId: ct.shortId,
+                shortImageId: ct.shortImageId,
+                Image: ct.Image,
+                State: ct.State,
+                Status: ct.Status,
+                Names: ct.Names,
+                Labels: {
+                    'folder.view3': labels['folder.view3'],
+                    'net.unraid.docker.icon': labels['net.unraid.docker.icon']
+                },
+                Health: ct.Health ? { Status: ct.Health.Status } : undefined,
+                info: {
+                    Name: info.Name,
+                    Shell: info.Shell,
+                    State: {
+                        Status: st.Status,
+                        Running: st.Running,
+                        Paused: st.Paused,
+                        Autostart: st.Autostart,
+                        Updated: st.Updated,
+                        manager: st.manager,
+                        WebUi: redactIP(st.WebUi),
+                        TSWebUi: redactIP(st.TSWebUi)
+                    }
+                }
+            };
+        });
+    } catch (e) {
+        return { _sanitizeError: String(e) };
+    }
+    return out;
 };
 
 window.fv3CollectEnv = () => {
@@ -631,6 +755,77 @@ window.fv3CollectEnv = () => {
             .map(l => l.getAttribute('href'))
             .filter(h => h && h.includes('/folder.view3/'));
     };
+    // Foreign stylesheets (a theme/custom plugin restyling the Docker table is a prime
+    // layout-bug source and was previously uncaptured — only foreign scripts were).
+    const collectForeignStylesheets = () => {
+        return [...document.querySelectorAll('link[rel="stylesheet"]')]
+            .map(l => l.getAttribute('href'))
+            .filter(h => h && !h.includes('/folder.view3/'))
+            .slice(0, 20);
+    };
+    // Per-column rendered geometry — what the width-fix keys off and the most likely
+    // place a non-standard Unraid table layout or sub-pixel rounding goes wrong.
+    const collectTableLayout = (id) => {
+        const tbl = document.getElementById(id);
+        if (!tbl) return null;
+        const ths = [...tbl.querySelectorAll('thead > tr > th')];
+        const styleEl = document.getElementById('fv3-width-style');
+        return {
+            tableLayout: tbl.style.tableLayout || getComputedStyle(tbl).tableLayout,
+            widthStylePresent: !!styleEl,
+            widthStyle: styleEl ? (styleEl.textContent || '').slice(0, 1500) : null,
+            widthState: (typeof window.fv3GetWidthState === 'function') ? window.fv3GetWidthState() : null,
+            columns: ths.map((h, i) => ({
+                i, cls: h.className || '', label: (h.textContent || '').trim().slice(0, 24),
+                rectW: Math.round(h.getBoundingClientRect().width * 10) / 10,
+                styleW: h.style.width || '', hidden: h.offsetParent === null && h.getBoundingClientRect().width === 0
+            }))
+        };
+    };
+    // First rendered folder's preview cell + flex container — captures whether the preview
+    // is being pushed right / clipped, with the computed alignment that would cause it.
+    const collectPreviewGeom = () => {
+        const folder = document.querySelector('#docker_containers tr.folder');
+        if (!folder) return null;
+        const cell = [...folder.children].find(td => td.querySelector && td.querySelector('.folder-preview'));
+        const prev = folder.querySelector('.folder-preview');
+        const out = {};
+        if (cell) out.cell = { colSpan: cell.colSpan, offsetLeft: cell.offsetLeft, offsetWidth: cell.offsetWidth };
+        if (prev) {
+            const cs = getComputedStyle(prev);
+            out.preview = {
+                offsetWidth: prev.offsetWidth, scrollWidth: prev.scrollWidth,
+                justifyContent: cs.justifyContent, display: cs.display, flexWrap: cs.flexWrap,
+                overflow: cs.overflow, className: prev.className, children: prev.children.length
+            };
+        }
+        return out;
+    };
+    // Browser-divergence signals — to settle whether a layout bug is Chrome-vs-Firefox.
+    // Late SVG/icon layout (Gecko resolves intrinsic size later) widens the measure-before-load
+    // race window; fractional DPR + scrollbar gutter change the width math between engines.
+    const collectRenderSignals = () => {
+        const folder = document.querySelector('#docker_containers tr.folder');
+        const icons = folder
+            ? [...folder.querySelectorAll('img')].slice(0, 12).map(img => ({
+                complete: img.complete, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+                rectW: Math.round(img.getBoundingClientRect().width * 10) / 10,
+                isSvg: /\.svg(\?|$)/i.test(img.currentSrc || img.src || '')
+            }))
+            : [];
+        const tbl = document.getElementById('docker_containers');
+        const parentW = tbl && tbl.parentElement ? tbl.parentElement.clientWidth : null;
+        let fonts = null;
+        try { fonts = { status: document.fonts && document.fonts.status, ready: !!window.fv3FontsReadyAt, readyAt: window.fv3FontsReadyAt || null }; } catch (_) {}
+        return {
+            fonts,
+            icons,
+            scrollbarGutter: (parentW != null) ? (window.innerWidth - parentW) : null,
+            docClientWidth: document.documentElement.clientWidth,
+            outerWidth: window.outerWidth,
+            widthFixDiff: (typeof window.fv3WidthFixDiff === 'function') ? window.fv3WidthFixDiff() : null
+        };
+    };
     return {
         capturedAt: new Date().toISOString(),
         viewport: { innerWidth: window.innerWidth, innerHeight: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
@@ -655,6 +850,9 @@ window.fv3CollectEnv = () => {
                 .slice(0, 20)
         },
         tables: { docker: tableSize('docker_containers'), vm: tableSize('kvm_table') },
+        unraidRelease: window.fv3UnraidRelease || null,
+        tableLayout: collectTableLayout('docker_containers'),
+        previewGeom: collectPreviewGeom(),
         samples: {
             folderPreview: sample('tr.folder .folder-preview'),
             folderPreviewScroll: sample('tr.folder .folder-preview.fv3-overflow-scroll'),
@@ -682,10 +880,15 @@ window.fv3CollectEnv = () => {
             '--fv3-border'
         ]),
         stylesheets: collectStylesheets(),
+        foreignStylesheets: collectForeignStylesheets(),
         customExtensions: {
             customPhpLoaded: !!document.querySelector('link[href*="/folder.view3/custom.php"], script[src*="/folder.view3/custom.php"]'),
             fv3PresetStyles: [...document.querySelectorAll('style[id^="fv3-"], style.fv3-preset-styles')].map(s => s.id || s.className).slice(0, 10)
-        }
+        },
+        // renderSignals re-runs the width-fix to compute its diff, so it is evaluated last;
+        // tableLayout/previewGeom above captured the original (pre-rerun) locked state.
+        renderSignals: collectRenderSignals(),
+        traceBuffer: [...(window.fv3TraceBuffer || [])]
     };
 };
 
@@ -730,6 +933,25 @@ window.fv3DownloadDebugJSON = (source, data) => {
     el.click();
     document.body.removeChild(el);
     URL.revokeObjectURL(url);
+};
+
+// On-demand capture. Each page stashes its data payload (folders/orders/containersInfo/css)
+// keyed by source as it renders; fv3CaptureDebug then downloads it with a FRESH env() — so
+// the rendered-layout block reflects the state at click time (post-render, post-interaction),
+// fixing the old bug where env was captured before folders/the width-fix existed.
+window.fv3DebugPayloads = {};
+window.fv3DebugSource = null;
+window.fv3CaptureDebug = (source) => {
+    source = source || window.fv3DebugSource || 'UNKNOWN';
+    const stored = window.fv3DebugPayloads[source];
+    let payload;
+    if (stored) {
+        try { payload = JSON.parse(stored); } catch (_) { payload = { rawBody: stored }; }
+    } else {
+        payload = { _note: 'no stored payload for ' + source + '; arm debug (type fv3debug) and reload for full data', folders: window.globalFolders || {} };
+    }
+    fv3DownloadDebugJSON('debug-' + source + '.json', JSON.stringify(payload));
+    return true;
 };
 
 window.fv3RunUserScript = async (act, prom) => {
@@ -836,6 +1058,7 @@ window.fv3DetectApi = async () => {
             if (json.errors && json.errors.length) { fv3ApiAvailable = false; fv3Debug('API', 'GraphQL returned error:', json.errors[0].message); return fv3ApiAvailable; }
             fv3ApiAvailable = !!(json && json.data && json.data.info && json.data.info.os && json.data.info.os.release);
             if (fv3ApiAvailable) {
+                window.fv3UnraidRelease = json.data.info.os.release;
                 fv3Debug('API', 'Unraid GraphQL API detected, release:', json.data.info.os.release);
                 if (json.data.info.cpu && json.data.info.cpu.cores) {
                     fv3CpuCores = json.data.info.cpu.cores;
@@ -1226,6 +1449,8 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
 
 // Docker table column-width lock
 window.fv3InstallDockerTableWidthFix = () => {
+    _fv3WidthFixRuns++;
+    fv3Debug('WidthFix', 'run #' + _fv3WidthFixRuns);
     const STYLE_ID = 'fv3-width-style';
     const tbl = document.querySelector('#docker_containers');
     if (!tbl) return;
@@ -1374,6 +1599,25 @@ window.fv3InstallDockerTableWidthFix = () => {
 };
 
 let _fv3WidthSnapshots = null;
+let _fv3WidthFixRuns = 0;
+
+// Diagnostic accessor: the locked column-width snapshot is otherwise a module-local.
+window.fv3GetWidthState = () => ({ snapshots: _fv3WidthSnapshots, runs: _fv3WidthFixRuns });
+
+// Recompute-and-diff: re-run the width-fix now (icons/fonts have since loaded) and diff the
+// freshly computed widths against what is currently locked. A non-zero delta proves the
+// applied layout was stale — the smoking gun for a measure-before-load race. Re-running is
+// safe: it is idempotent and already fires on window resize.
+window.fv3WidthFixDiff = () => {
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl || !_fv3WidthSnapshots) return { available: false };
+    const before = { expanded: [..._fv3WidthSnapshots.expanded], collapsed: [..._fv3WidthSnapshots.collapsed] };
+    try { fv3InstallDockerTableWidthFix(); } catch (e) { return { available: false, error: String(e) }; }
+    const after = { expanded: [..._fv3WidthSnapshots.expanded], collapsed: [..._fv3WidthSnapshots.collapsed] };
+    const delta = before.expanded.map((w, i) => (after.expanded[i] ?? 0) - w);
+    const changed = delta.some(d => Math.abs(d) > 1);
+    return { available: true, changed, delta, before, after };
+};
 
 window.fv3AnyNonFolderRowVisible = () => {
     const tbl = document.querySelector('#docker_containers');

@@ -4,6 +4,7 @@ let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
+window.fv3DebugSource = 'DOCKER';
 let folderobserver;
 let folderobserverConfig = {
     subtree: true,
@@ -70,8 +71,10 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'Order after inserting Unraid-ordered folders', [...order]);
 
 
-    if(folderDebugMode) {
-        const debugData = JSON.stringify({
+    if(window.FV3_DEBUG) {
+        // Stash the data payload; the actual download happens on demand (FV3 Debug pill /
+        // fv3CaptureDebug('DOCKER')) so env() is collected post-render at click time.
+        window.fv3DebugPayloads['DOCKER'] = JSON.stringify({
             version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
             folders,
             unraidOrder,
@@ -81,8 +84,7 @@ const createFolders = async () => {
             containersInfo: fv3SanitizeContainersInfo(containersInfo),
             cssDebug: await fv3CollectCssDebug()
         });
-        fv3DownloadDebugJSON('debug-DOCKER.json', debugData);
-        fv3Debug('createFolders', 'Order:', [...order]);
+        fv3Debug('createFolders', 'Debug payload stored for DOCKER; click the FV3 Debug pill to download. Order:', [...order]);
     }
 
     let foldersDone = {};
