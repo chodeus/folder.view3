@@ -1234,6 +1234,7 @@ const fv3InitSSEStats = () => {
         dockerload.addEventListener('message', (e_sse) => {
             const sseData = (typeof e_sse.data === 'string') ? e_sse.data : (typeof e_sse === 'string' ? e_sse : null);
             if (!sseData || !sseData.trim()) return;
+            if (window.fv3StatsMark) window.fv3StatsMark('sse');
 
             let load = {};
             const lines = sseData.split('\n');

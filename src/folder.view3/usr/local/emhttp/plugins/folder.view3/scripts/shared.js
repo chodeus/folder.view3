@@ -763,18 +763,16 @@ window.fv3CollectEnv = () => {
             .filter(h => h && !h.includes('/folder.view3/'))
             .slice(0, 20);
     };
-    // Per-column rendered geometry — what the width-fix keys off and the most likely
-    // place a non-standard Unraid table layout or sub-pixel rounding goes wrong.
-    const collectTableLayout = (id) => {
-        const tbl = document.getElementById(id);
-        if (!tbl) return null;
+    // Per-column rendered geometry for whichever container tables exist on this page
+    // (Docker tab = #docker_containers, VM tab = #kvm_table). This is what the width-fix
+    // keys off and the most likely place a non-standard layout / sub-pixel rounding goes wrong.
+    const tableLayoutFor = (tbl) => {
         const ths = [...tbl.querySelectorAll('thead > tr > th')];
         const styleEl = document.getElementById('fv3-width-style');
         return {
             tableLayout: tbl.style.tableLayout || getComputedStyle(tbl).tableLayout,
             widthStylePresent: !!styleEl,
             widthStyle: styleEl ? (styleEl.textContent || '').slice(0, 1500) : null,
-            widthState: (typeof window.fv3GetWidthState === 'function') ? window.fv3GetWidthState() : null,
             columns: ths.map((h, i) => ({
                 i, cls: h.className || '', label: (h.textContent || '').trim().slice(0, 24),
                 rectW: Math.round(h.getBoundingClientRect().width * 10) / 10,
@@ -782,30 +780,65 @@ window.fv3CollectEnv = () => {
             }))
         };
     };
-    // First rendered folder's preview cell + flex container — captures whether the preview
-    // is being pushed right / clipped, with the computed alignment that would cause it.
-    const collectPreviewGeom = () => {
-        const folder = document.querySelector('#docker_containers tr.folder');
-        if (!folder) return null;
-        const cell = [...folder.children].find(td => td.querySelector && td.querySelector('.folder-preview'));
-        const prev = folder.querySelector('.folder-preview');
+    const collectTableLayout = () => {
         const out = {};
-        if (cell) out.cell = { colSpan: cell.colSpan, offsetLeft: cell.offsetLeft, offsetWidth: cell.offsetWidth };
-        if (prev) {
-            const cs = getComputedStyle(prev);
-            out.preview = {
-                offsetWidth: prev.offsetWidth, scrollWidth: prev.scrollWidth,
-                justifyContent: cs.justifyContent, display: cs.display, flexWrap: cs.flexWrap,
-                overflow: cs.overflow, className: prev.className, children: prev.children.length
-            };
-        }
+        ['docker_containers', 'kvm_table'].forEach(id => {
+            const tbl = document.getElementById(id);
+            if (tbl) out[id] = tableLayoutFor(tbl);
+        });
+        // widthFix snapshot is docker-only; include once if present
+        if (typeof window.fv3GetWidthState === 'function') out.widthState = window.fv3GetWidthState();
+        return Object.keys(out).length ? out : null;
+    };
+    // Computed facts about one .folder-preview container — shared by every page type.
+    const previewInfo = (prev) => {
+        const cs = getComputedStyle(prev);
+        return {
+            offsetWidth: prev.offsetWidth, scrollWidth: prev.scrollWidth,
+            justifyContent: cs.justifyContent, display: cs.display, flexWrap: cs.flexWrap,
+            overflow: cs.overflow, className: prev.className,
+            children: prev.children.length,
+            wrappers: prev.querySelectorAll('.folder-preview-wrapper').length,
+            dividers: prev.querySelectorAll('.folder-preview-divider').length
+        };
+    };
+    // Per-folder manifest across ALL rendered folders, table-based (Docker/VM tr.folder)
+    // and Dashboard showcase (.folder-showcase-outer). Captures preview cell placement,
+    // the overflow mode actually applied (in className), and child/divider counts — so
+    // "preview pushed right / clipped / wrong-content" is diagnosable on any page, for
+    // every folder, not just the first one.
+    const collectFolders = () => {
+        const out = [];
+        document.querySelectorAll('tr.folder').forEach(row => {
+            const prev = row.querySelector('.folder-preview');
+            const cell = prev ? [...row.children].find(td => td.contains(prev)) : null;
+            const nameEl = row.querySelector('.folder-appname');
+            out.push({
+                kind: 'row',
+                id: (row.className.match(/folder-id-(\S+)/) || [])[1] || null,
+                name: nameEl ? nameEl.textContent.trim().slice(0, 40) : null,
+                cell: cell ? { colSpan: cell.colSpan, offsetLeft: cell.offsetLeft, offsetWidth: cell.offsetWidth } : null,
+                preview: prev ? previewInfo(prev) : null
+            });
+        });
+        document.querySelectorAll('.folder-showcase-outer').forEach(box => {
+            const prev = box.querySelector('.folder-preview');
+            const nameEl = box.querySelector('.folder-appname, .folder-name');
+            out.push({
+                kind: 'showcase',
+                name: nameEl ? nameEl.textContent.trim().slice(0, 40) : null,
+                expanded: box.getAttribute('expanded'),
+                offsetLeft: box.offsetLeft, offsetWidth: box.offsetWidth,
+                preview: prev ? previewInfo(prev) : null
+            });
+        });
         return out;
     };
     // Browser-divergence signals — to settle whether a layout bug is Chrome-vs-Firefox.
     // Late SVG/icon layout (Gecko resolves intrinsic size later) widens the measure-before-load
     // race window; fractional DPR + scrollbar gutter change the width math between engines.
     const collectRenderSignals = () => {
-        const folder = document.querySelector('#docker_containers tr.folder');
+        const folder = document.querySelector('#docker_containers tr.folder, #kvm_table tr.folder, .folder-showcase-outer');
         const icons = folder
             ? [...folder.querySelectorAll('img')].slice(0, 12).map(img => ({
                 complete: img.complete, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
@@ -813,12 +846,22 @@ window.fv3CollectEnv = () => {
                 isSvg: /\.svg(\?|$)/i.test(img.currentSrc || img.src || '')
             }))
             : [];
-        const tbl = document.getElementById('docker_containers');
+        const tbl = document.getElementById('docker_containers') || document.getElementById('kvm_table');
         const parentW = tbl && tbl.parentElement ? tbl.parentElement.clientWidth : null;
         let fonts = null;
         try { fonts = { status: document.fonts && document.fonts.status, ready: !!window.fv3FontsReadyAt, readyAt: window.fv3FontsReadyAt || null }; } catch (_) {}
+        let stats = null;
+        try {
+            stats = Object.assign({}, window.fv3StatsState, {
+                apiAvailable: window.fv3ApiAvailable,
+                cpuCores: window.fv3CpuCores,
+                wsReadyState: window.fv3StatsConnection ? window.fv3StatsConnection.readyState : null,
+                listeners: Array.isArray(window.fv3StatsCallbacks) ? window.fv3StatsCallbacks.length : null
+            });
+        } catch (_) {}
         return {
             fonts,
+            stats,
             icons,
             scrollbarGutter: (parentW != null) ? (window.innerWidth - parentW) : null,
             docClientWidth: document.documentElement.clientWidth,
@@ -851,8 +894,8 @@ window.fv3CollectEnv = () => {
         },
         tables: { docker: tableSize('docker_containers'), vm: tableSize('kvm_table') },
         unraidRelease: window.fv3UnraidRelease || null,
-        tableLayout: collectTableLayout('docker_containers'),
-        previewGeom: collectPreviewGeom(),
+        tableLayout: collectTableLayout(),
+        foldersRendered: collectFolders(),
         samples: {
             folderPreview: sample('tr.folder .folder-preview'),
             folderPreviewScroll: sample('tr.folder .folder-preview.fv3-overflow-scroll'),
@@ -902,11 +945,26 @@ window.fv3CollectCssDebug = async () => {
             return { _fetchError: e && e.statusText ? e.statusText : String(e) };
         }
     };
+    // Fetch the actual contents of the generated + custom CSS loaded from /boot/config —
+    // a bad generated rule or a community custom-CSS override is otherwise invisible (we only
+    // had the stylesheet URLs). Built-in plugin CSS is skipped (it lives in the repo).
+    const safeText = async (url) => {
+        try { return String(await $.get(url).promise()).slice(0, 6000); }
+        catch (e) { return '_fetchError: ' + (e && e.statusText ? e.statusText : String(e)); }
+    };
+    const cssLinks = [...document.querySelectorAll('link[rel="stylesheet"]')]
+        .map(l => l.getAttribute('href'))
+        .filter(h => h && h.includes('/boot/config/plugins/folder.view3/'))
+        .slice(0, 10);
+    const customScripts = [...document.querySelectorAll('script[src*="/boot/config/plugins/folder.view3/"]')]
+        .map(s => s.getAttribute('src')).slice(0, 20);
     const [cssConfig, themes] = await Promise.all([
         safeJson('/plugins/folder.view3/server/read_css_config.php'),
         safeJson('/plugins/folder.view3/server/list_themes.php')
     ]);
-    return { cssConfig, themes };
+    const loadedCss = {};
+    for (const href of cssLinks) loadedCss[href] = await safeText(href);
+    return { cssConfig, themes, loadedCss, customScripts };
 };
 
 window.fv3DownloadDebugJSON = (source, data) => {
@@ -1258,6 +1316,14 @@ window.fv3SyncOrganizer = async (folders) => {
 // Stats connections
 window.fv3StatsConnection = null;
 window.fv3StatsCallbacks = [];
+// Live-stats diagnostics: which transport is active and whether data is actually flowing.
+// Covers the "graphs blank/frozen" class of report that the layout capture can't see.
+window.fv3StatsState = { transport: null, lastStatAt: null, statCount: 0, fallbacks: 0 };
+window.fv3StatsMark = (transport) => {
+    window.fv3StatsState.transport = transport;
+    window.fv3StatsState.lastStatAt = Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10;
+    window.fv3StatsState.statCount++;
+};
 
 window.fv3ConnectStats = (onData, onFallback) => {
     if (fv3ApiAvailable) {
@@ -1289,6 +1355,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
                 payload: { query: 'subscription { dockerContainerStats { id cpuPercent memUsage } }' }
             }));
         }, 200);
+        window.fv3StatsState.transport = 'websocket';
         fv3Debug('API', 'WebSocket stats connected');
     };
 
@@ -1303,6 +1370,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
                 cpuPercent: raw.cpuPercent,
                 mem: raw.memUsage.split(' / ')
             };
+            window.fv3StatsMark('websocket');
             for (var i = 0; i < fv3StatsCallbacks.length; i++) {
                 try { fv3StatsCallbacks[i](stat); } catch(e) {}
             }
@@ -1316,6 +1384,8 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
         fv3DebugWarn('API', 'WebSocket stats error, falling back to SSE');
         fv3StatsConnection = null;
         fv3StatsCallbacks = [];
+        window.fv3StatsState.fallbacks++;
+        window.fv3StatsState.transport = 'sse';
         if (onFallback) onFallback();
     };
 
@@ -1324,7 +1394,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
         if (fv3StatsConnection === ws) {
             fv3StatsConnection = null;
             fv3StatsCallbacks = [];
-            if (!fv3WsClosing && onFallback) onFallback();
+            if (!fv3WsClosing && onFallback) { window.fv3StatsState.fallbacks++; window.fv3StatsState.transport = 'sse'; onFallback(); }
         }
     };
 
