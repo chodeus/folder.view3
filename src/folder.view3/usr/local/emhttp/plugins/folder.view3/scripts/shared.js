@@ -1,7 +1,7 @@
 // FolderView3 shared utilities for Docker, VM, and Dashboard pages
 
 // Debug system
-window.FV3_DEBUG = localStorage.getItem('fv3-debug') === 'true';
+window.FV3_DEBUG = (() => { try { return localStorage.getItem('fv3-debug') === 'true'; } catch (e) { return false; } })();
 
 window.fv3Debug = FV3_DEBUG ? function(context) {
     console.log.apply(console, ['[FV3] ' + context + ':'].concat(Array.prototype.slice.call(arguments, 1)));
@@ -1096,15 +1096,17 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
         if (onFallback) onFallback();
     };
 
+    var fv3WsClosing = false;
     ws.onclose = () => {
         if (fv3StatsConnection === ws) {
             fv3StatsConnection = null;
             fv3StatsCallbacks = [];
+            if (!fv3WsClosing && onFallback) onFallback();
         }
     };
 
     fv3StatsConnection = ws;
-    fv3Cleanups.push(() => { if (ws.readyState <= 1) ws.close(); });
+    fv3Cleanups.push(() => { fv3WsClosing = true; if (ws.readyState <= 1) ws.close(); });
     return ws;
 };
 
@@ -1148,15 +1150,19 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
                 el.style.minHeight = '';
             }
         };
-        el._fv3CheckExpand = checkExpand;
-        requestAnimationFrame(checkExpand);
+        const onPreviewSettled = () => {
+            checkExpand();
+            if (folder.settings.preview_row_separator) fv3UpdateRowSeparators(globalFolders, id);
+        };
+        el._fv3CheckExpand = onPreviewSettled;
+        requestAnimationFrame(onPreviewSettled);
         el.querySelectorAll('img').forEach(img => {
             if (!img.complete) {
-                img.addEventListener('load', () => requestAnimationFrame(checkExpand), { once: true });
-                img.addEventListener('error', () => requestAnimationFrame(checkExpand), { once: true });
+                img.addEventListener('load', () => requestAnimationFrame(onPreviewSettled), { once: true });
+                img.addEventListener('error', () => requestAnimationFrame(onPreviewSettled), { once: true });
             }
         });
-        const ro = new ResizeObserver(() => requestAnimationFrame(checkExpand));
+        const ro = new ResizeObserver(() => requestAnimationFrame(onPreviewSettled));
         ro.observe(el);
         fv3Cleanups.push(() => ro.disconnect());
     } else if (folder.settings.preview_overflow === 2) {

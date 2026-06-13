@@ -5,13 +5,26 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.05.28.1">
-<!ENTITY md5 "98d0ba3ff0aed9937cdcfad9b3f48f82">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.06.13.2">
+<!ENTITY md5 "b51bd422cdc59436c8339fa73b588dff">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.13.2
+- Fix: folder, CSS and settings saves returned 403 (regression in 2026.06.13.1) — removed the plugin's redundant CSRF check, which ran after Unraid had already validated and consumed the token. CSRF stays enforced by Unraid's built-in layer.
+
+###2026.06.13.1
+- Enforce CSRF validation on all plugin POST endpoints
+- Block path traversal in theme delete/toggle (reject "." and "..")
+- Preview row separators/borders now redraw once container icons load on slow connections
+- Docker, VM and Dashboard folders recover instead of staying blank if a data request fails
+- CSS preset colour no longer overrides the orange "update available" name in folder previews
+- Live CPU/MEM stats fall back to SSE if the WebSocket drops (e.g. after sleep/wake)
+- Dashboard VM custom action now passes script arguments
+- Hardening: tolerate browsers that block localStorage; remove dead code
 
 ###2026.05.28.1
 - Fix VM tab crash when a folder is named the same as a VM (folder vanished and the VM was left out of any folder)
@@ -604,7 +617,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 

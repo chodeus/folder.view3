@@ -1148,9 +1148,11 @@ window.listview = () => {
 
     if (!loadedFolder) {
         fv3Debug('Patched listview', 'loadedFolder is false. Calling createFolders.');
-        createFolders();
         loadedFolder = true;
-         fv3Debug('Patched listview', 'Set loadedFolder to true.');
+        createFolders().catch((e) => {
+            fv3DebugWarn('Patched listview', 'createFolders failed; clearing flag so a later render can retry', e);
+            loadedFolder = false;
+        });
     } else {
         fv3Debug('Patched listview', 'loadedFolder is true. Skipped createFolders.');
     }

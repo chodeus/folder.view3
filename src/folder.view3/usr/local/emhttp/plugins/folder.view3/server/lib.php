@@ -56,19 +56,14 @@
         }
     }
 
-    function fv3_validate_csrf(): void {
-        global $var;
-        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-        $expected = $var['csrf_token'] ?? '';
-        if ($expected === '' || $token === '' || !hash_equals($expected, $token)) {
-            http_response_code(403);
-            exit;
-        }
-    }
-
     function fv3_post_init(): void {
         fv3_security_headers();
         fv3_require_post();
+        // CSRF is enforced globally by Unraid's local_prepend.php (php auto_prepend_file):
+        // it validates csrf_token against $var['csrf_token'] on every POST and then unsets
+        // both $_POST['csrf_token'] and $_SERVER['HTTP_X_CSRF_TOKEN'] before this script runs.
+        // A second check here cannot see the token (already consumed) and would 403 every
+        // legitimate request, so we rely on Unraid's enforcement.
     }
 
     function fv3_get_init(): void {
@@ -572,7 +567,7 @@
     function toggleTheme(string $entry, bool $enable, bool $exclusive) : void {
         global $configDir;
         $stylesDir = "$configDir/styles";
-        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry)) { http_response_code(400); exit; }
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
         if ($exclusive && $enable) {
@@ -729,7 +724,7 @@
     function deleteTheme(string $entry) : void {
         global $configDir;
         $stylesDir = "$configDir/styles";
-        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry)) { http_response_code(400); exit; }
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
         if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }
