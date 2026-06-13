@@ -56,23 +56,14 @@
         }
     }
 
-    function fv3_validate_csrf(): void {
-        global $var;
-        if (!isset($var['csrf_token'])) {
-            $var = @parse_ini_file('/var/local/emhttp/var.ini') ?: [];
-        }
-        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-        $expected = $var['csrf_token'] ?? '';
-        if ($expected === '' || $token === '' || !hash_equals($expected, $token)) {
-            http_response_code(403);
-            exit;
-        }
-    }
-
     function fv3_post_init(): void {
         fv3_security_headers();
         fv3_require_post();
-        fv3_validate_csrf();
+        // CSRF is enforced globally by Unraid's local_prepend.php (php auto_prepend_file):
+        // it validates csrf_token against $var['csrf_token'] on every POST and then unsets
+        // both $_POST['csrf_token'] and $_SERVER['HTTP_X_CSRF_TOKEN'] before this script runs.
+        // A second check here cannot see the token (already consumed) and would 403 every
+        // legitimate request, so we rely on Unraid's enforcement.
     }
 
     function fv3_get_init(): void {

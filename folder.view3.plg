@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.13.1">
-<!ENTITY md5 "1613bbec5ed8aa544de9c352ff15861d">
+<!ENTITY version "2026.06.13.2">
+<!ENTITY md5 "b51bd422cdc59436c8339fa73b588dff">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.13.2
+- Fix: folder, CSS and settings saves returned 403 (regression in 2026.06.13.1) — removed the plugin's redundant CSRF check, which ran after Unraid had already validated and consumed the token. CSRF stays enforced by Unraid's built-in layer.
 
 ###2026.06.13.1
 - Enforce CSRF validation on all plugin POST endpoints
