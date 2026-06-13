@@ -58,6 +58,9 @@
 
     function fv3_validate_csrf(): void {
         global $var;
+        if (!isset($var['csrf_token'])) {
+            $var = @parse_ini_file('/var/local/emhttp/var.ini') ?: [];
+        }
         $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
         $expected = $var['csrf_token'] ?? '';
         if ($expected === '' || $token === '' || !hash_equals($expected, $token)) {
@@ -69,6 +72,7 @@
     function fv3_post_init(): void {
         fv3_security_headers();
         fv3_require_post();
+        fv3_validate_csrf();
     }
 
     function fv3_get_init(): void {
@@ -572,7 +576,7 @@
     function toggleTheme(string $entry, bool $enable, bool $exclusive) : void {
         global $configDir;
         $stylesDir = "$configDir/styles";
-        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry)) { http_response_code(400); exit; }
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
         if ($exclusive && $enable) {
@@ -729,7 +733,7 @@
     function deleteTheme(string $entry) : void {
         global $configDir;
         $stylesDir = "$configDir/styles";
-        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry)) { http_response_code(400); exit; }
+        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
         if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }

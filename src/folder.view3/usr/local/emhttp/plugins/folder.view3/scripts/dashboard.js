@@ -1261,7 +1261,7 @@ const folderVMCustomAction = async (id, action) => {
             if(scriptVariables['directPHP']) {
                 $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
             } else {
-                $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2=',act.name,800,1200,true, 'loadlist');}});
+                $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
             }
         } else {
             const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
@@ -1891,7 +1891,9 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
     if (options.url === "/webGui/include/DashboardApps.php" && !loadedFolder) {
         jqXHR.promise().then(async () => {
             await fv3SettingsReq;
-            createFolders();
+            loadedFolder = true;
+            try { await createFolders(); }
+            catch (e) { loadedFolder = false; $('div.spinner.fixed').hide(); return; }
             applyDashboardLayouts();
             requestAnimationFrame(() => { requestAnimationFrame(() => {
                 if (dockerDashboardLayout === 'fullwidth') {

@@ -410,10 +410,6 @@
         });
     }
 
-    function getAllPresets() {
-        return presets.concat(cssConfig.custom_presets || []);
-    }
-
     var _selectedPreset = null;
 
     function getPagePresets() {
@@ -684,12 +680,6 @@
                 }
             }
         } catch (e) {}
-    }
-
-    function isCssDarkTheme() {
-        if (fv3ThemeName === 'black' || fv3ThemeName === 'gray' || fv3ThemeName === 'dark') return true;
-        if (fv3ThemeName === 'azure' || fv3ThemeName === 'white' || fv3ThemeName === 'light') return false;
-        return document.documentElement.classList.contains('dark');
     }
 
     async function loadConfig() {

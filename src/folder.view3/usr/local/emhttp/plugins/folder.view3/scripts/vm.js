@@ -810,10 +810,11 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
         options.data = data.toString();
         $('.unhide').show();
     } else if (options.url === "/plugins/dynamix.vm.manager/include/VMMachines.php" && !loadedFolder) {
-        jqXHR.promise().then(() => {
-            createFolders();
-            $('div.spinner.fixed').hide();
+        jqXHR.promise().then(async () => {
             loadedFolder = true;
+            try { await createFolders(); }
+            catch (e) { loadedFolder = false; }
+            $('div.spinner.fixed').hide();
         });
     }
 });

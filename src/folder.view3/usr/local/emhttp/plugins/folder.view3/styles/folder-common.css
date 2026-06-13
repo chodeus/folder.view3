@@ -166,8 +166,8 @@ body[data-fv3-preset] .fv3-folder-appname:not(.orange-text) {
     font-size: var(--fv3-appname-size);
 }
 
-body[data-fv3-preset] .folder-preview-wrapper .appname,
-body[data-fv3-preset] .folder-preview-wrapper .inner > a {
+body[data-fv3-preset] .folder-preview-wrapper .appname:not(.orange-text),
+body[data-fv3-preset] .folder-preview-wrapper .inner > a:not(.orange-text) {
     color: var(--fv3-appname-color);
 }
 
