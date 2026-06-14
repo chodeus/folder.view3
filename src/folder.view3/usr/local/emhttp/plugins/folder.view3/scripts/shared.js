@@ -94,6 +94,19 @@ try {
     }
 } catch (_) {}
 
+// Capture uncaught page errors into the trace buffer — a JS error during load (from FV3,
+// Unraid, or another plugin) can abort table setup and leave the layout half-built. Only
+// the already-armed FV3_DEBUG gates whether fv3Trace records; the listeners are cheap.
+try {
+    window.addEventListener('error', function(e) {
+        window.fv3Trace('error', 'window.onerror', (e && e.message) || 'error', (e && e.filename ? e.filename.split('/').pop() : '') + ':' + (e && e.lineno));
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+        var r = e && e.reason;
+        window.fv3Trace('error', 'unhandledrejection', (r && r.message) || String(r));
+    });
+} catch (_) {}
+
 (function() {
     var buffer = [];
     var trigger = 'fv3debug';
@@ -846,19 +859,40 @@ window.fv3CollectEnv = () => {
     // the overflow mode actually applied (in className), and child/divider counts — so
     // "preview pushed right / clipped / wrong-content" is diagnosable on any page, for
     // every folder, not just the first one.
+    // Every child cell of a row — index/class/colSpan/position/width/display. This is what
+    // reveals a structural mismatch (e.g. the preview colspan cell landing far right because
+    // a sibling cell isn't conforming to the locked column grid).
+    const cellInfo = (c, i) => {
+        const r = c.getBoundingClientRect();
+        return { i, tag: c.tagName, cls: (c.className || '').slice(0, 30), colSpan: c.colSpan,
+            left: Math.round(r.left), w: Math.round(r.width), disp: getComputedStyle(c).display };
+    };
     const collectFolders = () => {
         const out = [];
-        document.querySelectorAll('tr.folder').forEach(row => {
+        const rows = [...document.querySelectorAll('tr.folder')];
+        rows.forEach((row, idx) => {
             const prev = row.querySelector('.folder-preview');
             const cell = prev ? [...row.children].find(td => td.contains(prev)) : null;
             const nameEl = row.querySelector('.folder-appname');
-            out.push({
+            const rec = {
                 kind: 'row',
                 id: (row.className.match(/folder-id-(\S+)/) || [])[1] || null,
                 name: nameEl ? nameEl.textContent.trim().slice(0, 40) : null,
                 cell: cell ? { colSpan: cell.colSpan, offsetLeft: cell.offsetLeft, offsetWidth: cell.offsetWidth } : null,
+                cells: [...row.children].map(cellInfo),
+                storageRows: row.querySelectorAll('.folder-storage tr').length,
                 preview: prev ? previewInfo(prev) : null
-            });
+            };
+            if (idx === 0) {
+                try {
+                    const clone = row.cloneNode(true);
+                    clone.querySelectorAll('.folder-storage').forEach(s => { s.innerHTML = ''; });
+                    rec.skeletonHTML = clone.outerHTML.slice(0, 2500);
+                    const st = row.querySelector('.folder-storage tr');
+                    if (st) rec.firstStorageRowCells = [...st.children].map(cellInfo);
+                } catch (_) {}
+            }
+            out.push(rec);
         });
         document.querySelectorAll('.folder-showcase-outer').forEach(box => {
             const prev = box.querySelector('.folder-preview');
@@ -937,6 +971,26 @@ window.fv3CollectEnv = () => {
         } catch (_) {}
         return out;
     };
+    // Table + ancestor widths — to spot a container/table forcing an unexpected width, or a
+    // duplicate/nested #docker_containers table that the folder rows might land in.
+    const collectTableGeom = () => {
+        const t = document.getElementById('docker_containers');
+        if (!t) return null;
+        const cs = getComputedStyle(t);
+        const chain = [];
+        let el = t;
+        for (let i = 0; i < 5 && el; i++) {
+            const r = el.getBoundingClientRect();
+            chain.push({ tag: el.tagName, id: el.id || '', cls: (el.className || '').slice(0, 30), clientW: el.clientWidth, rectW: Math.round(r.width) });
+            el = el.parentElement;
+        }
+        return {
+            count: document.querySelectorAll('#docker_containers').length,
+            nestedTables: t.querySelectorAll('table').length,
+            tableLayout: cs.tableLayout, width: cs.width, minWidth: cs.minWidth,
+            offsetWidth: t.offsetWidth, clientWidth: t.clientWidth, chain
+        };
+    };
     return {
         capturedAt: new Date().toISOString(),
         viewport: { innerWidth: window.innerWidth, innerHeight: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
@@ -963,6 +1017,7 @@ window.fv3CollectEnv = () => {
         tables: { docker: tableSize('docker_containers'), vm: tableSize('kvm_table') },
         unraidRelease: window.fv3UnraidRelease || null,
         tableLayout: collectTableLayout(),
+        tableGeom: collectTableGeom(),
         foldersRendered: collectFolders(),
         samples: {
             folderPreview: sample('tr.folder .folder-preview'),
