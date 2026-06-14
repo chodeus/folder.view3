@@ -1660,6 +1660,8 @@ window.fv3InstallDockerTableWidthFix = () => {
 
     document.getElementById(STYLE_ID)?.remove();
     headers.forEach(th => { th.style.width = ''; th.style.boxSizing = ''; });
+    // Clear any folder-row cell widths locked by a previous apply so measurement is clean.
+    tbl.querySelectorAll('tr.folder > td').forEach(td => { td.style.width = ''; td.style.boxSizing = ''; });
     tbl.style.tableLayout = '';
     void tbl.offsetHeight;
     void document.body.offsetHeight;
@@ -1852,6 +1854,24 @@ window.fv3ApplyCachedWidths = () => {
         }
     });
     tbl.style.tableLayout = 'fixed';
+    // Also lock each folder row's OWN cell widths. At fractional devicePixelRatio the browser's
+    // table-layout:fixed colspan distribution can fail and collapse the preview (colspan) cell to
+    // its content, ballooning its neighbours and shoving the preview far right (clipped). Setting
+    // explicit per-cell widths — the preview cell = sum of the columns it spans — overrides that
+    // fallback so it lays out correctly at any DPR. No-op at integer DPR where it already fits.
+    Array.from(tbl.querySelectorAll('tr.folder')).forEach(row => {
+        let col = 0;
+        Array.from(row.children).forEach(cell => {
+            const span = cell.colSpan || 1;
+            let w = 0;
+            for (let k = col; k < col + span && k < widths.length; k++) {
+                if (!snap.displayHidden[k]) w += widths[k];
+            }
+            col += span;
+            cell.style.boxSizing = 'border-box';
+            cell.style.width = w + 'px';
+        });
+    });
     if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
