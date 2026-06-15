@@ -1839,10 +1839,19 @@ window.fv3ApplyCachedWidths = () => {
     const headers = Array.from(tbl.querySelectorAll('thead > tr > th'));
     if (headers.length !== snap.headerCount) return;
     const widths = fv3AnyNonFolderRowVisible() ? snap.expanded : snap.collapsed;
+    // Apply the cached column widths as PERCENTAGES of the table width rather than pixels.
+    // distributeSlack() already forces the snapshot to sum to the table's target width, so each
+    // column's share is simply widths[i] / total. Under table-layout:fixed, percentage column
+    // widths are resolved relative to the table box, so there is no per-column pixel value to
+    // round and accumulate — the rounding drift that collapsed the colspan preview cell at
+    // FRACTIONAL devicePixelRatio (e.g. Windows display scaling 125%) does not arise. This mirrors
+    // how Unraid's own fixed-layout tables (disk_status / array_status / share_status) size their
+    // columns: table-layout:fixed paired with percentage widths, never pinned pixels.
+    const total = widths.reduce((a, b) => a + b, 0);
     headers.forEach((th, i) => {
         if (snap.displayHidden[i]) return;
         th.style.boxSizing = 'border-box';
-        th.style.width = widths[i] + 'px';
+        th.style.width = total > 0 ? (widths[i] / total * 100) + '%' : '';
         if (widths[i] === 0) {
             th.style.padding = '0';
             th.style.fontSize = '0';
@@ -1851,14 +1860,10 @@ window.fv3ApplyCachedWidths = () => {
             th.style.fontSize = '';
         }
     });
-    // table-layout:fixed gives stable columns, but at FRACTIONAL devicePixelRatio (e.g. Windows
-    // display scaling 125%) the browser's fixed-layout colspan distribution breaks and collapses
-    // the folder preview cell (a colspan cell), pushing it right / clipping it. FolderView2 never
-    // had this because it used the browser's default (auto) layout. So only lock to fixed at
-    // INTEGER DPR; at fractional DPR fall back to auto layout (the th width hints above keep the
-    // columns aligned), which sizes the colspan cell correctly. Setting widths on the body cells
-    // does NOT help — under table-layout:fixed the column widths come from the <th>, not the cells.
-    tbl.style.tableLayout = Number.isInteger(window.devicePixelRatio) ? 'fixed' : 'auto';
+    // Percentage widths keep the fixed-layout column distribution stable at every devicePixelRatio,
+    // so we can lock to table-layout:fixed unconditionally — no auto fallback (and its dependence on
+    // <th> width hints) is needed.
+    tbl.style.tableLayout = 'fixed';
     if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
