@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.14.2">
-<!ENTITY md5 "4778a10ac2cd15c7e4ed694566ba58d2">
+<!ENTITY version "2026.06.15.1">
+<!ENTITY md5 "0147967180b3f22afa97440102988f26">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.15.1
+- Fix (corrects 2026.06.14.2, which didn't work): folder preview pushed right / collapsed on displays with fractional scaling. FolderView3 now uses the browser's default table layout at fractional device-pixel ratios (the same layout FolderView2 used), which positions the preview correctly, and keeps the column-lock at integer ratios. Rolled back the ineffective .2 cell-width change.
 
 ###2026.06.14.2
 - Fix: folder preview pushed to the right / clipped on displays with fractional scaling (e.g. Windows 125%, fractional devicePixelRatio) — the folder row's cells are now width-locked so the preview column can't collapse
