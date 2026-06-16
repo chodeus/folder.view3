@@ -1048,7 +1048,10 @@ window.fv3CollectEnv = () => {
                         row: kind, idx: cell.cellIndex, colSpan: cell.colSpan,
                         cls: (cell.className || '').slice(0, 24),
                         sw: cell.scrollWidth, cw: cell.clientWidth, over: +over.toFixed(1),
-                        padL: ccs.paddingLeft, padR: ccs.paddingRight, boxSizing: ccs.boxSizing
+                        padL: ccs.paddingLeft, padR: ccs.paddingRight, boxSizing: ccs.boxSizing,
+                        // overflowX != visible => the content is CLIPPED and can't leak into the
+                        // table's scrollWidth (e.g. the zeroed Uptime header) — not a live leak.
+                        overflowX: ccs.overflowX, clipped: ccs.overflowX !== 'visible'
                     });
                 }
             });
@@ -1100,7 +1103,9 @@ window.fv3CollectEnv = () => {
     // Foreign inline <style> blocks (not FV3's own) that touch the docker table / layout / preview —
     // collectForeignStylesheets only sees <link>s, so an inline community-CSS override was invisible.
     const collectForeignInlineStyles = () => {
-        const re = /docker_containers|table-layout|folder-preview|\.folder\b|colspan|nth-child|width\s*:/i;
+        // Require a docker-table-specific selector; a bare `width:`/`nth-child` matched unrelated
+        // libraries (Vaul drawer, readmore.js) and produced misleading "touchesTable" noise.
+        const re = /docker_containers|table-layout|folder-preview|\.folder\b|colspan/i;
         return [...document.querySelectorAll('style')]
             .filter(s => !(s.id && s.id.indexOf('fv3-') === 0) && !(typeof s.className === 'string' && s.className.indexOf('fv3-') === 0))
             .map(s => {
