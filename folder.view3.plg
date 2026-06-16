@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.16.2">
-<!ENTITY md5 "4379ff3b7bdfd39328541a76c7998c49">
+<!ENTITY version "2026.06.16.3">
+<!ENTITY md5 "5dbaf1d5440e8cd10b2e69f3841ce661">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.16.3
+- Fix: Compose / 3rd-party containers no longer wrap their "Compose"/"3rd Party" autostart label to two lines when the table is narrow — the autostart column now keeps it on one line
 
 ###2026.06.16.2
 - Debug capture: less noise — inline-CSS check now only flags styles that actually target the Docker table (was matching unrelated libraries), and the cell-overflow scanner notes when a cell's content is clipped (not a real leak)
