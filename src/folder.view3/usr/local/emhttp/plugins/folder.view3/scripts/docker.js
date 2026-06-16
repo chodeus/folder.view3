@@ -555,7 +555,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
                 if (folder.settings.preview_webui && ct.info.State.WebUi) {
                     if ($targetForAppend.length) {
-                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-webui"><a href="${escapeHtml(ct.info.State.WebUi)}" target="_blank"><i class="fa fa-globe" aria-hidden="true"></i></a></span>`));
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-webui"><a href="${escapeHtml(ct.info.State.WebUi)}" target="_blank" onclick="event.stopPropagation();"><i class="fa fa-globe" aria-hidden="true"></i></a></span>`));
                         fv3Debug('createFolder', id, container_name_in_folder, 'Appended WebUI icon to preview.');
                     } else {
                          fv3DebugWarn('createFolder', id, container_name_in_folder, 'WebUI icon: Could not find target for append in preview element.');
@@ -564,7 +564,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
                 if (folder.settings.preview_console) {
                     if ($targetForAppend.length) {
-                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i></a></span>`));
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i></a></span>`));
                         fv3Debug('createFolder', id, container_name_in_folder, 'Appended Console icon to preview.');
                     } else {
                          fv3DebugWarn('createFolder', id, container_name_in_folder, 'Console icon: Could not find target for append in preview element.');
@@ -573,7 +573,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
                 if (folder.settings.preview_logs) {
                     if ($targetForAppend.length) {
-                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
                         fv3Debug('createFolder', id, container_name_in_folder, 'Appended Logs icon to preview.');
                     } else {
                         fv3DebugWarn('createFolder', id, container_name_in_folder, 'Logs icon: Could not find target for append in preview element.');
