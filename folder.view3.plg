@@ -6,12 +6,17 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.15.1">
-<!ENTITY md5 "0147967180b3f22afa97440102988f26">
+<!ENTITY version "2026.06.16.1">
+<!ENTITY md5 "4467f3c2faaf448910237913681b8a81">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.16.1
+- Fix: Firefox-only phantom horizontal scrollbar on the Docker table — a collapsed column leaked its cell padding and a header sort-arrow sliver under fixed table layout (Chrome was unaffected)
+- Debug capture: self-diagnosing additions — unrounded table/cell overflow with the exact culprit cell named, a colspan-preview fix self-test, console error/warning capture, and inline-CSS / missing-dependency / HTTP-status checks
+- Diagnostics only — no change to normal folder behaviour
 
 ###2026.06.15.1
 - Fix (corrects 2026.06.14.2, which didn't work): folder preview pushed right / collapsed on displays with fractional scaling. FolderView3 now uses the browser's default table layout at fractional device-pixel ratios (the same layout FolderView2 used), which positions the preview correctly, and keeps the column-lock at integer ratios. Rolled back the ineffective .2 cell-width change.

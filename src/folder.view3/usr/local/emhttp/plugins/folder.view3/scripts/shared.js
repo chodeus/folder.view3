@@ -107,6 +107,25 @@ try {
     });
 } catch (_) {}
 
+// Tap console.warn/error so NON-fatal messages logged by Unraid or another plugin (not just
+// uncaught exceptions) land in the trace buffer — these can reveal why the layout half-builds
+// on one box but not another. Only installed when debug is already armed, so production console
+// is left completely untouched; the original console function is always still called.
+if (window.FV3_DEBUG) {
+    try {
+        ['warn', 'error'].forEach(function(level) {
+            var orig = console[level];
+            if (typeof orig !== 'function' || orig._fv3Wrapped) return;
+            var wrapped = function() {
+                try { window.fv3Trace.apply(null, [level, 'console.' + level].concat(Array.prototype.slice.call(arguments))); } catch (_) {}
+                return orig.apply(console, arguments);
+            };
+            wrapped._fv3Wrapped = true;
+            console[level] = wrapped;
+        });
+    } catch (_) {}
+}
+
 (function() {
     var buffer = [];
     var trigger = 'fv3debug';
@@ -966,7 +985,10 @@ window.fv3CollectEnv = () => {
                     start: Math.round(r.startTime),
                     end: Math.round(r.responseEnd),
                     dur: Math.round(r.duration),
-                    size: r.transferSize || 0
+                    size: r.transferSize || 0,
+                    // HTTP status (modern browsers) — flags a 404/500 on a dependency the size/timing
+                    // fields alone can't reveal; null where the browser doesn't expose it.
+                    status: (typeof r.responseStatus === 'number') ? r.responseStatus : null
                 }));
         } catch (_) {}
         return out;
@@ -981,15 +1003,125 @@ window.fv3CollectEnv = () => {
         let el = t;
         for (let i = 0; i < 5 && el; i++) {
             const r = el.getBoundingClientRect();
-            chain.push({ tag: el.tagName, id: el.id || '', cls: (el.className || '').slice(0, 30), clientW: el.clientWidth, rectW: Math.round(r.width) });
+            chain.push({
+                tag: el.tagName, id: el.id || '', cls: (el.className || '').slice(0, 30),
+                clientW: el.clientWidth, scrollW: el.scrollWidth,
+                rectW: +r.width.toFixed(2),
+                overflowX: getComputedStyle(el).overflowX,
+                // Firefox-only: how far this element can scroll horizontally (>0 => a scrollbar)
+                scrollLeftMax: (typeof el.scrollLeftMax === 'number') ? el.scrollLeftMax : null,
+                xOverflow: +(r.width - el.clientWidth).toFixed(2)
+            });
             el = el.parentElement;
         }
+        // The horizontal scrollbar is a SUB-PIXEL overflow Firefox renders and Chrome discards:
+        // the table's fractional rendered width vs its scroll container's integer clientWidth, and
+        // the th-width total the width-fix pins. Rounded width fields above hide it — these don't.
+        const ths = [...t.querySelectorAll('thead > tr > th')];
+        const thSum = ths.reduce((s, th) => s + th.getBoundingClientRect().width, 0);
+        const parent = t.parentElement;
+        const tableRectW = t.getBoundingClientRect().width;
+        const overflow = parent ? {
+            tableRectW: +tableRectW.toFixed(2),
+            containerClientW: parent.clientWidth,
+            containerScrollW: parent.scrollWidth,
+            containerScrollLeftMax: (typeof parent.scrollLeftMax === 'number') ? parent.scrollLeftMax : null,
+            overflowPx: +(parent.scrollWidth - parent.clientWidth).toFixed(2),
+            subPixelOverflowPx: +(tableRectW - parent.clientWidth).toFixed(2),
+            thSum: +thSum.toFixed(2),
+            thSumVsClient: +(thSum - parent.clientWidth).toFixed(2)
+        } : null;
+        // Per-cell overflow scan — names exactly which cell's content/padding exceeds its column
+        // (scrollWidth > clientWidth). This is the phantom-scrollbar / preview-collapse culprit
+        // finder; reports padding + box-sizing so a zero-width-column padding leak is self-evident.
+        const cellOverflows = [];
+        const scanRows = [];
+        const headRow = t.querySelector('thead > tr'); if (headRow) scanRows.push(['thead', headRow]);
+        const folderRow = t.querySelector('tbody > tr.folder'); if (folderRow) scanRows.push(['folder', folderRow]);
+        const ctRow = t.querySelector('tbody > tr.sortable:not(.folder)'); if (ctRow) scanRows.push(['container', ctRow]);
+        scanRows.forEach(([kind, row]) => {
+            [...row.cells].forEach(cell => {
+                const over = cell.scrollWidth - cell.clientWidth;
+                if (over > 0.5) {
+                    const ccs = getComputedStyle(cell);
+                    cellOverflows.push({
+                        row: kind, idx: cell.cellIndex, colSpan: cell.colSpan,
+                        cls: (cell.className || '').slice(0, 24),
+                        sw: cell.scrollWidth, cw: cell.clientWidth, over: +over.toFixed(1),
+                        padL: ccs.paddingLeft, padR: ccs.paddingRight, boxSizing: ccs.boxSizing
+                    });
+                }
+            });
+        });
         return {
             count: document.querySelectorAll('#docker_containers').length,
             nestedTables: t.querySelectorAll('table').length,
             tableLayout: cs.tableLayout, width: cs.width, minWidth: cs.minWidth,
-            offsetWidth: t.offsetWidth, clientWidth: t.clientWidth, chain
+            offsetWidth: t.offsetWidth, clientWidth: t.clientWidth, chain, overflow,
+            cellOverflows: cellOverflows.slice(0, 16)
         };
+    };
+    // Self-test the colspan-preview fix against THIS page: transiently pin the folder preview cell
+    // to the sum of the columns it spans, measure the preview before/after, then restore. On a
+    // broken capture this shows previewBefore≈245 -> previewAfterPin≈full-width, proving the fix
+    // from the affected user's own machine without anyone reproducing it. Read-only after restore.
+    const collectColspanSelfTest = () => {
+        try {
+            const tbl = document.getElementById('docker_containers');
+            const row = tbl && tbl.querySelector('tbody > tr.folder');
+            if (!row) return null;
+            const ths = [...tbl.querySelectorAll('thead > tr > th')];
+            let idx = 0, target = null, spanStart = 0, span = 0;
+            for (const cell of row.cells) {
+                const csn = cell.colSpan || 1;
+                if (csn >= 5 && !target) { target = cell; spanStart = idx; span = csn; }
+                idx += csn;
+            }
+            if (!target) return null;
+            const preview = target.querySelector('.folder-preview');
+            const previewBefore = preview ? +preview.getBoundingClientRect().width.toFixed(1) : null;
+            const cellBefore = +target.getBoundingClientRect().width.toFixed(1);
+            let spannedThSum = 0;
+            for (let k = spanStart; k < spanStart + span && k < ths.length; k++) spannedThSum += ths[k].getBoundingClientRect().width;
+            spannedThSum = +spannedThSum.toFixed(1);
+            const prevInline = target.style.width;
+            target.style.width = Math.round(spannedThSum) + 'px';
+            void target.getBoundingClientRect();
+            const cellAfterPin = +target.getBoundingClientRect().width.toFixed(1);
+            const previewAfterPin = preview ? +preview.getBoundingClientRect().width.toFixed(1) : null;
+            target.style.width = prevInline;
+            return {
+                spannedThSum, cellBefore, cellAfterPin, previewBefore, previewAfterPin,
+                collapsed: previewBefore != null && spannedThSum > 0 && previewBefore < spannedThSum * 0.6,
+                fixWouldHelp: previewBefore != null && previewAfterPin != null && (previewAfterPin - previewBefore) > 20
+            };
+        } catch (e) { return { error: String(e) }; }
+    };
+    // Foreign inline <style> blocks (not FV3's own) that touch the docker table / layout / preview —
+    // collectForeignStylesheets only sees <link>s, so an inline community-CSS override was invisible.
+    const collectForeignInlineStyles = () => {
+        const re = /docker_containers|table-layout|folder-preview|\.folder\b|colspan|nth-child|width\s*:/i;
+        return [...document.querySelectorAll('style')]
+            .filter(s => !(s.id && s.id.indexOf('fv3-') === 0) && !(typeof s.className === 'string' && s.className.indexOf('fv3-') === 0))
+            .map(s => {
+                const txt = s.textContent || '';
+                const hit = re.test(txt);
+                return { id: s.id || '', len: txt.length, touchesTable: hit, snippet: hit ? txt.replace(/\s+/g, ' ').slice(0, 300) : '' };
+            })
+            .filter(x => x.touchesTable)
+            .slice(0, 8);
+    };
+    // Expected globals — a failed include leaves one undefined; a missing dependency is otherwise
+    // only inferable. Records presence + version where the library exposes one.
+    const collectGlobals = () => {
+        const g = {};
+        try { g.jQuery = (typeof window.jQuery !== 'undefined') ? ((window.jQuery.fn && window.jQuery.fn.jquery) || true) : false; } catch (_) { g.jQuery = false; }
+        try { g.Chart = (typeof window.Chart !== 'undefined') ? (window.Chart.version || true) : false; } catch (_) { g.Chart = false; }
+        try { g.moment = (typeof window.moment !== 'undefined') ? (window.moment.version || true) : false; } catch (_) { g.moment = false; }
+        try { g.i18n = !!(window.jQuery && window.jQuery.i18n); } catch (_) { g.i18n = false; }
+        try { g.widthFix = typeof window.fv3InstallDockerTableWidthFix === 'function'; } catch (_) { g.widthFix = false; }
+        try { g.detectApi = typeof window.fv3DetectApi === 'function'; } catch (_) { g.detectApi = false; }
+        return g;
     };
     return {
         capturedAt: new Date().toISOString(),
@@ -1047,6 +1179,9 @@ window.fv3CollectEnv = () => {
         ]),
         stylesheets: collectStylesheets(),
         foreignStylesheets: collectForeignStylesheets(),
+        foreignInlineStyles: collectForeignInlineStyles(),
+        globals: collectGlobals(),
+        colspanSelfTest: collectColspanSelfTest(),
         customExtensions: {
             customPhpLoaded: !!document.querySelector('link[href*="/folder.view3/custom.php"], script[src*="/folder.view3/custom.php"]'),
             fv3PresetStyles: [...document.querySelectorAll('style[id^="fv3-"], style.fv3-preset-styles')].map(s => s.id || s.className).slice(0, 10)
@@ -1846,11 +1981,37 @@ window.fv3ApplyCachedWidths = () => {
         if (widths[i] === 0) {
             th.style.padding = '0';
             th.style.fontSize = '0';
+            // font-size:0 collapses the label text, but a sort-arrow pseudo-element / inner span
+            // keeps a ~6px sliver that overflows the zero-width column; clip it so it can't extend
+            // the table (the other half of the Firefox phantom-scrollbar fix).
+            th.style.overflow = 'hidden';
         } else {
             th.style.padding = '';
             th.style.fontSize = '';
+            th.style.overflow = '';
         }
     });
+    // A column collapsed to width 0 still leaves its BODY cells' horizontal padding (content-box,
+    // ~26px), which overflows the zero-width column under table-layout:fixed and renders a phantom
+    // horizontal scrollbar in Firefox (Chrome discards it). We zero the <th> padding above; do the
+    // same for the body cells of any zero-width column. These columns are trailing, so nth-last-child
+    // is colspan-safe — the preview colspan cell always sits upstream of them.
+    const zeroCols = [];
+    widths.forEach((w, i) => { if (w === 0 && !snap.displayHidden[i]) zeroCols.push(i); });
+    let zeroStyle = document.getElementById('fv3-zerocol-style');
+    if (zeroCols.length) {
+        const sel = zeroCols
+            .map(i => `#docker_containers > tbody > tr > td:nth-last-child(${snap.headerCount - i})`)
+            .join(', ');
+        if (!zeroStyle) {
+            zeroStyle = document.createElement('style');
+            zeroStyle.id = 'fv3-zerocol-style';
+            document.head.appendChild(zeroStyle);
+        }
+        zeroStyle.textContent = `${sel} { padding-left: 0; padding-right: 0; }`;
+    } else if (zeroStyle) {
+        zeroStyle.textContent = '';
+    }
     // table-layout:fixed gives stable columns, but at FRACTIONAL devicePixelRatio (e.g. Windows
     // display scaling 125%) the browser's fixed-layout colspan distribution breaks and collapses
     // the folder preview cell (a colspan cell), pushing it right / clipping it. FolderView2 never
