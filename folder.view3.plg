@@ -6,12 +6,16 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.16.4">
-<!ENTITY md5 "c8642862ccec6375cdaa92d6eac950a6">
+<!ENTITY version "2026.06.17.1">
+<!ENTITY md5 "fc93a7380f78e92c3b55ee6704e82372">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.17.1
+- Debug capture: lists the plugins active on the current page (deduped) so any third-party plugin that could affect the view is visible at a glance
+- Diagnostics only — no change to normal folder behaviour
 
 ###2026.06.16.4
 - Fix: in "Only icon" preview, clicking a container's WebUI, console, or logs button opened the container dialog instead of running the action, and the WebUI globe didn't open the WebUI. The buttons now act on their own without triggering the dialog, and the WebUI opens correctly. Applies to Docker and VM previews.

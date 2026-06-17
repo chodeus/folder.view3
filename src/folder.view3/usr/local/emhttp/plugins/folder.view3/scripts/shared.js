@@ -834,6 +834,19 @@ window.fv3CollectEnv = () => {
             .filter(h => h && !h.includes('/folder.view3/'))
             .slice(0, 20);
     };
+    // Deduped set of plugin dirs touching this page, from every <script src> and <link href>.
+    // foreignPluginScripts is a capped raw list whose limit can be eaten by Unraid's own ~20 Vue
+    // component scripts, hiding a late third-party script; this name-set can't be truncated that way,
+    // so it gives a complete at-a-glance "what plugins are on this page" view.
+    const collectActivePlugins = () => {
+        const set = new Set();
+        document.querySelectorAll('script[src], link[href]').forEach(el => {
+            const u = el.getAttribute('src') || el.getAttribute('href') || '';
+            const m = u.match(/\/plugins\/([^/?#]+)/);
+            if (m) set.add(m[1]);
+        });
+        return [...set].sort();
+    };
     // Per-column rendered geometry for whichever container tables exist on this page
     // (Docker tab = #docker_containers, VM tab = #kvm_table). This is what the width-fix
     // keys off and the most likely place a non-standard layout / sub-pixel rounding goes wrong.
@@ -1184,6 +1197,7 @@ window.fv3CollectEnv = () => {
         ]),
         stylesheets: collectStylesheets(),
         foreignStylesheets: collectForeignStylesheets(),
+        activePlugins: collectActivePlugins(),
         foreignInlineStyles: collectForeignInlineStyles(),
         globals: collectGlobals(),
         colspanSelfTest: collectColspanSelfTest(),
