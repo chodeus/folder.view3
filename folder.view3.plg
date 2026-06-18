@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.06.18.2
+- Fix: on narrow windows, an expanded folder's container rows no longer overlap / blend their Network, IP, Port and Volume columns — the Docker table now scrolls horizontally (like the native table) instead of crushing those columns to make everything fit
+
 ###2026.06.18.1
 - Fix: in Basic view with a folder expanded, switching to Advanced view no longer truncates the "update" column ("force update" / version text) with an ellipsis until you click something — the column is now sized to fit Advanced-view content regardless of toggle timing
 - Debug capture: harmless "ResizeObserver loop" notices (normal layout settling while icons load) are no longer logged as errors — they're counted instead (roLoopSettles), so genuine errors stand out

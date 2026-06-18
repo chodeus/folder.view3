@@ -1903,16 +1903,28 @@ window.fv3InstallDockerTableWidthFix = () => {
         if (maxCols[autostartIdx] > visibleNeed) maxCols[autostartIdx] = visibleNeed;
     }
 
-    const distributeSlack = (cols) => {
-        const sum = cols.reduce((a, b) => a + b, 0);
+    // mode 'fit'     → shrink the flexible middle columns (2-6) so the table fills targetW. Used
+    //                  for the collapsed/folders-only snapshot: the preview spans those columns,
+    //                  so shrinking is safe — there is no per-column container data to overlap.
+    // mode 'natural' → never shrink below content width; if the columns don't fit targetW, keep
+    //                  them and let the TableContainer (overflow-x:auto) scroll horizontally. Used
+    //                  for the expanded snapshot, where container rows show real Network/IP/Port/
+    //                  Volume data that overflows and overlaps if the columns are crushed (this is
+    //                  the native Unraid table behaviour). Verified live: the table grows past the
+    //                  container and the container scrolls under table-layout:fixed.
+    const distributeSlack = (cols, mode) => {
         const widths = cols.map(Math.ceil);
+        const sum = widths.reduce((a, b) => a + b, 0);
+        let fitted = true;
         if (sum > targetW) {
             const overflow = sum - targetW;
             let flex = 0;
             for (let i = 2; i <= 6; i++) flex += cols[i];
-            if (flex > overflow) {
+            if (mode === 'fit' && flex > overflow) {
                 const scale = (flex - overflow) / flex;
                 for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(cols[i] * scale));
+            } else {
+                fitted = false; // natural mode, or too narrow even to fit — keep content widths, scroll
             }
         } else if (sum < targetW) {
             const extra = targetW - sum;
@@ -1924,20 +1936,23 @@ window.fv3InstallDockerTableWidthFix = () => {
                 }
             }
         }
-        let finalSum = widths.reduce((a, b) => a + b, 0);
-        if (finalSum !== targetW) {
-            const diff = targetW - finalSum;
-            if (widths[6] + diff >= 60) widths[6] += diff;
+        // Exact-fit nudge only when we actually fit targetW; when scrolling, don't pull width off
+        // the volume column (that was what crushed it to a single vertical character at narrow widths).
+        if (fitted) {
+            const finalSum = widths.reduce((a, b) => a + b, 0);
+            if (finalSum !== targetW) {
+                const diff = targetW - finalSum;
+                if (widths[6] + diff >= 60) widths[6] += diff;
+            }
         }
         return widths;
     };
 
-    const widthsExpanded = distributeSlack(maxCols);
-
     const uptimeIdx = headers.findIndex(h => h.classList && h.classList.contains('five'));
     const volMappingsIdx = 6;
-    const widthsCollapsed = widthsExpanded.slice();
-    if (uptimeIdx >= 0 && !displayHidden[uptimeIdx] && widthsExpanded[uptimeIdx] > 0
+    const widthsExpanded = distributeSlack(maxCols, 'natural');
+    const widthsCollapsed = distributeSlack(maxCols, 'fit');
+    if (uptimeIdx >= 0 && !displayHidden[uptimeIdx] && widthsCollapsed[uptimeIdx] > 0
         && volMappingsIdx >= 0 && volMappingsIdx < widthsCollapsed.length) {
         const freed = widthsCollapsed[uptimeIdx];
         widthsCollapsed[uptimeIdx] = 0;
