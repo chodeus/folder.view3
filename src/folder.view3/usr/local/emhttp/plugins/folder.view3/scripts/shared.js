@@ -1847,6 +1847,20 @@ window.fv3InstallDockerTableWidthFix = () => {
             const w = h.getBoundingClientRect().width;
             if (w > maxCols[i]) maxCols[i] = w;
         });
+        // Header rects are measured under auto-layout while the table is constrained to its
+        // container, so at narrow window widths they are already squeezed below the real content.
+        // A cell's scrollWidth reports its true (unwrapped) content width even when rendered
+        // narrower — capture it so non-wrapping container data (IPs, ports, volume paths) sizes its
+        // column to fit. This is what lets the expanded snapshot scroll instead of crushing columns.
+        children.forEach(row => {
+            const cells = row.children;
+            for (let i = 0; i < cells.length && i < maxCols.length; i++) {
+                if (cells[i].colSpan === 1) {
+                    const sw = cells[i].scrollWidth;
+                    if (sw > maxCols[i]) maxCols[i] = sw;
+                }
+            }
+        });
         children.forEach(row => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
@@ -1870,6 +1884,19 @@ window.fv3InstallDockerTableWidthFix = () => {
         children.forEach((c, i) => c.setAttribute('style', origStyles[i]));
     });
     void tbl.offsetHeight;
+
+    // Already-expanded folders keep their container rows directly in the table (their .folder-storage
+    // is empty, so the loop above skipped them) — capture their true content widths too.
+    Array.from(tbl.querySelectorAll('tr:not(.folder)')).forEach(row => {
+        if (!row.offsetParent) return; // skip rows parked (display:none) inside .folder-storage
+        const cells = row.children;
+        for (let i = 0; i < cells.length && i < maxCols.length; i++) {
+            if (cells[i].colSpan === 1) {
+                const sw = cells[i].scrollWidth;
+                if (sw > maxCols[i]) maxCols[i] = sw;
+            }
+        }
+    });
 
     let verCap = 0;
     if (verContentMax > 0) {

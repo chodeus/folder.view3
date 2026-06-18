@@ -13,6 +13,9 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.06.18.3
+- Fix (completes 2026.06.18.2, which didn't take effect): on narrow windows, an expanded folder's container rows no longer overlap / blend their Network, IP, Port and Volume columns — the Docker table now scrolls horizontally (like the native table) instead of crushing those columns. The .2 build measured the already-squeezed column widths so it kept crushing; this measures true content width
+
 ###2026.06.18.2
 - Fix: on narrow windows, an expanded folder's container rows no longer overlap / blend their Network, IP, Port and Volume columns — the Docker table now scrolls horizontally (like the native table) instead of crushing those columns to make everything fit
 
