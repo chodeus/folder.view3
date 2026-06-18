@@ -99,7 +99,14 @@ try {
 // the already-armed FV3_DEBUG gates whether fv3Trace records; the listeners are cheap.
 try {
     window.addEventListener('error', function(e) {
-        window.fv3Trace('error', 'window.onerror', (e && e.message) || 'error', (e && e.filename ? e.filename.split('/').pop() : '') + ':' + (e && e.lineno));
+        var msg = (e && e.message) || 'error';
+        // Benign: Chrome fires this when a ResizeObserver callback triggers a resize within the
+        // same delivery cycle. Our fluid pill / preview-expand / clip observers do exactly that
+        // while the layout settles under async icon loads — it is self-limiting (not an
+        // exception) and converges in a few hundred ms. Recording each one as an error floods
+        // the trace and masks real failures, so count it for visibility instead of logging it.
+        if (/ResizeObserver loop/i.test(msg)) { window._fv3ROLoopCount = (window._fv3ROLoopCount || 0) + 1; return; }
+        window.fv3Trace('error', 'window.onerror', msg, (e && e.filename ? e.filename.split('/').pop() : '') + ':' + (e && e.lineno));
     });
     window.addEventListener('unhandledrejection', function(e) {
         var r = e && e.reason;
@@ -971,6 +978,7 @@ window.fv3CollectEnv = () => {
             scrollbarGutter: (parentW != null) ? (window.innerWidth - parentW) : null,
             docClientWidth: document.documentElement.clientWidth,
             outerWidth: window.outerWidth,
+            roLoopSettles: window._fv3ROLoopCount || 0,
             widthFixDiff: (typeof window.fv3WidthFixDiff === 'function') ? window.fv3WidthFixDiff() : null
         };
     };
@@ -1843,8 +1851,18 @@ window.fv3InstallDockerTableWidthFix = () => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
             Array.from(verTd.children).forEach(el => {
-                if (getComputedStyle(el).display === 'none') return;
+                // Measure intrinsic width even when hidden. verCap is a single injected cap
+                // (not per-view), so the column must fit the advanced "force update" content
+                // too. That content is display:none in basic view, and on a basic->advanced
+                // toggle this width-fix can fire before Unraid's listview() reveals it — that
+                // race computes a too-small cap and truncates the update text until a later run
+                // corrects it (verified live: 86px vs the correct 103px). Force-showing here
+                // makes the cap timing-independent so the truncation can't occur.
+                const wasHidden = getComputedStyle(el).display === 'none';
+                const prevDisplay = el.style.display;
+                if (wasHidden) el.style.display = 'inline-block';
                 const w = el.getBoundingClientRect().width;
+                if (wasHidden) el.style.display = prevDisplay;
                 if (w > verContentMax) verContentMax = w;
             });
         });
@@ -2063,9 +2081,13 @@ window.fv3ScheduleApplyCachedWidths = () => {
 //   2. Observe preview CELL not row — observing the row causes growth loops.
 const _fv3PreviewObserved = new WeakSet();
 const _fv3PreviewRO = ('ResizeObserver' in window) ? new ResizeObserver(() => {
-    requestAnimationFrame(() => {
-        try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); }
-    });
+    // Route through the 50ms-debounced scheduler (the same one every other pill-sizing trigger
+    // uses) rather than resizing inside the RO's own delivery cycle. Calling fv3SizeFolderPills()
+    // directly mutates layout within the cycle, which is what makes Chrome emit "ResizeObserver
+    // loop ..." during the icon-load settle. Deferring breaks that, coalesces rapid resizes, and
+    // still lands a final pass once the preview settles.
+    if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
+    else requestAnimationFrame(() => { try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); } });
 }) : null;
 if (_fv3PreviewRO) fv3Cleanups.push(() => _fv3PreviewRO.disconnect());
 
