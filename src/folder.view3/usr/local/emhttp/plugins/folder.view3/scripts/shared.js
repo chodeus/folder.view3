@@ -1851,18 +1851,20 @@ window.fv3InstallDockerTableWidthFix = () => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
             Array.from(verTd.children).forEach(el => {
-                // Measure intrinsic width even when hidden. verCap is a single injected cap
-                // (not per-view), so the column must fit the advanced "force update" content
-                // too. That content is display:none in basic view, and on a basic->advanced
-                // toggle this width-fix can fire before Unraid's listview() reveals it — that
-                // race computes a too-small cap and truncates the update text until a later run
-                // corrects it (verified live: 86px vs the correct 103px). Force-showing here
-                // makes the cap timing-independent so the truncation can't occur.
-                const wasHidden = getComputedStyle(el).display === 'none';
+                // Measure the INTRINSIC content width of every version-cell child. verCap is a
+                // single injected cap (not per-view), so the column must fit the advanced "force
+                // update" content too (which is display:none in basic view). But measuring a block
+                // element as-rendered returns the full COLUMN width, which makes verCap a feedback
+                // of the current column width — it then settles at one of two values depending on
+                // the state when the fix runs and jumps the headings on toggle/expand. Forcing
+                // inline-block first (for hidden OR block-ish elements) gives the true content
+                // width, so verCap is deterministic and still covers the advanced content.
+                const disp = getComputedStyle(el).display;
+                const shrink = disp !== 'inline' && disp !== 'inline-block';
                 const prevDisplay = el.style.display;
-                if (wasHidden) el.style.display = 'inline-block';
+                if (shrink) el.style.display = 'inline-block';
                 const w = el.getBoundingClientRect().width;
-                if (wasHidden) el.style.display = prevDisplay;
+                if (shrink) el.style.display = prevDisplay;
                 if (w > verContentMax) verContentMax = w;
             });
         });
@@ -1903,28 +1905,19 @@ window.fv3InstallDockerTableWidthFix = () => {
         if (maxCols[autostartIdx] > visibleNeed) maxCols[autostartIdx] = visibleNeed;
     }
 
-    // mode 'fit'     → shrink the flexible middle columns (2-6) so the table fills targetW. Used
-    //                  for the collapsed/folders-only snapshot: the preview spans those columns,
-    //                  so shrinking is safe — there is no per-column container data to overlap.
-    // mode 'natural' → never shrink below content width; if the columns don't fit targetW, keep
-    //                  them and let the TableContainer (overflow-x:auto) scroll horizontally. Used
-    //                  for the expanded snapshot, where container rows show real Network/IP/Port/
-    //                  Volume data that overflows and overlaps if the columns are crushed (this is
-    //                  the native Unraid table behaviour). Verified live: the table grows past the
-    //                  container and the container scrolls under table-layout:fixed.
-    const distributeSlack = (cols, mode) => {
+    // Always fit the columns to the table width (targetW): the expanded and collapsed snapshots
+    // both fill the same width, so expanding/collapsing a folder no longer swings the table width
+    // (the per-view 'natural' scroll mode caused that jump and is removed — back to stable behaviour).
+    const distributeSlack = (cols) => {
+        const sum = cols.reduce((a, b) => a + b, 0);
         const widths = cols.map(Math.ceil);
-        const sum = widths.reduce((a, b) => a + b, 0);
-        let fitted = true;
         if (sum > targetW) {
             const overflow = sum - targetW;
             let flex = 0;
             for (let i = 2; i <= 6; i++) flex += cols[i];
-            if (mode === 'fit' && flex > overflow) {
+            if (flex > overflow) {
                 const scale = (flex - overflow) / flex;
                 for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(cols[i] * scale));
-            } else {
-                fitted = false; // natural mode, or too narrow even to fit — keep content widths, scroll
             }
         } else if (sum < targetW) {
             const extra = targetW - sum;
@@ -1936,23 +1929,20 @@ window.fv3InstallDockerTableWidthFix = () => {
                 }
             }
         }
-        // Exact-fit nudge only when we actually fit targetW; when scrolling, don't pull width off
-        // the volume column (that was what crushed it to a single vertical character at narrow widths).
-        if (fitted) {
-            const finalSum = widths.reduce((a, b) => a + b, 0);
-            if (finalSum !== targetW) {
-                const diff = targetW - finalSum;
-                if (widths[6] + diff >= 60) widths[6] += diff;
-            }
+        let finalSum = widths.reduce((a, b) => a + b, 0);
+        if (finalSum !== targetW) {
+            const diff = targetW - finalSum;
+            if (widths[6] + diff >= 60) widths[6] += diff;
         }
         return widths;
     };
 
+    const widthsExpanded = distributeSlack(maxCols);
+
     const uptimeIdx = headers.findIndex(h => h.classList && h.classList.contains('five'));
     const volMappingsIdx = 6;
-    const widthsExpanded = distributeSlack(maxCols, 'natural');
-    const widthsCollapsed = distributeSlack(maxCols, 'fit');
-    if (uptimeIdx >= 0 && !displayHidden[uptimeIdx] && widthsCollapsed[uptimeIdx] > 0
+    const widthsCollapsed = widthsExpanded.slice();
+    if (uptimeIdx >= 0 && !displayHidden[uptimeIdx] && widthsExpanded[uptimeIdx] > 0
         && volMappingsIdx >= 0 && volMappingsIdx < widthsCollapsed.length) {
         const freed = widthsCollapsed[uptimeIdx];
         widthsCollapsed[uptimeIdx] = 0;

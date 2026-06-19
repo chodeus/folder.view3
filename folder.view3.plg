@@ -13,6 +13,11 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.06.19.1
+- Fix: the Docker table no longer shifts around when you toggle Basic/Advanced view and expand/collapse folders — the update column is measured deterministically (the version column no longer jumps between two widths) and the table width stays constant on expand/collapse
+- Reverts the 2026.06.18.2 narrow-window scroll behaviour: it fixed column overlap on very narrow windows but made the table jump width and flash a scrollbar on every expand/collapse, which was worse
+- The update-column "force update" truncation fix from 2026.06.18.1 is kept
+
 ###2026.06.18.4
 - Revert: roll back the 2026.06.18.3 change. 2026.06.18.2 already fixed the narrow-window column overlap (now verified) — the table scrolls horizontally with columns at full width. The .3 measurement change was redundant (and based on a mistaken test), so it's removed; the width-fix returns to the verified .2 behaviour
 
