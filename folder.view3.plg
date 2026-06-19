@@ -6,12 +6,16 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.19.2">
-<!ENTITY md5 "37259ab3edef6495b9d2b35c166683d1">
+<!ENTITY version "2026.06.19.3">
+<!ENTITY md5 "0ffc8f8aad7e42ad7a77d5e7cbe7d821">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.19.3
+- Fix: in Incognito mode, the container action popup no longer loses the icons on the "Project Page" and "More Info" items (they kept turning into a plain "WebUI" label) — the icon and label are preserved and only the link URL is hidden
+- Fix: on mobile, the advanced-view container popup no longer overflows off the right edge of the screen — the action and graph panes now stay within the viewport
 
 ###2026.06.19.2
 - Fix: expanding a Docker folder now scrolls the table to the right (like the native table) instead of squeezing the columns to the left; collapsed view stays fit to the window, and at narrow widths the table scrolls with no column overlap
