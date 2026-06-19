@@ -186,6 +186,21 @@ const createFolders = async () => {
     }}));
 
     try { fv3InstallDockerTableWidthFix(); } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
+    // The initial measurement above can run before container icons / live stats finish loading, so the
+    // cached snapshot may be slightly too wide (pushing Autostart/Uptime off-screen on the first
+    // expand). Re-measure once the content settles to refresh the cache — but ONLY while every folder
+    // is still collapsed, so it stays the stable all-collapsed reference (re-measuring with a folder
+    // open samples a different row set and would make later toggles shift the preview pills). Two
+    // staggered passes cover fast and slow page loads.
+    [1200, 3000].forEach(delay => setTimeout(() => {
+        try {
+            const tbl = document.querySelector('#docker_containers');
+            if (!tbl) return;
+            const anyOpen = Array.from(tbl.querySelectorAll('tr.folder .folder-dropdown'))
+                .some(d => d.getAttribute('active') === 'true');
+            if (!anyOpen) fv3ScheduleWidthFix();
+        } catch (e) { fv3DebugWarn('createFolders', 'settle re-measure failed:', e.message); }
+    }, delay));
     if (window.fv3Mark) window.fv3Mark('createFolders-end');
 
     globalFolders = foldersDone;
@@ -1323,7 +1338,16 @@ let _fv3LastAdvanced = $.cookie('docker_listview_mode') == 'advanced';
 document.addEventListener('click', () => {
     setTimeout(() => {
         const now = $.cookie('docker_listview_mode') == 'advanced';
-        if (now !== _fv3LastAdvanced) { _fv3LastAdvanced = now; fv3ScheduleWidthFix(); }
+        if (now !== _fv3LastAdvanced) {
+            _fv3LastAdvanced = now;
+            fv3ScheduleWidthFix();
+            // Unraid's listview()/readmore keep re-processing the cells for a few hundred ms after a
+            // view toggle. A re-measure during that window bakes transient middle-column widths
+            // (Volume/IP) that never settle back — so basic→advanced→basic ends up sized differently
+            // from a fresh basic load. Re-measure again once it's quiesced (settles by ~600ms) so the
+            // round-trip lands on the same sizes as a fresh load.
+            setTimeout(() => fv3ScheduleWidthFix(), 700);
+        }
     }, 100);
 }, true);
 
