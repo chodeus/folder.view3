@@ -6,12 +6,16 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.19.3">
-<!ENTITY md5 "0ffc8f8aad7e42ad7a77d5e7cbe7d821">
+<!ENTITY version "2026.06.19.4">
+<!ENTITY md5 "998af4953b2cbbc18f5a2c9e1abc7376">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.19.4
+- Fix: folder CPU% is now the same whether container stats arrive over the Unraid API (WebSocket) or the SSE fallback — the API path previously reported CPU far too high and pinned the folder CPU bar at 100% for any multi-core container, because only the SSE path divided by core count
+- Fix: the advanced-view popup CPU graph now uses the same normalization, so it matches the folder CPU readout on both transports
 
 ###2026.06.19.3
 - Fix: in Incognito mode, the container action popup no longer loses the icons on the "Project Page" and "More Info" items (they kept turning into a plain "WebUI" label) — the icon and label are preserved and only the link URL is hidden
