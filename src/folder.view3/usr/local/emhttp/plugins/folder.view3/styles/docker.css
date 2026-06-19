@@ -434,5 +434,8 @@ div.folder-preview-4 span.outer {
         border-top: none;
         border-radius: 0 0 4px 4px;
         padding: 8px;
+        /* width:100% + content-box + this padding/border would overflow the popup off-screen on
+           mobile — keep the padding inside the 100% width. */
+        box-sizing: border-box;
     }
 }

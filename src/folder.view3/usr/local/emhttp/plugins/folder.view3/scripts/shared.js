@@ -446,17 +446,22 @@ window.fv3Incognito = false;
             }
         }
 
+        var fv3LinkType = document.querySelector('#kvm_table') ? 'vm' : 'container';
         document.querySelectorAll('a[href*="://"]').forEach(function(el) {
             var href = el.getAttribute('href') || '';
             var text = el.textContent || '';
             if (el.closest('.fv3-incognito-skip')) return;
-            if (el.hasAttribute('data-fv3-real')) return;
+            if (el.hasAttribute('data-fv3-real-href')) return;
             for (var i = 0; i < knownNames.length; i++) {
                 if (href.indexOf(knownNames[i].toLowerCase()) !== -1 || (text && text.indexOf(knownNames[i]) !== -1)) {
-                    el.setAttribute('data-fv3-real', text);
+                    // Hide the URL (it leaks the container/image name) but PRESERVE the link's icon and
+                    // label: neutralise the href and scrub only the text nodes. A hostname-based WebUI
+                    // link loses the name; standard menu links like "Project Page" / "More Info" keep
+                    // their label and icon. Never use el.textContent = ... here — it deletes the <i>
+                    // icon child (the bug this replaces).
                     el.setAttribute('data-fv3-real-href', href);
-                    el.textContent = 'WebUI';
                     el.setAttribute('href', '#');
+                    scrubTextNodes(el, knownNames, fv3LinkType);
                     break;
                 }
             }
@@ -541,16 +546,17 @@ window.fv3Incognito = false;
         });
 
         tooltipEl.querySelectorAll('a[href*="://"]').forEach(function(el) {
-            if (el.hasAttribute('data-fv3-real')) return;
+            if (el.hasAttribute('data-fv3-real-href')) return;
             var href = el.getAttribute('href') || '';
             var text = el.textContent || '';
             for (var i = 0; i < names.length; i++) {
                 if (href.toLowerCase().indexOf(names[i].toLowerCase()) !== -1 ||
                     text.indexOf(names[i]) !== -1) {
-                    el.setAttribute('data-fv3-real', text);
+                    // Preserve icon + label; only hide the URL and scrub names from text (see the note
+                    // in fv3IncognitoApply). el.textContent = ... would delete the icon child.
                     el.setAttribute('data-fv3-real-href', href);
-                    el.textContent = 'WebUI';
                     el.setAttribute('href', '#');
+                    scrubTextNodes(el, names, 'container');
                     break;
                 }
             }
