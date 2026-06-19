@@ -6,12 +6,20 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.19.1">
-<!ENTITY md5 "cc858ec2fb9f6bb1de6a23234abc42d8">
+<!ENTITY version "2026.06.19.2">
+<!ENTITY md5 "37259ab3edef6495b9d2b35c166683d1">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.19.2
+- Fix: expanding a Docker folder now scrolls the table to the right (like the native table) instead of squeezing the columns to the left; collapsed view stays fit to the window, and at narrow widths the table scrolls with no column overlap
+- Fix: the Autostart and Uptime columns are no longer pushed off-screen on the first expand (then snapping back when you resize) — expanded column widths are now measured accurately
+- Fix: toggling Basic → Advanced → Basic returns the table to the same column sizes as a fresh page load
+- Fix: in Advanced view, expanding a folder no longer collapses the CPU/Memory column into Autostart — it keeps its own column
+- Fix: at browser zoom other than 100% (or display scaling), the table scrolls instead of cramming the Uptime column into the window
+- Fix: folder preview icons no longer shift when you expand or collapse other folders
 
 ###2026.06.19.1
 - Fix: the Docker table no longer shifts around when you toggle Basic/Advanced view and expand/collapse folders — the update column is measured deterministically (the version column no longer jumps between two widths) and the table width stays constant on expand/collapse
