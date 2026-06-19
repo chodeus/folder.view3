@@ -1211,7 +1211,7 @@ window.loadlist = () => {
 };
 
 // Folder stats aggregation
-const fv3UpdateFolderStats = (load, divideByCore) => {
+const fv3UpdateFolderStats = (load) => {
     const hostMemB = Math.max(0, ...Object.values(load || {}).map(c => memToB((c && c.mem ? c.mem : ['0B','0B'])[1])));
 
     for (const [id, value] of Object.entries(globalFolders)) {
@@ -1225,7 +1225,9 @@ const fv3UpdateFolderStats = (load, divideByCore) => {
             const containerShortId = cvalue.id;
             const curLoad = load[containerShortId] || { cpu: '0.00%', mem: ['0B', '0B'] };
             const cpuVal = typeof curLoad.cpu === 'number' ? curLoad.cpu : parseFloat(curLoad.cpu.replace('%', ''));
-            loadCpu += divideByCore ? cpuVal / cpus : cpuVal;
+            // Both transports deliver docker-native % (0..cpus*100): SSE from `docker stats {{.CPUPerc}}`,
+            // WS from the API's systeminformation cpuPercent. Normalize identically so they can't diverge.
+            loadCpu += cpuVal / cpus;
             loadMemB += memToB(curLoad.mem[0]);
             limits.push(memToB(curLoad.mem[1]));
         }
@@ -1264,7 +1266,7 @@ const fv3InitSSEStats = () => {
                 }
             });
 
-            fv3UpdateFolderStats(load, true);
+            fv3UpdateFolderStats(load);
 
             folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { load, source: 'sse' } }));
         });
@@ -1289,7 +1291,7 @@ fv3DetectApi().then(() => {
 
                 clearTimeout(fv3WsDebounceTimer);
                 fv3WsDebounceTimer = setTimeout(() => {
-                    fv3UpdateFolderStats(fv3WsLoad, false);
+                    fv3UpdateFolderStats(fv3WsLoad);
                 }, 200);
             },
             fv3InitSSEStats

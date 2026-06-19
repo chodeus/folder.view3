@@ -91,7 +91,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
         const detail = e.detail;
         if (detail.source !== 'ws' || !detail.stat || detail.stat.shortId !== ct.shortId) return;
         try {
-            let cpuVal = detail.stat.cpuPercent;
+            let cpuVal = detail.stat.cpuPercent / cpus;
             let memVal = memToB(detail.stat.mem[0]) / memToB(detail.stat.mem[1]) * 100;
             pushChartData(cpuVal, memVal);
         } catch (error) {
