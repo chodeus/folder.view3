@@ -8,12 +8,14 @@ if [[ "$(uname)" == "Darwin" ]]; then
     CP_PARENTS() {
         rsync -aR --files-from=<(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json" \)) . "$1/"
     }
+    MAKE_TAR() { COPYFILE_DISABLE=1 tar --uid 0 --gid 0 --uname root --gname root -cJf "$1" *; }
 else
     SED_I=(sed -i)
     MD5CMD() { md5sum "$1" | awk '{print $1}'; }
     CP_PARENTS() {
         cp --parents -f $(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json" \)) "$1/"
     }
+    MAKE_TAR() { tar --owner=0 --group=0 --no-xattrs -cJf "$1" *; }
 fi
 
 CWD=`pwd`
@@ -92,8 +94,7 @@ xattr -cr $tmpdir 2>/dev/null || true
 find $tmpdir -type f -exec touch {} +
 
 cd $tmpdir
-# Strip macOS extended attributes so Slackware's installpkg/upgradepkg works cleanly
-COPYFILE_DISABLE=1 tar --no-xattrs -cJf $filename * 2>/dev/null || COPYFILE_DISABLE=1 tar -cJf $filename *
+MAKE_TAR "$filename"
 
 cd $CWD
 
