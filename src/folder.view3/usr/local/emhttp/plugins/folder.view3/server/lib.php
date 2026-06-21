@@ -1192,15 +1192,38 @@
                 if (!empty($rawWebUiString)) {
                     if (strpos($rawWebUiString, '[IP]') === false && strpos($rawWebUiString, '[PORT:') === false) { $finalWebUi = $rawWebUiString; } 
                     else {
-                        $webUiIp = $host; 
-                        if ($currentNetworkMode === 'host') { $webUiIp = $host; } 
+                        $webUiIp = $host;
+                        if ($currentNetworkMode === 'host') { $webUiIp = $host; }
                         elseif ($currentNetworkDriver !== 'bridge' && $containerIpAddress) { $webUiIp = $containerIpAddress; }
-                        if (strpos($currentNetworkMode, 'container:') === 0 || $currentNetworkMode === 'none') { $finalWebUi = ''; } 
+
+                        // A container:xxx container shares another container's network namespace
+                        // (e.g. a VPN sidecar like Gluetun) and has no IP/ports of its own — the
+                        // ports are published by the parent. Resolve [IP]/[PORT:] against the
+                        // parent's host port bindings instead of giving up on the WebUI link.
+                        $portsForResolution = $ct['info']['Ports'];
+                        if (strpos($currentNetworkMode, 'container:') === 0) {
+                            $webUiIp = $host;
+                            $portsForResolution = [];
+                            $parentRef = substr($currentNetworkMode, strlen('container:'));
+                            $parentDetails = $dockerClient->getContainerDetails($parentRef);
+                            $parentBindings = $parentDetails['HostConfig']['PortBindings'] ?? [];
+                            if (is_array($parentBindings)) {
+                                foreach ($parentBindings as $containerPortProtocol => $hostBindings) {
+                                    if (is_array($hostBindings) && !empty($hostBindings)) {
+                                        list($pPriv) = explode('/', $containerPortProtocol);
+                                        $portsForResolution[] = ['PrivatePort' => $pPriv, 'PublicPort' => $hostBindings[0]['HostPort'] ?? null, 'NAT' => true];
+                                    }
+                                }
+                            }
+                            fv3_debug_log("  $containerName: container: mode, parent '$parentRef' bindings: " . json_encode($portsForResolution));
+                        }
+
+                        if ($currentNetworkMode === 'none') { $finalWebUi = ''; }
                         else {
                             $tempWebUi = str_replace("[IP]", $webUiIp ?: '', $rawWebUiString);
                             if (preg_match("%\[PORT:(\d+)\]%", $tempWebUi, $matches)) {
-                                $internalPortFromTemplate = $matches[1]; $mappedPublicPort = $internalPortFromTemplate; 
-                                foreach ($ct['info']['Ports'] as $p) {
+                                $internalPortFromTemplate = $matches[1]; $mappedPublicPort = $internalPortFromTemplate;
+                                foreach ($portsForResolution as $p) {
                                     if (isset($p['PrivatePort']) && $p['PrivatePort'] == $internalPortFromTemplate) {
                                         $isNatEquivalent = (($p['NAT'] ?? false) === true);
                                         $mappedPublicPort = ($isNatEquivalent && !empty($p['PublicPort'])) ? $p['PublicPort'] : $p['PrivatePort'];
