@@ -6,12 +6,15 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.06.19.4">
-<!ENTITY md5 "998af4953b2cbbc18f5a2c9e1abc7376">
+<!ENTITY version "2026.06.21.1">
+<!ENTITY md5 "39ab4b2aca87498a76228dd35a6c37f3">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+###2026.06.21.1
+- Fix: containers on "container:" network mode (sharing another container's network, e.g. routed through a Gluetun VPN sidecar) now show their WebUI globe icon again — the [IP]/[PORT:] link is resolved against the parent container's published ports instead of being blanked. "none" network mode still has no WebUI.
 
 ###2026.06.19.4
 - Fix: folder CPU% is now the same whether container stats arrive over the Unraid API (WebSocket) or the SSE fallback — the API path previously reported CPU far too high and pinned the folder CPU bar at 100% for any multi-core container, because only the SSE path divided by core count
