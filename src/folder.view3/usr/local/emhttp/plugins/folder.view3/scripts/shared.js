@@ -3,17 +3,135 @@
 // Debug system
 window.FV3_DEBUG = (() => { try { return localStorage.getItem('fv3-debug') === 'true'; } catch (e) { return false; } })();
 
-window.fv3Debug = FV3_DEBUG ? function(context) {
-    console.log.apply(console, ['[FV3] ' + context + ':'].concat(Array.prototype.slice.call(arguments, 1)));
-} : function() {};
+// Timestamped ring buffer. A single post-hoc snapshot can't reveal a load-order race
+// (e.g. the column width-fix measuring before remote icons load); the ordered timeline can.
+// Records only while debug mode is armed, and starts at script init so the early render
+// sequence is retained even when a capture is triggered late. Existing fv3Debug seam calls
+// (createFolders entry/exit, WidthFix, etc.) flow through here automatically.
+window.FV3_TRACE_MAX = 600;
+window.fv3TraceBuffer = [];
+window.fv3Trace = function(level, context) {
+    if (!window.FV3_DEBUG) return;
+    try {
+        var rest = Array.prototype.slice.call(arguments, 2);
+        window.fv3TraceBuffer.push({
+            t: Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10,
+            level: level,
+            ctx: context,
+            msg: rest.map(function(a) {
+                if (a instanceof Error) return a.message;
+                if (a && typeof a === 'object') { try { return JSON.stringify(a); } catch (_) { return String(a); } }
+                return String(a);
+            }).join(' ').slice(0, 500)
+        });
+        if (window.fv3TraceBuffer.length > window.FV3_TRACE_MAX) window.fv3TraceBuffer.shift();
+    } catch (_) {}
+};
 
-window.fv3DebugWarn = FV3_DEBUG ? function(context) {
-    console.warn.apply(console, ['[FV3] ' + context + ':'].concat(Array.prototype.slice.call(arguments, 1)));
-} : function() {};
+window.fv3MakeLogger = function(level, sink) {
+    return function(context) {
+        var rest = Array.prototype.slice.call(arguments, 1);
+        window.fv3Trace.apply(null, [level, context].concat(rest));
+        sink.apply(console, ['[FV3] ' + context + ':'].concat(rest));
+    };
+};
+
+window.fv3Debug = FV3_DEBUG ? fv3MakeLogger('log', console.log) : function() {};
+window.fv3DebugWarn = FV3_DEBUG ? fv3MakeLogger('warn', console.warn) : function() {};
 
 window.fv3Error = function(context, error) {
+    window.fv3Trace('error', context, error);
     console.error('[FV3 ERROR] ' + context + ':', error);
 };
+
+// Eviction-proof render milestones — keyed by name so verbose per-container trace spam can
+// never push out the high-level page-load timeline (folderReq resolved, createFolders
+// start/end, width-fix runs, fonts ready, first stat). Each entry keeps {first,last,count}
+// in performance.now() ms, so repeated marks (e.g. width-fix on resize) stay compact.
+window.fv3Milestones = {};
+window.fv3Mark = function(name) {
+    if (!window.FV3_DEBUG) return;
+    var t = Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10;
+    var m = window.fv3Milestones[name];
+    if (!m) window.fv3Milestones[name] = { first: t, last: t, count: 1 };
+    else { m.last = t; m.count++; }
+};
+// Per-preview-icon load timestamps — when each icon actually finished, so icon-finish vs
+// width-fix-run ordering (the decisive load-order race signal) is directly recoverable.
+window.fv3IconLoads = [];
+window.fv3RecordIconLoads = function(root) {
+    if (!window.FV3_DEBUG || !root) return;
+    root.querySelectorAll('img').forEach(function(img) {
+        if (img._fv3LoadTracked) return;
+        img._fv3LoadTracked = true;
+        var src = img.currentSrc || img.src || '';
+        var rec = function(ev) {
+            if (window.fv3IconLoads.length > 200) return;
+            window.fv3IconLoads.push({
+                src: src.slice(0, 120),
+                at: Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10,
+                event: ev,
+                cached: img.complete && img.naturalWidth > 0 && ev === 'attach'
+            });
+        };
+        if (img.complete) rec('attach');
+        else {
+            img.addEventListener('load', function() { rec('load'); }, { once: true });
+            img.addEventListener('error', function() { rec('error'); }, { once: true });
+        }
+    });
+};
+
+// Record when web fonts finish loading, so the trace can show whether they settled before
+// or after the column width-fix ran (a late font swap reflows column widths after they lock).
+try {
+    if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
+        document.fonts.ready.then(function() {
+            window.fv3FontsReadyAt = Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10;
+            window.fv3Mark('fonts-ready');
+            window.fv3Trace('log', 'fonts', 'ready', window.fv3FontsReadyAt);
+        });
+    }
+} catch (_) {}
+
+// Capture uncaught page errors into the trace buffer — a JS error during load (from FV3,
+// Unraid, or another plugin) can abort table setup and leave the layout half-built. Only
+// the already-armed FV3_DEBUG gates whether fv3Trace records; the listeners are cheap.
+try {
+    window.addEventListener('error', function(e) {
+        var msg = (e && e.message) || 'error';
+        // Benign: Chrome fires this when a ResizeObserver callback triggers a resize within the
+        // same delivery cycle. Our fluid pill / preview-expand / clip observers do exactly that
+        // while the layout settles under async icon loads — it is self-limiting (not an
+        // exception) and converges in a few hundred ms. Recording each one as an error floods
+        // the trace and masks real failures, so count it for visibility instead of logging it.
+        if (/ResizeObserver loop/i.test(msg)) { window._fv3ROLoopCount = (window._fv3ROLoopCount || 0) + 1; return; }
+        window.fv3Trace('error', 'window.onerror', msg, (e && e.filename ? e.filename.split('/').pop() : '') + ':' + (e && e.lineno));
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+        var r = e && e.reason;
+        window.fv3Trace('error', 'unhandledrejection', (r && r.message) || String(r));
+    });
+} catch (_) {}
+
+// Tap console.warn/error so NON-fatal messages logged by Unraid or another plugin (not just
+// uncaught exceptions) land in the trace buffer — these can reveal why the layout half-builds
+// on one box but not another. Only installed when debug is already armed, so production console
+// is left completely untouched; the original console function is always still called.
+if (window.FV3_DEBUG) {
+    try {
+        ['warn', 'error'].forEach(function(level) {
+            var orig = console[level];
+            if (typeof orig !== 'function' || orig._fv3Wrapped) return;
+            var wrapped = function() {
+                try { window.fv3Trace.apply(null, [level, 'console.' + level].concat(Array.prototype.slice.call(arguments))); } catch (_) {}
+                return orig.apply(console, arguments);
+            };
+            wrapped._fv3Wrapped = true;
+            console[level] = wrapped;
+        });
+    } catch (_) {}
+}
 
 (function() {
     var buffer = [];
@@ -26,16 +144,70 @@ window.fv3Error = function(context, error) {
             var newState = !FV3_DEBUG;
             localStorage.setItem('fv3-debug', newState);
             window.FV3_DEBUG = newState;
-            window.fv3Debug = newState
-                ? function(ctx) { console.log.apply(console, ['[FV3] ' + ctx + ':'].concat(Array.prototype.slice.call(arguments, 1))); }
-                : function() {};
-            window.fv3DebugWarn = newState
-                ? function(ctx) { console.warn.apply(console, ['[FV3] ' + ctx + ':'].concat(Array.prototype.slice.call(arguments, 1))); }
-                : function() {};
-            console.log('[FV3] Debug mode ' + (newState ? 'ON' : 'OFF') + '. Reload page for full effect.');
+            window.fv3Debug = newState ? fv3MakeLogger('log', console.log) : function() {};
+            window.fv3DebugWarn = newState ? fv3MakeLogger('warn', console.warn) : function() {};
+            if (window.fv3SetDebugPill) window.fv3SetDebugPill(newState);
+            console.log('[FV3] Debug mode ' + (newState ? 'ON' : 'OFF') + '. Reload page for the full render timeline.');
         }
     });
 })();
+
+// Capture pill — only exists in the DOM while debug mode is armed (zero footprint for
+// normal users). Centered so it can't be missed; draggable so it can be moved off the data;
+// click downloads a snapshot of the CURRENT rendered state via fv3CaptureDebug. Loaded only
+// on the Docker/VM/Dashboard tabs (the pages that include shared.js).
+window.fv3SetDebugPill = function(on) {
+    var id = 'fv3-debug-pill';
+    var existing = document.getElementById(id);
+    if (!on) { if (existing) existing.remove(); return; }
+    if (existing || !document.body) return;
+    var pill = document.createElement('div');
+    var LABEL = '↓ FV3 Debug — capture';
+    pill.id = id;
+    pill.textContent = LABEL;
+    pill.title = 'FolderView3 debug. Drag to move. Click to download a snapshot of the current rendered state.';
+    pill.style.cssText = [
+        'position:fixed', 'top:50%', 'left:50%', 'transform:translate(-50%,-50%)',
+        'z-index:2147483647', 'padding:10px 16px', 'border-radius:20px',
+        'background:rgba(255,90,0,0.95)', 'color:#fff', 'font:600 13px/1.2 sans-serif',
+        'box-shadow:0 2px 12px rgba(0,0,0,0.45)', 'cursor:grab', 'user-select:none',
+        'white-space:nowrap', 'border:1px solid rgba(255,255,255,0.55)'
+    ].join(';');
+    var moved = false;
+    pill.addEventListener('mousedown', function(e) {
+        moved = false;
+        var sx = e.clientX, sy = e.clientY;
+        var r = pill.getBoundingClientRect(), ox = r.left, oy = r.top;
+        pill.style.transform = 'none'; pill.style.left = ox + 'px'; pill.style.top = oy + 'px';
+        pill.style.cursor = 'grabbing'; e.preventDefault();
+        function mv(ev) {
+            if (Math.abs(ev.clientX - sx) > 4 || Math.abs(ev.clientY - sy) > 4) moved = true;
+            pill.style.left = (ox + ev.clientX - sx) + 'px';
+            pill.style.top = (oy + ev.clientY - sy) + 'px';
+        }
+        function up() { pill.style.cursor = 'grab'; document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); }
+        document.addEventListener('mousemove', mv);
+        document.addEventListener('mouseup', up);
+    });
+    pill.addEventListener('click', function() {
+        if (moved) { moved = false; return; }
+        try {
+            window.fv3CaptureDebug(window.fv3DebugSource);
+            pill.textContent = '✓ Saved — capture again';
+        } catch (e) {
+            pill.textContent = '✕ Capture failed';
+            fv3Error('pill', e);
+        }
+        setTimeout(function() { pill.textContent = LABEL; }, 1800);
+    });
+    document.body.appendChild(pill);
+};
+
+// If debug was already armed before this page loaded, show the pill once the body exists.
+if (window.FV3_DEBUG) {
+    if (document.body) window.fv3SetDebugPill(true);
+    else document.addEventListener('DOMContentLoaded', function() { window.fv3SetDebugPill(true); });
+}
 
 if (window.fv3UnraidLegacy) fv3Debug('Init', 'Unraid legacy mode (pre-7.2)');
 
@@ -274,17 +446,22 @@ window.fv3Incognito = false;
             }
         }
 
+        var fv3LinkType = document.querySelector('#kvm_table') ? 'vm' : 'container';
         document.querySelectorAll('a[href*="://"]').forEach(function(el) {
             var href = el.getAttribute('href') || '';
             var text = el.textContent || '';
             if (el.closest('.fv3-incognito-skip')) return;
-            if (el.hasAttribute('data-fv3-real')) return;
+            if (el.hasAttribute('data-fv3-real-href')) return;
             for (var i = 0; i < knownNames.length; i++) {
                 if (href.indexOf(knownNames[i].toLowerCase()) !== -1 || (text && text.indexOf(knownNames[i]) !== -1)) {
-                    el.setAttribute('data-fv3-real', text);
+                    // Hide the URL (it leaks the container/image name) but PRESERVE the link's icon and
+                    // label: neutralise the href and scrub only the text nodes. A hostname-based WebUI
+                    // link loses the name; standard menu links like "Project Page" / "More Info" keep
+                    // their label and icon. Never use el.textContent = ... here — it deletes the <i>
+                    // icon child (the bug this replaces).
                     el.setAttribute('data-fv3-real-href', href);
-                    el.textContent = 'WebUI';
                     el.setAttribute('href', '#');
+                    scrubTextNodes(el, knownNames, fv3LinkType);
                     break;
                 }
             }
@@ -369,16 +546,17 @@ window.fv3Incognito = false;
         });
 
         tooltipEl.querySelectorAll('a[href*="://"]').forEach(function(el) {
-            if (el.hasAttribute('data-fv3-real')) return;
+            if (el.hasAttribute('data-fv3-real-href')) return;
             var href = el.getAttribute('href') || '';
             var text = el.textContent || '';
             for (var i = 0; i < names.length; i++) {
                 if (href.toLowerCase().indexOf(names[i].toLowerCase()) !== -1 ||
                     text.indexOf(names[i]) !== -1) {
-                    el.setAttribute('data-fv3-real', text);
+                    // Preserve icon + label; only hide the URL and scrub names from text (see the note
+                    // in fv3IncognitoApply). el.textContent = ... would delete the icon child.
                     el.setAttribute('data-fv3-real-href', href);
-                    el.textContent = 'WebUI';
                     el.setAttribute('href', '#');
+                    scrubTextNodes(el, names, 'container');
                     break;
                 }
             }
@@ -571,22 +749,52 @@ window.fv3DropDownButton = (eventPrefix, globalFolders, id, postCallback) => {
     if (postCallback) postCallback();
 };
 
+// Allowlist sanitizer: the debug JSON only needs the fields the renderer actually
+// consumes. Dumping the full Docker inspect blob leaked host volume paths (Binds/Mounts),
+// ZFS mountpoints, log/template paths, and bloated the file ~10x. Keep an explicit allowlist.
+// NOTE: this output feeds the debug JSON only, never rendering — dropping fields is safe.
 window.fv3SanitizeContainersInfo = (containersInfo) => {
     var redactIP = (str) => typeof str === 'string' ? str.replace(/\b(\d{1,3}\.){3}\d{1,3}\b/g, 'x.x.x.x') : str;
-    var clone = JSON.parse(JSON.stringify(containersInfo));
-    Object.values(clone).forEach(ct => {
-        delete ct.NetworkSettings;
-        if (ct.info) {
-            delete ct.info.Config?.Env;
-            delete ct.info.NetworkSettings;
-            delete ct.info.Ports;
-            if (ct.info.State) {
-                ct.info.State.WebUi = redactIP(ct.info.State.WebUi);
-                ct.info.State.TSWebUi = redactIP(ct.info.State.TSWebUi);
-            }
-        }
-    });
-    return clone;
+    var out = {};
+    try {
+        Object.keys(containersInfo || {}).forEach(key => {
+            var ct = containersInfo[key];
+            if (!ct || typeof ct !== 'object') { out[key] = ct; return; }
+            var info = ct.info || {};
+            var st = info.State || {};
+            var labels = ct.Labels || {};
+            out[key] = {
+                shortId: ct.shortId,
+                shortImageId: ct.shortImageId,
+                Image: ct.Image,
+                State: ct.State,
+                Status: ct.Status,
+                Names: ct.Names,
+                Labels: {
+                    'folder.view3': labels['folder.view3'],
+                    'net.unraid.docker.icon': labels['net.unraid.docker.icon']
+                },
+                Health: ct.Health ? { Status: ct.Health.Status } : undefined,
+                info: {
+                    Name: info.Name,
+                    Shell: info.Shell,
+                    State: {
+                        Status: st.Status,
+                        Running: st.Running,
+                        Paused: st.Paused,
+                        Autostart: st.Autostart,
+                        Updated: st.Updated,
+                        manager: st.manager,
+                        WebUi: redactIP(st.WebUi),
+                        TSWebUi: redactIP(st.TSWebUi)
+                    }
+                }
+            };
+        });
+    } catch (e) {
+        return { _sanitizeError: String(e) };
+    }
+    return out;
 };
 
 window.fv3CollectEnv = () => {
@@ -631,6 +839,322 @@ window.fv3CollectEnv = () => {
             .map(l => l.getAttribute('href'))
             .filter(h => h && h.includes('/folder.view3/'));
     };
+    // Foreign stylesheets (a theme/custom plugin restyling the Docker table is a prime
+    // layout-bug source and was previously uncaptured — only foreign scripts were).
+    const collectForeignStylesheets = () => {
+        return [...document.querySelectorAll('link[rel="stylesheet"]')]
+            .map(l => l.getAttribute('href'))
+            .filter(h => h && !h.includes('/folder.view3/'))
+            .slice(0, 20);
+    };
+    // Deduped set of plugin dirs touching this page, from every <script src> and <link href>.
+    // foreignPluginScripts is a capped raw list whose limit can be eaten by Unraid's own ~20 Vue
+    // component scripts, hiding a late third-party script; this name-set can't be truncated that way,
+    // so it gives a complete at-a-glance "what plugins are on this page" view.
+    const collectActivePlugins = () => {
+        const set = new Set();
+        document.querySelectorAll('script[src], link[href]').forEach(el => {
+            const u = el.getAttribute('src') || el.getAttribute('href') || '';
+            const m = u.match(/\/plugins\/([^/?#]+)/);
+            if (m) set.add(m[1]);
+        });
+        return [...set].sort();
+    };
+    // Per-column rendered geometry for whichever container tables exist on this page
+    // (Docker tab = #docker_containers, VM tab = #kvm_table). This is what the width-fix
+    // keys off and the most likely place a non-standard layout / sub-pixel rounding goes wrong.
+    const tableLayoutFor = (tbl) => {
+        const ths = [...tbl.querySelectorAll('thead > tr > th')];
+        const styleEl = document.getElementById('fv3-width-style');
+        return {
+            tableLayout: tbl.style.tableLayout || getComputedStyle(tbl).tableLayout,
+            widthStylePresent: !!styleEl,
+            widthStyle: styleEl ? (styleEl.textContent || '').slice(0, 1500) : null,
+            columns: ths.map((h, i) => ({
+                i, cls: h.className || '', label: (h.textContent || '').trim().slice(0, 24),
+                rectW: Math.round(h.getBoundingClientRect().width * 10) / 10,
+                styleW: h.style.width || '', hidden: h.offsetParent === null && h.getBoundingClientRect().width === 0
+            }))
+        };
+    };
+    const collectTableLayout = () => {
+        const out = {};
+        ['docker_containers', 'kvm_table'].forEach(id => {
+            const tbl = document.getElementById(id);
+            if (tbl) out[id] = tableLayoutFor(tbl);
+        });
+        // widthFix snapshot is docker-only; include once if present
+        if (typeof window.fv3GetWidthState === 'function') out.widthState = window.fv3GetWidthState();
+        return Object.keys(out).length ? out : null;
+    };
+    // Computed facts about one .folder-preview container — shared by every page type.
+    const previewInfo = (prev) => {
+        const cs = getComputedStyle(prev);
+        return {
+            offsetWidth: prev.offsetWidth, scrollWidth: prev.scrollWidth,
+            justifyContent: cs.justifyContent, display: cs.display, flexWrap: cs.flexWrap,
+            overflow: cs.overflow, className: prev.className,
+            children: prev.children.length,
+            wrappers: prev.querySelectorAll('.folder-preview-wrapper').length,
+            dividers: prev.querySelectorAll('.folder-preview-divider').length
+        };
+    };
+    // Per-folder manifest across ALL rendered folders, table-based (Docker/VM tr.folder)
+    // and Dashboard showcase (.folder-showcase-outer). Captures preview cell placement,
+    // the overflow mode actually applied (in className), and child/divider counts — so
+    // "preview pushed right / clipped / wrong-content" is diagnosable on any page, for
+    // every folder, not just the first one.
+    // Every child cell of a row — index/class/colSpan/position/width/display. This is what
+    // reveals a structural mismatch (e.g. the preview colspan cell landing far right because
+    // a sibling cell isn't conforming to the locked column grid).
+    const cellInfo = (c, i) => {
+        const r = c.getBoundingClientRect();
+        return { i, tag: c.tagName, cls: (c.className || '').slice(0, 30), colSpan: c.colSpan,
+            left: Math.round(r.left), w: Math.round(r.width), disp: getComputedStyle(c).display };
+    };
+    const collectFolders = () => {
+        const out = [];
+        const rows = [...document.querySelectorAll('tr.folder')];
+        rows.forEach((row, idx) => {
+            const prev = row.querySelector('.folder-preview');
+            const cell = prev ? [...row.children].find(td => td.contains(prev)) : null;
+            const nameEl = row.querySelector('.folder-appname');
+            const rec = {
+                kind: 'row',
+                id: (row.className.match(/folder-id-(\S+)/) || [])[1] || null,
+                name: nameEl ? nameEl.textContent.trim().slice(0, 40) : null,
+                cell: cell ? { colSpan: cell.colSpan, offsetLeft: cell.offsetLeft, offsetWidth: cell.offsetWidth } : null,
+                cells: [...row.children].map(cellInfo),
+                storageRows: row.querySelectorAll('.folder-storage tr').length,
+                preview: prev ? previewInfo(prev) : null
+            };
+            if (idx === 0) {
+                try {
+                    const clone = row.cloneNode(true);
+                    clone.querySelectorAll('.folder-storage').forEach(s => { s.innerHTML = ''; });
+                    rec.skeletonHTML = clone.outerHTML.slice(0, 2500);
+                    const st = row.querySelector('.folder-storage tr');
+                    if (st) rec.firstStorageRowCells = [...st.children].map(cellInfo);
+                } catch (_) {}
+            }
+            out.push(rec);
+        });
+        document.querySelectorAll('.folder-showcase-outer').forEach(box => {
+            const prev = box.querySelector('.folder-preview');
+            const nameEl = box.querySelector('.folder-appname, .folder-name');
+            out.push({
+                kind: 'showcase',
+                name: nameEl ? nameEl.textContent.trim().slice(0, 40) : null,
+                expanded: box.getAttribute('expanded'),
+                offsetLeft: box.offsetLeft, offsetWidth: box.offsetWidth,
+                preview: prev ? previewInfo(prev) : null
+            });
+        });
+        return out;
+    };
+    // Browser-divergence signals — to settle whether a layout bug is Chrome-vs-Firefox.
+    // Late SVG/icon layout (Gecko resolves intrinsic size later) widens the measure-before-load
+    // race window; fractional DPR + scrollbar gutter change the width math between engines.
+    const collectRenderSignals = () => {
+        const folder = document.querySelector('#docker_containers tr.folder, #kvm_table tr.folder, .folder-showcase-outer');
+        const icons = folder
+            ? [...folder.querySelectorAll('img')].slice(0, 12).map(img => ({
+                complete: img.complete, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+                rectW: Math.round(img.getBoundingClientRect().width * 10) / 10,
+                isSvg: /\.svg(\?|$)/i.test(img.currentSrc || img.src || '')
+            }))
+            : [];
+        const tbl = document.getElementById('docker_containers') || document.getElementById('kvm_table');
+        const parentW = tbl && tbl.parentElement ? tbl.parentElement.clientWidth : null;
+        let fonts = null;
+        try { fonts = { status: document.fonts && document.fonts.status, ready: !!window.fv3FontsReadyAt, readyAt: window.fv3FontsReadyAt || null }; } catch (_) {}
+        let stats = null;
+        try {
+            stats = Object.assign({}, window.fv3StatsState, {
+                apiAvailable: window.fv3ApiAvailable,
+                cpuCores: window.fv3CpuCores,
+                wsReadyState: window.fv3StatsConnection ? window.fv3StatsConnection.readyState : null,
+                listeners: Array.isArray(window.fv3StatsCallbacks) ? window.fv3StatsCallbacks.length : null
+            });
+        } catch (_) {}
+        return {
+            fonts,
+            stats,
+            icons,
+            scrollbarGutter: (parentW != null) ? (window.innerWidth - parentW) : null,
+            docClientWidth: document.documentElement.clientWidth,
+            outerWidth: window.outerWidth,
+            roLoopSettles: window._fv3ROLoopCount || 0,
+            widthFixDiff: (typeof window.fv3WidthFixDiff === 'function') ? window.fv3WidthFixDiff() : null
+        };
+    };
+    // Browser-measured load timing — navigation milestones + per-resource network timings for
+    // the plugin's own assets and the preview-icon hosts. Lets you compare "when did each icon
+    // finish downloading" against the width-fix run times in env.milestones (the race signal).
+    const collectPerf = () => {
+        const out = { navigation: null, resources: [] };
+        try {
+            const nav = performance.getEntriesByType('navigation')[0];
+            if (nav) out.navigation = {
+                type: nav.type,
+                responseStart: Math.round(nav.responseStart),
+                domContentLoaded: Math.round(nav.domContentLoadedEventEnd),
+                loadEventEnd: Math.round(nav.loadEventEnd),
+                duration: Math.round(nav.duration)
+            };
+            const want = /folder\.view3|githubusercontent|hotio\.dev|jsdelivr|lscr\.io|ghcr\.io|notifiarr|\.png|\.svg/i;
+            out.resources = performance.getEntriesByType('resource')
+                .filter(r => want.test(r.name))
+                .slice(-80)
+                .map(r => ({
+                    name: r.name.replace(/^https?:\/\//, '').slice(0, 90),
+                    type: r.initiatorType,
+                    start: Math.round(r.startTime),
+                    end: Math.round(r.responseEnd),
+                    dur: Math.round(r.duration),
+                    size: r.transferSize || 0,
+                    // HTTP status (modern browsers) — flags a 404/500 on a dependency the size/timing
+                    // fields alone can't reveal; null where the browser doesn't expose it.
+                    status: (typeof r.responseStatus === 'number') ? r.responseStatus : null
+                }));
+        } catch (_) {}
+        return out;
+    };
+    // Table + ancestor widths — to spot a container/table forcing an unexpected width, or a
+    // duplicate/nested #docker_containers table that the folder rows might land in.
+    const collectTableGeom = () => {
+        const t = document.getElementById('docker_containers');
+        if (!t) return null;
+        const cs = getComputedStyle(t);
+        const chain = [];
+        let el = t;
+        for (let i = 0; i < 5 && el; i++) {
+            const r = el.getBoundingClientRect();
+            chain.push({
+                tag: el.tagName, id: el.id || '', cls: (el.className || '').slice(0, 30),
+                clientW: el.clientWidth, scrollW: el.scrollWidth,
+                rectW: +r.width.toFixed(2),
+                overflowX: getComputedStyle(el).overflowX,
+                // Firefox-only: how far this element can scroll horizontally (>0 => a scrollbar)
+                scrollLeftMax: (typeof el.scrollLeftMax === 'number') ? el.scrollLeftMax : null,
+                xOverflow: +(r.width - el.clientWidth).toFixed(2)
+            });
+            el = el.parentElement;
+        }
+        // The horizontal scrollbar is a SUB-PIXEL overflow Firefox renders and Chrome discards:
+        // the table's fractional rendered width vs its scroll container's integer clientWidth, and
+        // the th-width total the width-fix pins. Rounded width fields above hide it — these don't.
+        const ths = [...t.querySelectorAll('thead > tr > th')];
+        const thSum = ths.reduce((s, th) => s + th.getBoundingClientRect().width, 0);
+        const parent = t.parentElement;
+        const tableRectW = t.getBoundingClientRect().width;
+        const overflow = parent ? {
+            tableRectW: +tableRectW.toFixed(2),
+            containerClientW: parent.clientWidth,
+            containerScrollW: parent.scrollWidth,
+            containerScrollLeftMax: (typeof parent.scrollLeftMax === 'number') ? parent.scrollLeftMax : null,
+            overflowPx: +(parent.scrollWidth - parent.clientWidth).toFixed(2),
+            subPixelOverflowPx: +(tableRectW - parent.clientWidth).toFixed(2),
+            thSum: +thSum.toFixed(2),
+            thSumVsClient: +(thSum - parent.clientWidth).toFixed(2)
+        } : null;
+        // Per-cell overflow scan — names exactly which cell's content/padding exceeds its column
+        // (scrollWidth > clientWidth). This is the phantom-scrollbar / preview-collapse culprit
+        // finder; reports padding + box-sizing so a zero-width-column padding leak is self-evident.
+        const cellOverflows = [];
+        const scanRows = [];
+        const headRow = t.querySelector('thead > tr'); if (headRow) scanRows.push(['thead', headRow]);
+        const folderRow = t.querySelector('tbody > tr.folder'); if (folderRow) scanRows.push(['folder', folderRow]);
+        const ctRow = t.querySelector('tbody > tr.sortable:not(.folder)'); if (ctRow) scanRows.push(['container', ctRow]);
+        scanRows.forEach(([kind, row]) => {
+            [...row.cells].forEach(cell => {
+                const over = cell.scrollWidth - cell.clientWidth;
+                if (over > 0.5) {
+                    const ccs = getComputedStyle(cell);
+                    cellOverflows.push({
+                        row: kind, idx: cell.cellIndex, colSpan: cell.colSpan,
+                        cls: (cell.className || '').slice(0, 24),
+                        sw: cell.scrollWidth, cw: cell.clientWidth, over: +over.toFixed(1),
+                        padL: ccs.paddingLeft, padR: ccs.paddingRight, boxSizing: ccs.boxSizing,
+                        // overflowX != visible => the content is CLIPPED and can't leak into the
+                        // table's scrollWidth (e.g. the zeroed Uptime header) — not a live leak.
+                        overflowX: ccs.overflowX, clipped: ccs.overflowX !== 'visible'
+                    });
+                }
+            });
+        });
+        return {
+            count: document.querySelectorAll('#docker_containers').length,
+            nestedTables: t.querySelectorAll('table').length,
+            tableLayout: cs.tableLayout, width: cs.width, minWidth: cs.minWidth,
+            offsetWidth: t.offsetWidth, clientWidth: t.clientWidth, chain, overflow,
+            cellOverflows: cellOverflows.slice(0, 16)
+        };
+    };
+    // Self-test the colspan-preview fix against THIS page: transiently pin the folder preview cell
+    // to the sum of the columns it spans, measure the preview before/after, then restore. On a
+    // broken capture this shows previewBefore≈245 -> previewAfterPin≈full-width, proving the fix
+    // from the affected user's own machine without anyone reproducing it. Read-only after restore.
+    const collectColspanSelfTest = () => {
+        try {
+            const tbl = document.getElementById('docker_containers');
+            const row = tbl && tbl.querySelector('tbody > tr.folder');
+            if (!row) return null;
+            const ths = [...tbl.querySelectorAll('thead > tr > th')];
+            let idx = 0, target = null, spanStart = 0, span = 0;
+            for (const cell of row.cells) {
+                const csn = cell.colSpan || 1;
+                if (csn >= 5 && !target) { target = cell; spanStart = idx; span = csn; }
+                idx += csn;
+            }
+            if (!target) return null;
+            const preview = target.querySelector('.folder-preview');
+            const previewBefore = preview ? +preview.getBoundingClientRect().width.toFixed(1) : null;
+            const cellBefore = +target.getBoundingClientRect().width.toFixed(1);
+            let spannedThSum = 0;
+            for (let k = spanStart; k < spanStart + span && k < ths.length; k++) spannedThSum += ths[k].getBoundingClientRect().width;
+            spannedThSum = +spannedThSum.toFixed(1);
+            const prevInline = target.style.width;
+            target.style.width = Math.round(spannedThSum) + 'px';
+            void target.getBoundingClientRect();
+            const cellAfterPin = +target.getBoundingClientRect().width.toFixed(1);
+            const previewAfterPin = preview ? +preview.getBoundingClientRect().width.toFixed(1) : null;
+            target.style.width = prevInline;
+            return {
+                spannedThSum, cellBefore, cellAfterPin, previewBefore, previewAfterPin,
+                collapsed: previewBefore != null && spannedThSum > 0 && previewBefore < spannedThSum * 0.6,
+                fixWouldHelp: previewBefore != null && previewAfterPin != null && (previewAfterPin - previewBefore) > 20
+            };
+        } catch (e) { return { error: String(e) }; }
+    };
+    // Foreign inline <style> blocks (not FV3's own) that touch the docker table / layout / preview —
+    // collectForeignStylesheets only sees <link>s, so an inline community-CSS override was invisible.
+    const collectForeignInlineStyles = () => {
+        // Require a docker-table-specific selector; a bare `width:`/`nth-child` matched unrelated
+        // libraries (Vaul drawer, readmore.js) and produced misleading "touchesTable" noise.
+        const re = /docker_containers|table-layout|folder-preview|\.folder\b|colspan/i;
+        return [...document.querySelectorAll('style')]
+            .filter(s => !(s.id && s.id.indexOf('fv3-') === 0) && !(typeof s.className === 'string' && s.className.indexOf('fv3-') === 0))
+            .map(s => {
+                const txt = s.textContent || '';
+                const hit = re.test(txt);
+                return { id: s.id || '', len: txt.length, touchesTable: hit, snippet: hit ? txt.replace(/\s+/g, ' ').slice(0, 300) : '' };
+            })
+            .filter(x => x.touchesTable)
+            .slice(0, 8);
+    };
+    // Expected globals — a failed include leaves one undefined; a missing dependency is otherwise
+    // only inferable. Records presence + version where the library exposes one.
+    const collectGlobals = () => {
+        const g = {};
+        try { g.jQuery = (typeof window.jQuery !== 'undefined') ? ((window.jQuery.fn && window.jQuery.fn.jquery) || true) : false; } catch (_) { g.jQuery = false; }
+        try { g.Chart = (typeof window.Chart !== 'undefined') ? (window.Chart.version || true) : false; } catch (_) { g.Chart = false; }
+        try { g.moment = (typeof window.moment !== 'undefined') ? (window.moment.version || true) : false; } catch (_) { g.moment = false; }
+        try { g.i18n = !!(window.jQuery && window.jQuery.i18n); } catch (_) { g.i18n = false; }
+        try { g.widthFix = typeof window.fv3InstallDockerTableWidthFix === 'function'; } catch (_) { g.widthFix = false; }
+        try { g.detectApi = typeof window.fv3DetectApi === 'function'; } catch (_) { g.detectApi = false; }
+        return g;
+    };
     return {
         capturedAt: new Date().toISOString(),
         viewport: { innerWidth: window.innerWidth, innerHeight: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
@@ -655,6 +1179,10 @@ window.fv3CollectEnv = () => {
                 .slice(0, 20)
         },
         tables: { docker: tableSize('docker_containers'), vm: tableSize('kvm_table') },
+        unraidRelease: window.fv3UnraidRelease || null,
+        tableLayout: collectTableLayout(),
+        tableGeom: collectTableGeom(),
+        foldersRendered: collectFolders(),
         samples: {
             folderPreview: sample('tr.folder .folder-preview'),
             folderPreviewScroll: sample('tr.folder .folder-preview.fv3-overflow-scroll'),
@@ -682,10 +1210,24 @@ window.fv3CollectEnv = () => {
             '--fv3-border'
         ]),
         stylesheets: collectStylesheets(),
+        foreignStylesheets: collectForeignStylesheets(),
+        activePlugins: collectActivePlugins(),
+        foreignInlineStyles: collectForeignInlineStyles(),
+        globals: collectGlobals(),
+        colspanSelfTest: collectColspanSelfTest(),
         customExtensions: {
             customPhpLoaded: !!document.querySelector('link[href*="/folder.view3/custom.php"], script[src*="/folder.view3/custom.php"]'),
             fv3PresetStyles: [...document.querySelectorAll('style[id^="fv3-"], style.fv3-preset-styles')].map(s => s.id || s.className).slice(0, 10)
-        }
+        },
+        // Eviction-proof page-load timeline + browser-measured timing, captured before
+        // renderSignals re-runs the width-fix (which would add a 'widthfix' mark).
+        milestones: Object.assign({}, window.fv3Milestones),
+        iconLoads: [...(window.fv3IconLoads || [])],
+        perf: collectPerf(),
+        // renderSignals re-runs the width-fix to compute its diff, so it is evaluated last;
+        // tableLayout/previewGeom above captured the original (pre-rerun) locked state.
+        renderSignals: collectRenderSignals(),
+        traceBuffer: [...(window.fv3TraceBuffer || [])]
     };
 };
 
@@ -699,11 +1241,26 @@ window.fv3CollectCssDebug = async () => {
             return { _fetchError: e && e.statusText ? e.statusText : String(e) };
         }
     };
+    // Fetch the actual contents of the generated + custom CSS loaded from /boot/config —
+    // a bad generated rule or a community custom-CSS override is otherwise invisible (we only
+    // had the stylesheet URLs). Built-in plugin CSS is skipped (it lives in the repo).
+    const safeText = async (url) => {
+        try { return String(await $.get(url).promise()).slice(0, 6000); }
+        catch (e) { return '_fetchError: ' + (e && e.statusText ? e.statusText : String(e)); }
+    };
+    const cssLinks = [...document.querySelectorAll('link[rel="stylesheet"]')]
+        .map(l => l.getAttribute('href'))
+        .filter(h => h && h.includes('/boot/config/plugins/folder.view3/'))
+        .slice(0, 10);
+    const customScripts = [...document.querySelectorAll('script[src*="/boot/config/plugins/folder.view3/"]')]
+        .map(s => s.getAttribute('src')).slice(0, 20);
     const [cssConfig, themes] = await Promise.all([
         safeJson('/plugins/folder.view3/server/read_css_config.php'),
         safeJson('/plugins/folder.view3/server/list_themes.php')
     ]);
-    return { cssConfig, themes };
+    const loadedCss = {};
+    for (const href of cssLinks) loadedCss[href] = await safeText(href);
+    return { cssConfig, themes, loadedCss, customScripts };
 };
 
 window.fv3DownloadDebugJSON = (source, data) => {
@@ -730,6 +1287,25 @@ window.fv3DownloadDebugJSON = (source, data) => {
     el.click();
     document.body.removeChild(el);
     URL.revokeObjectURL(url);
+};
+
+// On-demand capture. Each page stashes its data payload (folders/orders/containersInfo/css)
+// keyed by source as it renders; fv3CaptureDebug then downloads it with a FRESH env() — so
+// the rendered-layout block reflects the state at click time (post-render, post-interaction),
+// fixing the old bug where env was captured before folders/the width-fix existed.
+window.fv3DebugPayloads = {};
+window.fv3DebugSource = null;
+window.fv3CaptureDebug = (source) => {
+    source = source || window.fv3DebugSource || 'UNKNOWN';
+    const stored = window.fv3DebugPayloads[source];
+    let payload;
+    if (stored) {
+        try { payload = JSON.parse(stored); } catch (_) { payload = { rawBody: stored }; }
+    } else {
+        payload = { _note: 'no stored payload for ' + source + '; arm debug (type fv3debug) and reload for full data', folders: window.globalFolders || {} };
+    }
+    fv3DownloadDebugJSON('debug-' + source + '.json', JSON.stringify(payload));
+    return true;
 };
 
 window.fv3RunUserScript = async (act, prom) => {
@@ -836,6 +1412,7 @@ window.fv3DetectApi = async () => {
             if (json.errors && json.errors.length) { fv3ApiAvailable = false; fv3Debug('API', 'GraphQL returned error:', json.errors[0].message); return fv3ApiAvailable; }
             fv3ApiAvailable = !!(json && json.data && json.data.info && json.data.info.os && json.data.info.os.release);
             if (fv3ApiAvailable) {
+                window.fv3UnraidRelease = json.data.info.os.release;
                 fv3Debug('API', 'Unraid GraphQL API detected, release:', json.data.info.os.release);
                 if (json.data.info.cpu && json.data.info.cpu.cores) {
                     fv3CpuCores = json.data.info.cpu.cores;
@@ -1035,6 +1612,15 @@ window.fv3SyncOrganizer = async (folders) => {
 // Stats connections
 window.fv3StatsConnection = null;
 window.fv3StatsCallbacks = [];
+// Live-stats diagnostics: which transport is active and whether data is actually flowing.
+// Covers the "graphs blank/frozen" class of report that the layout capture can't see.
+window.fv3StatsState = { transport: null, lastStatAt: null, statCount: 0, fallbacks: 0 };
+window.fv3StatsMark = (transport) => {
+    window.fv3StatsState.transport = transport;
+    window.fv3StatsState.lastStatAt = Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10;
+    window.fv3StatsState.statCount++;
+    window.fv3Mark('stats-first');
+};
 
 window.fv3ConnectStats = (onData, onFallback) => {
     if (fv3ApiAvailable) {
@@ -1066,6 +1652,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
                 payload: { query: 'subscription { dockerContainerStats { id cpuPercent memUsage } }' }
             }));
         }, 200);
+        window.fv3StatsState.transport = 'websocket';
         fv3Debug('API', 'WebSocket stats connected');
     };
 
@@ -1080,6 +1667,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
                 cpuPercent: raw.cpuPercent,
                 mem: raw.memUsage.split(' / ')
             };
+            window.fv3StatsMark('websocket');
             for (var i = 0; i < fv3StatsCallbacks.length; i++) {
                 try { fv3StatsCallbacks[i](stat); } catch(e) {}
             }
@@ -1093,6 +1681,8 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
         fv3DebugWarn('API', 'WebSocket stats error, falling back to SSE');
         fv3StatsConnection = null;
         fv3StatsCallbacks = [];
+        window.fv3StatsState.fallbacks++;
+        window.fv3StatsState.transport = 'sse';
         if (onFallback) onFallback();
     };
 
@@ -1101,7 +1691,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
         if (fv3StatsConnection === ws) {
             fv3StatsConnection = null;
             fv3StatsCallbacks = [];
-            if (!fv3WsClosing && onFallback) onFallback();
+            if (!fv3WsClosing && onFallback) { window.fv3StatsState.fallbacks++; window.fv3StatsState.transport = 'sse'; onFallback(); }
         }
     };
 
@@ -1126,6 +1716,7 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     const $preview = $(`tr.folder-id-${id} div.folder-preview`);
     const el = $preview[0];
     if (!el) return;
+    if (window.fv3RecordIconLoads) window.fv3RecordIconLoads(el);
 
     if (folder.settings.preview_overflow === 1) {
         $preview.addClass('fv3-overflow-expand');
@@ -1224,8 +1815,25 @@ window.fv3SetupPreviewMode = (folder, id, globalFolders) => {
     }
 };
 
+// Current Docker list view ('basic' | 'advanced'). Read from the cookie (authoritative the instant a
+// toggle is registered) so column-visibility decisions don't depend on Unraid's mid-toggle DOM state.
+window.fv3CurrentDockerView = () => {
+    try {
+        if (typeof $ !== 'undefined' && $.cookie) return $.cookie('docker_listview_mode') === 'advanced' ? 'advanced' : 'basic';
+    } catch (_) {}
+    return /(?:^|;\s*)docker_listview_mode=advanced(?:;|$)/.test(document.cookie) ? 'advanced' : 'basic';
+};
+
+// Per-view width snapshot cache. Basic and advanced are different layouts (advanced adds the
+// CPU/Memory column), and within each, the expanded vs collapsed widths must be measured in their own
+// state to be accurate. Keyed by view → { collapsed, expanded, collapsedGenuine, expandedGenuine, ... }.
+let _fv3ViewCache = {};
+
 // Docker table column-width lock
 window.fv3InstallDockerTableWidthFix = () => {
+    _fv3WidthFixRuns++;
+    window.fv3Mark('widthfix');
+    fv3Debug('WidthFix', 'run #' + _fv3WidthFixRuns);
     const STYLE_ID = 'fv3-width-style';
     const tbl = document.querySelector('#docker_containers');
     if (!tbl) return;
@@ -1235,6 +1843,7 @@ window.fv3InstallDockerTableWidthFix = () => {
     document.getElementById(STYLE_ID)?.remove();
     headers.forEach(th => { th.style.width = ''; th.style.boxSizing = ''; });
     tbl.style.tableLayout = '';
+    tbl.style.minWidth = '';
     void tbl.offsetHeight;
     void document.body.offsetHeight;
 
@@ -1263,8 +1872,20 @@ window.fv3InstallDockerTableWidthFix = () => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
             Array.from(verTd.children).forEach(el => {
-                if (getComputedStyle(el).display === 'none') return;
+                // Measure the INTRINSIC content width of every version-cell child. verCap is a
+                // single injected cap (not per-view), so the column must fit the advanced "force
+                // update" content too (which is display:none in basic view). But measuring a block
+                // element as-rendered returns the full COLUMN width, which makes verCap a feedback
+                // of the current column width — it then settles at one of two values depending on
+                // the state when the fix runs and jumps the headings on toggle/expand. Forcing
+                // inline-block first (for hidden OR block-ish elements) gives the true content
+                // width, so verCap is deterministic and still covers the advanced content.
+                const disp = getComputedStyle(el).display;
+                const shrink = disp !== 'inline' && disp !== 'inline-block';
+                const prevDisplay = el.style.display;
+                if (shrink) el.style.display = 'inline-block';
                 const w = el.getBoundingClientRect().width;
+                if (shrink) el.style.display = prevDisplay;
                 if (w > verContentMax) verContentMax = w;
             });
         });
@@ -1285,7 +1906,16 @@ window.fv3InstallDockerTableWidthFix = () => {
         }
     }
 
-    const displayHidden = headers.map(h => h.offsetParent === null && h.getBoundingClientRect().width === 0);
+    // Advanced-only columns (class 'advanced' — CPU/Memory) are hidden in basic view. Detect that
+    // from the view COOKIE, not just the column's computed display: a basic↔advanced toggle can run
+    // this measurement before Unraid finishes hiding the column, and measuring it as still-visible
+    // would bake its width into the BASIC snapshot (crushing Volume, pushing Autostart off-screen) —
+    // so a round-trip to advanced and back sizes differently from a fresh basic load. The cookie is
+    // authoritative the instant the toggle is registered, so basic always measures these as hidden.
+    const advancedView = fv3CurrentDockerView() === 'advanced';
+    const displayHidden = headers.map(h =>
+        (!advancedView && h.classList.contains('advanced'))
+        || (h.offsetParent === null && h.getBoundingClientRect().width === 0));
     displayHidden.forEach((hidden, i) => { if (hidden) maxCols[i] = 0; });
 
     const autostartIdx = headers.findIndex(h => h.classList && h.classList.contains('nine'));
@@ -1305,18 +1935,30 @@ window.fv3InstallDockerTableWidthFix = () => {
         if (maxCols[autostartIdx] > visibleNeed) maxCols[autostartIdx] = visibleNeed;
     }
 
-    const distributeSlack = (cols) => {
+    // Two-mode column sizing, one snapshot per folder state:
+    //  - 'fit'     (COLLAPSED / folders-only): lock the table inside the viewport. If the content
+    //              doesn't fit, crush the flexible middle columns (2-6) to fit — SAFE here because a
+    //              collapsed row is just the colspan folder-preview, which wraps; there's no
+    //              per-container cell data to overlap.
+    //  - 'natural' (EXPANDED): keep columns at their full content width. When it fits, grow the
+    //              middle columns to fill the window; when it doesn't, leave them at content width and
+    //              let the native .TableContainer (overflow-x:auto + min-width:1000px) scroll. The
+    //              extra columns (Uptime, and CPU in advanced) appear on the RIGHT and the table grows
+    //              rightward + scrolls, instead of compacting the existing columns leftward.
+    // Because content width >= fit width for every column, collapsed→expanded only ever grows or keeps
+    // a column — never shrinks one — so the left side (and the chevron) stays put.
+    const distributeSlack = (cols, mode) => {
         const sum = cols.reduce((a, b) => a + b, 0);
         const widths = cols.map(Math.ceil);
-        if (sum > targetW) {
-            const overflow = sum - targetW;
-            let flex = 0;
-            for (let i = 2; i <= 6; i++) flex += cols[i];
-            if (flex > overflow) {
-                const scale = (flex - overflow) / flex;
-                for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(cols[i] * scale));
+        const nudge = () => {
+            const finalSum = widths.reduce((a, b) => a + b, 0);
+            if (finalSum !== targetW) {
+                const diff = targetW - finalSum;
+                if (widths[6] + diff >= 60) widths[6] += diff;
             }
-        } else if (sum < targetW) {
+        };
+        if (sum < targetW) {
+            // content fits: grow the flexible middle columns (2-6) to fill the window
             const extra = targetW - sum;
             let flex = 0;
             for (let i = 2; i <= 6; i++) if (cols[i] > 0) flex += cols[i];
@@ -1325,34 +1967,66 @@ window.fv3InstallDockerTableWidthFix = () => {
                     if (cols[i] > 0) widths[i] = Math.floor(cols[i] + extra * (cols[i] / flex));
                 }
             }
+            nudge();
+        } else if (mode === 'fit') {
+            // content overflows a narrow window: crush the flexible middle columns to fit (collapsed
+            // only — the preview wraps, nothing overlaps), keeping the table locked in the viewport.
+            const overflow = sum - targetW;
+            let flex = 0;
+            for (let i = 2; i <= 6; i++) flex += cols[i];
+            if (flex > overflow) {
+                const scale = (flex - overflow) / flex;
+                for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(cols[i] * scale));
+                nudge();
+            }
         }
-        let finalSum = widths.reduce((a, b) => a + b, 0);
-        if (finalSum !== targetW) {
-            const diff = targetW - finalSum;
-            if (widths[6] + diff >= 60) widths[6] += diff;
-        }
+        // else (mode 'natural', sum >= targetW): keep content widths → table extends right and scrolls.
         return widths;
     };
 
-    const widthsExpanded = distributeSlack(maxCols);
-
     const uptimeIdx = headers.findIndex(h => h.classList && h.classList.contains('five'));
-    const volMappingsIdx = 6;
-    const widthsCollapsed = widthsExpanded.slice();
-    if (uptimeIdx >= 0 && !displayHidden[uptimeIdx] && widthsExpanded[uptimeIdx] > 0
-        && volMappingsIdx >= 0 && volMappingsIdx < widthsCollapsed.length) {
-        const freed = widthsCollapsed[uptimeIdx];
-        widthsCollapsed[uptimeIdx] = 0;
-        widthsCollapsed[volMappingsIdx] += freed;
-    }
+    // COLLAPSED: Uptime is hidden (no container rows), so drop it and fit the rest to the viewport.
+    const collapsedCols = maxCols.slice();
+    if (uptimeIdx >= 0) collapsedCols[uptimeIdx] = 0;
+    const widthsCollapsed = distributeSlack(collapsedCols, 'fit');
+    // EXPANDED: full content widths, but clamp each column to be at least its collapsed width. This
+    // guarantees collapsed→expanded only ever grows or holds a column — never shrinks one — so the
+    // table only extends rightward (and scrolls) when you expand; the existing columns never compact
+    // leftward. (A column wider than its content just gets harmless trailing slack, never overlap.)
+    const naturalExpanded = distributeSlack(maxCols, 'natural');
+    const widthsExpanded = naturalExpanded.map((w, i) => Math.max(w, widthsCollapsed[i] || 0));
 
-    _fv3WidthSnapshots = {
-        expanded: widthsExpanded,
-        collapsed: widthsCollapsed,
+    // Per-view dual-state caching. EXPANDED widths are only accurate when measured with container rows
+    // genuinely visible (the all-collapsed "move-out" state over-estimates the middle columns and
+    // pushes Autostart into the scroll zone); COLLAPSED widths only from the all-collapsed state. And
+    // the whole thing is keyed by view, because advanced adds the CPU/Memory column — so
+    // basic-expanded and advanced-expanded are different layouts. Keep each (view, state) from the run
+    // that measured it in its own state; carry the other state over from the same view's prior run.
+    const view = fv3CurrentDockerView();
+    const measuredExpanded = (typeof fv3AnyNonFolderRowVisible === 'function') && fv3AnyNonFolderRowVisible();
+    const prev = _fv3ViewCache[view] || {};
+    const entry = {
+        expanded: ((measuredExpanded || !prev.expandedGenuine) ? widthsExpanded : prev.expanded).slice(),
+        collapsed: ((!measuredExpanded || !prev.collapsedGenuine) ? widthsCollapsed : prev.collapsed).slice(),
+        expandedGenuine: measuredExpanded || !!prev.expandedGenuine,
+        collapsedGenuine: !measuredExpanded || !!prev.collapsedGenuine,
         displayHidden,
         verCap,
         headerCount: headers.length,
     };
+    // Anchor columns (App=0, Version=1) sit LEFT of the folder preview. Because the collapsed and
+    // expanded snapshots are measured in separate runs (dual-state cache), the per-state verCap
+    // measurement can make Version differ by a few px between them — which would shift every collapsed
+    // folder's preview (and its pills) sideways when another folder is expanded. Their content isn't
+    // fold-state-dependent, so pin both snapshots' anchors to the same (max) width: the preview's left
+    // edge stays put, and max() never clips (verCap already ellipsises any overflow).
+    for (let i = 0; i <= 1; i++) {
+        const m = Math.max(entry.collapsed[i] || 0, entry.expanded[i] || 0);
+        entry.collapsed[i] = m;
+        entry.expanded[i] = m;
+    }
+    _fv3ViewCache[view] = entry;
+    _fv3WidthSnapshots = entry;
 
     fv3ApplyCachedWidths();
 
@@ -1374,6 +2048,25 @@ window.fv3InstallDockerTableWidthFix = () => {
 };
 
 let _fv3WidthSnapshots = null;
+let _fv3WidthFixRuns = 0;
+
+// Diagnostic accessor: the locked column-width snapshot is otherwise a module-local.
+window.fv3GetWidthState = () => ({ snapshots: _fv3WidthSnapshots, runs: _fv3WidthFixRuns });
+
+// Recompute-and-diff: re-run the width-fix now (icons/fonts have since loaded) and diff the
+// freshly computed widths against what is currently locked. A non-zero delta proves the
+// applied layout was stale — the smoking gun for a measure-before-load race. Re-running is
+// safe: it is idempotent and already fires on window resize.
+window.fv3WidthFixDiff = () => {
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl || !_fv3WidthSnapshots) return { available: false };
+    const before = { expanded: [..._fv3WidthSnapshots.expanded], collapsed: [..._fv3WidthSnapshots.collapsed] };
+    try { fv3InstallDockerTableWidthFix(); } catch (e) { return { available: false, error: String(e) }; }
+    const after = { expanded: [..._fv3WidthSnapshots.expanded], collapsed: [..._fv3WidthSnapshots.collapsed] };
+    const delta = before.expanded.map((w, i) => (after.expanded[i] ?? 0) - w);
+    const changed = delta.some(d => Math.abs(d) > 1);
+    return { available: true, changed, delta, before, after };
+};
 
 window.fv3AnyNonFolderRowVisible = () => {
     const tbl = document.querySelector('#docker_containers');
@@ -1387,7 +2080,9 @@ window.fv3AnyNonFolderRowVisible = () => {
 };
 
 window.fv3ApplyCachedWidths = () => {
-    const snap = _fv3WidthSnapshots;
+    // Use the CURRENT view's cached snapshot (basic and advanced are different layouts). Fall back to
+    // the last-measured snapshot if this view hasn't been measured yet (a re-measure will follow).
+    const snap = _fv3ViewCache[fv3CurrentDockerView()] || _fv3WidthSnapshots;
     if (!snap) return;
     const tbl = document.querySelector('#docker_containers');
     if (!tbl) return;
@@ -1401,12 +2096,52 @@ window.fv3ApplyCachedWidths = () => {
         if (widths[i] === 0) {
             th.style.padding = '0';
             th.style.fontSize = '0';
+            // font-size:0 collapses the label text, but a sort-arrow pseudo-element / inner span
+            // keeps a ~6px sliver that overflows the zero-width column; clip it so it can't extend
+            // the table (the other half of the Firefox phantom-scrollbar fix).
+            th.style.overflow = 'hidden';
         } else {
             th.style.padding = '';
             th.style.fontSize = '';
+            th.style.overflow = '';
         }
     });
-    tbl.style.tableLayout = 'fixed';
+    // A column collapsed to width 0 still leaves its BODY cells' horizontal padding (content-box,
+    // ~26px), which overflows the zero-width column under table-layout:fixed and renders a phantom
+    // horizontal scrollbar in Firefox (Chrome discards it). We zero the <th> padding above; do the
+    // same for the body cells of any zero-width column. These columns are trailing, so nth-last-child
+    // is colspan-safe — the preview colspan cell always sits upstream of them.
+    const zeroCols = [];
+    widths.forEach((w, i) => { if (w === 0 && !snap.displayHidden[i]) zeroCols.push(i); });
+    let zeroStyle = document.getElementById('fv3-zerocol-style');
+    if (zeroCols.length) {
+        const sel = zeroCols
+            .map(i => `#docker_containers > tbody > tr > td:nth-last-child(${snap.headerCount - i})`)
+            .join(', ');
+        if (!zeroStyle) {
+            zeroStyle = document.createElement('style');
+            zeroStyle.id = 'fv3-zerocol-style';
+            document.head.appendChild(zeroStyle);
+        }
+        zeroStyle.textContent = `${sel} { padding-left: 0; padding-right: 0; }`;
+    } else if (zeroStyle) {
+        zeroStyle.textContent = '';
+    }
+    // table-layout:fixed gives stable columns, but at FRACTIONAL devicePixelRatio (e.g. Windows
+    // display scaling 125%) the browser's fixed-layout colspan distribution breaks and collapses
+    // the folder preview cell (a colspan cell), pushing it right / clipping it. FolderView2 never
+    // had this because it used the browser's default (auto) layout. So only lock to fixed at
+    // INTEGER DPR; at fractional DPR fall back to auto layout (the th width hints above keep the
+    // columns aligned), which sizes the colspan cell correctly. Setting widths on the body cells
+    // does NOT help — under table-layout:fixed the column widths come from the <th>, not the cells.
+    // Pin the table's min-width to the snapshot total so it actually reaches its full width and the
+    // .TableContainer scrolls. Under table-layout:auto (used at fractional devicePixelRatio — browser
+    // zoom ≠ 100%, or 125%/150% display scaling) the per-<th> widths are only HINTS, and because the
+    // cells are wrappable (white-space:normal) the browser would otherwise shrink the whole table to
+    // fit the container — collapsing the expanded columns (Uptime etc.) into the viewport instead of
+    // scrolling. Harmless under fixed layout, where the <th> widths already sum to this total.
+    tbl.style.minWidth = widths.reduce((a, b) => a + b, 0) + 'px';
+    tbl.style.tableLayout = Number.isInteger(window.devicePixelRatio) ? 'fixed' : 'auto';
     if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
 };
 
@@ -1431,9 +2166,13 @@ window.fv3ScheduleApplyCachedWidths = () => {
 //   2. Observe preview CELL not row — observing the row causes growth loops.
 const _fv3PreviewObserved = new WeakSet();
 const _fv3PreviewRO = ('ResizeObserver' in window) ? new ResizeObserver(() => {
-    requestAnimationFrame(() => {
-        try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); }
-    });
+    // Route through the 50ms-debounced scheduler (the same one every other pill-sizing trigger
+    // uses) rather than resizing inside the RO's own delivery cycle. Calling fv3SizeFolderPills()
+    // directly mutates layout within the cycle, which is what makes Chrome emit "ResizeObserver
+    // loop ..." during the icon-load settle. Deferring breaks that, coalesces rapid resizes, and
+    // still lands a final pass once the preview settles.
+    if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
+    else requestAnimationFrame(() => { try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); } });
 }) : null;
 if (_fv3PreviewRO) fv3Cleanups.push(() => _fv3PreviewRO.disconnect());
 
@@ -1469,7 +2208,23 @@ window.fv3SchedulePillSize = () => {
         folderEvents.addEventListener('vm-post-folders-creation', fv3SchedulePillSize);
         folderEvents.addEventListener('docker-post-folder-expansion', fv3SchedulePillSize);
         folderEvents.addEventListener('vm-post-folder-expansion', fv3SchedulePillSize);
-        folderEvents.addEventListener('docker-post-folder-expansion', fv3ScheduleApplyCachedWidths);
+        // The first genuine expansion IN EACH VIEW re-measures ONCE — to capture an accurate expanded
+        // snapshot for that view (the load-time one is the over-wide all-collapsed approximation that
+        // pushes Autostart into the scroll zone; and advanced needs its own snapshot with the
+        // CPU/Memory column sized). That per-view snapshot is then cached, so every later expand/
+        // collapse in the same view just REPLAYS it — no re-measure, so the collapsed folders' preview
+        // pills never shift. Re-measuring on every toggle (an earlier bug) sampled a different row set
+        // each time and made the pills jitter.
+        folderEvents.addEventListener('docker-post-folder-expansion', () => {
+            try {
+                const entry = _fv3ViewCache[fv3CurrentDockerView()];
+                if (fv3AnyNonFolderRowVisible() && (!entry || !entry.expandedGenuine)) {
+                    fv3InstallDockerTableWidthFix();
+                } else {
+                    fv3ScheduleApplyCachedWidths();
+                }
+            } catch (e) { fv3DebugWarn('WidthFix', e.message); }
+        });
     }
     window.addEventListener('resize', fv3SchedulePillSize);
 })();

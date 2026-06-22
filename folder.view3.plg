@@ -5,18 +5,24 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.06.13">
-<!ENTITY md5 "01c8ed9951e6880bd2f41678cc3db973">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.06.21.1">
+<!ENTITY md5 "39ab4b2aca87498a76228dd35a6c37f3">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
-###2026.06.13
-- Security hardening for theme management
-- More reliable folder previews and live stats on slow or interrupted connections
-- Assorted preview, dashboard and compatibility fixes
+###2026.06.22
+- More accurate and consistent live CPU/MEM stats
+- Improved Docker table layout, scaling and scroll behaviour (Uptime column now defaults to out of immediate view, scroll to view it)
+- Fixed a Firefox-only phantom horizontal scrollbar on the Docker table
+- Improved WebUI links and container action buttons
+- WebUI globe icon now shows for containers on "container:" network mode (e.g. routed through a VPN sidecar)
+- Incognito and mobile popup fixes
+- More reliable folder loading on slow connections
+- Assorted preview and dashboard fixes
+- Enhanced debug logging
 
 ###2026.05.28.1
 - Fix VM tab crash when a folder is named the same as a VM (folder vanished and the VM was left out of any folder)

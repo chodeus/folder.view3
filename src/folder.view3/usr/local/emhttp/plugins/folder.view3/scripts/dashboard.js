@@ -3,6 +3,7 @@ let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
+window.fv3DebugSource = 'DASHBOARD-DOCKER';
 let dockerDashboardLayout = 'classic';
 let vmDashboardLayout = 'classic';
 let fv3DockerCollapseToggle = false;
@@ -54,16 +55,15 @@ const createFolders = async () => {
             }
         }
 
-        if(folderDebugMode) {
-            const debugData = JSON.stringify({
+        if(window.FV3_DEBUG) {
+            window.fv3DebugPayloads['DASHBOARD-DOCKER'] = JSON.stringify({
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
                 folders, unraidOrder,
                 originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
                 newOnes, order, containersInfo: fv3SanitizeContainersInfo(containersInfo),
                 cssDebug: await fv3CollectCssDebug()
             });
-            fv3DownloadDebugJSON('debug-DASHBOARD-DOCKER.json', debugData);
-            fv3Debug('dashboard', 'Docker Order:', [...order]);
+            fv3Debug('dashboard', 'Debug payload stored for DASHBOARD-DOCKER; click the FV3 Debug pill to download. Docker Order:', [...order]);
         }
     
         let foldersDone = {};
@@ -166,16 +166,15 @@ const createFolders = async () => {
             }
         }
 
-        if(folderDebugMode) {
-            const debugData = JSON.stringify({
+        if(window.FV3_DEBUG) {
+            window.fv3DebugPayloads['DASHBOARD-VM'] = JSON.stringify({
                 version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
                 folders, unraidOrder,
                 originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), []),
                 newOnes, order, vmInfo,
                 cssDebug: await fv3CollectCssDebug()
             });
-            fv3DownloadDebugJSON('debug-DASHBOARD-VM.json', debugData);
-            fv3Debug('dashboard', 'VM Order:', [...order]);
+            fv3Debug('dashboard', 'Debug payload stored for DASHBOARD-VM; click the FV3 Debug pill to download. VM Order:', [...order]);
         }
     
         let foldersDone = {};

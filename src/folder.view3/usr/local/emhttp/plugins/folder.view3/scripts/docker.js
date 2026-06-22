@@ -4,6 +4,7 @@ let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
+window.fv3DebugSource = 'DOCKER';
 let folderobserver;
 let folderobserverConfig = {
     subtree: true,
@@ -17,8 +18,10 @@ let folderReq = [];
 // Folder rendering — orchestrate (createFolders) and per-folder build (createFolder)
 const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
+    if (window.fv3Mark) window.fv3Mark('createFolders-start');
     await fv3LoadFolderDefaults();
     const prom = await Promise.all(folderReq);
+    if (window.fv3Mark) window.fv3Mark('folderReq-resolved');
     fv3Debug('createFolders', 'Promises resolved', prom);
 
     let folders = fv3SafeParseWithRecovery(prom[0], 'docker-folders', {});
@@ -70,8 +73,10 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'Order after inserting Unraid-ordered folders', [...order]);
 
 
-    if(folderDebugMode) {
-        const debugData = JSON.stringify({
+    if(window.FV3_DEBUG) {
+        // Stash the data payload; the actual download happens on demand (FV3 Debug pill /
+        // fv3CaptureDebug('DOCKER')) so env() is collected post-render at click time.
+        window.fv3DebugPayloads['DOCKER'] = JSON.stringify({
             version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
             folders,
             unraidOrder,
@@ -81,8 +86,7 @@ const createFolders = async () => {
             containersInfo: fv3SanitizeContainersInfo(containersInfo),
             cssDebug: await fv3CollectCssDebug()
         });
-        fv3DownloadDebugJSON('debug-DOCKER.json', debugData);
-        fv3Debug('createFolders', 'Order:', [...order]);
+        fv3Debug('createFolders', 'Debug payload stored for DOCKER; click the FV3 Debug pill to download. Order:', [...order]);
     }
 
     let foldersDone = {};
@@ -182,6 +186,22 @@ const createFolders = async () => {
     }}));
 
     try { fv3InstallDockerTableWidthFix(); } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
+    // The initial measurement above can run before container icons / live stats finish loading, so the
+    // cached snapshot may be slightly too wide (pushing Autostart/Uptime off-screen on the first
+    // expand). Re-measure once the content settles to refresh the cache — but ONLY while every folder
+    // is still collapsed, so it stays the stable all-collapsed reference (re-measuring with a folder
+    // open samples a different row set and would make later toggles shift the preview pills). Two
+    // staggered passes cover fast and slow page loads.
+    [1200, 3000].forEach(delay => setTimeout(() => {
+        try {
+            const tbl = document.querySelector('#docker_containers');
+            if (!tbl) return;
+            const anyOpen = Array.from(tbl.querySelectorAll('tr.folder .folder-dropdown'))
+                .some(d => d.getAttribute('active') === 'true');
+            if (!anyOpen) fv3ScheduleWidthFix();
+        } catch (e) { fv3DebugWarn('createFolders', 'settle re-measure failed:', e.message); }
+    }, delay));
+    if (window.fv3Mark) window.fv3Mark('createFolders-end');
 
     globalFolders = foldersDone;
     fv3Debug('createFolders', 'Assigned foldersDone to globalFolders:', {...globalFolders});
@@ -550,7 +570,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
                 if (folder.settings.preview_webui && ct.info.State.WebUi) {
                     if ($targetForAppend.length) {
-                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-webui"><a href="${escapeHtml(ct.info.State.WebUi)}" target="_blank"><i class="fa fa-globe" aria-hidden="true"></i></a></span>`));
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-webui"><a href="${escapeHtml(ct.info.State.WebUi)}" target="_blank" onclick="event.stopPropagation();"><i class="fa fa-globe" aria-hidden="true"></i></a></span>`));
                         fv3Debug('createFolder', id, container_name_in_folder, 'Appended WebUI icon to preview.');
                     } else {
                          fv3DebugWarn('createFolder', id, container_name_in_folder, 'WebUI icon: Could not find target for append in preview element.');
@@ -559,7 +579,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
                 if (folder.settings.preview_console) {
                     if ($targetForAppend.length) {
-                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i></a></span>`));
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i></a></span>`));
                         fv3Debug('createFolder', id, container_name_in_folder, 'Appended Console icon to preview.');
                     } else {
                          fv3DebugWarn('createFolder', id, container_name_in_folder, 'Console icon: Could not find target for append in preview element.');
@@ -568,7 +588,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
                 if (folder.settings.preview_logs) {
                     if ($targetForAppend.length) {
-                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
                         fv3Debug('createFolder', id, container_name_in_folder, 'Appended Logs icon to preview.');
                     } else {
                         fv3DebugWarn('createFolder', id, container_name_in_folder, 'Logs icon: Could not find target for append in preview element.');
@@ -1191,7 +1211,7 @@ window.loadlist = () => {
 };
 
 // Folder stats aggregation
-const fv3UpdateFolderStats = (load, divideByCore) => {
+const fv3UpdateFolderStats = (load) => {
     const hostMemB = Math.max(0, ...Object.values(load || {}).map(c => memToB((c && c.mem ? c.mem : ['0B','0B'])[1])));
 
     for (const [id, value] of Object.entries(globalFolders)) {
@@ -1205,7 +1225,9 @@ const fv3UpdateFolderStats = (load, divideByCore) => {
             const containerShortId = cvalue.id;
             const curLoad = load[containerShortId] || { cpu: '0.00%', mem: ['0B', '0B'] };
             const cpuVal = typeof curLoad.cpu === 'number' ? curLoad.cpu : parseFloat(curLoad.cpu.replace('%', ''));
-            loadCpu += divideByCore ? cpuVal / cpus : cpuVal;
+            // Both transports deliver docker-native % (0..cpus*100): SSE from `docker stats {{.CPUPerc}}`,
+            // WS from the API's systeminformation cpuPercent. Normalize identically so they can't diverge.
+            loadCpu += cpuVal / cpus;
             loadMemB += memToB(curLoad.mem[0]);
             limits.push(memToB(curLoad.mem[1]));
         }
@@ -1232,6 +1254,7 @@ const fv3InitSSEStats = () => {
         dockerload.addEventListener('message', (e_sse) => {
             const sseData = (typeof e_sse.data === 'string') ? e_sse.data : (typeof e_sse === 'string' ? e_sse : null);
             if (!sseData || !sseData.trim()) return;
+            if (window.fv3StatsMark) window.fv3StatsMark('sse');
 
             let load = {};
             const lines = sseData.split('\n');
@@ -1243,7 +1266,7 @@ const fv3InitSSEStats = () => {
                 }
             });
 
-            fv3UpdateFolderStats(load, true);
+            fv3UpdateFolderStats(load);
 
             folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { load, source: 'sse' } }));
         });
@@ -1252,25 +1275,31 @@ const fv3InitSSEStats = () => {
     });
 };
 
-if (fv3ApiAvailable && fv3CpuCores) {
-    cpus = fv3CpuCores;
-    fv3Debug('init', `CPU cores from API: ${cpus}. Trying WebSocket stats.`);
-    fv3ConnectStats(
-        (stat) => {
-            window.fv3UsingWebSocket = true;
-            fv3WsLoad[stat.shortId] = { cpu: stat.cpuPercent, mem: stat.mem };
-            folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { stat, source: 'ws' } }));
+// fv3ApiAvailable/fv3CpuCores are populated asynchronously by fv3DetectApi() (a /graphql
+// fetch). This block used to run synchronously at module-parse time, before detection
+// resolved, so the check was always false and the WebSocket stats path was never taken —
+// stats silently used SSE even when the API/WS was available. Wait for detection first.
+fv3DetectApi().then(() => {
+    if (fv3ApiAvailable && fv3CpuCores) {
+        cpus = fv3CpuCores;
+        fv3Debug('init', `CPU cores from API: ${cpus}. Trying WebSocket stats.`);
+        fv3ConnectStats(
+            (stat) => {
+                window.fv3UsingWebSocket = true;
+                fv3WsLoad[stat.shortId] = { cpu: stat.cpuPercent, mem: stat.mem };
+                folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { stat, source: 'ws' } }));
 
-            clearTimeout(fv3WsDebounceTimer);
-            fv3WsDebounceTimer = setTimeout(() => {
-                fv3UpdateFolderStats(fv3WsLoad, false);
-            }, 200);
-        },
-        fv3InitSSEStats
-    );
-} else {
-    fv3InitSSEStats();
-}
+                clearTimeout(fv3WsDebounceTimer);
+                fv3WsDebounceTimer = setTimeout(() => {
+                    fv3UpdateFolderStats(fv3WsLoad);
+                }, 200);
+            },
+            fv3InitSSEStats
+        );
+    } else {
+        fv3InitSSEStats();
+    }
+});
 
 // memToB() moved to advanced-preview.js (window global)
 
@@ -1311,7 +1340,16 @@ let _fv3LastAdvanced = $.cookie('docker_listview_mode') == 'advanced';
 document.addEventListener('click', () => {
     setTimeout(() => {
         const now = $.cookie('docker_listview_mode') == 'advanced';
-        if (now !== _fv3LastAdvanced) { _fv3LastAdvanced = now; fv3ScheduleWidthFix(); }
+        if (now !== _fv3LastAdvanced) {
+            _fv3LastAdvanced = now;
+            fv3ScheduleWidthFix();
+            // Unraid's listview()/readmore keep re-processing the cells for a few hundred ms after a
+            // view toggle. A re-measure during that window bakes transient middle-column widths
+            // (Volume/IP) that never settle back — so basic→advanced→basic ends up sized differently
+            // from a fresh basic load. Re-measure again once it's quiesced (settles by ~600ms) so the
+            // round-trip lands on the same sizes as a fresh load.
+            setTimeout(() => fv3ScheduleWidthFix(), 700);
+        }
     }, 100);
 }, true);
 

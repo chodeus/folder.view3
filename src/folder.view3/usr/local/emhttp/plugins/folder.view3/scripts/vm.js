@@ -35,8 +35,8 @@ const createFolders = async () => {
         }
     }
 
-    if(folderDebugMode) {
-        const debugData = JSON.stringify({
+    if(window.FV3_DEBUG) {
+        window.fv3DebugPayloads['VM'] = JSON.stringify({
             version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
             folders,
             unraidOrder,
@@ -46,8 +46,7 @@ const createFolders = async () => {
             vmInfo,
             cssDebug: await fv3CollectCssDebug()
         });
-        fv3DownloadDebugJSON('debug-VM.json', debugData);
-        fv3Debug('vm', 'Order:', [...order]);
+        fv3Debug('vm', 'Debug payload stored for VM; click the FV3 Debug pill to download. Order:', [...order]);
     }
 
     let foldersDone = {};
@@ -340,7 +339,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                     if (!sel.length) {
                         sel = element;
                     }
-                    sel.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); window.open('/plugins/dynamix.vm.manager/vnc.html?autoconnect=true&resize=scale&host=' + location.hostname + '&port=&path=/wsproxy/${escapeHtml(ct.vnc_port)}/', '_blank');"><i class="fa fa-desktop" aria-hidden="true"></i></a></span>`));
+                    sel.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); window.open('/plugins/dynamix.vm.manager/vnc.html?autoconnect=true&resize=scale&host=' + location.hostname + '&port=&path=/wsproxy/${escapeHtml(ct.vnc_port)}/', '_blank');"><i class="fa fa-desktop" aria-hidden="true"></i></a></span>`));
                 }
 
                 if (folder.settings.preview_logs && ct.logs) {
@@ -348,7 +347,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                     if (!sel.length) {
                         sel = element;
                     }
-                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
                 }
 
                 const isVmRunning = ct.state !== 'shutoff';
@@ -765,6 +764,7 @@ let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
+window.fv3DebugSource = 'VM';
 let folderReq = [];
 
 // Unraid loadlist patch — inject folder rendering after VMs render

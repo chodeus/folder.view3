@@ -127,6 +127,15 @@ div.folder-preview-4 span.outer {
     background-color: var(--fv3-hover-bg);
 }
 
+/* Autostart column (2nd-from-last; Uptime is always last). Compose / 3rd-party containers
+   render a "fa-docker + Compose/3rd Party" label here; when the width-fix locks the column near
+   ~100px the label wraps to 2 lines. Keep it on one line; overflow:hidden guards against a longer
+   label re-introducing a horizontal scrollbar. Colspan-safe: trailing column, preview span is upstream. */
+#docker_containers > tbody > tr > td:nth-last-child(2) {
+    white-space: nowrap;
+    overflow: hidden;
+}
+
 .preview-status td {
     padding: 4px 8px;
     vertical-align: top;
@@ -425,5 +434,8 @@ div.folder-preview-4 span.outer {
         border-top: none;
         border-radius: 0 0 4px 4px;
         padding: 8px;
+        /* width:100% + content-box + this padding/border would overflow the popup off-screen on
+           mobile — keep the padding inside the 100% width. */
+        box-sizing: border-box;
     }
 }
