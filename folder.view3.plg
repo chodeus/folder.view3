@@ -13,104 +13,16 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
-###2026.06.21.1
-- Fix: containers on "container:" network mode (sharing another container's network, e.g. routed through a Gluetun VPN sidecar) now show their WebUI globe icon again — the [IP]/[PORT:] link is resolved against the parent container's published ports instead of being blanked. "none" network mode still has no WebUI.
-
-###2026.06.19.4
-- Fix: folder CPU% is now the same whether container stats arrive over the Unraid API (WebSocket) or the SSE fallback — the API path previously reported CPU far too high and pinned the folder CPU bar at 100% for any multi-core container, because only the SSE path divided by core count
-- Fix: the advanced-view popup CPU graph now uses the same normalization, so it matches the folder CPU readout on both transports
-
-###2026.06.19.3
-- Fix: in Incognito mode, the container action popup no longer loses the icons on the "Project Page" and "More Info" items (they kept turning into a plain "WebUI" label) — the icon and label are preserved and only the link URL is hidden
-- Fix: on mobile, the advanced-view container popup no longer overflows off the right edge of the screen — the action and graph panes now stay within the viewport
-
-###2026.06.19.2
-- Fix: expanding a Docker folder now scrolls the table to the right (like the native table) instead of squeezing the columns to the left; collapsed view stays fit to the window, and at narrow widths the table scrolls with no column overlap
-- Fix: the Autostart and Uptime columns are no longer pushed off-screen on the first expand (then snapping back when you resize) — expanded column widths are now measured accurately
-- Fix: toggling Basic → Advanced → Basic returns the table to the same column sizes as a fresh page load
-- Fix: in Advanced view, expanding a folder no longer collapses the CPU/Memory column into Autostart — it keeps its own column
-- Fix: at browser zoom other than 100% (or display scaling), the table scrolls instead of cramming the Uptime column into the window
-- Fix: folder preview icons no longer shift when you expand or collapse other folders
-
-###2026.06.19.1
-- Fix: the Docker table no longer shifts around when you toggle Basic/Advanced view and expand/collapse folders — the update column is measured deterministically (the version column no longer jumps between two widths) and the table width stays constant on expand/collapse
-- Reverts the 2026.06.18.2 narrow-window scroll behaviour: it fixed column overlap on very narrow windows but made the table jump width and flash a scrollbar on every expand/collapse, which was worse
-- The update-column "force update" truncation fix from 2026.06.18.1 is kept
-
-###2026.06.18.4
-- Revert: roll back the 2026.06.18.3 change. 2026.06.18.2 already fixed the narrow-window column overlap (now verified) — the table scrolls horizontally with columns at full width. The .3 measurement change was redundant (and based on a mistaken test), so it's removed; the width-fix returns to the verified .2 behaviour
-
-###2026.06.18.3
-- Fix (completes 2026.06.18.2, which didn't take effect): on narrow windows, an expanded folder's container rows no longer overlap / blend their Network, IP, Port and Volume columns — the Docker table now scrolls horizontally (like the native table) instead of crushing those columns. The .2 build measured the already-squeezed column widths so it kept crushing; this measures true content width
-
-###2026.06.18.2
-- Fix: on narrow windows, an expanded folder's container rows no longer overlap / blend their Network, IP, Port and Volume columns — the Docker table now scrolls horizontally (like the native table) instead of crushing those columns to make everything fit
-
-###2026.06.18.1
-- Fix: in Basic view with a folder expanded, switching to Advanced view no longer truncates the "update" column ("force update" / version text) with an ellipsis until you click something — the column is now sized to fit Advanced-view content regardless of toggle timing
-- Debug capture: harmless "ResizeObserver loop" notices (normal layout settling while icons load) are no longer logged as errors — they're counted instead (roLoopSettles), so genuine errors stand out
-- Second item is diagnostics-only — no change to normal folder behaviour
-
-###2026.06.17.1
-- Debug capture: lists the plugins active on the current page (deduped) so any third-party plugin that could affect the view is visible at a glance
-- Diagnostics only — no change to normal folder behaviour
-
-###2026.06.16.4
-- Fix: in "Only icon" preview, clicking a container's WebUI, console, or logs button opened the container dialog instead of running the action, and the WebUI globe didn't open the WebUI. The buttons now act on their own without triggering the dialog, and the WebUI opens correctly. Applies to Docker and VM previews.
-
-###2026.06.16.3
-- Fix: Compose / 3rd-party containers no longer wrap their "Compose"/"3rd Party" autostart label to two lines when the table is narrow — the autostart column now keeps it on one line
-
-###2026.06.16.2
-- Debug capture: less noise — inline-CSS check now only flags styles that actually target the Docker table (was matching unrelated libraries), and the cell-overflow scanner notes when a cell's content is clipped (not a real leak)
-- Diagnostics only — no change to normal folder behaviour
-
-###2026.06.16.1
-- Fix: Firefox-only phantom horizontal scrollbar on the Docker table — a collapsed column leaked its cell padding and a header sort-arrow sliver under fixed table layout (Chrome was unaffected)
-- Debug capture: self-diagnosing additions — unrounded table/cell overflow with the exact culprit cell named, a colspan-preview fix self-test, console error/warning capture, and inline-CSS / missing-dependency / HTTP-status checks
-- Diagnostics only — no change to normal folder behaviour
-
-###2026.06.15.1
-- Fix (corrects 2026.06.14.2, which didn't work): folder preview pushed right / collapsed on displays with fractional scaling. FolderView3 now uses the browser's default table layout at fractional device-pixel ratios (the same layout FolderView2 used), which positions the preview correctly, and keeps the column-lock at integer ratios. Rolled back the ineffective .2 cell-width change.
-
-###2026.06.14.2
-- Fix: folder preview pushed to the right / clipped on displays with fractional scaling (e.g. Windows 125%, fractional devicePixelRatio) — the folder row's cells are now width-locked so the preview column can't collapse
-
-###2026.06.14.1
-- Debug capture: per-cell folder-row breakdown, table/parent-chain geometry, and uncaught page-error logging (to pin a preview-layout report)
-- Diagnostics only — no change to normal folder behaviour
-
-###2026.06.13.6
-- Fix: live CPU/MEM stats now use the GraphQL WebSocket when available (an init-timing bug always fell back to SSE, even when the API was present)
-
-###2026.06.13.5
-- Debug capture now records page-load timing: render milestones, per-icon load times, and browser navigation/resource timing
-- Render milestones are kept separate so they survive regardless of log volume
-- Diagnostics only — no change to normal folder behaviour
-
-###2026.06.13.4
-- Debug capture now covers VM and Dashboard layout (not just Docker) and records every folder, not just the first
-- Added live-stats diagnostics (active transport, whether stats are flowing) and now captures the rendered generated/custom CSS contents
-- Diagnostics only — no change to normal folder behaviour
-
-###2026.06.13.3
-- Debug capture overhaul: arm with the "fv3debug" keyword, then a centered "FV3 Debug" pill captures the current rendered state on click (no reload needed)
-- Debug files now record column-layout geometry, a timestamped render timeline, and browser-rendering signals to diagnose layout/race issues
-- Debug files no longer include host filesystem paths and are roughly 10x smaller
-- Diagnostics only — no change to normal folder behaviour
-
-###2026.06.13.2
-- Fix: folder, CSS and settings saves returned 403 (regression in 2026.06.13.1) — removed the plugin's redundant CSRF check, which ran after Unraid had already validated and consumed the token. CSRF stays enforced by Unraid's built-in layer.
-
-###2026.06.13.1
-- Enforce CSRF validation on all plugin POST endpoints
-- Block path traversal in theme delete/toggle (reject "." and "..")
-- Preview row separators/borders now redraw once container icons load on slow connections
-- Docker, VM and Dashboard folders recover instead of staying blank if a data request fails
-- CSS preset colour no longer overrides the orange "update available" name in folder previews
-- Live CPU/MEM stats fall back to SSE if the WebSocket drops (e.g. after sleep/wake)
-- Dashboard VM custom action now passes script arguments
-- Hardening: tolerate browsers that block localStorage; remove dead code
+###2026.06.22
+- More accurate and consistent live CPU/MEM stats
+- Improved Docker table layout, scaling and scroll behaviour (Uptime column now defaults to out of immediate view, scroll to view it)
+- Fixed a Firefox-only phantom horizontal scrollbar on the Docker table
+- Improved WebUI links and container action buttons
+- WebUI globe icon now shows for containers on "container:" network mode (e.g. routed through a VPN sidecar)
+- Incognito and mobile popup fixes
+- More reliable folder loading on slow connections
+- Assorted preview and dashboard fixes
+- Enhanced debug logging
 
 ###2026.05.28.1
 - Fix VM tab crash when a folder is named the same as a VM (folder vanished and the VM was left out of any folder)
