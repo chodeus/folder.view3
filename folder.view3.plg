@@ -24,6 +24,11 @@
 - Assorted preview and dashboard fixes
 - Enhanced debug logging
 
+###2026.06.13
+- Security hardening for theme management
+- More reliable folder previews and live stats on slow or interrupted connections
+- Assorted preview, dashboard and compatibility fixes
+
 ###2026.05.28.1
 - Fix VM tab crash when a folder is named the same as a VM (folder vanished and the VM was left out of any folder)
 
