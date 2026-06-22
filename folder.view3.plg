@@ -20,7 +20,6 @@
 - Improved WebUI links and container action buttons
 - WebUI globe icon now shows for containers on "container:" network mode (e.g. routed through a VPN sidecar)
 - Incognito and mobile popup fixes
-- More reliable folder loading on slow connections
 - Assorted preview and dashboard fixes
 - Enhanced debug logging
 
