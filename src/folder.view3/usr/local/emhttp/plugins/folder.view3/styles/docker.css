@@ -1,13 +1,5 @@
 /* FolderView3 Docker-specific styles */
 
-/* Exclude the table from scroll anchoring so the toggle's width animation doesn't trip Firefox's
-   "scroll anchoring disabled" warning. */
-.TableContainer,
-#docker_containers,
-#docker_containers > tbody > tr {
-    overflow-anchor: none;
-}
-
 .folder-update-text {
     white-space: nowrap;
 }
