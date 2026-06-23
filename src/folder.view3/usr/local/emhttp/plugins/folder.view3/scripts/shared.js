@@ -1829,8 +1829,31 @@ window.fv3CurrentDockerView = () => {
 // state to be accurate. Keyed by view → { collapsed, expanded, collapsedGenuine, expandedGenuine, ... }.
 let _fv3ViewCache = {};
 
+// EXPERIMENT toggle: when cookie 'fv3_native_widths' is set, the JS width-measurement engine stands
+// down and a static CSS layout (#docker_containers.fv3-native-widths) takes over. Flip live from the
+// console: $.cookie('fv3_native_widths','1') then reload / $.removeCookie('fv3_native_widths') reload.
+window.fv3NativeWidths = () => {
+    try { if (typeof $ !== 'undefined' && $.cookie) return $.cookie('fv3_native_widths') === '1'; } catch (_) {}
+    return /(?:^|;\s*)fv3_native_widths=1(?:;|$)/.test(document.cookie);
+};
+// Apply the static-layout class and, on pre-7.2 Unraid (no native .TableContainer wrapper), inject our
+// own horizontal-scroll wrapper so the table scrolls instead of overflowing the page. Reparenting the
+// table preserves its rows and their bound handlers (no innerHTML). Idempotent.
+window.fv3EnableNativeWidths = () => {
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl) return;
+    tbl.classList.add('fv3-native-widths');
+    if (!tbl.closest('.TableContainer') && !tbl.closest('.fv3-table-scroll') && tbl.parentNode) {
+        const wrap = document.createElement('div');
+        wrap.className = 'fv3-table-scroll';
+        tbl.parentNode.insertBefore(wrap, tbl);
+        wrap.appendChild(tbl);
+    }
+};
+
 // Docker table column-width lock
 window.fv3InstallDockerTableWidthFix = () => {
+    if (fv3NativeWidths()) { fv3EnableNativeWidths(); return; }
     _fv3WidthFixRuns++;
     window.fv3Mark('widthfix');
     fv3Debug('WidthFix', 'run #' + _fv3WidthFixRuns);
@@ -2080,6 +2103,7 @@ window.fv3AnyNonFolderRowVisible = () => {
 };
 
 window.fv3ApplyCachedWidths = () => {
+    if (fv3NativeWidths()) { fv3EnableNativeWidths(); return; }
     // Use the CURRENT view's cached snapshot (basic and advanced are different layouts). Fall back to
     // the last-measured snapshot if this view hasn't been measured yet (a re-measure will follow).
     const snap = _fv3ViewCache[fv3CurrentDockerView()] || _fv3WidthSnapshots;
