@@ -13,12 +13,11 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
 ###2026.06.23
-- Reworked Docker table sizing: columns fit the viewport and shrink before scrolling (no crushing); the table scrolls only when content genuinely can't fit
-- Uptime column shown when a folder is expanded or a container is outside a folder; hidden when everything is collapsed in folders
-- Expanding a folder no longer rearranges the other columns; view toggle animates smoothly and returns to identical widths
-- Firefox: fixed the phantom scrollbar on expand and the scroll-anchoring console warning
-- Trimmed verbose code comments throughout
+- Reverted the Uptime column behaviour from the previous version
+- Smoothed the folder-expand and view-toggle animations
 
 ###2026.06.22
 - More accurate and consistent live CPU/MEM stats
@@ -661,6 +660,13 @@
             echo ""
             echo "  ──────────────────────────────────────────────────"
             echo ""
+            if [ "$ACTION" = "Updated" ]; then
+                echo "  ⚠  If the Docker / VM / Dashboard page doesn't display"
+                echo "     correctly after this update, HARD-REFRESH your browser"
+                echo "     (Ctrl/Cmd+Shift+R) — and clear its cache if needed —"
+                echo "     before submitting a debug .json."
+                echo ""
+            fi
             echo "  Organize your Docker containers and VMs into"
             echo "  collapsible, drag-and-drop folders on the Docker,"
             echo "  VM, and Dashboard tabs. Features real-time stats,"
