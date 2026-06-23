@@ -5,16 +5,13 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/test/&name;.plg">
-<!ENTITY version "2026.06.23.1">
-<!ENTITY md5 "49d01f8425ae7f77f8da5540869e1ec1">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+<!ENTITY version "2026.06.22">
+<!ENTITY md5 "8fc5d1bc62b7ea35f0237f741e3b6575">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
-
-###2026.06.23.1
-- TEST BUILD: experimental static-CSS Docker table layout (native column widths) behind a cookie toggle (fv3_native_widths); default behaviour unchanged
 
 ###2026.06.22
 - More accurate and consistent live CPU/MEM stats
@@ -622,7 +619,7 @@
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/test/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 

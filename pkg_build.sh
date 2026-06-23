@@ -24,10 +24,10 @@ version=$(date +"%Y.%m.%d")
 plgfile="$CWD/folder.view3.plg"
 
 # Auto-detect current git branch, with optional flag override
-# Usage: pkg_build.sh [--beta [N] | --test [N] | --main]
+# Usage: pkg_build.sh [--beta [N] | --develop [N] | --main]
 #   (no flag)    → auto-detect branch from git
 #   --beta [N]   → force beta branch
-#   --test [N]   → force test branch
+#   --develop [N]→ force develop branch
 #   --main       → force main branch (stable)
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 SUFFIX_NUM=""
@@ -35,8 +35,8 @@ SUFFIX_NUM=""
 if [ "${1:-}" = "--beta" ]; then
     branch="beta"
     if [ -n "${2:-}" ] && [ "${2:-}" -eq "${2:-}" ] 2>/dev/null; then SUFFIX_NUM="$2"; fi
-elif [ "${1:-}" = "--test" ]; then
-    branch="test"
+elif [ "${1:-}" = "--develop" ]; then
+    branch="develop"
     if [ -n "${2:-}" ] && [ "${2:-}" -eq "${2:-}" ] 2>/dev/null; then SUFFIX_NUM="$2"; fi
 elif [ "${1:-}" = "--main" ]; then
     branch="main"
@@ -45,7 +45,7 @@ else
 fi
 
 # Set version suffix based on branch
-if [ "$branch" = "test" ] || [ "$branch" = "beta" ]; then
+if [ "$branch" = "develop" ] || [ "$branch" = "beta" ]; then
     if [ -z "$SUFFIX_NUM" ]; then
         # Auto-increment: find highest existing hotfix number and add 1
         highest=0
