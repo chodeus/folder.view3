@@ -185,7 +185,27 @@ const createFolders = async () => {
         containersInfo: containersInfo
     }}));
 
-    try { fv3InstallDockerTableWidthFix(); } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
+    // The page rebuilds this list every ~3s. Replay the cached snapshot if we have one (re-measuring
+    // every refresh makes Volume snap); only measure on the first build. Genuine changes re-measure via
+    // their own triggers (toggle, resize, first expansion).
+    try {
+        if (fv3HasWidthSnapshot()) {
+            fv3ApplyCachedWidths();
+        } else {
+            fv3InstallDockerTableWidthFix();
+            // First measurement can run before icons/stats load; re-measure once content settles (only
+            // while all folders are collapsed, to keep a stable reference).
+            [1200, 3000].forEach(delay => setTimeout(() => {
+                try {
+                    const tbl = document.querySelector('#docker_containers');
+                    if (!tbl) return;
+                    const anyOpen = Array.from(tbl.querySelectorAll('tr.folder .folder-dropdown'))
+                        .some(d => d.getAttribute('active') === 'true');
+                    if (!anyOpen) fv3ScheduleWidthFix();
+                } catch (e) { fv3DebugWarn('createFolders', 'settle re-measure failed:', e.message); }
+            }, delay));
+        }
+    } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
     if (window.fv3Mark) window.fv3Mark('createFolders-end');
 
     globalFolders = foldersDone;
@@ -1322,12 +1342,33 @@ fv3SetupResizeListeners(() => globalFolders, 'docker_listview_mode');
 
 window.addEventListener('resize', () => fv3ScheduleWidthFix());
 let _fv3LastAdvanced = $.cookie('docker_listview_mode') == 'advanced';
-document.addEventListener('click', () => {
-    setTimeout(() => {
-        const now = $.cookie('docker_listview_mode') == 'advanced';
-        if (now !== _fv3LastAdvanced) { _fv3LastAdvanced = now; fv3ScheduleWidthFix(); }
-    }, 100);
-}, true);
+// Delegated change handler (runs right after Unraid's own, with state set) so we react immediately —
+// no click + 100ms delay, no native-fade wobble before the FLIP.
+$(document).on('change', '.advancedview', function () {
+    const now = !!this.checked;
+    if (now === _fv3LastAdvanced) return;
+    _fv3LastAdvanced = now;
+    const tbl = document.querySelector('#docker_containers');
+    const ths = tbl ? Array.from(tbl.querySelectorAll('thead > tr > th')) : [];
+    // FLIP: record current widths, finish the native fade, get the final layout, then transition from
+    // old→new so the table re-flows smoothly in one motion instead of the native slide-then-snap.
+    const firstW = ths.map(th => th.getBoundingClientRect().width);
+    try { if (typeof $ !== 'undefined') $('#docker_containers .advanced').finish(); } catch (e) {}
+    // Replay the cached snapshot (byte-identical a→b→a, no round-trip drift); measure only if unmeasured.
+    try {
+        if (fv3HasWidthSnapshot()) fv3ApplyCachedWidths();
+        else fv3InstallDockerTableWidthFix();
+    } catch (e) { fv3DebugWarn('viewToggle', e.message); }
+    if (tbl && ths.length) {
+        const lastW = ths.map(th => th.getBoundingClientRect().width);
+        ths.forEach((th, i) => { th.style.transition = 'none'; th.style.width = firstW[i] + 'px'; });
+        void tbl.offsetHeight;
+        requestAnimationFrame(() => {
+            ths.forEach((th, i) => { th.style.transition = 'width 0.25s ease'; th.style.width = lastW[i] + 'px'; });
+            setTimeout(() => ths.forEach(th => { th.style.transition = ''; }), 320);
+        });
+    }
+});
 
 const createFolderBtn = () => fv3CreateFolderBtn('docker', '/Docker/Folder');
 
