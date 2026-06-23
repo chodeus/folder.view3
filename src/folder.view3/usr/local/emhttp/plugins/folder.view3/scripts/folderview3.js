@@ -722,10 +722,8 @@ if (typeof initab === 'function') {
     };
 }
 
-// Unraid top-nav links use inline onclick="initab(...)" alongside an href, so the
-// onclick return value is discarded and the browser still follows the href.
-// Catch the click in the capture phase, preventDefault when dirty, and navigate
-// manually after the user picks Discard.
+// Unraid top-nav links keep their href even when onclick returns false, so catch the click in the
+// capture phase and navigate manually after the dirty-check.
 document.addEventListener('click', function(e) {
     const a = e.target.closest && e.target.closest('a[onclick*="initab"]');
     if (!a) return;
