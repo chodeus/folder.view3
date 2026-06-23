@@ -10,9 +10,7 @@ const applyVmZebra = () => {
     });
 };
 
-/**
- * Handles the creation of all folders
- */
+// Render all VM folders.
 const createFolders = async () => {
     await fv3LoadFolderDefaults();
     const prom = await Promise.all(folderReq);
@@ -154,16 +152,7 @@ const createFolders = async () => {
     folderDebugMode  = false;
 };
 
-/**
- * Handles the creation of one folder
- * @param {object} folder the folder
- * @param {string} id if of the folder
- * @param {int} position position to inset the folder
- * @param {Array<string>} order order of vms
- * @param {object} vmInfo info of the vms
- * @param {Array<string>} foldersDone folders that are done
- * @returns the number of element removed before the folder
- */
+// Render one folder. Returns the number of elements removed before the folder's position.
 const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
     folderEvents.dispatchEvent(new CustomEvent('vm-pre-folder-creation', {detail: {
@@ -452,10 +441,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     return remBefore;
 };
 
-/**
- * Hanled the click of the autostart button and changes the container to reflect the status of the folder
- * @param {*} el element passed by the event caller
- */
+// Autostart toggle handler: syncs each VM's autostart to the folder's new state.
 const folderAutostart = (el) => {
     const status = el.target.checked;
     const id = el.target.id.split('-')[1];
@@ -473,11 +459,7 @@ const dropDownButton = (id) => fv3DropDownButton('vm', globalFolders, id, applyV
 const rmFolder = (id) => fv3RmFolder('vm', globalFolders, loadlist, id);
 const editFolder = (id) => fv3EditFolder('vm', '/VMs/Folder', id);
 
-/**
- * 
- * @param {string} id The id of the folder
- * @param {string} action the desired action
- */
+// Run a bulk libvirt action (start/stop/pause/restart/etc.) across all VMs in the folder.
 const actionFolder = async (id, action) => {
     const folder = globalFolders[id];
     const cts = Object.keys(folder.containers);
@@ -541,11 +523,7 @@ const actionFolder = async (id, action) => {
     $('div.spinner.fixed').hide('slow');
 }
 
-/**
- * Execute the desired custom action
- * @param {string} id 
- * @param {number} action 
- */
+// Execute a user-defined custom action (built-in mode or user script) for the folder.
 const folderCustomAction = async (id, action) => {
     $('div.spinner.fixed').show('slow');
 
@@ -626,10 +604,7 @@ const folderCustomAction = async (id, action) => {
     $('div.spinner.fixed').hide('slow');
 };
 
-/**
- * Atach the menu when clicking the folder icon
- * @param {string} id the id of the folder
- */
+// Build and attach the right-click/icon context menu for the folder.
 const addVMFolderContext = (id) => {
     if (!globalFolders[id]) {
         return;

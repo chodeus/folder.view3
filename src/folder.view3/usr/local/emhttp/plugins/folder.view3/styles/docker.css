@@ -1,5 +1,13 @@
 /* FolderView3 Docker-specific styles */
 
+/* Exclude the table from scroll anchoring so the toggle's width animation doesn't trip Firefox's
+   "scroll anchoring disabled" warning. */
+.TableContainer,
+#docker_containers,
+#docker_containers > tbody > tr {
+    overflow-anchor: none;
+}
+
 .folder-update-text {
     white-space: nowrap;
 }
@@ -127,12 +135,16 @@ div.folder-preview-4 span.outer {
     background-color: var(--fv3-hover-bg);
 }
 
-/* Autostart column (2nd-from-last; Uptime is always last). Compose / 3rd-party containers
-   render a "fa-docker + Compose/3rd Party" label here; when the width-fix locks the column near
-   ~100px the label wraps to 2 lines. Keep it on one line; overflow:hidden guards against a longer
-   label re-introducing a horizontal scrollbar. Colspan-safe: trailing column, preview span is upstream. */
+/* Autostart column (2nd-from-last): keep the Compose/3rd-party label on one line and clip overflow
+   (#179). Colspan-safe (trailing). */
 #docker_containers > tbody > tr > td:nth-last-child(2) {
     white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Uptime column (last): clip its nowrap content so the few-px overflow doesn't give Firefox a phantom
+   scrollbar (#177-style; column is already content-sized). Colspan-safe (trailing). */
+#docker_containers > tbody > tr > td:last-child {
     overflow: hidden;
 }
 

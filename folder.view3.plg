@@ -13,6 +13,13 @@
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
+###2026.06.23
+- Reworked Docker table sizing: columns fit the viewport and shrink before scrolling (no crushing); the table scrolls only when content genuinely can't fit
+- Uptime column shown when a folder is expanded or a container is outside a folder; hidden when everything is collapsed in folders
+- Expanding a folder no longer rearranges the other columns; view toggle animates smoothly and returns to identical widths
+- Firefox: fixed the phantom scrollbar on expand and the scroll-anchoring console warning
+- Trimmed verbose code comments throughout
+
 ###2026.06.22
 - More accurate and consistent live CPU/MEM stats
 - Improved Docker table layout, scaling and scroll behaviour (Uptime column now defaults to out of immediate view, scroll to view it)

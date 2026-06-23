@@ -26,14 +26,10 @@ let folderReq = {
     vm: []
 };
 
-/**
- * Handles the creation of all folders
- */
+// Builds all docker and vm folders on the dashboard
 const createFolders = async () => {
     await fv3LoadFolderDefaults();
-    // ########################################
-    // ##########       DOCKER       ##########
-    // ########################################
+    // DOCKER
 
     if($('tbody#docker_view').length > 0) {
 
@@ -142,9 +138,7 @@ const createFolders = async () => {
     }
 
 
-    // ########################################
-    // ##########         VMS        ##########
-    // ########################################
+    // VMS
 
     if($('tbody#vm_view').length > 0) {
 
@@ -236,16 +230,7 @@ const createFolders = async () => {
     folderDebugMode  = false;
 };
 
-/**
- * Handles the creation of one folder
- * @param {object} folder the folder
- * @param {string} id if of the folder
- * @param {int} position position to inset the folder
- * @param {Array<string>} order order of containers
- * @param {object} containersInfo info of the containers
- * @param {Array<string>} foldersDone folders that are done
- * @returns the number of element removed before the folder
- */
+// Builds one docker folder at position; returns count of elements removed before it
 const createFolderDocker = (folder, id, position, order, containersInfo, foldersDone) => {
 
     folderEvents.dispatchEvent(new CustomEvent('docker-pre-folder-creation', {detail: {
@@ -453,16 +438,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     return remBefore;
 };
 
-/**
- * Handles the creation of one folder
- * @param {object} folder the folder
- * @param {string} id if of the folder
- * @param {int} position position to inset the folder
- * @param {Array<string>} order order of vms
- * @param {object} vmInfo info of the vms
- * @param {Array<string>} foldersDone folders that are done
- * @returns the number of element removed before the folder
- */
+// Builds one vm folder at position; returns count of elements removed before it
 const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
 
     folderEvents.dispatchEvent(new CustomEvent('vm-pre-folder-creation', {detail: {
@@ -679,10 +655,7 @@ const fv3GetAnimTarget = (layout, outer, showcase) => {
     return showcase[0] || null;
 };
 
-/**
- * Handle the dropdown expand button of folders
- * @param {string} id the id of the folder
- */
+// Toggle expand/collapse of a docker folder's dropdown
 const expandFolderDocker = (id) => {
     folderEvents.dispatchEvent(new CustomEvent('docker-pre-folder-expansion', {detail: { id }}));
     const el = $(`tbody#docker_view > tr.updated > td span.outer.apps > span#folder-id-${id}`);
@@ -730,10 +703,7 @@ const expandFolderDocker = (id) => {
     }
 };
 
-/**
- * Handle the dropdown expand button of folders
- * @param {string} id the id of the folder
- */
+// Toggle expand/collapse of a vm folder's dropdown
 const expandFolderVM = (id) => {
     folderEvents.dispatchEvent(new CustomEvent('vm-pre-folder-expansion', {detail: { id }}));
     const el = $(`tbody#vm_view > tr.updated > td span.outer.vms > span#folder-id-${id}`);
@@ -781,10 +751,7 @@ const expandFolderVM = (id) => {
     }
 };
 
-/**
- * Removie the folder
- * @param {string} id the id of the folder
- */
+// Confirm and delete a docker folder
 const rmDockerFolder = (id) => {
     swal({
         title: $.i18n('are-you-sure'),
@@ -805,10 +772,7 @@ const rmDockerFolder = (id) => {
     });
 };
 
-/**
- * Removie the folder
- * @param {string} id the id of the folder
- */
+// Confirm and delete a vm folder
 const rmVMFolder = (id) => {
     swal({
         title: $.i18n('are-you-sure'),
@@ -829,27 +793,17 @@ const rmVMFolder = (id) => {
     });
 };
 
-/**
- * Redirect to the page to edit the folder
- * @param {string} id the id of the folder
- */
+// Navigate to the docker folder edit page
 const editDockerFolder = (id) => {
     location.href = location.pathname + "/Folder?type=docker&id=" + id;
 };
 
-/**
- * Redirect to the page to edit the folder
- * @param {string} id the id of the folder
- */
+// Navigate to the vm folder edit page
 const editVMFolder = (id) => {
     location.href = location.pathname + "/Folder?type=vm&id=" + id;
 };
 
-/**
- * Execute the desired custom action
- * @param {string} id 
- * @param {number} action 
- */
+// Run a folder's custom action (container ops or user script) for docker
 const folderDockerCustomAction = async (id, action) => {
     $('div.spinner.fixed').show('slow');
     const folder = globalFolders.docker[id];
@@ -944,10 +898,7 @@ const folderDockerCustomAction = async (id, action) => {
     $('div.spinner.fixed').hide('slow');
 };
 
-/**
- * Atach the menu when clicking the folder icon
- * @param {string} id the id of the folder
- */
+// Build and attach the context menu for a docker folder icon
 const addDockerFolderContext = (id) => {
     const exp = $(`tbody#docker_view .folder-showcase-outer-${id}`).attr('expanded') === "true";
     let opts = [];
@@ -1096,29 +1047,19 @@ const addDockerFolderContext = (id) => {
     context.attach(`#folder-id-${id}`, opts);
 };
 
-/**
- * Force update all the containers inside a folder
- * @param {string} id the id of the folder
- */
+// Force-update all managed containers in a folder
 const forceUpdateFolderDocker = (id) => {
     const folder = globalFolders.docker[id];
     openDocker('update_container ' + Object.entries(folder.containers).filter(([k, v]) => v.managed).map(e => e[0]).join('*'), $.i18n('updating', folder.name),'','loadlist');
 };
 
-/**
- * Update all the updatable containers inside a folder
- * @param {string} id the id of the folder
- */
+// Update only the containers in a folder that have updates available
 const updateFolderDocker = (id) => {
     const folder = globalFolders.docker[id];
     openDocker('update_container ' + Object.entries(folder.containers).filter(([k, v]) => v.managed && v.update).map(e => e[0]).join('*'), $.i18n('updating', folder.name),'','loadlist');
 };
 
-/**
- * Perform an action for the entire folder
- * @param {string} id The id of the folder
- * @param {string} action the desired action
- */
+// Run a start/stop/pause/resume/restart action across all containers in a docker folder
 const actionFolderDocker = async (id, action) => {
     const folder =  globalFolders.docker[id];
     const cts = Object.keys(folder.containers);
@@ -1176,11 +1117,7 @@ const actionFolderDocker = async (id, action) => {
     $('div.spinner.fixed').hide('slow');
 }
 
-/**
- * Execute the desired custom action
- * @param {string} id 
- * @param {number} action 
- */
+// Run a folder's custom action (vm ops or user script) for vms
 const folderVMCustomAction = async (id, action) => {
     $('div.spinner.fixed').show('slow');
     const eventURL = '/plugins/dynamix.vm.manager/include/VMajax.php';
@@ -1274,10 +1211,7 @@ const folderVMCustomAction = async (id, action) => {
     $('div.spinner.fixed').hide('slow');
 };
 
-/**
- * Atach the menu when clicking the folder icon
- * @param {string} id the id of the folder
- */
+// Build and attach the context menu for a vm folder icon
 const addVMFolderContext = (id) => {
     const exp = $(`tbody#vm_view .folder-showcase-outer-${id}`).attr('expanded') === "true";
     let opts = [];
@@ -1415,11 +1349,7 @@ const addVMFolderContext = (id) => {
     context.attach(`#folder-id-${id}`, opts);
 };
 
-/**
- * Perform an action for the entire folder
- * @param {string} id The id of the folder
- * @param {string} action the desired action
- */
+// Run a start/stop/pause/resume/restart action across all vms in a vm folder
 const actionFolderVM = async (id, action) => {
     const folder =  globalFolders.vms[id];
     const cts = Object.keys(folder.containers);
