@@ -1824,9 +1824,7 @@ window.fv3CurrentDockerView = () => {
     return /(?:^|;\s*)docker_listview_mode=advanced(?:;|$)/.test(document.cookie) ? 'advanced' : 'basic';
 };
 
-// Per-view width snapshot cache. Basic and advanced are different layouts (advanced adds the
-// CPU/Memory column), and within each, the expanded vs collapsed widths must be measured in their own
-// state to be accurate. Keyed by view → { collapsed, expanded, collapsedGenuine, expandedGenuine, ... }.
+// Per-view (basic|advanced) width snapshot cache: { collapsed, expanded, genuine flags, ... }.
 let _fv3ViewCache = {};
 
 // Docker table column-width lock
@@ -1852,6 +1850,7 @@ window.fv3InstallDockerTableWidthFix = () => {
 
     const containerW = (tbl.parentElement && tbl.parentElement.clientWidth) || tbl.clientWidth;
     const targetW = containerW - 2;
+    const MIN_FLEX = 120; // expanded columns shrink to at most this before the table scrolls instead
 
     const maxCols = headers.map(h => h.getBoundingClientRect().width);
     let verContentMax = 0;
@@ -1872,14 +1871,8 @@ window.fv3InstallDockerTableWidthFix = () => {
             const verTd = row.querySelector('td:nth-child(2)');
             if (!verTd) return;
             Array.from(verTd.children).forEach(el => {
-                // Measure the INTRINSIC content width of every version-cell child. verCap is a
-                // single injected cap (not per-view), so the column must fit the advanced "force
-                // update" content too (which is display:none in basic view). But measuring a block
-                // element as-rendered returns the full COLUMN width, which makes verCap a feedback
-                // of the current column width — it then settles at one of two values depending on
-                // the state when the fix runs and jumps the headings on toggle/expand. Forcing
-                // inline-block first (for hidden OR block-ish elements) gives the true content
-                // width, so verCap is deterministic and still covers the advanced content.
+                // Force inline-block to read intrinsic width, so verCap covers the advanced
+                // "force update" content and stays deterministic.
                 const disp = getComputedStyle(el).display;
                 const shrink = disp !== 'inline' && disp !== 'inline-block';
                 const prevDisplay = el.style.display;
@@ -1906,12 +1899,8 @@ window.fv3InstallDockerTableWidthFix = () => {
         }
     }
 
-    // Advanced-only columns (class 'advanced' — CPU/Memory) are hidden in basic view. Detect that
-    // from the view COOKIE, not just the column's computed display: a basic↔advanced toggle can run
-    // this measurement before Unraid finishes hiding the column, and measuring it as still-visible
-    // would bake its width into the BASIC snapshot (crushing Volume, pushing Autostart off-screen) —
-    // so a round-trip to advanced and back sizes differently from a fresh basic load. The cookie is
-    // authoritative the instant the toggle is registered, so basic always measures these as hidden.
+    // Advanced-only columns (.advanced) are hidden in basic — detect from the cookie, not computed
+    // display (which lags mid-toggle).
     const advancedView = fv3CurrentDockerView() === 'advanced';
     const displayHidden = headers.map(h =>
         (!advancedView && h.classList.contains('advanced'))
@@ -1935,18 +1924,8 @@ window.fv3InstallDockerTableWidthFix = () => {
         if (maxCols[autostartIdx] > visibleNeed) maxCols[autostartIdx] = visibleNeed;
     }
 
-    // Two-mode column sizing, one snapshot per folder state:
-    //  - 'fit'     (COLLAPSED / folders-only): lock the table inside the viewport. If the content
-    //              doesn't fit, crush the flexible middle columns (2-6) to fit — SAFE here because a
-    //              collapsed row is just the colspan folder-preview, which wraps; there's no
-    //              per-container cell data to overlap.
-    //  - 'natural' (EXPANDED): keep columns at their full content width. When it fits, grow the
-    //              middle columns to fill the window; when it doesn't, leave them at content width and
-    //              let the native .TableContainer (overflow-x:auto + min-width:1000px) scroll. The
-    //              extra columns (Uptime, and CPU in advanced) appear on the RIGHT and the table grows
-    //              rightward + scrolls, instead of compacting the existing columns leftward.
-    // Because content width >= fit width for every column, collapsed→expanded only ever grows or keeps
-    // a column — never shrinks one — so the left side (and the chevron) stays put.
+    // Size middle columns (2-6). mode 'fit' (collapsed): shrink to viewport. mode 'natural' (expanded):
+    // grow to fill if it fits, else shrink to MIN_FLEX, else keep content width and let the table scroll.
     const distributeSlack = (cols, mode) => {
         const sum = cols.reduce((a, b) => a + b, 0);
         const widths = cols.map(Math.ceil);
@@ -1955,6 +1934,16 @@ window.fv3InstallDockerTableWidthFix = () => {
             if (finalSum !== targetW) {
                 const diff = targetW - finalSum;
                 if (widths[6] + diff >= 60) widths[6] += diff;
+            }
+        };
+        const shrinkToFit = () => {
+            const overflow = sum - targetW;
+            let flex = 0;
+            for (let i = 2; i <= 6; i++) flex += cols[i];
+            if (flex > overflow) {
+                const scale = (flex - overflow) / flex;
+                for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(cols[i] * scale));
+                nudge();
             }
         };
         if (sum < targetW) {
@@ -1969,57 +1958,70 @@ window.fv3InstallDockerTableWidthFix = () => {
             }
             nudge();
         } else if (mode === 'fit') {
-            // content overflows a narrow window: crush the flexible middle columns to fit (collapsed
-            // only — the preview wraps, nothing overlaps), keeping the table locked in the viewport.
+            shrinkToFit();
+        } else {
+            // expanded: shrink toward fit but not below MIN_FLEX; if it still overflows, keep content
+            // widths and scroll.
             const overflow = sum - targetW;
             let flex = 0;
-            for (let i = 2; i <= 6; i++) flex += cols[i];
-            if (flex > overflow) {
-                const scale = (flex - overflow) / flex;
-                for (let i = 2; i <= 6; i++) widths[i] = Math.max(40, Math.floor(cols[i] * scale));
-                nudge();
+            for (let i = 2; i <= 6; i++) if (cols[i] > 0) flex += cols[i];
+            if (flex > 0) {
+                const scale = Math.max(0, (flex - overflow) / flex);
+                const trial = widths.slice();
+                for (let i = 2; i <= 6; i++) {
+                    if (cols[i] > 0) trial[i] = Math.max(Math.min(cols[i], MIN_FLEX), Math.floor(cols[i] * scale));
+                }
+                let fs = trial.reduce((a, b) => a + b, 0);
+                // Absorb the flooring/rounding residual into Volume (col 6) so a near-fit settles exactly
+                // instead of bailing to a scroll over a few px.
+                const diff = targetW - fs;
+                if (trial[6] + diff >= MIN_FLEX) { trial[6] += diff; fs += diff; }
+                if (fs <= targetW) {
+                    for (let i = 2; i <= 6; i++) widths[i] = trial[i];
+                }
+                // else: still overflows → keep content widths, scroll.
             }
         }
-        // else (mode 'natural', sum >= targetW): keep content widths → table extends right and scrolls.
         return widths;
     };
 
     const uptimeIdx = headers.findIndex(h => h.classList && h.classList.contains('five'));
-    // COLLAPSED: Uptime is hidden (no container rows), so drop it and fit the rest to the viewport.
-    const collapsedCols = maxCols.slice();
-    if (uptimeIdx >= 0) collapsedCols[uptimeIdx] = 0;
-    const widthsCollapsed = distributeSlack(collapsedCols, 'fit');
-    // EXPANDED: full content widths, but clamp each column to be at least its collapsed width. This
-    // guarantees collapsed→expanded only ever grows or holds a column — never shrinks one — so the
-    // table only extends rightward (and scrolls) when you expand; the existing columns never compact
-    // leftward. (A column wider than its content just gets harmless trailing slack, never overlap.)
-    const naturalExpanded = distributeSlack(maxCols, 'natural');
-    const widthsExpanded = naturalExpanded.map((w, i) => Math.max(w, widthsCollapsed[i] || 0));
+    const volMappingsIdx = 6;
+    const widthsExpanded = distributeSlack(maxCols, 'natural');
+    // Standalone collapsed fit — fallback for when expanded overflows (folders-only view still fits).
+    const collapsedColsFit = maxCols.slice();
+    if (uptimeIdx >= 0) collapsedColsFit[uptimeIdx] = 0;
+    const widthsCollapsedFit = distributeSlack(collapsedColsFit, 'fit');
 
-    // Per-view dual-state caching. EXPANDED widths are only accurate when measured with container rows
-    // genuinely visible (the all-collapsed "move-out" state over-estimates the middle columns and
-    // pushes Autostart into the scroll zone); COLLAPSED widths only from the all-collapsed state. And
-    // the whole thing is keyed by view, because advanced adds the CPU/Memory column — so
-    // basic-expanded and advanced-expanded are different layouts. Keep each (view, state) from the run
-    // that measured it in its own state; carry the other state over from the same view's prior run.
+    // EXPANDED kept from a genuine (container-rows-visible) measurement. COLLAPSED derived from it
+    // (hide Uptime → Volume) so expanding shifts only Volume, never rearranges the middles (#31);
+    // standalone fit only when expanded overflows.
     const view = fv3CurrentDockerView();
     const measuredExpanded = (typeof fv3AnyNonFolderRowVisible === 'function') && fv3AnyNonFolderRowVisible();
     const prev = _fv3ViewCache[view] || {};
+    const expanded = ((measuredExpanded || !prev.expandedGenuine) ? widthsExpanded : prev.expanded).slice();
+    let collapsed;
+    if (expanded.reduce((a, b) => a + b, 0) <= targetW + 1) {
+        collapsed = expanded.slice();
+        if (uptimeIdx >= 0 && !displayHidden[uptimeIdx] && collapsed[uptimeIdx] > 0
+            && volMappingsIdx < collapsed.length) {
+            collapsed[volMappingsIdx] += collapsed[uptimeIdx];
+            collapsed[uptimeIdx] = 0;
+        }
+    } else {
+        collapsed = widthsCollapsedFit.slice();
+    }
     const entry = {
-        expanded: ((measuredExpanded || !prev.expandedGenuine) ? widthsExpanded : prev.expanded).slice(),
-        collapsed: ((!measuredExpanded || !prev.collapsedGenuine) ? widthsCollapsed : prev.collapsed).slice(),
+        expanded,
+        collapsed,
         expandedGenuine: measuredExpanded || !!prev.expandedGenuine,
-        collapsedGenuine: !measuredExpanded || !!prev.collapsedGenuine,
+        collapsedGenuine: true,
         displayHidden,
         verCap,
         headerCount: headers.length,
     };
-    // Anchor columns (App=0, Version=1) sit LEFT of the folder preview. Because the collapsed and
-    // expanded snapshots are measured in separate runs (dual-state cache), the per-state verCap
-    // measurement can make Version differ by a few px between them — which would shift every collapsed
-    // folder's preview (and its pills) sideways when another folder is expanded. Their content isn't
-    // fold-state-dependent, so pin both snapshots' anchors to the same (max) width: the preview's left
-    // edge stays put, and max() never clips (verCap already ellipsises any overflow).
+    // Pin anchor columns (App, Version) to one width across both snapshots so the preview's left edge
+    // can't shift between collapsed/expanded.
     for (let i = 0; i <= 1; i++) {
         const m = Math.max(entry.collapsed[i] || 0, entry.expanded[i] || 0);
         entry.collapsed[i] = m;
@@ -2079,9 +2081,18 @@ window.fv3AnyNonFolderRowVisible = () => {
     return false;
 };
 
+// True when the current view has a cached snapshot matching the live column count — lets a loadlist
+// rebuild REPLAY it instead of re-measuring (re-measuring every ~3s makes Volume snap around).
+window.fv3HasWidthSnapshot = () => {
+    const snap = _fv3ViewCache[fv3CurrentDockerView()];
+    if (!snap) return false;
+    const tbl = document.querySelector('#docker_containers');
+    if (!tbl) return false;
+    return tbl.querySelectorAll('thead > tr > th').length === snap.headerCount;
+};
+
 window.fv3ApplyCachedWidths = () => {
-    // Use the CURRENT view's cached snapshot (basic and advanced are different layouts). Fall back to
-    // the last-measured snapshot if this view hasn't been measured yet (a re-measure will follow).
+    // Current view's cached snapshot; fall back to the last-measured one until this view is measured.
     const snap = _fv3ViewCache[fv3CurrentDockerView()] || _fv3WidthSnapshots;
     if (!snap) return;
     const tbl = document.querySelector('#docker_containers');
@@ -2096,9 +2107,7 @@ window.fv3ApplyCachedWidths = () => {
         if (widths[i] === 0) {
             th.style.padding = '0';
             th.style.fontSize = '0';
-            // font-size:0 collapses the label text, but a sort-arrow pseudo-element / inner span
-            // keeps a ~6px sliver that overflows the zero-width column; clip it so it can't extend
-            // the table (the other half of the Firefox phantom-scrollbar fix).
+            // clip the sort-arrow sliver so a width-0 column can't extend the table (Firefox #177)
             th.style.overflow = 'hidden';
         } else {
             th.style.padding = '';
@@ -2106,11 +2115,8 @@ window.fv3ApplyCachedWidths = () => {
             th.style.overflow = '';
         }
     });
-    // A column collapsed to width 0 still leaves its BODY cells' horizontal padding (content-box,
-    // ~26px), which overflows the zero-width column under table-layout:fixed and renders a phantom
-    // horizontal scrollbar in Firefox (Chrome discards it). We zero the <th> padding above; do the
-    // same for the body cells of any zero-width column. These columns are trailing, so nth-last-child
-    // is colspan-safe — the preview colspan cell always sits upstream of them.
+    // Zero the body-cell padding of any width-0 column too, else it overflows and Firefox shows a
+    // phantom scrollbar (#177). Trailing columns, so nth-last-child is colspan-safe.
     const zeroCols = [];
     widths.forEach((w, i) => { if (w === 0 && !snap.displayHidden[i]) zeroCols.push(i); });
     let zeroStyle = document.getElementById('fv3-zerocol-style');
@@ -2127,19 +2133,8 @@ window.fv3ApplyCachedWidths = () => {
     } else if (zeroStyle) {
         zeroStyle.textContent = '';
     }
-    // table-layout:fixed gives stable columns, but at FRACTIONAL devicePixelRatio (e.g. Windows
-    // display scaling 125%) the browser's fixed-layout colspan distribution breaks and collapses
-    // the folder preview cell (a colspan cell), pushing it right / clipping it. FolderView2 never
-    // had this because it used the browser's default (auto) layout. So only lock to fixed at
-    // INTEGER DPR; at fractional DPR fall back to auto layout (the th width hints above keep the
-    // columns aligned), which sizes the colspan cell correctly. Setting widths on the body cells
-    // does NOT help — under table-layout:fixed the column widths come from the <th>, not the cells.
-    // Pin the table's min-width to the snapshot total so it actually reaches its full width and the
-    // .TableContainer scrolls. Under table-layout:auto (used at fractional devicePixelRatio — browser
-    // zoom ≠ 100%, or 125%/150% display scaling) the per-<th> widths are only HINTS, and because the
-    // cells are wrappable (white-space:normal) the browser would otherwise shrink the whole table to
-    // fit the container — collapsing the expanded columns (Uptime etc.) into the viewport instead of
-    // scrolling. Harmless under fixed layout, where the <th> widths already sum to this total.
+    // Pin min-width to the snapshot total so the table reaches full width and the container can scroll.
+    // Fixed layout at integer DPR; auto at fractional DPR (fixed breaks the colspan preview cell there).
     tbl.style.minWidth = widths.reduce((a, b) => a + b, 0) + 'px';
     tbl.style.tableLayout = Number.isInteger(window.devicePixelRatio) ? 'fixed' : 'auto';
     if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
@@ -2166,11 +2161,8 @@ window.fv3ScheduleApplyCachedWidths = () => {
 //   2. Observe preview CELL not row — observing the row causes growth loops.
 const _fv3PreviewObserved = new WeakSet();
 const _fv3PreviewRO = ('ResizeObserver' in window) ? new ResizeObserver(() => {
-    // Route through the 50ms-debounced scheduler (the same one every other pill-sizing trigger
-    // uses) rather than resizing inside the RO's own delivery cycle. Calling fv3SizeFolderPills()
-    // directly mutates layout within the cycle, which is what makes Chrome emit "ResizeObserver
-    // loop ..." during the icon-load settle. Deferring breaks that, coalesces rapid resizes, and
-    // still lands a final pass once the preview settles.
+    // Defer via the debounced scheduler, not inside the RO cycle (direct layout mutation there
+    // triggers Chrome's "ResizeObserver loop" warning).
     if (window.fv3SchedulePillSize) window.fv3SchedulePillSize();
     else requestAnimationFrame(() => { try { fv3SizeFolderPills(); } catch (e) { fv3DebugWarn('PillSize', e.message); } });
 }) : null;
@@ -2208,13 +2200,8 @@ window.fv3SchedulePillSize = () => {
         folderEvents.addEventListener('vm-post-folders-creation', fv3SchedulePillSize);
         folderEvents.addEventListener('docker-post-folder-expansion', fv3SchedulePillSize);
         folderEvents.addEventListener('vm-post-folder-expansion', fv3SchedulePillSize);
-        // The first genuine expansion IN EACH VIEW re-measures ONCE — to capture an accurate expanded
-        // snapshot for that view (the load-time one is the over-wide all-collapsed approximation that
-        // pushes Autostart into the scroll zone; and advanced needs its own snapshot with the
-        // CPU/Memory column sized). That per-view snapshot is then cached, so every later expand/
-        // collapse in the same view just REPLAYS it — no re-measure, so the collapsed folders' preview
-        // pills never shift. Re-measuring on every toggle (an earlier bug) sampled a different row set
-        // each time and made the pills jitter.
+        // First genuine expansion per view re-measures once for an accurate expanded snapshot; later
+        // expand/collapse just replays it (re-measuring each time jitters the preview pills).
         folderEvents.addEventListener('docker-post-folder-expansion', () => {
             try {
                 const entry = _fv3ViewCache[fv3CurrentDockerView()];

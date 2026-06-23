@@ -6,12 +6,18 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.06.22">
-<!ENTITY md5 "8fc5d1bc62b7ea35f0237f741e3b6575">
+<!ENTITY version "2026.06.23">
+<!ENTITY md5 "17d201fcac3c244ed57ca4199c118631">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
+
+After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.06.23
+- Reverted the Uptime column behaviour from the previous version
+- Smoothed the folder-expand and view-toggle animations
 
 ###2026.06.22
 - More accurate and consistent live CPU/MEM stats
@@ -654,6 +660,13 @@
             echo ""
             echo "  ──────────────────────────────────────────────────"
             echo ""
+            if [ "$ACTION" = "Updated" ]; then
+                echo "  ⚠  If the Docker / VM / Dashboard page doesn't display"
+                echo "     correctly after this update, HARD-REFRESH your browser"
+                echo "     (Ctrl/Cmd+Shift+R) — and clear its cache if needed —"
+                echo "     before submitting a debug .json."
+                echo ""
+            fi
             echo "  Organize your Docker containers and VMs into"
             echo "  collapsible, drag-and-drop folders on the Docker,"
             echo "  VM, and Dashboard tabs. Features real-time stats,"

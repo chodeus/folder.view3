@@ -12,9 +12,6 @@ let folderobserverConfig = {
 };
 let folderReq = [];
 
-/**
- * Handles the creation of all folders
- */
 // Folder rendering — orchestrate (createFolders) and per-folder build (createFolder)
 const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
@@ -32,13 +29,9 @@ const createFolders = async () => {
     fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
     Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
-    // When userprefs.cfg is absent (no manual reorder), synthesize an alphabetical intermix
-    // of folder names + orphan container names so folders slot into their natural position.
-    // Folder members stay in their editor-chosen order inside the folder.
-    // Variable naming is reversed from intuition: `unraidOrder` is read_order.php (raw
-    // userprefs.cfg, including folder placeholders); `order` is read_unraid_order.php
-    // (containers only, alphabetical when userprefs.cfg is absent). So the empty check
-    // goes on unraidOrder, and orphans are drawn from order.
+    // No userprefs.cfg: synthesize alphabetical intermix of folder names + orphan containers.
+    // Note: `unraidOrder` = read_order.php (raw prefs, has folder placeholders); `order` =
+    // read_unraid_order.php (containers only, alphabetical when prefs absent).
     if (unraidOrder.length === 0) {
         const memberSet = new Set(
             Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : [])
@@ -151,11 +144,8 @@ const createFolders = async () => {
     }
     fv3Debug('createFolders', 'Finished loop for remaining folders.');
 
-    // In alpha-synthesis mode (no manual order), the createFolder() insertion math leaves
-    // folders and orphan containers in roughly-but-not-quite alphabetical positions because
-    // positionInMainOrder is an index into our synthesized `order`, which doesn't map cleanly
-    // to DOM positions when Unraid PHP rendered containers in pure alphabetical order.
-    // Final pass: reattach top-level sortable rows in alphabetical order by name.
+    // Alpha-synthesis mode: insertion math leaves rows only roughly alphabetical, so do a
+    // final pass to reattach top-level sortable rows in alphabetical order by name.
     if (unraidOrder.length === 0) {
         const $list = $('#docker_list');
         const rows = $list.children('tr.sortable').toArray();
@@ -185,22 +175,27 @@ const createFolders = async () => {
         containersInfo: containersInfo
     }}));
 
-    try { fv3InstallDockerTableWidthFix(); } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
-    // The initial measurement above can run before container icons / live stats finish loading, so the
-    // cached snapshot may be slightly too wide (pushing Autostart/Uptime off-screen on the first
-    // expand). Re-measure once the content settles to refresh the cache — but ONLY while every folder
-    // is still collapsed, so it stays the stable all-collapsed reference (re-measuring with a folder
-    // open samples a different row set and would make later toggles shift the preview pills). Two
-    // staggered passes cover fast and slow page loads.
-    [1200, 3000].forEach(delay => setTimeout(() => {
-        try {
-            const tbl = document.querySelector('#docker_containers');
-            if (!tbl) return;
-            const anyOpen = Array.from(tbl.querySelectorAll('tr.folder .folder-dropdown'))
-                .some(d => d.getAttribute('active') === 'true');
-            if (!anyOpen) fv3ScheduleWidthFix();
-        } catch (e) { fv3DebugWarn('createFolders', 'settle re-measure failed:', e.message); }
-    }, delay));
+    // The page rebuilds this list every ~3s. Replay the cached snapshot if we have one (re-measuring
+    // every refresh makes Volume snap); only measure on the first build. Genuine changes re-measure via
+    // their own triggers (toggle, resize, first expansion).
+    try {
+        if (fv3HasWidthSnapshot()) {
+            fv3ApplyCachedWidths();
+        } else {
+            fv3InstallDockerTableWidthFix();
+            // First measurement can run before icons/stats load; re-measure once content settles (only
+            // while all folders are collapsed, to keep a stable reference).
+            [1200, 3000].forEach(delay => setTimeout(() => {
+                try {
+                    const tbl = document.querySelector('#docker_containers');
+                    if (!tbl) return;
+                    const anyOpen = Array.from(tbl.querySelectorAll('tr.folder .folder-dropdown'))
+                        .some(d => d.getAttribute('active') === 'true');
+                    if (!anyOpen) fv3ScheduleWidthFix();
+                } catch (e) { fv3DebugWarn('createFolders', 'settle re-measure failed:', e.message); }
+            }, delay));
+        }
+    } catch(e) { fv3DebugWarn('createFolders', 'WidthFix failed:', e.message); }
     if (window.fv3Mark) window.fv3Mark('createFolders-end');
 
     globalFolders = foldersDone;
@@ -238,16 +233,8 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'Exit');
 };
 
-/**
- * Handles the creation of one folder
- * @param {object} folder the folder
- * @param {string} id if of the folder
- * @param {int} position position to inset the folder
- * @param {Array<string>} order order of containers
- * @param {object} containersInfo info of the containers
- * @param {Array<string>} foldersDone folders that are done
- * @returns {number} the number of element removed before the folder
- */
+// Build one folder row + preview, move member containers into it, aggregate state.
+// Returns the count of member containers that sat before the folder's insertion point.
 const createFolder = (folder, id, positionInMainOrder, liveOrderArray, containersInfo, foldersDone) => {
     fv3Debug('createFolder', id, 'Entry', { folder: JSON.parse(JSON.stringify(folder)), id, positionInMainOrder, orderInitialSnapshot: [...liveOrderArray], containersInfoKeys: Object.keys(containersInfo).length, foldersDone: [...foldersDone] });
 
@@ -753,10 +740,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
 // hideAllTips() and advancedAutostart() moved to advanced-preview.js (window globals)
 
-/**
- * Hanled the click of the autostart button and changes the container to reflect the status of the folder
- * @param {*} el element passed by the event caller
- */
+// Folder autostart toggle — sync each container's autostart to the folder's new state.
 const folderAutostart = async (el) => {
     fv3Debug('folderAutostart', 'Entry. Event target:', el.target);
     const status = el.target.checked;
@@ -790,10 +774,7 @@ const dropDownButton = (id) => fv3DropDownButton('docker', globalFolders, id);
 const rmFolder = (id) => fv3RmFolder('docker', globalFolders, loadlist, id);
 const editFolder = (id) => fv3EditFolder('docker', '/Docker/Folder', id);
 
-/**
- * Force update all the containers inside a folder
- * @param {string} id the id of the folder
- */
+// Force-update all managed containers in a folder.
 const forceUpdateFolder = (id) => {
     fv3Debug('forceUpdateFolder', id, 'Entry.');
     hideAllTips();
@@ -804,10 +785,7 @@ const forceUpdateFolder = (id) => {
     openDocker('update_container ' + containersToUpdate, $.i18n('updating', folder.name),'','loadlist');
 };
 
-/**
- * Update all the updatable containers inside a folder
- * @param {string} id the id of the folder
- */
+// Update all containers in a folder that have an update available.
 const updateFolder = (id) => {
     fv3Debug('updateFolder', id, 'Entry.');
     hideAllTips();
@@ -818,12 +796,7 @@ const updateFolder = (id) => {
     openDocker('update_container ' + containersToUpdate, $.i18n('updating', folder.name),'','loadlist');
 };
 
-/**
- * Perform an action for the entire folder
- * @param {string} id The id of the folder
- * @param {string} action the desired action
- */
-// Bulk folder actions (start/stop/restart all containers in folder)
+// Bulk folder action (start/stop/restart/pause/resume all containers in folder)
 const actionFolder = async (id, action) => {
     fv3Debug('actionFolder', id, action, 'Entry.');
     const folder = globalFolders[id];
@@ -905,11 +878,6 @@ const actionFolder = async (id, action) => {
     fv3Debug('actionFolder', id, 'Exit.');
 };
 
-/**
- * Execute the desired custom action
- * @param {string} id
- * @param {number} actionIndex
- */
 // Custom user-defined action runner
 const folderCustomAction = async (id, actionIndex) => {
     fv3Debug('folderCustomAction', id, 'Entry.');
@@ -1006,11 +974,7 @@ const folderCustomAction = async (id, actionIndex) => {
 };
 
 
-/**
- * Atach the menu when clicking the folder icon
- * @param {string} id the id of the folder
- */
-// Folder context menu
+// Folder context menu (attached to the folder icon)
 const addDockerFolderContext = (id) => {
     fv3Debug('addDockerFolderContext', id, 'Entry.');
     let opts = [];
@@ -1275,10 +1239,8 @@ const fv3InitSSEStats = () => {
     });
 };
 
-// fv3ApiAvailable/fv3CpuCores are populated asynchronously by fv3DetectApi() (a /graphql
-// fetch). This block used to run synchronously at module-parse time, before detection
-// resolved, so the check was always false and the WebSocket stats path was never taken —
-// stats silently used SSE even when the API/WS was available. Wait for detection first.
+// fv3ApiAvailable/fv3CpuCores are populated async by fv3DetectApi(); must await it before
+// choosing WebSocket vs SSE, or the check runs too early and always falls back to SSE.
 fv3DetectApi().then(() => {
     if (fv3ApiAvailable && fv3CpuCores) {
         cpus = fv3CpuCores;
@@ -1304,11 +1266,7 @@ fv3DetectApi().then(() => {
 // memToB() moved to advanced-preview.js (window global)
 
 
-/**
- * Convert Bytes to memory units
- * @param {number} b the number of bytes
- * @returns {string} a string with the right notation and right unit
- */
+// Convert a byte count to a human-readable memory string (B/KiB/MiB/...).
 const bToMem = (b) => {
     if (typeof b !== 'number' || isNaN(b) || b < 0) {
         fv3DebugWarn('bToMem', `Invalid input ${b}. Returning '0 B'.`);
@@ -1337,21 +1295,33 @@ fv3SetupResizeListeners(() => globalFolders, 'docker_listview_mode');
 
 window.addEventListener('resize', () => fv3ScheduleWidthFix());
 let _fv3LastAdvanced = $.cookie('docker_listview_mode') == 'advanced';
-document.addEventListener('click', () => {
-    setTimeout(() => {
-        const now = $.cookie('docker_listview_mode') == 'advanced';
-        if (now !== _fv3LastAdvanced) {
-            _fv3LastAdvanced = now;
-            fv3ScheduleWidthFix();
-            // Unraid's listview()/readmore keep re-processing the cells for a few hundred ms after a
-            // view toggle. A re-measure during that window bakes transient middle-column widths
-            // (Volume/IP) that never settle back — so basic→advanced→basic ends up sized differently
-            // from a fresh basic load. Re-measure again once it's quiesced (settles by ~600ms) so the
-            // round-trip lands on the same sizes as a fresh load.
-            setTimeout(() => fv3ScheduleWidthFix(), 700);
-        }
-    }, 100);
-}, true);
+// Delegated change handler (runs right after Unraid's own, with state set) so we react immediately —
+// no click + 100ms delay, no native-fade wobble before the FLIP.
+$(document).on('change', '.advancedview', function () {
+    const now = !!this.checked;
+    if (now === _fv3LastAdvanced) return;
+    _fv3LastAdvanced = now;
+    const tbl = document.querySelector('#docker_containers');
+    const ths = tbl ? Array.from(tbl.querySelectorAll('thead > tr > th')) : [];
+    // FLIP: record current widths, finish the native fade, get the final layout, then transition from
+    // old→new so the table re-flows smoothly in one motion instead of the native slide-then-snap.
+    const firstW = ths.map(th => th.getBoundingClientRect().width);
+    try { if (typeof $ !== 'undefined') $('#docker_containers .advanced').finish(); } catch (e) {}
+    // Replay the cached snapshot (byte-identical a→b→a, no round-trip drift); measure only if unmeasured.
+    try {
+        if (fv3HasWidthSnapshot()) fv3ApplyCachedWidths();
+        else fv3InstallDockerTableWidthFix();
+    } catch (e) { fv3DebugWarn('viewToggle', e.message); }
+    if (tbl && ths.length) {
+        const lastW = ths.map(th => th.getBoundingClientRect().width);
+        ths.forEach((th, i) => { th.style.transition = 'none'; th.style.width = firstW[i] + 'px'; });
+        void tbl.offsetHeight;
+        requestAnimationFrame(() => {
+            ths.forEach((th, i) => { th.style.transition = 'width 0.25s ease'; th.style.width = lastW[i] + 'px'; });
+            setTimeout(() => ths.forEach(th => { th.style.transition = ''; }), 320);
+        });
+    }
+});
 
 const createFolderBtn = () => fv3CreateFolderBtn('docker', '/Docker/Folder');
 
@@ -1376,10 +1346,8 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
     }
 });
 
-// Patch Unraid's resetSorting to rebuild folder-grouped autostart before loadlist re-renders.
-// Stock resetSorting POSTs {reset:true} (which deletes userprefs.cfg and natcasesorts autostart),
-// then calls loadlist(). We chain a sync_order POST in between so FV3's folder-grouped autostart
-// is re-established before the page re-renders.
+// Patch resetSorting: chain a sync_order POST between the stock {reset:true} and loadlist()
+// so FV3's folder-grouped autostart is re-established before the page re-renders.
 if (typeof resetSorting === 'function') {
     window.resetSorting = function() {
         if ($.cookie('lockbutton') == null) return;

@@ -249,7 +249,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
     updateList();
 
-    // Toggle style init must run AFTER checkbox states are set — order matters.
+    // Must run after checkbox states are set.
     try {
         const cssConfig = await (await fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })).json();
         const style = cssConfig.toggle_style || 'default';
@@ -271,18 +271,12 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     $('.canvas form div.basic > dl > dt').css('cursor', 'default').wrapInner('<span style="cursor: help;"></span>');
 })();
 
-/**
- * Update the folder icon when editing the respective field
- * @param {*} e the element
- */
+// Update the folder icon preview from the icon field value.
 const updateIcon = (e) => {
     e.previousElementSibling.src = e.value;
 };
 
-/**
- * Update the regex selection when editing the respective field
- * @param {*} e the element
- */
+// Re-partition choose/selectedRegex by matching the regex field against container names.
 const updateRegex = (e) => {
     choose = choose.concat(selectedRegex);
     const fldName = $('[name="name"]')[0].value;
@@ -305,10 +299,7 @@ const updateRegex = (e) => {
     updateList();
 };
 
-/**
- * Update the setting visibility according to the preview setting
- * @param {*} e the element
- */
+// Toggle constraint-based visibility for the selected preview mode.
 const previewChange = (e) => {
     $('[constraint^="preview-"]').hide();
     $(`[constraint*="preview-${e.value}"]`).show();
@@ -317,9 +308,7 @@ const previewChange = (e) => {
     }
 };
 
-/**
- * Update the setting visibility according to the changin of settings
- */
+// Recompute all constraint-based setting visibility from current form state.
 const updateForm = () => {
     const form = $('div.canvas > form')[0];
     $('[constraint*="preview-"]').hide();
@@ -352,9 +341,7 @@ const updateForm = () => {
     }
 };
 
-/**
- * Create the element select table
- */
+// Rebuild the container select table from selected/choose/selectedRegex.
 const updateList = () => {
     const table = $('.sortable > tbody');
     table.empty();
@@ -453,11 +440,7 @@ const syncHidePreview = ($row) => {
 };
 
 
-/**
- * Handle sthe form submission
- * @param {*} e the form
- * @returns {bool} always false
- */
+// Serialize the form to a folder object, POST create/update, then return to the tab. Returns false.
 const submitForm = async (e) => {
     const actions = $('input[name*="custom_action"]').map((i, e) => fv3SafeParse(atob($(e).val()), {})).get();
     const folder = {
@@ -535,9 +518,7 @@ const submitForm = async (e) => {
     return false;
 }
 
-/**
- * Handles the button to return to the tab
- */
+// Return to the tab without saving.
 const cancelBtn = () => {
     let loc = location.pathname.split('/');
     loc.pop();
@@ -573,19 +554,13 @@ const deleteFolderBtn = () => {
     });
 };
 
-/**
- * Set the Folder icon to the clicked element icon
- * @param {*} e the element
- */
+// Set the folder icon to the clicked element's icon.
 const setIconAsContainer = (e) => {
     $('div.canvas > form')[0].icon.value = e.firstChild.src;
     $($('div.canvas > form')[0].icon).trigger('input');
 };
 
-/**
- * Add a custom action to the folder
- * @param {number | undefined} action 
- */
+// Open the custom-action dialog to add (action undefined) or edit an existing action.
 const customAction = (action = undefined) => {
     let config = {
         name: '',
@@ -691,10 +666,7 @@ const customAction = (action = undefined) => {
     return false;
 };
 
-/**
- * Remove a custom action from the folder
- * @param {number} action 
- */
+// Remove a custom action from the folder.
 const rCcustomAction =  (action) => {
     $(`.custom-action-n-${action}`).remove();
     return false;
