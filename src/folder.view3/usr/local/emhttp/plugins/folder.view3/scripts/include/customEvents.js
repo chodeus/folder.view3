@@ -69,6 +69,25 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
             dirty = true;
         }
     }
+    // Backfill identity maps for legacy/migrated folders (e.g. imported from folder.view2,
+    // which has no containerImages/containerIds) so rename-tracking works without a manual edit+save.
+    for (const folder of Object.values(folders)) {
+        if (!Array.isArray(folder.containers)) continue;
+        for (const name of folder.containers) {
+            const ct = containersInfo[name];
+            if (!ct) continue;
+            if (type === 'vm') {
+                if (!ct.uuid) continue;
+                if (!folder.containerIds) folder.containerIds = {};
+                if (!(name in folder.containerIds)) { folder.containerIds[name] = ct.uuid; dirty = true; }
+            } else {
+                const img = ct.info?.Config?.Image || '';
+                if (!img) continue;
+                if (!folder.containerImages) folder.containerImages = {};
+                if (!(name in folder.containerImages)) { folder.containerImages[name] = img; dirty = true; }
+            }
+        }
+    }
     if (dirty && typeof $ !== 'undefined') {
         const saveData = {};
         for (const [folderId, folder] of Object.entries(folders)) {
