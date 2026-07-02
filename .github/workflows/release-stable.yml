@@ -21,11 +21,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # Use -X theirs so beta wins on conflicts (plg, archive, changelog)
-      # since we rebuild plg/archive and fix changelog headers afterward anyway
+      # Normal 3-way merge so REAL code conflicts surface and fail the release
+      # (old `-X theirs` let beta silently win, clobbering main-only hotfixes).
+      # Only the plg / archive / changelog are rebuilt afterward, so for those
+      # (and only those) paths we deterministically take beta's version.
       - name: Merge beta into main
         run: |
-          git merge origin/beta -X theirs -m "Merge beta into main for stable release"
+          git merge --no-commit --no-ff origin/beta || true
+          git checkout origin/beta -- folder.view3.plg archive CHANGELOG-fixes.md
+          git add folder.view3.plg archive CHANGELOG-fixes.md
+          unresolved=$(git diff --name-only --diff-filter=U)
+          if [ -n "$unresolved" ]; then
+            echo "ERROR: unexpected merge conflicts outside plg/archive/changelog:"
+            echo "$unresolved"
+            exit 1
+          fi
+          git commit -m "Merge beta into main for stable release"
 
       # MUST run before build — beta .txz files from beta trigger the
       # collision detection in pkg_build.sh, appending .N to the version.

@@ -945,6 +945,16 @@
             return "    --{$safeVar}: {$safeVal};\n";
         };
 
+        // Sanitize custom CSS at the write sink so ALL callers are covered
+        // (updateCssConfig strips too, but importAll writes generated CSS directly).
+        $sanitizeCustom = function($css) {
+            $css = preg_replace('/@import\b/i', '', $css);
+            $css = preg_replace('/expression\s*\(/i', '', $css);
+            $css = preg_replace('/javascript\s*:/i', '', $css);
+            if (strlen($css) > 10240) $css = substr($css, 0, 10240);
+            return $css;
+        };
+
         // Global variables + custom CSS → combined file (loaded on all pages)
         $globalCss = ":root {\n";
         $hasGlobal = false;
@@ -956,7 +966,7 @@
         }
         $globalCss .= "}\n";
         if (isset($config['custom_css']) && is_string($config['custom_css']) && trim($config['custom_css']) !== '') {
-            $globalCss .= "\n" . $config['custom_css'] . "\n";
+            $globalCss .= "\n" . $sanitizeCustom($config['custom_css']) . "\n";
             $hasGlobal = true;
         }
         $outPath = "$stylesDir/_fv3-generated.docker-vm-dashboard.css";
@@ -986,7 +996,7 @@
             // Page-scoped custom CSS
             $scopeKey = "custom_css_{$scope}";
             if (isset($config[$scopeKey]) && is_string($config[$scopeKey]) && trim($config[$scopeKey]) !== '') {
-                $scopeCss .= "\n" . $config[$scopeKey] . "\n";
+                $scopeCss .= "\n" . $sanitizeCustom($config[$scopeKey]) . "\n";
                 $hasScope = true;
             }
 
@@ -1035,7 +1045,7 @@
                 return in_array($parts[0], $allCtNames);
             });
             if (count($cleanedLines) < count($autoStartLines)) {
-                file_put_contents($autoStartFile, implode("\n", $cleanedLines) . "\n");
+                file_put_contents($autoStartFile, implode("\n", $cleanedLines) . "\n", LOCK_EX);
                 fv3_debug_log("readInfo: removed " . (count($autoStartLines) - count($cleanedLines)) . " stale autostart entries");
                 $autoStart = array_map('var_split', $cleanedLines);
             }
