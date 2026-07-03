@@ -6,14 +6,17 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.03.1">
-<!ENTITY md5 "133dee2d7c9b9cc46cc582311234dfc4">
+<!ENTITY version "2026.07.03.2">
+<!ENTITY md5 "16cb74fd68335c31cd4b540151dd25d4">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.03.2
+- Container-order sync now also locks the autostart-file write, completing the concurrent-write protection
 
 ###2026.07.03.1
 - Custom CSS import now runs the same @import/expression/javascript: sanitizer as the CSS editor (closes an importAll bypass)

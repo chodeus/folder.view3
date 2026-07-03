@@ -303,7 +303,7 @@
             foreach ($autoStartMap as $line) {
                 $newAutoStart[] = $line;
             }
-            file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n");
+            file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX);
             fv3_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
         }
     }
