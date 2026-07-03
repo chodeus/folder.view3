@@ -5,15 +5,19 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.06.25">
-<!ENTITY md5 "ffc95d2ae771695f361e2498b2f1805c">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
+<!ENTITY version "2026.07.03.1">
+<!ENTITY md5 "133dee2d7c9b9cc46cc582311234dfc4">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.03.1
+- Custom CSS import now runs the same @import/expression/javascript: sanitizer as the CSS editor (closes an importAll bypass)
+- Docker autostart-file write in read-info is now locked to avoid concurrent-write corruption
 
 ###2026.06.25
 - Folders imported from folder.view2 now restore container/VM rename-tracking automatically on first load (no need to re-save each folder)
@@ -628,7 +632,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
