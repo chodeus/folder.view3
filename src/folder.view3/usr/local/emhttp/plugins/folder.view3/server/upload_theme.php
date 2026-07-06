@@ -42,17 +42,28 @@
         }
         $destDir = "$stylesDir/$folderName.disabled";
         if (!is_dir($destDir)) { @mkdir($destDir, 0770, true); }
+        $maxSize = 2 * 1024 * 1024;
+        $maxFiles = 200;
         $saved = 0;
+        $processed = 0;
+        $realDest = realpath($destDir);
         foreach ($files['name'] as $i => $name) {
             if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
+            if (++$processed > $maxFiles) break;
+            if (($files['size'][$i] ?? 0) > $maxSize) continue;
             if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== 'css') continue;
             $relPath = isset($paths[$i]) ? $paths[$i] : $name;
             $safeParts = array_map(fn($p) => preg_replace('/[^a-zA-Z0-9._-]/', '-', $p), explode('/', $relPath));
             $safeParts = array_values(array_filter($safeParts, fn($p) => $p !== '' && $p !== '.' && $p !== '..'));
             $safePath = implode('/', $safeParts);
+            // Re-validate the extension on the ACTUAL on-disk name — paths[] is independent of the .css-checked upload name
+            if ($safePath === '' || strtolower(pathinfo($safePath, PATHINFO_EXTENSION)) !== 'css') continue;
             $targetPath = "$destDir/$safePath";
             $targetParent = dirname($targetPath);
             if (!is_dir($targetParent)) { @mkdir($targetParent, 0770, true); }
+            // Re-confine the resolved parent under $destDir before writing (defence-in-depth vs traversal)
+            $realParent = realpath($targetParent);
+            if ($realDest === false || $realParent === false || strpos($realParent . '/', $realDest . '/') !== 0) continue;
             if (move_uploaded_file($files['tmp_name'][$i], $targetPath)) {
                 @chmod($targetPath, 0660);
                 $saved++;

@@ -1310,6 +1310,7 @@ window.fv3CaptureDebug = (source) => {
 
 window.fv3RunUserScript = async (act, prom) => {
     const args = act.script_args || '';
+    try {
     if(act.script_sync) {
         let scriptVariables = {};
         let rawVars = await $.post("/plugins/user.scripts/exec.php",{action:'getScriptVariables',script:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
@@ -1323,6 +1324,7 @@ window.fv3RunUserScript = async (act, prom) => {
         const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
         prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
     }
+    } catch (e) { fv3ShowBanner('Could not run the user script — check the User Scripts plugin is installed and the script exists.'); }
 };
 
 // Row separators
@@ -2046,7 +2048,7 @@ window.fv3InstallDockerTableWidthFix = () => {
         `;
         document.head.appendChild(style);
     }
-    fv3Debug('WidthFix', `containerW=${containerW} targetW=${targetW} verCap=${verCap} expanded=`, widthsExpanded, 'collapsed=', widthsCollapsed);
+    fv3Debug('WidthFix', `containerW=${containerW} targetW=${targetW} verCap=${verCap} expanded=`, widthsExpanded, 'collapsed=', collapsed);
 };
 
 let _fv3WidthSnapshots = null;

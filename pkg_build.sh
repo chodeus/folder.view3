@@ -49,9 +49,9 @@ if [ "$branch" = "develop" ] || [ "$branch" = "beta" ]; then
     if [ -z "$SUFFIX_NUM" ]; then
         # Auto-increment: find highest existing hotfix number and add 1
         highest=0
-        for f in $CWD/archive/folder.view3-${version}.*[0-9].txz; do
+        for f in $CWD/archive/folder.view3-${version}.*-x86_64-1.txz; do
             [ -e "$f" ] || continue
-            num=$(echo "$f" | sed 's/.*\.\([0-9]*\)\.txz/\1/')
+            num=$(echo "$f" | sed 's/.*\.\([0-9]*\)-x86_64-1\.txz/\1/')
             [ -n "$num" ] && [ "$num" -gt "$highest" ] && highest=$num
         done
         SUFFIX_NUM=$((highest + 1))
@@ -62,14 +62,14 @@ elif [ "$branch" != "main" ]; then
     branch="main"
 fi
 
-filename="$CWD/archive/folder.view3-$version.txz"
+filename="$CWD/archive/folder.view3-$version-x86_64-1.txz"
 
 # Collision detection for main branch (date-based only)
 if [ "$branch" = "main" ]; then
-    dayversion=$(find "$CWD/archive" -maxdepth 1 -name "folder.view3-$version*.txz" -type f 2>/dev/null | wc -l | tr -d ' ')
+    dayversion=$(find "$CWD/archive" -maxdepth 1 -name "folder.view3-$version*-x86_64-1.txz" -type f 2>/dev/null | wc -l | tr -d ' ')
     if [ "$dayversion" -gt 0 ]; then
         version="$version.$dayversion"
-        filename="$CWD/archive/folder.view3-$version.txz"
+        filename="$CWD/archive/folder.view3-$version-x86_64-1.txz"
     fi
 fi
 

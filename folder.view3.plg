@@ -6,14 +6,28 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.03.2">
-<!ENTITY md5 "16cb74fd68335c31cd4b540151dd25d4">
+<!ENTITY version "2026.07.07.1">
+<!ENTITY md5 "7d3df66227a43867143e562b030a3804">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.07.1
+- Security: hardened theme/CSS upload and GitHub theme import (strict file-type, path and size re-validation)
+- Security: container WebUI links, shell labels and custom-action icons are now sanitised before rendering
+- Security: folder IDs are validated when restoring a full backup
+- Fixed: bulk start/stop/restart no longer leaves the loading spinner stuck when a container action fails
+- Fixed: adding a folder while the Dashboard is open no longer blanks the Dashboard until reload
+- Fixed: selecting a full backup file in the per-tab Docker/VM import now warns instead of creating broken folders
+- Fixed: editing a folder created by an older version no longer fails to open the edit form
+- Fixed: "hide update column" folders now span the Docker table correctly on all Unraid versions (7.0+)
+- Fixed: user-script custom actions and Dashboard folder context menus no longer error or strand the loading spinner on a just-added folder
+- Fixed: Dashboard bulk-action error popups now show the actual error message instead of "false"
+- Packaging: standard Slackware package naming and the install now downloads before replacing, so a failed update download no longer leaves the plugin uninstalled
+- Cleanup: delete-folder button no longer relies on !important
 
 ###2026.07.03.2
 - Container-order sync now also locks the autostart-file write, completing the concurrent-write protection
@@ -622,32 +636,25 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Initial Release
     </CHANGES>
 
-    <!-- Pre-install: clean stale package DB entries so upgradepkg extracts fresh -->
     <FILE Run="/bin/bash">
         <INLINE>
-            OLD=$(ls /var/log/packages/&name;-* 2>/dev/null | head -1)
-            if [ -n "$OLD" ]; then
-                removepkg $(basename "$OLD") 2>/dev/null
-            fi
-            rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null | grep -v '&version;')
+            rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null | grep -v '&version;-x86_64-1')
         </INLINE>
     </FILE>
 
     <!-- New source file -->
-    <FILE Name="/boot/config/plugins/&name;/&name;-&version;.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;.txz</URL>
+    <FILE Name="/boot/config/plugins/&name;/&name;-&version;-x86_64-1.txz" Run="upgradepkg --install-new">
+        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;-x86_64-1.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
     <!-- Post install -->
     <FILE Run="/bin/bash">
         <INLINE>
-            # Clean up any additional stale package DB entries (safety net)
             for p in /var/log/packages/&name;-*; do
                 [ -e "$p" ] || continue
-                pname=$(basename "$p")
-                case "$pname" in *&version;) continue;; esac
-                removepkg "$pname" 2>/dev/null
+                case "$(basename "$p")" in *&version;-x86_64-1) continue;; esac
+                rm -f "$p"
             done
             mkdir -p /boot/config/plugins/&name;/styles
             mkdir -p /boot/config/plugins/&name;/scripts

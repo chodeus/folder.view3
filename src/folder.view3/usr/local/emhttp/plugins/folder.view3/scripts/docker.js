@@ -652,7 +652,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
         fv3Debug('createFolder', id, 'Added preview_vertical_bars.');
     }
     if(folder.settings.update_column) {
-        $(`tr.folder-id-${id} > td.updatecolumn`).next().attr('colspan',6).end().remove();
+        $(`tr.folder-id-${id} > td.updatecolumn`).next().attr('colspan', colspan + 1).end().remove();
         fv3Debug('createFolder', id, 'Handled update_column setting (removed column).');
     }
     if(managed === 0) {
@@ -854,7 +854,8 @@ const actionFolder = async (id, action) => {
     }
 
     fv3Debug('actionFolder', id, `Awaiting ${proms.length} promises.`);
-    const results = await Promise.all(proms);
+    const settled = await Promise.allSettled(proms);
+    const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
     fv3Debug('actionFolder', id, 'Promises resolved. Results:', results);
 
     errors = results.filter(e => e.success !== true);
@@ -965,7 +966,7 @@ const folderCustomAction = async (id, actionIndex) => {
     }
 
     fv3Debug('folderCustomAction', id, `Awaiting ${prom.length} promises for custom action.`);
-    await Promise.all(prom);
+    await Promise.allSettled(prom);
     fv3Debug('folderCustomAction', id, 'All promises resolved. Reloading list.');
 
     loadlist();
@@ -1008,7 +1009,7 @@ const addDockerFolderContext = (id) => {
             ...folderData.actions.map((e, i) => {
                 return {
                     text: escapeHtml(e.name),
-                    icon: e.script_icon || "fa-bolt",
+                    icon: String(e.script_icon || "fa-bolt").replace(/[^a-zA-Z0-9 _-]/g, '') || "fa-bolt",
                     action: (evt) => { evt.preventDefault(); folderCustomAction(id, i); }
                 }
             })
@@ -1105,7 +1106,7 @@ const addDockerFolderContext = (id) => {
             subMenu: folderData.actions.map((e, i) => {
                 return {
                     text: escapeHtml(e.name),
-                    icon: e.script_icon || "fa-bolt",
+                    icon: String(e.script_icon || "fa-bolt").replace(/[^a-zA-Z0-9 _-]/g, '') || "fa-bolt",
                     action: (evt) => { evt.preventDefault(); folderCustomAction(id, i); }
                 }
             })

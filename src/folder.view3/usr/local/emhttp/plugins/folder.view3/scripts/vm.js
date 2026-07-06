@@ -505,7 +505,8 @@ const actionFolder = async (id, action) => {
         }
     }
 
-    proms = await Promise.all(proms);
+    const settled = await Promise.allSettled(proms);
+    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
     errors = proms.filter(e => e.success !== true);
     const errorMessages = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
@@ -528,6 +529,7 @@ const folderCustomAction = async (id, action) => {
     $('div.spinner.fixed').show('slow');
 
     const folder = globalFolders[id];
+    if (!folder || !folder.actions || !folder.actions[action]) { $('div.spinner.fixed').hide('slow'); loadlist(); return; }
     let act = folder.actions[action];
     let prom = [];
     if(act.type === 0) {
@@ -598,7 +600,7 @@ const folderCustomAction = async (id, action) => {
         await fv3RunUserScript(act, prom);
     }
 
-    await Promise.all(prom);
+    await Promise.allSettled(prom);
 
     loadlist();
     $('div.spinner.fixed').hide('slow');
@@ -620,7 +622,7 @@ const addVMFolderContext = (id) => {
             ...globalFolders[id].actions.map((e, i) => {
                 return {
                     text: escapeHtml(e.name),
-                    icon: e.script_icon || "fa-bolt",
+                    icon: String(e.script_icon || "fa-bolt").replace(/[^a-zA-Z0-9 _-]/g, '') || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
                 }
             })
@@ -722,7 +724,7 @@ const addVMFolderContext = (id) => {
             subMenu: globalFolders[id].actions.map((e, i) => {
                 return {
                     text: escapeHtml(e.name),
-                    icon: e.script_icon || "fa-bolt",
+                    icon: String(e.script_icon || "fa-bolt").replace(/[^a-zA-Z0-9 _-]/g, '') || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderCustomAction(id, i); }
                 }
             })

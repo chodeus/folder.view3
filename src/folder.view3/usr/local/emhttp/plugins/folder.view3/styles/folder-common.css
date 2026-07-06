@@ -188,7 +188,7 @@ body[data-fv3-preset] .folder-dropdown {
 }
 
 body[data-fv3-preset] .folder-dropdown:hover {
-    color: #fff;
+    color: var(--fv3-toggle-hover-text, #fff);
     border-color: var(--fv3-toggle-hover-color, rgba(128,128,128,0.6));
     background: linear-gradient(to bottom, var(--fv3-toggle-hover-color, rgba(128,128,128,0.4)), var(--fv3-toggle-color, rgba(128,128,128,0.3)));
 }

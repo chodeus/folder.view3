@@ -9,6 +9,14 @@
         return @rename($tmp, $path);
     }
 
+    // WebUI values come from container labels and are rendered into <a href> — allow only http(s)/relative, block javascript:/data: etc.
+    function fv3_safe_http_url(string $url): string {
+        $url = trim($url);
+        if ($url === '') return '';
+        if (preg_match('#^https?://#i', $url) || $url[0] === '/') return $url;
+        return '';
+    }
+
     function fv3_read_json(string $path): array {
         if (!file_exists($path)) return [];
         $raw = @file_get_contents($path);
@@ -313,7 +321,8 @@
         if(!file_exists("$configDir/$type.json")) { createFile($type); if (empty($id)) $id = generateId(); }
         if(empty($id)) { $id = generateId(); }
         $decoded = json_decode($content, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        // A folder must be an object/array — reject scalars so a full-backup bundle can't pollute $type.json
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
             http_response_code(400);
             exit;
         }
@@ -592,6 +601,8 @@
     function importTheme(string $repoUrl, string $subPath = '', string $branch = '') : array {
         global $configDir;
         $stylesDir = "$configDir/styles";
+        $maxCssBytes = 2 * 1024 * 1024;
+        $maxCssFiles = 200;
         if (!preg_match('#^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$#', $repoUrl)) {
             return ['error' => 'Invalid repo format. Use owner/repo.'];
         }
@@ -655,6 +666,7 @@
             @mkdir($themeDir, 0770, true);
         }
         $downloaded = [];
+        $cssFiles = array_slice($cssFiles, 0, $maxCssFiles);
         foreach ($cssFiles as $file) {
             if (!isset($file['download_url'])) continue;
             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
@@ -665,7 +677,7 @@
                 $targetDir = "$themeDir/$safeDir";
                 if (!is_dir($targetDir)) @mkdir($targetDir, 0770, true);
             }
-            $css = @file_get_contents($file['download_url'], false, $ctx);
+            $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes);
             if ($css !== false) {
                 fv3_atomic_write("$targetDir/$safeName", $css);
                 $downloaded[] = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
@@ -791,11 +803,23 @@
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
         foreach (['docker', 'vm', 'settings', 'css_config'] as $key) {
             if (!isset($bundle[$key]) || !is_array($bundle[$key])) continue;
+            $data = $bundle[$key];
+            // Folder maps are id => folder — allowlist the id keys (same charset as update.php) so a crafted
+            // backup can't plant a folder id that breaks out of the class/onclick attributes at render (XSS).
+            if ($key === 'docker' || $key === 'vm') {
+                $clean = [];
+                foreach ($data as $fid => $folder) {
+                    if (is_string($fid) && preg_match('#^[A-Za-z0-9+/=]+$#D', $fid) && is_array($folder)) {
+                        $clean[$fid] = $folder;
+                    }
+                }
+                $data = $clean;
+            }
             $filename = $key === 'css_config' ? 'css-config.json' : "$key.json";
             $path = "$configDir/$filename";
             $flags = JSON_PRETTY_PRINT;
-            if (empty($bundle[$key])) $flags |= JSON_FORCE_OBJECT;
-            fv3_atomic_write($path, json_encode($bundle[$key], $flags));
+            if (empty($data)) $flags |= JSON_FORCE_OBJECT;
+            fv3_atomic_write($path, json_encode($data, $flags));
             $restored[] = $filename;
         }
         if (isset($bundle['custom_styles']) && is_array($bundle['custom_styles'])) {
@@ -1027,7 +1051,8 @@
             global $dockerManPaths, $documentRoot;
             global $driver, $host; 
             if (!isset($driver) || !is_array($driver)) { $driver = DockerUtil::driver(); fv3_debug_log("Initialized \$driver: " . json_encode($driver)); }
-            if (!isset($host)) { $host = DockerUtil::host(); fv3_debug_log("Initialized \$host: " . $host); }
+            // DockerUtil::host() only exists on Unraid 7.1.0+; fall back to the request's server address on 7.0.0/7.0.1
+            if (!isset($host)) { $host = method_exists('DockerUtil', 'host') ? DockerUtil::host() : ($_SERVER['SERVER_ADDR'] ?? ''); fv3_debug_log("Initialized \$host: " . $host); }
 
             $dockerClient = new DockerClient();
             $DockerUpdate = new DockerUpdate();
@@ -1105,10 +1130,13 @@
                 } else {
                     $rawWebUiString = $ct['Labels']['net.unraid.docker.webui'] ?? '';
                     $rawTsXmlUrl = $ct['Labels']['net.unraid.docker.tailscale.webui'] ?? '';
-                    $tsServeModeFromXml = $ct['Labels']['net.unraid.docker.tailscale.servemode'] ?? ($ct['Labels']['net.unraid.docker.tailscale.funnel'] === 'true' ? 'funnel' : 'no');
+                    $tsServeModeFromXml = $ct['Labels']['net.unraid.docker.tailscale.servemode'] ?? (($ct['Labels']['net.unraid.docker.tailscale.funnel'] ?? '') === 'true' ? 'funnel' : 'no');
                     $isTailscaleEnabledForContainer = strtolower($ct['Labels']['net.unraid.docker.tailscale.enabled'] ?? 'false') === 'true';
                     $ct['info']['Shell'] = $ct['Labels']['net.unraid.docker.shell'] ?? 'sh';
                 }
+                // Shell is rendered into an inline onclick JS-string arg — constrain to a shell-path charset so a hostile image label can't break out and inject JS
+                $ct['info']['Shell'] = preg_replace('/[^a-zA-Z0-9 _.\/-]/', '', (string)$ct['info']['Shell']);
+                if ($ct['info']['Shell'] === '') { $ct['info']['Shell'] = 'sh'; }
                 fv3_debug_log("  $containerName: Using ".($templateData && $ct['info']['State']['manager'] == 'dockerman' ? "XML" : "Label")." data. TailscaleEnabled: " . ($isTailscaleEnabledForContainer ? 'true' : 'false'));
                 fv3_debug_log("    $containerName: Raw WebUI: '$rawWebUiString', Raw TS XML URL: '$rawTsXmlUrl', TS Serve Mode: '$tsServeModeFromXml'");
                 
@@ -1246,7 +1274,7 @@
                         }
                     }
                 }
-                $ct['info']['State']['WebUi'] = $finalWebUi;
+                $ct['info']['State']['WebUi'] = fv3_safe_http_url($finalWebUi);
                 fv3_debug_log("  $containerName: Resolved Standard WebUi: '$finalWebUi'");
                 
                 $finalTsWebUi = '';
@@ -1303,7 +1331,7 @@
                 } else {
                     fv3_debug_log("  $containerName: Tailscale is NOT enabled or no TS URL defined in template/label.");
                 }
-                $ct['info']['State']['TSWebUi'] = $finalTsWebUi;
+                $ct['info']['State']['TSWebUi'] = fv3_safe_http_url($finalTsWebUi);
                 fv3_debug_log("  $containerName: Resolved TS WebUi: '$finalTsWebUi'");
                 
                 $info[$containerName] = $ct;

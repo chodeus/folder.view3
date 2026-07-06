@@ -146,6 +146,7 @@ const importDocker = () => {
     input.onchange = (e) => {
 
         let file = e.target.files[0];
+        e.target.value = ''; // reset so re-selecting the same file fires change again
 
         let reader = new FileReader();
         reader.readAsText(file, 'UTF-8');
@@ -164,6 +165,10 @@ const importDocker = () => {
                 return;
             }
 
+            if (content && content.fv3_export_version) {
+                swal({ title: 'Wrong import', text: 'This is a full backup bundle — use "Import Everything" to restore it, or select a Docker folders export here.', type: 'error' });
+                return;
+            }
             if(content.name) {
                 await $.post('/plugins/folder.view3/server/create.php', { type: 'docker', content: JSON.stringify(content) });
             } else {
@@ -183,6 +188,7 @@ const importVm = () => {
     input.onchange = (e) => {
 
         let file = e.target.files[0];
+        e.target.value = ''; // reset so re-selecting the same file fires change again
 
         let reader = new FileReader();
         reader.readAsText(file, 'UTF-8');
@@ -201,6 +207,10 @@ const importVm = () => {
                 return;
             }
 
+            if (content && content.fv3_export_version) {
+                swal({ title: 'Wrong import', text: 'This is a full backup bundle — use "Import Everything" to restore it, or select a VM folders export here.', type: 'error' });
+                return;
+            }
             if(content.name) {
                 await $.post('/plugins/folder.view3/server/create.php', { type: 'vm', content: JSON.stringify(content) });
             } else {

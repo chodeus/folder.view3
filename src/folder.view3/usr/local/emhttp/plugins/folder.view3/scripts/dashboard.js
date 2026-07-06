@@ -98,7 +98,7 @@ const createFolders = async () => {
         
     
         for (const [id, value] of Object.entries(foldersDone)) {
-            if ((globalFolders.docker && globalFolders.docker[id].status.expanded) || value.settings.expand_dashboard) {
+            if ((globalFolders.docker && globalFolders.docker[id] && globalFolders.docker[id].status.expanded) || value.settings.expand_dashboard) {
                 value.status.expanded = true;
                 expandFolderDocker(id);
             }
@@ -205,7 +205,7 @@ const createFolders = async () => {
         fv3UpdateHidden();
 
         for (const [id, value] of Object.entries(foldersDone)) {
-            if ((globalFolders.vms && globalFolders.vms[id].status.expanded) || value.settings.expand_dashboard) {
+            if ((globalFolders.vms && globalFolders.vms[id] && globalFolders.vms[id].status.expanded) || value.settings.expand_dashboard) {
                 value.status.expanded = true;
                 expandFolderVM(id);
             }
@@ -674,7 +674,7 @@ const expandFolderDocker = (id) => {
             el.siblings('div.folder-storage').append(showcase.children());
             el.attr('expanded', 'false');
             outer.attr('expanded', 'false');
-            if(globalFolders.docker) {
+            if(globalFolders.docker && globalFolders.docker[id]) {
                 globalFolders.docker[id].status.expanded = false;
             }
             fv3InjectCollapseToggles();
@@ -688,7 +688,7 @@ const expandFolderDocker = (id) => {
         showcase.append(el.siblings('div.folder-storage').children());
         el.attr('expanded', 'true');
         outer.attr('expanded', 'true');
-        if(globalFolders.docker) {
+        if(globalFolders.docker && globalFolders.docker[id]) {
             globalFolders.docker[id].status.expanded = true;
         }
         if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady) {
@@ -722,7 +722,7 @@ const expandFolderVM = (id) => {
             el.siblings('div.folder-storage').append(showcase.children());
             el.attr('expanded', 'false');
             outer.attr('expanded', 'false');
-            if(globalFolders.vms) {
+            if(globalFolders.vms && globalFolders.vms[id]) {
                 globalFolders.vms[id].status.expanded = false;
             }
             fv3InjectCollapseToggles();
@@ -736,7 +736,7 @@ const expandFolderVM = (id) => {
         showcase.append(el.siblings('div.folder-storage').children());
         el.attr('expanded', 'true');
         outer.attr('expanded', 'true');
-        if(globalFolders.vms) {
+        if(globalFolders.vms && globalFolders.vms[id]) {
             globalFolders.vms[id].status.expanded = true;
         }
         if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady) {
@@ -806,6 +806,7 @@ const editVMFolder = (id) => {
 // Run a folder's custom action (container ops or user script) for docker
 const folderDockerCustomAction = async (id, action) => {
     $('div.spinner.fixed').show('slow');
+    if (!globalFolders.docker || !globalFolders.docker[id]) { $('div.spinner.fixed').hide('slow'); loadlist(); return; }
     const folder = globalFolders.docker[id];
     let act = folder.actions[action];
     let prom = [];
@@ -876,23 +877,10 @@ const folderDockerCustomAction = async (id, action) => {
             ctAction(e);
         });
     } else if(act.type === 1) {
-        const args = act.script_args || '';
-        if(act.script_sync) {
-            let scriptVariables = {}
-            let rawVars = await $.post("/plugins/user.scripts/exec.php",{action:'getScriptVariables',script:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            rawVars.trim().split('\n').forEach((e) => { const variable = e.split('='); scriptVariables[variable[0]] = variable[1] });
-            if(scriptVariables['directPHP']) {
-                $.post("/plugins/user.scripts/exec.php",{action:'directRunScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) { openBox(data,act.name,800,1200, 'loadlist');}})
-            } else {
-                $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
-            }
-        } else {
-            const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
-        }
+        await fv3RunUserScript(act, prom);
     }
 
-    await Promise.all(prom);
+    await Promise.allSettled(prom);
 
     loadlist();
     $('div.spinner.fixed').hide('slow');
@@ -900,6 +888,7 @@ const folderDockerCustomAction = async (id, action) => {
 
 // Build and attach the context menu for a docker folder icon
 const addDockerFolderContext = (id) => {
+    if (!globalFolders.docker || !globalFolders.docker[id]) { return; }
     const exp = $(`tbody#docker_view .folder-showcase-outer-${id}`).attr('expanded') === "true";
     let opts = [];
     context.settings({
@@ -931,7 +920,7 @@ const addDockerFolderContext = (id) => {
             ...globalFolders.docker[id].actions.map((e, i) => {
                 return {
                     text: escapeHtml(e.name),
-                    icon: e.script_icon || "fa-bolt",
+                    icon: String(e.script_icon || "fa-bolt").replace(/[^a-zA-Z0-9 _-]/g, '') || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderDockerCustomAction(id, i); }
                 }
             })
@@ -1035,7 +1024,7 @@ const addDockerFolderContext = (id) => {
             subMenu: globalFolders.docker[id].actions.map((e, i) => {
                 return {
                     text: escapeHtml(e.name),
-                    icon: e.script_icon || "fa-bolt",
+                    icon: String(e.script_icon || "fa-bolt").replace(/[^a-zA-Z0-9 _-]/g, '') || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderDockerCustomAction(id, i); }
                 }
             })
@@ -1099,9 +1088,10 @@ const actionFolderDocker = async (id, action) => {
         }
     }
 
-    proms = await Promise.all(proms);
+    const settled = await Promise.allSettled(proms);
+    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
     errors = proms.filter(e => e.success !== true);
-    errors = errors.map(e => e.success);
+    errors = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
     if(errors.length > 0) {
         swal({
@@ -1121,6 +1111,7 @@ const actionFolderDocker = async (id, action) => {
 const folderVMCustomAction = async (id, action) => {
     $('div.spinner.fixed').show('slow');
     const eventURL = '/plugins/dynamix.vm.manager/include/VMajax.php';
+    if (!globalFolders.vms || !globalFolders.vms[id]) { $('div.spinner.fixed').hide('slow'); loadlist(); return; }
     const folder = globalFolders.vms[id];
     let act = folder.actions[action];
     let prom = [];
@@ -1189,23 +1180,10 @@ const folderVMCustomAction = async (id, action) => {
             ctAction(e);
         });
     } else if(act.type === 1) {
-        const args = act.script_args || '';
-        if(act.script_sync) {
-            let scriptVariables = {}
-            let rawVars = await $.post("/plugins/user.scripts/exec.php",{action:'getScriptVariables',script:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            rawVars.trim().split('\n').forEach((e) => { const variable = e.split('='); scriptVariables[variable[0]] = variable[1] });
-            if(scriptVariables['directPHP']) {
-                $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
-            } else {
-                $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
-            }
-        } else {
-            const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-            prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
-        }
+        await fv3RunUserScript(act, prom);
     }
 
-    await Promise.all(prom);
+    await Promise.allSettled(prom);
 
     loadlist();
     $('div.spinner.fixed').hide('slow');
@@ -1213,6 +1191,7 @@ const folderVMCustomAction = async (id, action) => {
 
 // Build and attach the context menu for a vm folder icon
 const addVMFolderContext = (id) => {
+    if (!globalFolders.vms || !globalFolders.vms[id]) { return; }
     const exp = $(`tbody#vm_view .folder-showcase-outer-${id}`).attr('expanded') === "true";
     let opts = [];
     context.settings({
@@ -1235,7 +1214,7 @@ const addVMFolderContext = (id) => {
             ...globalFolders.vms[id].actions.map((e, i) => {
                 return {
                     text: escapeHtml(e.name),
-                    icon: e.script_icon || "fa-bolt",
+                    icon: String(e.script_icon || "fa-bolt").replace(/[^a-zA-Z0-9 _-]/g, '') || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderVMCustomAction(id, i); }
                 }
             })
@@ -1337,7 +1316,7 @@ const addVMFolderContext = (id) => {
             subMenu: globalFolders.vms[id].actions.map((e, i) => {
                 return {
                     text: escapeHtml(e.name),
-                    icon: e.script_icon || "fa-bolt",
+                    icon: String(e.script_icon || "fa-bolt").replace(/[^a-zA-Z0-9 _-]/g, '') || "fa-bolt",
                     action: (e) => { e.preventDefault(); folderVMCustomAction(id, i); }
                 }
             })
@@ -1395,9 +1374,10 @@ const actionFolderVM = async (id, action) => {
         }
     }
 
-    proms = await Promise.all(proms);
+    const settled = await Promise.allSettled(proms);
+    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
     errors = proms.filter(e => e.success !== true);
-    errors = errors.map(e => e.success);
+    errors = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
     if(errors.length > 0) {
         swal({
