@@ -847,7 +847,7 @@
                     document.documentElement.style.setProperty('--' + k, v);
                 });
                 const hasUrl = imported.custom_css && /url\s*\(/i.test(imported.custom_css);
-                swal({ title: 'Imported', text: 'Config loaded. Click Save to persist.' + (hasUrl ? '\n\nNote: url() references will be stripped on save for security.' : ''), type: hasUrl ? 'warning' : 'info', timer: hasUrl ? 0 : 2000 });
+                swal({ title: 'Imported', text: 'Config loaded. Click Save to persist.' + (hasUrl ? '\n\nNote: url() references are kept as-is — verify they point to sources you trust before saving.' : ''), type: hasUrl ? 'warning' : 'info', timer: hasUrl ? 0 : 2000 });
             } catch (err) {
                 swal({ title: 'Error', text: 'Invalid config file', type: 'error' });
             }
