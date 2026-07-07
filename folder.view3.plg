@@ -6,14 +6,19 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.07.1">
-<!ENTITY md5 "7d3df66227a43867143e562b030a3804">
+<!ENTITY version "2026.07.08.1">
+<!ENTITY md5 "8ae300cde82ca7353556567b5449dfd1">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.08.1
+- Fixed: a transient Docker read error no longer wipes the container autostart file
+- Fixed: concurrent settings saves can no longer clobber each other during the atomic config write
+- Fixed: a failed encode or a full boot flash can no longer overwrite a good folder/settings file with an empty or truncated one
 
 ###2026.07.07.1
 - Security: hardened theme/CSS upload and GitHub theme import (strict file-type, path and size re-validation)

@@ -2,11 +2,16 @@
     define('FV3_DEBUG_MODE', file_exists('/tmp/fv3_debug_enabled'));
     $fv3_debug_log_file = "/tmp/folder_view3_php_debug.log";
 
-    function fv3_atomic_write(string $path, string $data, int $perms = 0660): bool {
-        $tmp = $path . '.tmp';
-        if (@file_put_contents($tmp, $data) === false) return false;
+    function fv3_atomic_write(string $path, $data, int $perms = 0660): bool {
+        // Reject a non-string payload (e.g. json_encode()/file_get_contents() returned false) so a failed encode/read never blanks a good file.
+        if (!is_string($data)) return false;
+        $tmp = $path . '.tmp.' . getmypid() . '.' . uniqid('', true);
+        // Treat a short/partial write as failure too — file_put_contents returns a byte count (not false) on a truncated write, e.g. flash ENOSPC.
+        if (@file_put_contents($tmp, $data) !== strlen($data)) { @unlink($tmp); return false; }
         @chmod($tmp, $perms);
-        return @rename($tmp, $path);
+        if (@rename($tmp, $path)) return true;
+        @unlink($tmp);
+        return false;
     }
 
     // WebUI values come from container labels and are rendered into <a href> — allow only http(s)/relative, block javascript:/data: etc.
@@ -1059,20 +1064,23 @@
             $dockerTemplates = new DockerTemplates();
 
             $cts = $dockerClient->getDockerJSON("/containers/json?all=1");
+            if (!is_array($cts)) $cts = [];
             $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
-            $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES) ?: [];
+            $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
             $autoStart = array_map('var_split', $autoStartLines);
 
-            // Remove stale entries from autostart file (containers that no longer exist)
-            $allCtNames = array_map(function($c) { return ltrim($c['Names'][0] ?? '', '/'); }, $cts);
-            $cleanedLines = array_filter($autoStartLines, function($line) use ($allCtNames) {
-                $parts = explode(' ', $line, 2);
-                return in_array($parts[0], $allCtNames);
-            });
-            if (count($cleanedLines) < count($autoStartLines)) {
-                file_put_contents($autoStartFile, implode("\n", $cleanedLines) . "\n", LOCK_EX);
-                fv3_debug_log("readInfo: removed " . (count($autoStartLines) - count($cleanedLines)) . " stale autostart entries");
-                $autoStart = array_map('var_split', $cleanedLines);
+            // Prune stale autostart entries only on a complete, fully-named container list.
+            // A failed/partial Docker read (empty $cts, or any entry without a name) must NOT prune, or a transient blip wipes/curtails the file.
+            $ctNames = array_map(function($c) { return ltrim($c['Names'][0] ?? '', '/'); }, $cts);
+            if (!empty($ctNames) && !in_array('', $ctNames, true)) {
+                $cleanedLines = array_filter($autoStartLines, function($line) use ($ctNames) {
+                    return in_array(explode(' ', $line, 2)[0], $ctNames, true);
+                });
+                if (count($cleanedLines) < count($autoStartLines)) {
+                    file_put_contents($autoStartFile, implode("\n", $cleanedLines) . "\n", LOCK_EX);
+                    fv3_debug_log("readInfo: removed " . (count($autoStartLines) - count($cleanedLines)) . " stale autostart entries");
+                    $autoStart = array_map('var_split', $cleanedLines);
+                }
             }
 
             $allXmlTemplates = [];
