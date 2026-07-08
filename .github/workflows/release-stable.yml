@@ -100,7 +100,7 @@ jobs:
         run: |
           VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view3.plg)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          FILENAME="folder.view3-${VERSION}.txz"
+          FILENAME="folder.view3-${VERSION}-x86_64-1.txz"
           echo "filename=$FILENAME" >> $GITHUB_OUTPUT
           echo "Stable version: $VERSION"
 
