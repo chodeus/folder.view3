@@ -5,9 +5,9 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.08.2">
-<!ENTITY md5 "bc280182f6749f4b0d9fb45d1d6a72bd">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+<!ENTITY version "2026.07.08">
+<!ENTITY md5 "8a8062a35fedb7c776356e0edb40d99f">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
@@ -15,34 +15,11 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-###2026.07.08.2
-- Fixed: CSS Tool config-import note no longer wrongly says url() is stripped on save — url() is kept, so the note now asks you to verify the URLs are trusted
-
-###2026.07.08.1
-- Fixed: a transient Docker read error no longer wipes the container autostart file
-- Fixed: concurrent settings saves can no longer clobber each other during the atomic config write
-- Fixed: a failed encode or a full boot flash can no longer overwrite a good folder/settings file with an empty or truncated one
-
-###2026.07.07.1
-- Security: hardened theme/CSS upload and GitHub theme import (strict file-type, path and size re-validation)
-- Security: container WebUI links, shell labels and custom-action icons are now sanitised before rendering
-- Security: folder IDs are validated when restoring a full backup
-- Fixed: bulk start/stop/restart no longer leaves the loading spinner stuck when a container action fails
-- Fixed: adding a folder while the Dashboard is open no longer blanks the Dashboard until reload
-- Fixed: selecting a full backup file in the per-tab Docker/VM import now warns instead of creating broken folders
-- Fixed: editing a folder created by an older version no longer fails to open the edit form
-- Fixed: "hide update column" folders now span the Docker table correctly on all Unraid versions (7.0+)
-- Fixed: user-script custom actions and Dashboard folder context menus no longer error or strand the loading spinner on a just-added folder
-- Fixed: Dashboard bulk-action error popups now show the actual error message instead of "false"
-- Packaging: standard Slackware package naming and the install now downloads before replacing, so a failed update download no longer leaves the plugin uninstalled
-- Cleanup: delete-folder button no longer relies on !important
-
-###2026.07.03.2
-- Container-order sync now also locks the autostart-file write, completing the concurrent-write protection
-
-###2026.07.03.1
-- Custom CSS import now runs the same @import/expression/javascript: sanitizer as the CSS editor (closes an importAll bypass)
-- Docker autostart-file write in read-info is now locked to avoid concurrent-write corruption
+###2026.07.08
+- Autostart and config files can no longer be accidentally wiped or corrupted
+- Security improvements and hardening
+- UI loading, compatibility, error handling/reporting and backup-import improvements
+- Package building and install-script improvements
 
 ###2026.06.25
 - Folders imported from folder.view2 now restore container/VM rename-tracking automatically on first load (no need to re-save each folder)
@@ -652,7 +629,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;-x86_64-1.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;-x86_64-1.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;-x86_64-1.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
