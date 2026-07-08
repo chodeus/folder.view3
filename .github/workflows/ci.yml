@@ -40,6 +40,6 @@ jobs:
         run: |
           ver=$(grep -oP '<!ENTITY version\s+"\K[^"]+' folder.view3.plg)
           plg_md5=$(grep -oP '<!ENTITY md5\s+"\K[^"]+' folder.view3.plg)
-          pkg_md5=$(md5sum "archive/folder.view3-${ver}.txz" | awk '{print $1}')
+          pkg_md5=$(md5sum "archive/folder.view3-${ver}-x86_64-1.txz" | awk '{print $1}')
           echo "manifest=$plg_md5  package=$pkg_md5"
           [ "$plg_md5" = "$pkg_md5" ]

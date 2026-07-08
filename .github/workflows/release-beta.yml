@@ -21,41 +21,26 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Determine next beta number
-        id: beta
-        run: |
-          TODAY=$(date +"%Y.%m.%d")
-
-          # Count existing beta packages for today
-          EXISTING=$(ls archive/folder.view3-${TODAY}-beta*.txz 2>/dev/null | wc -l)
-
-          if [ "$EXISTING" -eq 0 ]; then
-            BETA_NUM=""
-            VERSION="${TODAY}-beta"
-          else
-            # Next number: if 1 exists (beta), next is beta2; if 2 exist (beta, beta2), next is beta3, etc.
-            NEXT=$((EXISTING + 1))
-            BETA_NUM="$NEXT"
-            VERSION="${TODAY}-beta${NEXT}"
-          fi
-
-          echo "beta_num=$BETA_NUM" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Next beta version: $VERSION"
-
+      # pkg_build.sh --beta auto-increments the .N hotfix number from the existing
+      # archives and emits folder.view3-YYYY.MM.DD.N-x86_64-1.txz with beta URLs.
       - name: Build beta package
         run: |
           chmod +x pkg_build.sh
-          if [ -n "${{ steps.beta.outputs.beta_num }}" ]; then
-            bash pkg_build.sh --beta ${{ steps.beta.outputs.beta_num }}
-          else
-            bash pkg_build.sh --beta
-          fi
+          bash pkg_build.sh --beta
+
+      - name: Extract beta version
+        id: beta
+        run: |
+          VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view3.plg)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          FILENAME="folder.view3-${VERSION}-x86_64-1.txz"
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+          echo "Beta version: $VERSION"
 
       - name: Verify build
         run: |
           VERSION="${{ steps.beta.outputs.version }}"
-          FILENAME="archive/folder.view3-${VERSION}.txz"
+          FILENAME="archive/folder.view3-${VERSION}-x86_64-1.txz"
 
           if [ ! -f "$FILENAME" ]; then
             echo "ERROR: Expected $FILENAME not found"
@@ -63,15 +48,7 @@ jobs:
             exit 1
           fi
 
-          # Verify plg was updated
-          PLG_VERSION=$(grep -oP '<!ENTITY version "\K[^"]+' folder.view3.plg)
-          echo "Package: $FILENAME"
-          echo "PLG version: $PLG_VERSION"
-
-          if [ "$PLG_VERSION" != "$VERSION" ]; then
-            echo "ERROR: PLG version ($PLG_VERSION) doesn't match expected ($VERSION)"
-            exit 1
-          fi
+          echo "Package: $FILENAME (plg version $VERSION)"
 
       - name: Commit and push to beta
         run: |
