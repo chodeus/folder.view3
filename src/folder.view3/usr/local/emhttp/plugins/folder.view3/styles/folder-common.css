@@ -491,9 +491,10 @@ body[data-fv3-toggle] .folder-autostart div[style*="clear"] {
     align-self: center;
 }
 
+/* !important: Unraid inlines padding:8px on td.ct-name / td.vm-name — a selector can't outrank an inline style */
 #docker_containers .folder-element .ct-name,
-#kvm_table .folder-element .ct-name {
-    padding-left: 30px;
+#kvm_table .folder-element .vm-name {
+    padding-left: 20px !important;
 }
 
 .folder-element .ct-name .inner {
