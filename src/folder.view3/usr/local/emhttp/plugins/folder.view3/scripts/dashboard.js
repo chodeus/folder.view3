@@ -154,7 +154,7 @@ const createFolders = async () => {
     // Isolate the Docker half so a failure here can't abort the VM render below (issue #47)
     } catch (e) {
         console.error('[FV3] Dashboard: Docker folder rendering failed:', e);
-        fv3ShowBanner('FolderView3: Docker folder rendering failed — see the browser console for details.', 'error');
+        if (!e?.fv3Bannered) fv3ShowBanner('FolderView3: Docker folder rendering failed — see the browser console for details.', 'error');
     } }
 
 
@@ -261,7 +261,7 @@ const createFolders = async () => {
         globalFolders.vms = foldersDone;
     } catch (e) {
         console.error('[FV3] Dashboard: VM folder rendering failed:', e);
-        fv3ShowBanner('FolderView3: VM folder rendering failed — see the browser console for details.', 'error');
+        if (!e?.fv3Bannered) fv3ShowBanner('FolderView3: VM folder rendering failed — see the browser console for details.', 'error');
     } }
 
     folderDebugMode  = false;
@@ -1831,18 +1831,18 @@ window.loadlist = (x) => {
     loadedFolder = false;
     if($('tbody#docker_view').length > 0) {
         folderReq.docker = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner('Could not load Docker folder data. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load Docker folder data. Try refreshing the page.', 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()
         ];
     }
 
     if($('tbody#vm_view').length > 0) {
         folderReq.vm = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner('Could not load VM folder data. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load VM folder data. Try refreshing the page.', 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
         ];
     }

@@ -31,6 +31,7 @@ let choose = [];
 let selectedRegex = [];
 let selected = [];
 let hiddenPreview = [];
+let labelFolderNames = new Set();
 const type = new URLSearchParams(location.search).get('type');
 const folderId = new URLSearchParams(location.search).get('id');
 
@@ -68,6 +69,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         $('[constraint*="docker"]').hide();
     }
     let folders = fv3SafeParse(await $.get(`/plugins/folder.view3/server/read.php?type=${type}`).promise(), {});
+    labelFolderNames = new Set(Object.values(folders).map(f => f.name));
     let typeFilter;
     if (type === 'docker') {
         typeFilter = (e) => {
@@ -276,7 +278,8 @@ const updateRegex = (e) => {
         try {
             const regex = new RegExp(e.value);
             for (let i = 0; i < choose.length; i++) {
-                if (regex.test(choose[i].Name)) {
+                // Containers label-claimed by another folder can't be regex-captured (matches render, issue #46)
+                if (regex.test(choose[i].Name) && !(choose[i].Label && labelFolderNames.has(choose[i].Label))) {
                     const tmpSel = choose.splice(i, 1)[0];
                     if(!selectedRegex.includes(tmpSel)) {
                         selectedRegex.push(tmpSel);

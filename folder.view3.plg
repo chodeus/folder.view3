@@ -6,14 +6,18 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.11.2">
-<!ENTITY md5 "6ed1c9347e051614dc905c5fbe5e3d60">
+<!ENTITY version "2026.07.12.1">
+<!ENTITY md5 "29bf7c40b304458decc78b4cbb8fde88">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.12.1
+- Fixed: a failed data load on the Dashboard no longer stacks two error banners for the same failure
+- Fixed: the folder editor's regex match list no longer claims containers that are label-assigned to another folder (matches how they actually render)
 
 ###2026.07.11.2
 - Added: "Open WebUI" option for the Dashboard preview context (Settings → Dashboard) — expanded-folder tile clicks open the container's WebUI
