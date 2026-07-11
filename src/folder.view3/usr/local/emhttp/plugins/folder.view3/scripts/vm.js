@@ -22,8 +22,10 @@ const createFolders = async () => {
     fv3ResolveRenamedContainers(folders, vmInfo, 'vm');
     Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
+    // Explicit members of ANY folder beat regex matches elsewhere (issue #46)
+    const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : []);
+    Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
 
-    
     let newOnes = order.filter(x => !unraidOrder.includes(x));
 
     for (let index = 0; index < unraidOrder.length; index++) {
@@ -173,7 +175,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     if (folder.regex && typeof folder.regex === 'string' && folder.regex.trim() !== "") {
         try {
             const regex = new RegExp(folder.regex);
-            const regexMatches = order.filter(el => vmInfo[el] && regex.test(el) && !folder.containers.includes(el));
+            const regexMatches = order.filter(el => vmInfo[el] && regex.test(el) && !folder.containers.includes(el) && !(folder.fv3AssignedElsewhere || []).includes(el));
             folder.containers = folder.containers.concat(regexMatches);
         } catch (e) {
             console.warn(`folder.view3: Invalid regex "${folder.regex}" in VM folder "${folder.name}"`);

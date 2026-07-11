@@ -31,7 +31,7 @@ const createFolders = async () => {
     await fv3LoadFolderDefaults();
     // DOCKER
 
-    if($('tbody#docker_view').length > 0) {
+    if($('tbody#docker_view').length > 0) { try {
 
         let prom = await Promise.all(folderReq.docker);
         let folders = fv3SafeParseWithRecovery(prom[0], 'docker-folders', {});
@@ -41,6 +41,12 @@ const createFolders = async () => {
 
         fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
         Object.values(folders).forEach(f => fv3ApplyDefaults(f));
+
+        // Explicit members + label claims of ANY folder beat regex matches elsewhere (issue #46)
+        const fv3FolderNames = new Set(Object.values(folders).map(f => f.name));
+        const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : [])
+            .concat(Object.keys(containersInfo).filter(n => fv3FolderNames.has(containersInfo[n]?.Labels?.['folder.view3'])));
+        Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
 
         let newOnes = order.filter(x => !unraidOrder.includes(x));
 
@@ -75,9 +81,14 @@ const createFolders = async () => {
             if (container && folderRegex.test(container)) {
                 let id = container.replace(folderRegex, '');
                 if (folders[id]) {
-                    key -= createFolderDocker(folders[id], id, key, order, containersInfo, Object.keys(foldersDone));
-                    key -= newOnes.length;
-                    foldersDone[id] = folders[id];
+                    try {
+                        key -= createFolderDocker(folders[id], id, key, order, containersInfo, Object.keys(foldersDone));
+                        key -= newOnes.length;
+                        foldersDone[id] = folders[id];
+                    } catch (e) {
+                        console.error(`[FV3] Dashboard: docker folder "${folders[id].name}" failed to render:`, e);
+                        fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                    }
                     delete folders[id];
                 }
             }
@@ -85,8 +96,13 @@ const createFolders = async () => {
     
         for (const [id, value] of Object.entries(folders)) {
             order.unshift(`folder-${id}`);
-            createFolderDocker(value, id, 0, order, containersInfo, Object.keys(foldersDone));
-            foldersDone[id] = folders[id];
+            try {
+                createFolderDocker(value, id, 0, order, containersInfo, Object.keys(foldersDone));
+                foldersDone[id] = folders[id];
+            } catch (e) {
+                console.error(`[FV3] Dashboard: docker folder "${value.name}" failed to render:`, e);
+                fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+            }
             delete folders[id];
         }
 
@@ -135,12 +151,16 @@ const createFolders = async () => {
 
         fv3SyncOrganizer(globalFolders.docker || {});
 
-    }
+    // Isolate the Docker half so a failure here can't abort the VM render below (issue #47)
+    } catch (e) {
+        console.error('[FV3] Dashboard: Docker folder rendering failed:', e);
+        fv3ShowBanner('FolderView3: Docker folder rendering failed — see the browser console for details.', 'error');
+    } }
 
 
     // VMS
 
-    if($('tbody#vm_view').length > 0) {
+    if($('tbody#vm_view').length > 0) { try {
 
         const prom = await Promise.all(folderReq.vm);
         let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
@@ -150,6 +170,10 @@ const createFolders = async () => {
 
         fv3ResolveRenamedContainers(folders, vmInfo, 'vm');
         Object.values(folders).forEach(f => fv3ApplyDefaults(f));
+
+        // Explicit members of ANY folder beat regex matches elsewhere (issue #46)
+        const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : []);
+        Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
 
         let newOnes = order.filter(x => !unraidOrder.includes(x));
 
@@ -184,9 +208,14 @@ const createFolders = async () => {
             if (container && folderRegex.test(container)) {
                 let id = container.replace(folderRegex, '');
                 if (folders[id]) {
-                    key -= createFolderVM(folders[id], id, key, order, vmInfo, Object.keys(foldersDone));
-                    key -= newOnes.length;
-                    foldersDone[id] = folders[id];
+                    try {
+                        key -= createFolderVM(folders[id], id, key, order, vmInfo, Object.keys(foldersDone));
+                        key -= newOnes.length;
+                        foldersDone[id] = folders[id];
+                    } catch (e) {
+                        console.error(`[FV3] Dashboard: VM folder "${folders[id].name}" failed to render:`, e);
+                        fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                    }
                     delete folders[id];
                 }
             }
@@ -194,8 +223,13 @@ const createFolders = async () => {
     
         for (const [id, value] of Object.entries(folders)) {
             order.unshift(`folder-${id}`);
-            createFolderVM(value, id, 0, order, vmInfo, Object.keys(foldersDone));
-            foldersDone[id] = folders[id];
+            try {
+                createFolderVM(value, id, 0, order, vmInfo, Object.keys(foldersDone));
+                foldersDone[id] = folders[id];
+            } catch (e) {
+                console.error(`[FV3] Dashboard: VM folder "${value.name}" failed to render:`, e);
+                fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+            }
             delete folders[id];
         }
 
@@ -225,7 +259,10 @@ const createFolders = async () => {
         }}));
 
         globalFolders.vms = foldersDone;
-    }
+    } catch (e) {
+        console.error('[FV3] Dashboard: VM folder rendering failed:', e);
+        fv3ShowBanner('FolderView3: VM folder rendering failed — see the browser console for details.', 'error');
+    } }
 
     folderDebugMode  = false;
 };
@@ -251,10 +288,12 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     let managerTypes = new Set();
     let remBefore = 0;
 
-    if (folder.regex) {
+    if (!Array.isArray(folder.containers)) { folder.containers = []; }
+    if (folder.regex && typeof folder.regex === 'string' && folder.regex.trim() !== "") {
         try {
             const regex = new RegExp(folder.regex);
-            folder.containers = folder.containers.concat(order.filter(el => regex.test(el)));
+            // Match live container names only — 'order' also holds folder-<id> placeholders (issue #47)
+            folder.containers = folder.containers.concat(order.filter(el => containersInfo[el] && regex.test(el) && !folder.containers.includes(el) && !(folder.fv3AssignedElsewhere || []).includes(el)));
         } catch (e) { console.error('[FV3] Invalid regex:', folder.regex, e); }
     }
 
@@ -294,6 +333,8 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
         }}));
 
         if (index > -1) {
+            const ct = containersInfo[container];
+            if (!ct) { continue; }
 
             if(offsetIndex < position) {
                 remBefore += 1;
@@ -301,7 +342,6 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
             cutomOrder.splice(index, 1);
             order.splice(offsetIndex, 1);
-            const ct = containersInfo[container];
 
             const element = $(`tbody#docker_view span#folder-id-${id}`).siblings('div.folder-storage');
             const $containerEl = $('tbody#docker_view > tr.updated > td').children('span.outer').not('.folder-docker').filter(function() {
@@ -341,6 +381,16 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
                         container_name_in_folder: container,
                         cpus: window.fv3CpuCores || dashboardCpus || 1
                     });
+                }
+            }
+
+            // Context 3 (Open WebUI): tile click opens the WebUI; containers without one keep the native menu
+            if (dashboardContext === 3 && ct.info.State.WebUi) {
+                const $trigger = $containerEl.find('span.hand').first();
+                if ($trigger.length) {
+                    const webuiUrl = ct.info.State.WebUi;
+                    $trigger.removeAttr('onclick');
+                    $trigger.on('click', () => { window.open(webuiUrl, '_blank', 'noopener'); });
                 }
             }
 
@@ -456,10 +506,12 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
     let autostartStarted = 0;
     let remBefore = 0;
 
-    if (folder.regex) {
+    if (!Array.isArray(folder.containers)) { folder.containers = []; }
+    if (folder.regex && typeof folder.regex === 'string' && folder.regex.trim() !== "") {
         try {
             const regex = new RegExp(folder.regex);
-            folder.containers = folder.containers.concat(order.filter(el => regex.test(el)));
+            // Match live VM names only — 'order' also holds folder-<id> placeholders (issue #47)
+            folder.containers = folder.containers.concat(order.filter(el => vmInfo[el] && regex.test(el) && !folder.containers.includes(el) && !(folder.fv3AssignedElsewhere || []).includes(el)));
         } catch (e) { console.error('[FV3] Invalid regex:', folder.regex, e); }
     }
 
@@ -497,6 +549,8 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
         }}));
 
         if (index > -1) {
+            const ct = vmInfo[container];
+            if (!ct) { continue; }
 
             if(offsetIndex < position) {
                 remBefore += 1;
@@ -505,7 +559,6 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
             cutomOrder.splice(index, 1);
             order.splice(offsetIndex, 1);
 
-            const ct = vmInfo[container];
             newFolder[container] = {};
             newFolder[container].id = ct.uuid;
             newFolder[container].state = ct.state;
@@ -1802,7 +1855,7 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
             await fv3SettingsReq;
             loadedFolder = true;
             try { await createFolders(); }
-            catch (e) { loadedFolder = false; $('div.spinner.fixed').hide(); return; }
+            catch (e) { console.error('[FV3] Dashboard createFolders failed:', e); loadedFolder = false; $('div.spinner.fixed').hide(); return; }
             applyDashboardLayouts();
             requestAnimationFrame(() => { requestAnimationFrame(() => {
                 if (dockerDashboardLayout === 'fullwidth') {

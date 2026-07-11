@@ -29,6 +29,12 @@ const createFolders = async () => {
     fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
     Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
+    // Explicit members + label claims of ANY folder beat regex matches elsewhere (issue #46)
+    const fv3FolderNames = new Set(Object.values(folders).map(f => f.name));
+    const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : [])
+        .concat(Object.keys(containersInfo).filter(n => fv3FolderNames.has(containersInfo[n]?.Labels?.['folder.view3'])));
+    Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
+
     // No userprefs.cfg: synthesize alphabetical intermix of folder names + orphan containers.
     // Note: `unraidOrder` = read_order.php (raw prefs, has folder placeholders); `order` =
     // read_unraid_order.php (containers only, alphabetical when prefs absent).
@@ -276,7 +282,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
         fv3Debug('createFolder', id, `Regex defined: '${folder.regex}'. Filtering orderSnapshotAtFolderStart.`);
         try {
             const re = new RegExp(folder.regex);
-            const regexMatches = orderSnapshotAtFolderStart.filter(el => containersInfo[el] && re.test(el) && !combinedContainers.includes(el));
+            const regexMatches = orderSnapshotAtFolderStart.filter(el => containersInfo[el] && re.test(el) && !combinedContainers.includes(el) && !(folder.fv3AssignedElsewhere || []).includes(el));
             regexMatches.forEach(match => combinedContainers.push(match));
             fv3Debug('createFolder', id, 'Regex matches added:', regexMatches, "Combined containers after regex:", [...combinedContainers]);
         } catch (e) {

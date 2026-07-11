@@ -226,18 +226,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
 
     for (const [folderId, value] of Object.entries(folders)) {
-        if (value.regex) {
-            try {
-                const regex = new RegExp(value.regex);
-                for (const container of choose) {
-                    if (regex.test(container.Name)) {
-                        value.containers.push(container.Name);
-                    }
-                }
-            } catch (e) { console.error('[FV3] Invalid regex:', value.regex, e); }
-        }
-
-        for (const container of value.containers) {
+        // Only explicit members block availability — containers held elsewhere by regex stay pickable (issue #46)
+        for (const container of (Array.isArray(value.containers) ? value.containers : [])) {
             const index = choose.findIndex((e) => e.Name === container);
             if (index > -1) {
                 choose.splice(index, 1);
@@ -479,11 +469,11 @@ const submitForm = async (e) => {
             expand_dashboard: e.expand_dashboard.checked,
         },
         regex: e.regex.value.toString(),
-        containers: [...$('input[name*="containers"]:checked').map((i, e) => $(e).val())],
+        containers: [...$('input[name*="containers"]:checked:not(:disabled)').map((i, e) => $(e).val())],
         containerIds: type === 'vm' ? (() => {
             const ids = {};
             const allKnown = [...selected, ...selectedRegex, ...choose];
-            for (const name of [...$('input[name*="containers"]:checked').map((i, e) => $(e).val())]) {
+            for (const name of [...$('input[name*="containers"]:checked:not(:disabled)').map((i, e) => $(e).val())]) {
                 const entry = allKnown.find(c => c.Name === name);
                 if (entry && entry.ContainerId) ids[name] = entry.ContainerId;
             }
@@ -492,7 +482,7 @@ const submitForm = async (e) => {
         containerImages: type === 'docker' ? (() => {
             const imgs = {};
             const allKnown = [...selected, ...selectedRegex, ...choose];
-            for (const name of [...$('input[name*="containers"]:checked').map((i, e) => $(e).val())]) {
+            for (const name of [...$('input[name*="containers"]:checked:not(:disabled)').map((i, e) => $(e).val())]) {
                 const entry = allKnown.find(c => c.Name === name);
                 if (entry && entry.Image) imgs[name] = entry.Image;
             }
@@ -575,7 +565,7 @@ const customAction = (action = undefined) => {
     }
     const selectCt = $('.action-subject [name="action_elements"]');
     selectCt.children().remove();
-    [...$('input[name*="containers"]:checked').map((i, e) => $(e).val()), ...selectedRegex.map(e => e.Name)].forEach((e) => {
+    [...$('input[name*="containers"]:checked:not(:disabled)').map((i, e) => $(e).val()), ...selectedRegex.map(e => e.Name)].forEach((e) => {
         if(config.conatiners?.includes(e)) {
             selectCt.append(`<option value="${escapeHtml(e)}" selected>${escapeHtml(e)}</option>`);
         } else {

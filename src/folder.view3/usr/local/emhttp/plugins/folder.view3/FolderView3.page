@@ -172,11 +172,12 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                         <select id="dashboard-context">
                             <option value="0" data-i18n="dashboard-context-default">Default</option>
                             <option value="2" data-i18n="context-option-2">Advanced</option>
+                            <option value="3" data-i18n="context-option-3">Open WebUI</option>
                         </select>
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p><b>Default</b> uses Unraid's built-in container menu (the existing behavior). <b>Advanced</b> replaces it with FolderView3's popup showing CPU/MEM graphs, container info, and quick actions.</p>
+                    <p><b>Default</b> uses Unraid's built-in container menu (the existing behavior). <b>Advanced</b> replaces it with FolderView3's popup showing CPU/MEM graphs, container info, and quick actions. <b>Open WebUI</b> makes clicking a container tile in an expanded folder open its WebUI in a new tab (containers without a WebUI keep the menu).</p>
                 </blockquote>
             </div>
 

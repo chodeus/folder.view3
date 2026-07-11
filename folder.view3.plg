@@ -6,14 +6,20 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.11.1">
-<!ENTITY md5 "13fa838bb37fc0396738a51a0bf57229">
+<!ENTITY version "2026.07.11.2">
+<!ENTITY md5 "6ed1c9347e051614dc905c5fbe5e3d60">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.11.2
+- Added: "Open WebUI" option for the Dashboard preview context (Settings → Dashboard) — expanded-folder tile clicks open the container's WebUI
+- Added: containers explicitly assigned to a folder can no longer be captured by another folder's regex — a "^" regex folder now works as a catch-all for unassigned containers, and its containers stay pickable in other folder editors (#46)
+- Fixed: a folder with a match-all regex (e.g. "^") no longer crashes the Dashboard folder render or hides all VM folders; a failing folder now shows an error banner and the rest keep rendering (#47)
+- Fixed: editing a regex folder no longer permanently bakes its current regex matches into the folder's member list
 
 ###2026.07.11.1
 - Added: "Open WebUI" option in Preview Context — clicking a container's icon in the collapsed preview opens its WebUI in a new tab; containers without a WebUI keep the context menu (#41)

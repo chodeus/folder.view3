@@ -197,12 +197,17 @@
         $folderContainers = [];
         $folderNames = [];
         $assignedContainers = [];
+        // Explicit members of any folder beat regex matches elsewhere (issue #46)
+        $explicitAssigned = [];
+        foreach ($folders as $folder) {
+            $explicitAssigned = array_merge($explicitAssigned, $folder['containers'] ?? []);
+        }
         foreach ($folders as $folderId => $folder) {
             $members = $folder['containers'] ?? [];
             if (!empty($folder['regex'])) {
                 $regex = '/' . str_replace('/', '\/', $folder['regex']) . '/';
                 foreach ($allContainerNames as $name) {
-                    if (@preg_match($regex, $name) && !in_array($name, $members)) {
+                    if (@preg_match($regex, $name) && !in_array($name, $members) && !in_array($name, $explicitAssigned)) {
                         $members[] = $name;
                     }
                 }
@@ -402,7 +407,7 @@
             'dashboard_vm_expand_toggle'     => ['yes', 'no'],
             'dashboard_vm_greyscale'         => ['yes', 'no'],
             'dashboard_vm_folder_label'      => ['yes', 'no'],
-            'dashboard_context'              => ['0', '1', '2'],
+            'dashboard_context'              => ['0', '1', '2', '3'],
             'dashboard_context_trigger'      => ['0', '1'],
             'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
             'default_preview'          => ['0', '1', '2', '3', '4'],
@@ -461,7 +466,7 @@
             'dashboard_vm_expand_toggle'     => ['yes', 'no'],
             'dashboard_vm_greyscale'         => ['yes', 'no'],
             'dashboard_vm_folder_label'      => ['yes', 'no'],
-            'dashboard_context'              => ['0', '1', '2'],
+            'dashboard_context'              => ['0', '1', '2', '3'],
             'dashboard_context_trigger'      => ['0', '1'],
             'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
             'default_preview'          => ['0', '1', '2', '3', '4'],
