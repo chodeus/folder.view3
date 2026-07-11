@@ -1055,7 +1055,7 @@ const actionFolderDocker = async (id, action) => {
     let proms = [];
     let errors;
 
-    $(`i#load-folder-${id}`).removeClass('fa-play fa-square fa-pause').addClass('fa-refresh fa-spin');
+    $(`.folder-showcase-outer-${id} i.folder-load-status-docker`).removeClass('fa-play fa-square fa-pause').addClass('fa-refresh fa-spin');
     $('div.spinner.fixed').show('slow');
 
     for (let index = 0; index < cts.length; index++) {
@@ -1336,7 +1336,7 @@ const actionFolderVM = async (id, action) => {
     let errors;
     const oldAction = action;
 
-    $(`i#load-folder-${id}`).removeClass('fa-play fa-square fa-pause').addClass('fa-refresh fa-spin');
+    $(`.folder-showcase-outer-${id} i.folder-load-status-vm`).removeClass('fa-play fa-square fa-pause').addClass('fa-refresh fa-spin');
     $('div.spinner.fixed').show('slow');
 
     for (let index = 0; index < cts.length; index++) {
