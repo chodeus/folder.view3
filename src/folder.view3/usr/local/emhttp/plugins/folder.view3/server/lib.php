@@ -420,7 +420,7 @@
             'default_preview_border'   => ['yes', 'no'],
             'default_row_separator'    => ['yes', 'no'],
             'default_overflow'         => ['default', 'scroll', 'expand'],
-            'default_context'          => ['0', '1', '2'],
+            'default_context'          => ['0', '1', '2', '3'],
             'default_context_trigger'  => ['0', '1'],
             'default_context_graph'    => ['0', '1', '2', '3', '4'],
             'default_update_column'    => ['yes', 'no']
@@ -479,7 +479,7 @@
             'default_preview_border'   => ['yes', 'no'],
             'default_row_separator'    => ['yes', 'no'],
             'default_overflow'         => ['default', 'scroll', 'expand'],
-            'default_context'          => ['0', '1', '2'],
+            'default_context'          => ['0', '1', '2', '3'],
             'default_context_trigger'  => ['0', '1'],
             'default_context_graph'    => ['0', '1', '2', '3', '4'],
             'default_update_column'    => ['yes', 'no']

@@ -341,51 +341,51 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     fv3Debug('createFolder', id, `Selecting addPreview function based on folder.settings.preview = ${folder.settings.preview}. Context setting: ${folder.settings.context}`);
     switch (folder.settings.preview) {
         case 1:
-            addPreview = (folderTrId, ctid, autostart) => {
+            addPreview = (folderTrId, ctid, autostart, webui) => {
                 fv3Debug('addPreview', `case 1: ctid=${ctid}, autostart=${autostart}`);
                 let clone = $(`tr.folder-id-${folderTrId} div.folder-storage > tr > td.ct-name > span.outer:last`).clone();
                 clone.find(`span.state`)[0].innerHTML = clone.find(`span.state`)[0].innerHTML.split("<br>")[0];
                 $(`tr.folder-id-${folderTrId} div.folder-preview`).append(clone.addClass(`${autostart ? 'autostart' : ''}`));
                 let tmpId = $(`tr.folder-id-${folderTrId} div.folder-preview > span.outer:last`).find('i[id^="load-"]');
                 tmpId.attr("id", "folder-" + tmpId.attr("id"));
-                if(folder.settings.context === 2 || folder.settings.context === 0) {
+                if(folder.settings.context === 2 || folder.settings.context === 0 || webui) {
                     tmpId = $(`tr.folder-id-${folderTrId} div.folder-preview > span.outer:last > span.hand`);
                     tmpId.attr("id", "folder-preview-" + ctid);
                     tmpId.removeAttr("onclick");
                     fv3Debug('addPreview', `case 1: Context is ${folder.settings.context}. Modified preview element for tooltipster:`, tmpId);
-                    if(folder.settings.context === 2) { return tmpId; }
+                    if(folder.settings.context === 2 || webui) { return tmpId; }
                 }
             }; break;
         case 2:
-            addPreview = (folderTrId, ctid, autostart) => {
+            addPreview = (folderTrId, ctid, autostart, webui) => {
                 fv3Debug('addPreview', `case 2: ctid=${ctid}, autostart=${autostart}`);
                 $(`tr.folder-id-${folderTrId} div.folder-preview`).append($(`tr.folder-id-${folderTrId} div.folder-storage > tr > td.ct-name > span.outer > span.hand:last`).clone().addClass(`${autostart ? 'autostart' : ''}`));
-                if(folder.settings.context === 2 || folder.settings.context === 0) {
+                if(folder.settings.context === 2 || folder.settings.context === 0 || webui) {
                     let tmpId = $(`tr.folder-id-${folderTrId} div.folder-preview > span.hand:last`);
                     tmpId.attr("id", "folder-preview-" + ctid);
                     tmpId.removeAttr("onclick");
                     fv3Debug('addPreview', `case 2: Context is ${folder.settings.context}. Modified preview element for tooltipster:`, tmpId);
-                    if(folder.settings.context === 2) { return tmpId; }
+                    if(folder.settings.context === 2 || webui) { return tmpId; }
                 }
             }; break;
         case 3:
-            addPreview = (folderTrId, ctid, autostart) => {
+            addPreview = (folderTrId, ctid, autostart, webui) => {
                 fv3Debug('addPreview', `case 3: ctid=${ctid}, autostart=${autostart}`);
                 let clone = $(`tr.folder-id-${folderTrId} div.folder-storage > tr > td.ct-name > span.outer > span.inner:last`).clone();
                 clone.find(`span.state`)[0].innerHTML = clone.find(`span.state`)[0].innerHTML.split("<br>")[0];
                 $(`tr.folder-id-${folderTrId} div.folder-preview`).append(clone.addClass(`${autostart ? 'autostart' : ''}`));
                 let tmpId = $(`tr.folder-id-${folderTrId} div.folder-preview > span.inner:last`).find('i[id^="load-"]');
                 tmpId.attr("id", "folder-" + tmpId.attr("id"));
-                if(folder.settings.context === 2 || folder.settings.context === 0) {
+                if(folder.settings.context === 2 || folder.settings.context === 0 || webui) {
                     tmpId = $(`tr.folder-id-${folderTrId} div.folder-preview > span.inner:last > span.appname > a.exec`);
                     tmpId.attr("id", "folder-preview-" + ctid);
                     tmpId.removeAttr("onclick");
                     fv3Debug('addPreview', `case 3: Context is ${folder.settings.context}. Modified preview element for tooltipster:`, tmpId);
-                    if(folder.settings.context === 2) { return tmpId; }
+                    if(folder.settings.context === 2 || webui) { return tmpId; }
                 }
             }; break;
         case 4:
-            addPreview = (folderTrId, ctid, autostart) => {
+            addPreview = (folderTrId, ctid, autostart, webui) => {
                 fv3Debug('addPreview', `case 4: ctid=${ctid}, autostart=${autostart}`);
                 let lstSpan = $(`tr.folder-id-${folderTrId} div.folder-preview > span.outer:last`);
                 if(!lstSpan[0] || lstSpan.children().length >= 2) {
@@ -394,12 +394,12 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                 }
                 lstSpan.append($('<span class="inner"></span>'));
                 lstSpan.children('span.inner:last').append($(`tr.folder-id-${folderTrId} div.folder-storage > tr > td.ct-name > span.outer > span.inner > span.appname:last`).clone().addClass(`${autostart ? 'autostart' : ''}`));
-                if(folder.settings.context === 2 || folder.settings.context === 0) {
+                if(folder.settings.context === 2 || folder.settings.context === 0 || webui) {
                     let tmpId = $(`tr.folder-id-${folderTrId} div.folder-preview span.inner:last > span.appname > a.exec`);
                     tmpId.attr("id", "folder-preview-" + ctid);
                     tmpId.removeAttr("onclick");
                     fv3Debug('addPreview', `case 4: Context is ${folder.settings.context}. Modified preview element for tooltipster:`, tmpId);
-                    if(folder.settings.context === 2) {
+                    if(folder.settings.context === 2 || webui) {
                         return tmpId.length>0 ? tmpId : $(`tr.folder-id-${folderTrId} div.folder-preview span.inner:last > span.appname`).attr("id", "folder-preview-" + ctid);
                     }
                 }
@@ -484,21 +484,29 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
             fv3Debug('createFolder', id, container_name_in_folder, 'Container info (ct):', JSON.parse(JSON.stringify(ct)));
 
             const isHiddenFromPreview = (folder.hidden_preview || []).includes(container_name_in_folder);
-            const tooltip_trigger_element = isHiddenFromPreview ? null : addPreview(id, ct.shortId, !(ct.info.State.Autostart === false));
+            // Context 3 (Open WebUI): only takes over the icon click when the container has a WebUI, else native menu stays
+            const webuiClickMode = folder.settings.context === 3 && !!ct.info.State.WebUi;
+            const tooltip_trigger_element = isHiddenFromPreview ? null : addPreview(id, ct.shortId, !(ct.info.State.Autostart === false), webuiClickMode);
             fv3Debug('createFolder', id, ct.shortId, `Called addPreview (hidden: ${isHiddenFromPreview}). Returned tooltip_trigger_element:`, tooltip_trigger_element ? tooltip_trigger_element[0] : 'null/undefined');
 
             $(`tr.folder-id-${id} div.folder-preview span.inner > span.appname`).css("width", folder.settings.preview_text_width || '');
             if (folder.settings.preview_text_width) fv3Debug('createFolder', id, `preview text width: ${folder.settings.preview_text_width}`);
 
             if (tooltip_trigger_element && tooltip_trigger_element.length > 0) {
-                fv3AttachAdvancedPreview({
-                    triggerEl: tooltip_trigger_element,
-                    ct,
-                    folder,
-                    id,
-                    container_name_in_folder,
-                    cpus
-                });
+                if (webuiClickMode) {
+                    const webuiUrl = ct.info.State.WebUi;
+                    tooltip_trigger_element.on('click', () => { window.open(webuiUrl, '_blank', 'noopener'); });
+                    fv3Debug('createFolder', id, ct.shortId, 'Bound WebUI click to preview element:', webuiUrl);
+                } else {
+                    fv3AttachAdvancedPreview({
+                        triggerEl: tooltip_trigger_element,
+                        ct,
+                        folder,
+                        id,
+                        container_name_in_folder,
+                        cpus
+                    });
+                }
             } else {
                 fv3DebugWarn('createFolder', id, ct.shortId, 'tooltip_trigger_element is NOT valid. Tooltipster NOT initialized.');
             }

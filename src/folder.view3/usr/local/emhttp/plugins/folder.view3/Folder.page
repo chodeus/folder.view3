@@ -446,12 +446,13 @@ Markdown="false"
                                     <option value="0" data-i18n="context-option-0">None</option>
                                     <option value="1" data-i18n="context-option-1" selected>Default</option>
                                     <option value="2" data-i18n="context-option-2">Advanced</option>
+                                    <option value="3" data-i18n="context-option-3">Open WebUI</option>
                                 </select>
                             </dd>
                         </dl>
                         <blockquote class="inline_help">
                             <p data-i18n="[html]context-tooltip">
-                                Controls the detail popup when clicking a container in the preview. <b>None</b> disables it, <b>Default</b> shows basic container info, <b>Advanced</b> shows detailed stats with CPU/memory graphs.
+                                Controls the detail popup when clicking a container in the preview. <b>None</b> disables it, <b>Default</b> shows basic container info, <b>Advanced</b> shows detailed stats with CPU/memory graphs, <b>Open WebUI</b> opens the container's WebUI in a new tab (containers without a WebUI show the default menu).
                             </p>
                         </blockquote>
                     </div>

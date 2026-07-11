@@ -20,6 +20,7 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
   <img src="screenshots/dockerpagepreviewexpand.png" alt="Docker page with expanded preview" width="600">
 
 - **Hide from preview** — selectively hide containers from the collapsed preview while keeping them visible when expanded
+- **Open WebUI preview context** — clicking a container's icon in the collapsed preview opens its WebUI directly; containers without a WebUI fall back to the context menu
 - **Real-time stats** — live CPU/memory graphs in Advanced Preview via WebSocket (7.2+) or SSE, with configurable graph modes (Combined, Split, CPU-only, MEM-only) and time frame
 - **Drag-and-drop reordering** — reorder containers within folders via drag (mouse and touch supported)
 - **Unraid 7.2+ API integration** — hybrid GraphQL/PHP with automatic fallback for older versions
