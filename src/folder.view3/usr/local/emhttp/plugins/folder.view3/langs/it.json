@@ -138,7 +138,7 @@
     "expand-dashboard": "Espandi nella sezione Dashboard:",
     "expand-dashboard-tooltip": "La cartella sarà espansa per impostazione predefinita al caricamento del Dashboard.",
     "regex": "Regex:",
-    "regex-tooltip": "Includi automaticamente i container i cui nomi corrispondono a un pattern di testo.<br><b>plex</b> — corrisponde a qualsiasi container con \"plex\" nel nome<br><b>^media-</b> — corrisponde ai container che iniziano con \"media-\"<br><b>arr$</b> — corrisponde ai container che finiscono con \"arr\" (sonarr, radarr, ecc.)<br><a href=\"https://regex101.com/\" target=\"_blank\">Testa il tuo pattern qui</a>.<br>Modificare questo campo ripristinerà le selezioni manuali dei container.",
+    "regex-tooltip": "Includi automaticamente i container i cui nomi corrispondono a un pattern di testo.<br><b>plex</b> — corrisponde a qualsiasi container con \"plex\" nel nome<br><b>^media-</b> — corrisponde ai container che iniziano con \"media-\"<br><b>arr$</b> — corrisponde ai container che finiscono con \"arr\" (sonarr, radarr, ecc.)<br><b>^</b> — jolly: corrisponde a qualsiasi nome, quindi questa cartella raccoglie i container non assegnati a un'altra cartella né corrispondenti (mettila per ultima)<br><a href=\"https://regex101.com/\" target=\"_blank\">Testa il tuo pattern qui</a>.<br>Modificare questo campo ripristinerà le selezioni manuali dei container.",
     "submit": "Invia",
     "cancel": "Cancella",
     "delete": "Delete",

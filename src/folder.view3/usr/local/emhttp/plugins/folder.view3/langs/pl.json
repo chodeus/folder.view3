@@ -138,7 +138,7 @@
     "expand-dashboard": "Rozwinięty w zakładce Pulpit:",
     "expand-dashboard-tooltip": "Folder będzie domyślnie rozwinięty podczas ładowania Dashboardu.",
     "regex": "Regex:",
-    "regex-tooltip": "Automatycznie dołączaj kontenery, których nazwy pasują do wzorca tekstowego.<br><b>plex</b> — pasuje do każdego kontenera z \u201eplex\u201d w nazwie<br><b>^media-</b> — pasuje do kontenerów zaczynających się od \u201emedia-\u201d<br><b>arr$</b> — pasuje do kontenerów kończących się na \u201earr\u201d (sonarr, radarr itp.)<br><a href=\"https://regex101.com/\" target=\"_blank\">Przetestuj wzorzec tutaj</a>.<br>Edycja tego pola zresetuje ręczne wybory kontenerów.",
+    "regex-tooltip": "Automatycznie dołączaj kontenery, których nazwy pasują do wzorca tekstowego.<br><b>plex</b> — pasuje do każdego kontenera z \u201eplex\u201d w nazwie<br><b>^media-</b> — pasuje do kontenerów zaczynających się od \u201emedia-\u201d<br><b>arr$</b> — pasuje do kontenerów kończących się na \u201earr\u201d (sonarr, radarr itp.)<br><b>^</b> — uniwersalny: pasuje do każdej nazwy, więc ten folder zbiera kontenery nieprzypisane do innego folderu ani przez niego dopasowane (umieść go na końcu)<br><a href=\"https://regex101.com/\" target=\"_blank\">Przetestuj wzorzec tutaj</a>.<br>Edycja tego pola zresetuje ręczne wybory kontenerów.",
     "submit": "Zatwierdź",
     "cancel": "Anuluj",
     "delete": "Delete",

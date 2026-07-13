@@ -6,14 +6,18 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.12.1">
-<!ENTITY md5 "29bf7c40b304458decc78b4cbb8fde88">
+<!ENTITY version "2026.07.13.1">
+<!ENTITY md5 "1ced4e2ae5a238b8cefc5a997699d0c3">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.13.1
+- Fixed: folder views no longer briefly flash Unraid's plain container/VM list before folders appear on the Docker, VM and Dashboard tabs
+- Added: the folder editor's Regex help now documents the "^" catch-all behaviour (collects containers not assigned to or matched by another folder)
 
 ###2026.07.12.1
 - Fixed: a failed data load on the Dashboard no longer stacks two error banners for the same failure

@@ -138,7 +138,7 @@
     "expand-dashboard": "默认在仪表板展开：",
     "expand-dashboard-tooltip": "加载仪表板页面时，文件夹默认展开。",
     "regex": "正则匹配：",
-    "regex-tooltip": "自动包含名称匹配文本模式的容器。<br><b>plex</b> — 匹配名称中包含 \"plex\" 的任何容器<br><b>^media-</b> — 匹配以 \"media-\" 开头的容器<br><b>arr$</b> — 匹配以 \"arr\" 结尾的容器（sonarr、radarr 等）<br><a href=\"https://regex101.com/\" target=\"_blank\">在此测试你的模式</a>。<br>编辑此字段将重置下方的手动容器选择。",
+    "regex-tooltip": "自动包含名称匹配文本模式的容器。<br><b>plex</b> — 匹配名称中包含 \"plex\" 的任何容器<br><b>^media-</b> — 匹配以 \"media-\" 开头的容器<br><b>arr$</b> — 匹配以 \"arr\" 结尾的容器（sonarr、radarr 等）<br><b>^</b> — 通配：匹配所有名称，因此此文件夹会收集未分配到其他文件夹、也未被其匹配的容器（请放在最后）<br><a href=\"https://regex101.com/\" target=\"_blank\">在此测试你的模式</a>。<br>编辑此字段将重置下方的手动容器选择。",
     "submit": "提交",
     "cancel": "取消",
     "delete": "Delete",

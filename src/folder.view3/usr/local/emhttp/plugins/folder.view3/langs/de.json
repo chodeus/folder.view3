@@ -138,7 +138,7 @@
     "expand-dashboard": "Im Übersicht-Reiter aufklappen:",
     "expand-dashboard-tooltip": "Der Ordner wird standardmäßig erweitert beim Laden des Dashboards.",
     "regex": "Regex (Reguläre Ausdrücke):",
-    "regex-tooltip": "Container automatisch einschließen, deren Namen einem Textmuster entsprechen.<br><b>plex</b> — passt auf jeden Container mit \u201eplex\u201c im Namen<br><b>^media-</b> — passt auf Container, die mit \u201emedia-\u201c beginnen<br><b>arr$</b> — passt auf Container, die mit \u201earr\u201c enden (sonarr, radarr usw.)<br><a href=\"https://regex101.com/\" target=\"_blank\">Muster hier testen</a>.<br>Das Bearbeiten dieses Feldes setzt die manuelle Containerauswahl zurück.",
+    "regex-tooltip": "Container automatisch einschließen, deren Namen einem Textmuster entsprechen.<br><b>plex</b> — passt auf jeden Container mit \u201eplex\u201c im Namen<br><b>^media-</b> — passt auf Container, die mit \u201emedia-\u201c beginnen<br><b>arr$</b> — passt auf Container, die mit \u201earr\u201c enden (sonarr, radarr usw.)<br><b>^</b> — Sammelordner: passt auf jeden Namen, sodass dieser Ordner alle Container aufnimmt, die keinem anderen Ordner zugewiesen oder von ihm erfasst sind (zuletzt platzieren)<br><a href=\"https://regex101.com/\" target=\"_blank\">Muster hier testen</a>.<br>Das Bearbeiten dieses Feldes setzt die manuelle Containerauswahl zurück.",
     "submit": "Übermitteln",
     "cancel": "Abbrechen",
     "delete": "Delete",

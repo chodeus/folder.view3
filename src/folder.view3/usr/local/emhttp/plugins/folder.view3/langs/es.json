@@ -138,7 +138,7 @@
     "expand-dashboard": "Ampliado en el panel de Administración:",
     "expand-dashboard-tooltip": "La carpeta se expandirá por defecto al cargar el Dashboard.",
     "regex": "Regex:",
-    "regex-tooltip": "Incluir automáticamente contenedores cuyos nombres coincidan con un patrón de texto.<br><b>plex</b> \u2014 coincide con cualquier contenedor con \"plex\" en el nombre<br><b>^media-</b> \u2014 coincide con contenedores que empiezan con \"media-\"<br><b>arr$</b> \u2014 coincide con contenedores que terminan en \"arr\" (sonarr, radarr, etc.)<br><a href=\"https://regex101.com/\" target=\"_blank\">Prueba tu patrón aquí</a>.<br>Editar este campo restablecerá las selecciones manuales de contenedores.",
+    "regex-tooltip": "Incluir automáticamente contenedores cuyos nombres coincidan con un patrón de texto.<br><b>plex</b> \u2014 coincide con cualquier contenedor con \"plex\" en el nombre<br><b>^media-</b> \u2014 coincide con contenedores que empiezan con \"media-\"<br><b>arr$</b> \u2014 coincide con contenedores que terminan en \"arr\" (sonarr, radarr, etc.)<br><b>^</b> — comodín: coincide con cualquier nombre, por lo que esta carpeta recoge los contenedores no asignados a otra carpeta ni coincidentes con ella (colócala al final)<br><a href=\"https://regex101.com/\" target=\"_blank\">Prueba tu patrón aquí</a>.<br>Editar este campo restablecerá las selecciones manuales de contenedores.",
     "submit": "Enviar",
     "cancel": "Cancelar",
     "delete": "Delete",

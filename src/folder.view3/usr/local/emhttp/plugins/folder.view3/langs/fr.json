@@ -138,7 +138,7 @@
     "expand-dashboard": "Déployé sur l'onglet du Tableau de bord :",
     "expand-dashboard-tooltip": "Le dossier sera étendu par défaut au chargement du Dashboard.",
     "regex": "Expression rationnelle :",
-    "regex-tooltip": "Inclure automatiquement les conteneurs dont les noms correspondent à un motif texte.<br><b>plex</b> \u2014 correspond à tout conteneur avec \u00ab plex \u00bb dans le nom<br><b>^media-</b> \u2014 correspond aux conteneurs commençant par \u00ab media- \u00bb<br><b>arr$</b> \u2014 correspond aux conteneurs finissant par \u00ab arr \u00bb (sonarr, radarr, etc.)<br><a href=\"https://regex101.com/\" target=\"_blank\">Testez votre motif ici</a>.<br>Modifier ce champ réinitialisera les sélections manuelles de conteneurs.",
+    "regex-tooltip": "Inclure automatiquement les conteneurs dont les noms correspondent à un motif texte.<br><b>plex</b> \u2014 correspond à tout conteneur avec \u00ab plex \u00bb dans le nom<br><b>^media-</b> \u2014 correspond aux conteneurs commençant par \u00ab media- \u00bb<br><b>arr$</b> \u2014 correspond aux conteneurs finissant par \u00ab arr \u00bb (sonarr, radarr, etc.)<br><b>^</b> — fourre-tout : correspond à tout nom ; ce dossier récupère alors les conteneurs non assignés à un autre dossier ni correspondants (placez-le en dernier)<br><a href=\"https://regex101.com/\" target=\"_blank\">Testez votre motif ici</a>.<br>Modifier ce champ réinitialisera les sélections manuelles de conteneurs.",
     "submit": "Soumettre",
     "cancel": "Annuler",
     "delete": "Delete",

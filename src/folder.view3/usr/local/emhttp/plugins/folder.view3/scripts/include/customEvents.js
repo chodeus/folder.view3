@@ -223,6 +223,9 @@ window.fv3LoadToggleStyle = window.fv3LoadToggleStyle || (() => {
 if (window.folderEvents) {
     window.folderEvents.addEventListener('docker-post-folders-creation', () => window.fv3LoadToggleStyle());
     window.folderEvents.addEventListener('vm-post-folders-creation', () => window.fv3LoadToggleStyle());
+    // Anti-FOUC reveal: each .page pre-hides the native list (inline <style>); reveal once folders are built
+    window.folderEvents.addEventListener('docker-post-folders-creation', () => document.documentElement.classList.add('fv3-docker-ready'));
+    window.folderEvents.addEventListener('vm-post-folders-creation', () => document.documentElement.classList.add('fv3-vm-ready'));
 }
 
 if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {

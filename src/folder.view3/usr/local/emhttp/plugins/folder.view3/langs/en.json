@@ -138,7 +138,7 @@
     "expand-dashboard": "Expanded on Dashboard tab:",
     "expand-dashboard-tooltip": "The folder will be expanded by default when the Dashboard page loads.",
     "regex": "Regex:",
-    "regex-tooltip": "Automatically include containers whose names match a text pattern.<br><b>plex</b> — matches any container with 'plex' in the name<br><b>^media-</b> — matches containers starting with 'media-'<br><b>arr$</b> — matches containers ending with 'arr' (sonarr, radarr, etc.)<br><a href=\"https://regex101.com/\" target=\"_blank\">Test your pattern here</a>.<br>Editing this field will reset manual container selections below.",
+    "regex-tooltip": "Automatically include containers whose names match a text pattern.<br><b>plex</b> — matches any container with 'plex' in the name<br><b>^media-</b> — matches containers starting with 'media-'<br><b>arr$</b> — matches containers ending with 'arr' (sonarr, radarr, etc.)<br><b>^</b> — catch-all: matches every name, so this folder holds any container not assigned to or matched by another folder (place it last)<br><a href=\"https://regex101.com/\" target=\"_blank\">Test your pattern here</a>.<br>Editing this field will reset manual container selections below.",
     "submit": "Submit",
     "cancel": "Cancel",
     "delete": "Delete",

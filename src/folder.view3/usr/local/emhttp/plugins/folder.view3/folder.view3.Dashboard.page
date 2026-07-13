@@ -8,6 +8,9 @@ Markdown="false"
 $type = 'dashboard';
 require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 ?>
+<!-- Anti-FOUC: hide the native dashboard docker/vm lists until FV3 builds folders (revealed in customEvents.js); 8s failsafe reveals them if the JS bundle never runs -->
+<style>@media screen{html:not(.fv3-docker-ready) tbody#docker_view{visibility:hidden}html:not(.fv3-vm-ready) tbody#vm_view{visibility:hidden}}</style>
+<script>setTimeout(function(){document.documentElement.classList.add('fv3-docker-ready','fv3-vm-ready')},8000)</script>
 <script src="<?php autov('/plugins/folder.view3/scripts/include/customEvents.js')?>"></script>
 <script src="<?php autov('/plugins/folder.view3/scripts/shared.js')?>"></script>
 <?php

@@ -118,7 +118,7 @@ Markdown="false"
                 </dl>
                 <blockquote class="inline_help">
                     <p data-i18n="[html]regex-tooltip">
-                        Auto-include containers/VMs whose names match a regular expression pattern. For example, <b>plex.*</b> matches any container starting with 'plex'. Use <b>^my-stack-</b> to match containers from a Docker Compose stack named 'my-stack'.
+                        Auto-include containers/VMs whose names match a regular expression pattern. For example, <b>plex.*</b> matches any container starting with 'plex'. Use <b>^my-stack-</b> to match containers from a Docker Compose stack named 'my-stack'. A folder whose pattern is <b>^</b> matches every name, so it acts as a catch-all for containers not placed in or matched by another folder — put it last.
                         <br>
                         <a href="https://regex101.com/">Site for testing your regex</a>.
                         <br>
