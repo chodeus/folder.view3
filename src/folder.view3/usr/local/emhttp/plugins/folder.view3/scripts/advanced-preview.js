@@ -474,7 +474,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
             <div class="preview-outbox preview-outbox-${ct.shortId}">
                 <div class="first-row">
                     <div class="preview-name">
-                        <div class="preview-img"><img src="${escapeHtml(ct.Labels['net.unraid.docker.icon'] || '')}" class="img folder-img" onerror='this.src="/plugins/dynamix.docker.manager/images/question.png"'></div>
+                        <div class="preview-img"><img src="${escapeHtml(ct.Labels['net.unraid.docker.icon'] || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></div>
                         <div class="preview-actual-name">
                             <span class="blue-text appname">${escapeHtml(ct.info.Name)}</span><br>
                             <i class="fa fa-${ct.info.State.Running ? (ct.info.State.Paused ? 'pause' : 'play') : 'square'} ${ct.info.State.Running ? (ct.info.State.Paused ? 'paused' : 'started') : 'stopped'} ${ct.info.State.Running ? (ct.info.State.Paused ? 'orange-text' : 'green-text') : 'red-text'}"></i>

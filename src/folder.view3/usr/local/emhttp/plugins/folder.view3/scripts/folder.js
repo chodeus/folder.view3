@@ -341,16 +341,16 @@ const updateList = () => {
 
     for (const el of selected) {
         const isHidden = hiddenPreview.includes(el.Name);
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
     }
 
     for (const el of choose) {
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
     }
 
     for (const el of selectedRegex) {
         const isHidden = hiddenPreview.includes(el.Name);
-        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon)}" class="img" onerror="this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
+        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
     }
 
     $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().css('opacity', '0.5').css('cursor', 'default');

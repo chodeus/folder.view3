@@ -6,14 +6,18 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.13.1">
-<!ENTITY md5 "1ced4e2ae5a238b8cefc5a997699d0c3">
+<!ENTITY version "2026.07.14.1">
+<!ENTITY md5 "7b5fc436dec1dcf9b4235a625ddf3aa6">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.14.1
+- Fixed: a missing fallback icon (question.png — Unraid can delete it during container updates, unraid/webgui#2691) no longer causes endless 404 retries; icon error handlers now fall back once and stop
+- Fixed: folders and containers with no icon set now render the fallback icon directly instead of erroring on every refresh
 
 ###2026.07.13.1
 - Fixed: folder views no longer briefly flash Unraid's plain container/VM list before folders appear on the Docker, VM and Dashboard tabs
