@@ -32,7 +32,7 @@ const createFolders = async () => {
     // Explicit members + label claims of ANY folder beat regex matches elsewhere (issue #46)
     const fv3FolderNames = new Set(Object.values(folders).map(f => f.name));
     const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : [])
-        .concat(Object.keys(containersInfo).filter(n => fv3FolderNames.has(containersInfo[n]?.Labels?.['folder.view3'])));
+        .concat(Object.keys(containersInfo).filter(n => { const l = containersInfo[n]?.Labels?.['folder.view3']; return l && fv3FolderNames.has(l); }));
     Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
 
     // No userprefs.cfg: synthesize alphabetical intermix of folder names + orphan containers.
@@ -125,10 +125,15 @@ const createFolders = async () => {
             fv3Debug('createFolders', `Is a folder: id=${id}`);
             if (folders[id]) {
                 fv3Debug('createFolders', `Folder ${id} exists in folders data. Calling createFolder. Position in order: ${key}`);
-                const removedCount = createFolder(folders[id], id, key, order, containersInfo, Object.keys(foldersDone));
-                key -= removedCount;
-                fv3Debug('createFolders', `createFolder for ${id} returned remBefore=${removedCount}. Adjusted main loop key to ${key}.`);
-                foldersDone[id] = folders[id];
+                try {
+                    const removedCount = createFolder(folders[id], id, key, order, containersInfo, Object.keys(foldersDone));
+                    key -= removedCount;
+                    fv3Debug('createFolders', `createFolder for ${id} returned remBefore=${removedCount}. Adjusted main loop key to ${key}.`);
+                    foldersDone[id] = folders[id];
+                } catch (e) {
+                    console.error(`[FV3] Docker: folder "${folders[id].name}" failed to render:`, e);
+                    fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                }
                 delete folders[id];
                 fv3Debug('createFolders', `Folder ${id} moved to foldersDone. Updated foldersDone:`, {...foldersDone}, "Remaining folders:", {...folders});
             } else {
@@ -143,8 +148,13 @@ const createFolders = async () => {
         fv3Debug('createFolders', `Processing remaining folder: id=${id}`);
         order.unshift(`folder-${id}`);
         fv3Debug('createFolders', `Unshifted folder-${id} to order. New order:`, [...order]);
-        createFolder(value, id, 0, order, containersInfo, Object.keys(foldersDone));
-        foldersDone[id] = folders[id];
+        try {
+            createFolder(value, id, 0, order, containersInfo, Object.keys(foldersDone));
+            foldersDone[id] = folders[id];
+        } catch (e) {
+            console.error(`[FV3] Docker: folder "${value.name}" failed to render:`, e);
+            fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+        }
         delete folders[id];
         fv3Debug('createFolders', `Remaining folder ${id} moved to foldersDone. Updated foldersDone:`, {...foldersDone}, "Remaining folders:", {...folders});
     }
@@ -1149,6 +1159,9 @@ window.listview = () => {
         fv3Debug('Patched listview', 'loadedFolder is false. Calling createFolders.');
         loadedFolder = true;
         createFolders().catch((e) => {
+            console.error('[FV3] Docker: folder rendering failed:', e);
+            // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
+            document.documentElement.classList.add('fv3-docker-ready');
             fv3DebugWarn('Patched listview', 'createFolders failed; clearing flag so a later render can retry', e);
             loadedFolder = false;
         });

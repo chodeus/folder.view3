@@ -45,7 +45,7 @@ const createFolders = async () => {
         // Explicit members + label claims of ANY folder beat regex matches elsewhere (issue #46)
         const fv3FolderNames = new Set(Object.values(folders).map(f => f.name));
         const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : [])
-            .concat(Object.keys(containersInfo).filter(n => fv3FolderNames.has(containersInfo[n]?.Labels?.['folder.view3'])));
+            .concat(Object.keys(containersInfo).filter(n => { const l = containersInfo[n]?.Labels?.['folder.view3']; return l && fv3FolderNames.has(l); }));
         Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
 
         let newOnes = order.filter(x => !unraidOrder.includes(x));
@@ -154,6 +154,8 @@ const createFolders = async () => {
     // Isolate the Docker half so a failure here can't abort the VM render below (issue #47)
     } catch (e) {
         console.error('[FV3] Dashboard: Docker folder rendering failed:', e);
+        // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
+        document.documentElement.classList.add('fv3-docker-ready');
         if (!e?.fv3Bannered) fv3ShowBanner('FolderView3: Docker folder rendering failed — see the browser console for details.', 'error');
     } }
 
@@ -261,6 +263,7 @@ const createFolders = async () => {
         globalFolders.vms = foldersDone;
     } catch (e) {
         console.error('[FV3] Dashboard: VM folder rendering failed:', e);
+        document.documentElement.classList.add('fv3-vm-ready');
         if (!e?.fv3Bannered) fv3ShowBanner('FolderView3: VM folder rendering failed — see the browser console for details.', 'error');
     } }
 

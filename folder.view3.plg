@@ -6,14 +6,21 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.14.1">
-<!ENTITY md5 "7b5fc436dec1dcf9b4235a625ddf3aa6">
+<!ENTITY version "2026.07.17.1">
+<!ENTITY md5 "3efb5c44abe84d5753e1967ebd430f24">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.07.17.1
+- Fixed: a degraded Docker API read during a folder save / order sync can no longer wipe container autostart settings (same guard as read-info)
+- Fixed: one broken folder config no longer hides the whole Docker/VM list — the other folders still render and an error banner names the failing folder
+- Fixed: a failed folder-data load now reveals the native list immediately instead of leaving it hidden until the 8-second failsafe
+- Fixed: a folder entry missing its name can no longer silently empty every regex folder's matches
+- Fixed: the folder editor icon preview now falls back correctly for external icon URLs that end in question.png
 
 ###2026.07.14.1
 - Fixed: a missing fallback icon (question.png — Unraid can delete it during container updates, unraid/webgui#2691) no longer causes endless 404 retries; icon error handlers now fall back once and stop

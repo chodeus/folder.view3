@@ -62,9 +62,14 @@ const createFolders = async () => {
         if (container && folderRegex.test(container)) {
             let id = container.replace(folderRegex, '');
             if (folders[id]) {
-                key -= createFolder(folders[id], id, key, order, vmInfo, Object.keys(foldersDone));
-                key -= newOnes.length;
-                foldersDone[id] = folders[id];
+                try {
+                    key -= createFolder(folders[id], id, key, order, vmInfo, Object.keys(foldersDone));
+                    key -= newOnes.length;
+                    foldersDone[id] = folders[id];
+                } catch (e) {
+                    console.error(`[FV3] VM: folder "${folders[id].name}" failed to render:`, e);
+                    fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                }
                 delete folders[id];
             }
         }
@@ -72,8 +77,13 @@ const createFolders = async () => {
 
     for (const [id, value] of Object.entries(folders)) {
         order.unshift(`folder-${id}`);
-        createFolder(value, id, 0, order, vmInfo, Object.keys(foldersDone));
-        foldersDone[id] = folders[id];
+        try {
+            createFolder(value, id, 0, order, vmInfo, Object.keys(foldersDone));
+            foldersDone[id] = folders[id];
+        } catch (e) {
+            console.error(`[FV3] VM: folder "${value.name}" failed to render:`, e);
+            fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+        }
         delete folders[id];
     }
 
@@ -792,7 +802,12 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
         jqXHR.promise().then(async () => {
             loadedFolder = true;
             try { await createFolders(); }
-            catch (e) { loadedFolder = false; }
+            catch (e) {
+                console.error('[FV3] VM: folder rendering failed:', e);
+                // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
+                document.documentElement.classList.add('fv3-vm-ready');
+                loadedFolder = false;
+            }
             $('div.spinner.fixed').hide();
         });
     }

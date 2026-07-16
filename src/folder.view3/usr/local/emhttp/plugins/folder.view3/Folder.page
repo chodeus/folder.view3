@@ -47,7 +47,7 @@ Markdown="false"
                 <dl>
                     <dt data-i18n="icon">Icon:</dt>
                     <dd>
-                        <img src="/plugins/dynamix.docker.manager/images/question.png" class="img" onerror="if(!this.src.endsWith('/question.png'))this.src='/plugins/dynamix.docker.manager/images/question.png';" style="width:48px;height:48px;">
+                        <img src="/plugins/dynamix.docker.manager/images/question.png" class="img" onerror="if(!this.src.endsWith('/plugins/dynamix.docker.manager/images/question.png'))this.src='/plugins/dynamix.docker.manager/images/question.png';" style="width:48px;height:48px;">
                         <input type="text" name="icon" value="" oninput="updateIcon(this)">
                     </dd>
                 </dl>

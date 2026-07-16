@@ -192,7 +192,12 @@
         $folders = fv3_read_json($foldersFile);
 
         $dockerClient = new DockerClient();
-        $allContainerNames = array_column($dockerClient->getDockerContainers(), 'Name');
+        $cts = $dockerClient->getDockerContainers();
+        if (!is_array($cts)) { $cts = []; }
+        $ctNamesRaw = array_map(function($c) { return is_array($c) ? ($c['Name'] ?? '') : ''; }, $cts);
+        $allContainerNames = array_values(array_filter($ctNamesRaw, function($n) { return $n !== ''; }));
+        // Prune below only on a complete, fully-named container list — a degraded Docker read must not wipe autostart entries (#214)
+        $ctListComplete = !empty($ctNamesRaw) && !in_array('', $ctNamesRaw, true);
 
         $folderContainers = [];
         $folderNames = [];
@@ -304,10 +309,12 @@
                 $parts = explode(' ', $line, 2);
                 $autoStartMap[$parts[0]] = $line;
             }
-            foreach ($autoStartMap as $name => $line) {
-                if (!in_array($name, $allContainerNames)) {
-                    fv3_debug_log("syncContainerOrder: removing stale autostart entry '$name' (container no longer exists)");
-                    unset($autoStartMap[$name]);
+            if ($ctListComplete) {
+                foreach ($autoStartMap as $name => $line) {
+                    if (!in_array($name, $allContainerNames)) {
+                        fv3_debug_log("syncContainerOrder: removing stale autostart entry '$name' (container no longer exists)");
+                        unset($autoStartMap[$name]);
+                    }
                 }
             }
 
