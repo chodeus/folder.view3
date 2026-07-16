@@ -21,6 +21,7 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 
 - **Hide from preview** — selectively hide containers from the collapsed preview while keeping them visible when expanded
 - **Open WebUI preview context** — clicking a container's icon in the collapsed preview opens its WebUI directly; containers without a WebUI fall back to the context menu
+- **Catch-all folders** — a folder whose regex is `^` collects every container not assigned to or matched by another folder; explicit assignments always beat regex captures
 - **Real-time stats** — live CPU/memory graphs in Advanced Preview via WebSocket (7.2+) or SSE, with configurable graph modes (Combined, Split, CPU-only, MEM-only) and time frame
 - **Drag-and-drop reordering** — reorder containers within folders via drag (mouse and touch supported)
 - **Unraid 7.2+ API integration** — hybrid GraphQL/PHP with automatic fallback for older versions
@@ -74,7 +75,7 @@ After installation, an **Add Folder** button appears at the bottom of the Docker
 ### Assigning containers to folders
 
 1. **Manual selection** — pick containers when creating/editing a folder
-2. **Regex matching** — auto-assign containers whose names match a pattern (e.g. `^media-.*` or `*my-stack-`)
+2. **Regex matching** — auto-assign containers whose names match a pattern (e.g. `^media-` or `arr$`). A container explicitly assigned to (or label-claimed by) any folder is never captured by another folder's regex — explicit membership always wins
 3. **Docker label** — add `folder.view3: "FolderName"` to any container:
    ```yaml
    services:
@@ -82,6 +83,8 @@ After installation, an **Add Folder** button appears at the bottom of the Docker
        labels:
          folder.view3: "MyFolder"
    ```
+
+> **Tip:** a folder whose regex is just `^` matches every name — use it as a catch-all that collects any container not assigned to or matched by another folder (place it last in your folder order).
 
 ## Settings Page
 

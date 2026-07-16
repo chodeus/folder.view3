@@ -5,9 +5,9 @@
 <!ENTITY github "&author;/&name;">
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.07.17.1">
-<!ENTITY md5 "3efb5c44abe84d5753e1967ebd430f24">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
+<!ENTITY version "2026.07.17">
+<!ENTITY md5 "86987bdbcac21d833a3c14e1c697373a">
 ]>
 
 <PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
@@ -15,62 +15,22 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-###2026.07.17.1
-- Fixed: a degraded Docker API read during a folder save / order sync can no longer wipe container autostart settings (same guard as read-info)
-- Fixed: one broken folder config no longer hides the whole Docker/VM list — the other folders still render and an error banner names the failing folder
-- Fixed: a failed folder-data load now reveals the native list immediately instead of leaving it hidden until the 8-second failsafe
-- Fixed: a folder entry missing its name can no longer silently empty every regex folder's matches
-- Fixed: the folder editor icon preview now falls back correctly for external icon URLs that end in question.png
+###2026.07.17
+- New "Open WebUI" preview context — clicking a container's icon (or Dashboard tile) opens its WebUI in a new tab (#41)
+- Containers explicitly assigned to a folder can no longer be captured by another folder's regex (#46)
+- A "^" regex folder now works as a catch-all, collecting containers not assigned to or matched by any other folder
+- A match-all regex no longer crashes the Dashboard folder render; a failing folder shows an error banner and the rest keep rendering (#47)
+- Folder views no longer briefly flash the plain container/VM list before folders appear
+- A missing fallback icon no longer causes endless 404 retries (unraid/webgui#2691)
+- Editing a regex folder no longer permanently bakes its regex matches into the member list
+- A degraded Docker read during a folder save can no longer wipe container autostart settings
+- Failed folder-data loads reveal the native list immediately with a single error banner naming any broken folder
 
-###2026.07.14.1
-- Fixed: a missing fallback icon (question.png — Unraid can delete it during container updates, unraid/webgui#2691) no longer causes endless 404 retries; icon error handlers now fall back once and stop
-- Fixed: folders and containers with no icon set now render the fallback icon directly instead of erroring on every refresh
-
-###2026.07.13.1
-- Fixed: folder views no longer briefly flash Unraid's plain container/VM list before folders appear on the Docker, VM and Dashboard tabs
-- Added: the folder editor's Regex help now documents the "^" catch-all behaviour (collects containers not assigned to or matched by another folder)
-
-###2026.07.12.1
-- Fixed: a failed data load on the Dashboard no longer stacks two error banners for the same failure
-- Fixed: the folder editor's regex match list no longer claims containers that are label-assigned to another folder (matches how they actually render)
-
-###2026.07.11.2
-- Added: "Open WebUI" option for the Dashboard preview context (Settings → Dashboard) — expanded-folder tile clicks open the container's WebUI
-- Added: containers explicitly assigned to a folder can no longer be captured by another folder's regex — a "^" regex folder now works as a catch-all for unassigned containers, and its containers stay pickable in other folder editors (#46)
-- Fixed: a folder with a match-all regex (e.g. "^") no longer crashes the Dashboard folder render or hides all VM folders; a failing folder now shows an error banner and the rest keep rendering (#47)
-- Fixed: editing a regex folder no longer permanently bakes its current regex matches into the folder's member list
-
-###2026.07.11.1
-- Added: "Open WebUI" option in Preview Context — clicking a container's icon in the collapsed preview opens its WebUI in a new tab; containers without a WebUI keep the context menu (#41)
-
-###2026.07.08.2
-- Fixed: CSS Tool config-import note no longer wrongly says url() is stripped on save — url() is kept, so the note now asks you to verify the URLs are trusted
-
-###2026.07.08.1
-- Fixed: a transient Docker read error no longer wipes the container autostart file
-- Fixed: concurrent settings saves can no longer clobber each other during the atomic config write
-- Fixed: a failed encode or a full boot flash can no longer overwrite a good folder/settings file with an empty or truncated one
-
-###2026.07.07.1
-- Security: hardened theme/CSS upload and GitHub theme import (strict file-type, path and size re-validation)
-- Security: container WebUI links, shell labels and custom-action icons are now sanitised before rendering
-- Security: folder IDs are validated when restoring a full backup
-- Fixed: bulk start/stop/restart no longer leaves the loading spinner stuck when a container action fails
-- Fixed: adding a folder while the Dashboard is open no longer blanks the Dashboard until reload
-- Fixed: selecting a full backup file in the per-tab Docker/VM import now warns instead of creating broken folders
-- Fixed: editing a folder created by an older version no longer fails to open the edit form
-- Fixed: "hide update column" folders now span the Docker table correctly on all Unraid versions (7.0+)
-- Fixed: user-script custom actions and Dashboard folder context menus no longer error or strand the loading spinner on a just-added folder
-- Fixed: Dashboard bulk-action error popups now show the actual error message instead of "false"
-- Packaging: standard Slackware package naming and the install now downloads before replacing, so a failed update download no longer leaves the plugin uninstalled
-- Cleanup: delete-folder button no longer relies on !important
-
-###2026.07.03.2
-- Container-order sync now also locks the autostart-file write, completing the concurrent-write protection
-
-###2026.07.03.1
-- Custom CSS import now runs the same @import/expression/javascript: sanitizer as the CSS editor (closes an importAll bypass)
-- Docker autostart-file write in read-info is now locked to avoid concurrent-write corruption
+###2026.07.08
+- Autostart and config files can no longer be accidentally wiped or corrupted
+- Security improvements and hardening
+- UI loading, compatibility, error handling/reporting and backup-import improvements
+- Package building and install-script improvements
 
 ###2026.06.25
 - Folders imported from folder.view2 now restore container/VM rename-tracking automatically on first load (no need to re-save each folder)
@@ -680,7 +640,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
     <!-- New source file -->
     <FILE Name="/boot/config/plugins/&name;/&name;-&version;-x86_64-1.txz" Run="upgradepkg --install-new">
-        <URL>https://raw.githubusercontent.com/&github;/beta/archive/&name;-&version;-x86_64-1.txz</URL>
+        <URL>https://raw.githubusercontent.com/&github;/main/archive/&name;-&version;-x86_64-1.txz</URL>
         <MD5>&md5;</MD5>
     </FILE>
 
