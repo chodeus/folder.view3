@@ -12,7 +12,7 @@ reviews:
     # main is the default branch and is always auto-reviewed; beta is the
     # active dev branch that feature PRs target, so it must be listed too.
     base_branches:
-      - "beta"
+      - "^beta$"   # anchored — base_branches are regex; unanchored could match feature/beta etc.
 
   # Exclude vendored libraries, release artifacts, images, and the dev/ scratch
   # tree so review focuses on hand-written plugin source. CI already validates
@@ -152,10 +152,9 @@ reviews:
     # Secret scanning across the whole tree — always on.
     gitleaks:
       enabled: true
-    # Security-focused static analysis (PHP command injection / XSS / path
-    # traversal, JS DOM sinks) — complements the AI review above.
-    semgrep:
-      enabled: true
+    # semgrep OFF: CodeRabbit only runs Semgrep when the repo has a committed
+    # config and ships no community rules, so enabling it without a semgrep.yaml
+    # is inert. Add a committed PHP ruleset later if SAST is wanted.
     # phpstan OFF: emhttp plugins have no Composer/autoloader and rely on
     # global $var + Unraid-provided functions from auto_prepend, so phpstan
     # floods with false "undefined symbol" noise. CI's `php -l` covers syntax;
