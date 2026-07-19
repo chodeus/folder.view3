@@ -1,0 +1,174 @@
+# CodeRabbit config — folder.view3 (Unraid plugin: PHP emhttp + jQuery/vanilla JS + CSS + .plg)
+# Lives on both `beta` (dev branch features are cut from) and `main` (default).
+language: "en-US"
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    # main is the default branch and is always auto-reviewed; beta is the
+    # active dev branch that feature PRs target, so it must be listed too.
+    base_branches:
+      - "^beta$"   # anchored — base_branches are regex; unanchored could match feature/beta etc.
+
+  # Exclude vendored libraries, release artifacts, images, and the dev/ scratch
+  # tree so review focuses on hand-written plugin source. CI already validates
+  # the .plg (xmllint) and PHP syntax (php -l); don't re-lint those here.
+  path_filters:
+    - "!archive/**"
+    - "!screenshots/**"
+    - "!img/**"
+    - "!dev/**"
+    - "!**/scripts/include/**"
+    - "!**/styles/include/**"
+    - "!**/*.min.js"
+    - "!**/*.txz"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.gif"
+    - "!CHANGELOG-fixes.md"
+
+  path_instructions:
+    - path: "src/**/*.{php,page}"
+      instructions: |
+        Server-side PHP for the Unraid emhttp environment: NO Composer/autoloader,
+        raw require_once includes, global $var / global config state. Review for:
+
+        INPUT: Every request value ($_POST/$_GET/$_REQUEST) must be validated
+        BEFORE use — allowlist (in_array strict, ===) for enums/types, tight
+        regex for ids/paths, and reject (http_response_code 400 + exit) on
+        anything unexpected. fv3_validate_type() is the pattern; new endpoints
+        must not read a raw type/id/key and act on it un-checked.
+
+        OUTPUT (XSS): htmlspecialchars/escape every dynamic value echoed into
+        HTML, into an inline <script>/JSON blob, or into generated CSS/JS
+        (scripts/custom.php, styles/custom.php, langs/script.php). Container
+        names, folder names, theme names, and settings values are user-shaped —
+        never interpolate them raw into markup or a shell string.
+
+        FAIL CLOSED: a guard that returns empty/false/null or skips on error
+        (config load fail, missing/unreadable file, empty container list, failed
+        dir read) must DENY / abort the operation, never fall through to the
+        permissive path. `if ($cfg && !allowed()) deny;` is the bug — it skips
+        the check when $cfg is falsy. An empty "in-use" / "keep" / allowlist set
+        is a FAILED READ, treat as deny, never as "operate on everything".
+
+        DESTRUCTIVE FS (delete_theme.php, lib.php RecursiveDirectoryIterator +
+        @rmdir/@unlink, theme/css cleanup): before any unlink/rmdir, resolve the
+        REAL physical target with realpath() and re-assert it is inside the
+        intended base dir (the styles/themes dir) — a string-only under-root or
+        "../" check is defeated by a symlinked path component. Diff the two
+        delete branches (isDir -> rmdir vs file -> unlink): a confinement/exists
+        guard present on one branch and absent on its sibling is the bug. Default
+        bulk delete to OFF / gated by an explicit confirmation flag.
+
+        SHELL: external commands (docker exec ... tailscale ...) must pass every
+        interpolated argument through escapeshellarg — never concatenate a raw
+        container name into the command string.
+
+        SETTINGS ENUMS: an allowed enum value must appear in BOTH lib.php
+        allowlist tables — the $allowed map used on the write/validate path AND
+        the read/normalize path. A value added to one but not the other is
+        silently dropped or lets an unvalidated value through; flag one-sided
+        edits.
+
+        SECRETS: redact sensitive values on EVERY read/export/diagnostics path,
+        not just the primary config read; make redaction structural (mask by
+        leaf name) so a new secret field is covered automatically.
+
+    - path: "src/**/scripts/*.js"
+      instructions: |
+        Front-end jQuery / vanilla JS (app scripts only; scripts/include/** is
+        vendored and excluded). Review for:
+
+        DOM SAFETY: prefer a TreeWalker / targeted node updates over innerHTML
+        when replacing content that carries bound event handlers — innerHTML
+        rebuilds nodes and silently drops drag-and-drop and context-menu
+        handlers. Any dynamic/user text (container/folder/theme names) inserted
+        into the DOM must go through escapeHtml() first.
+
+        RE-RENDER: drag-and-drop and context-menu handlers must survive a
+        re-render — re-bind after rebuild or use event delegation on a stable
+        parent; a handler attached once to a node that later gets replaced is
+        the bug.
+
+        CSRF: every state-changing request (POST/PUT/DELETE via fetch/$.ajax)
+        must carry the CSRF token (csrf_token field / X-Csrf-Token header). A
+        new mutating call that omits it will be rejected by Unraid's
+        local_prepend.php — flag it.
+
+        EVENT BUS FROZEN: the customEvents / event-bus contract is FROZEN. Do
+        not rename, repurpose, or remove existing custom events — extensions
+        depend on them. New events are fine; changing an existing name/payload
+        is a breaking change.
+
+        FRAGILE ORDER CALC: createFolders() order/index math is fragile —
+        scrutinize any change to the ordering computation for off-by-one and
+        placeholder-position regressions.
+
+        FALSY TRAP: 0 and "" are falsy in JS. For stats, counts, order indices,
+        and positions where 0 / "" are legitimate values, use ?? /
+        Number.isFinite / explicit null checks — never `x || default`, which
+        clobbers a real 0.
+
+        LIVE STATS: SSE / WebSocket CPU & memory stats vary by transport — do
+        not assert exact numeric values or make control-flow depend on a precise
+        reading; treat them as approximate.
+
+    - path: "src/**/styles/*.css"
+      instructions: |
+        Plugin CSS (app stylesheets only; styles/include/** is vendored and
+        excluded). Review for:
+
+        THEME-AGNOSTIC: no hardcoded theme colors — inherit or use Unraid's
+        theme variables so the plugin works across white/black/azure/gray.
+        A literal hex/rgb tied to one theme is a regression.
+
+        PARITY: docker.css and dashboard.css must stay in parity — a rule added
+        or changed in one usually needs the mirror change in the other; flag a
+        one-sided edit.
+
+        FROZEN SELECTORS: do NOT rename or remove the public-API selectors that
+        third-party extensions style against — a renamed class is a breaking
+        change. New selectors are fine.
+
+        NATIVE UI: avoid styles that fight Unraid's native page layout /
+        overrides that leak outside the plugin's own containers.
+
+    - path: "folder.view3.plg"
+      instructions: |
+        Unraid plugin manifest (XML). CI already runs xmllint + verifies the
+        <version>/<md5> entities match the built package — don't duplicate that.
+        Review for: pluginURL must point at the CURRENT branch's raw path (the
+        pre-push hook enforces this; a main<->beta merge clobbers it); install/
+        remove and any inline JS/CSS injection must not fight Unraid's native UI
+        or create autostart / DOM-ordering conflicts on page load; <CHANGES>
+        entries present for the shipped version.
+
+  tools:
+    # Secret scanning across the whole tree — always on.
+    gitleaks:
+      enabled: true
+    # semgrep OFF: CodeRabbit only runs Semgrep when the repo has a committed
+    # config and ships no community rules, so enabling it without a semgrep.yaml
+    # is inert. Add a committed PHP ruleset later if SAST is wanted.
+    # phpstan OFF: emhttp plugins have no Composer/autoloader and rely on
+    # global $var + Unraid-provided functions from auto_prepend, so phpstan
+    # floods with false "undefined symbol" noise. CI's `php -l` covers syntax;
+    # semantic PHP risks are covered by AI review + path_instructions.
+    phpstan:
+      enabled: false
+    # biome/eslint OFF: vanilla jQuery with no JS lint config and many injected
+    # globals ($, jQuery, Unraid page globals) — a config-less run is mostly
+    # no-undef noise that would also fight the repo's formatting. DOM-safety and
+    # correctness are enforced via the JS path_instructions instead.
+    biome:
+      enabled: false
+    eslint:
+      enabled: false
+    # markdownlint OFF: docs/changelogs only; not worth the review noise.
+    markdownlint:
+      enabled: false
