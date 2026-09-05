@@ -7,4 +7,4 @@ on:
 
 jobs:
   stale:
-    uses: chodeus/chodeus-ops/.github/workflows/stale-issues.yml@579feb04e3219248963bd27843298a8c2ea6b2fd # main
+    uses: chodeus/chodeus-ops/.github/workflows/stale-issues.yml@a08ae6259fdba04b2f97e846544e8afdb8bb36fd # main
