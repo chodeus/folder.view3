@@ -1566,6 +1566,25 @@
         return $DockerUpdate->getUpdateStatus($ct['info']['Config']['Image']);
     }
 
+    // /containers/json is ~5ms; the per-container inspect work readInfo() does is not.
+    // Lets the read_info cache miss on a state change instead of only on elapsed time.
+    function fv3_docker_state_fingerprint(): string {
+        try {
+            $cts = (new DockerClient())->getDockerJSON("/containers/json?all=1");
+            if (!is_array($cts)) return '';
+            $parts = [];
+            foreach ($cts as $c) {
+                $parts[] = ($c['Id'] ?? '') . ':' . ($c['State'] ?? '') . ':' . ($c['ImageID'] ?? '');
+            }
+            sort($parts);
+            $parts[] = 'autostart:' . (@filemtime(fv3_autostart_file()) ?: 0);
+            return md5(implode('|', $parts));
+        } catch (Throwable $e) {
+            fv3_debug_log("fv3_docker_state_fingerprint failed: " . $e->getMessage());
+            return '';
+        }
+    }
+
     function readInfo(string $type): array {
         fv3_debug_log("readInfo called for type: $type");
         $info = [];
