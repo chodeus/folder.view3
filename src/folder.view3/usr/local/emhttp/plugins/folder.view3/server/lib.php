@@ -414,16 +414,12 @@
         $autoStartFile = fv3_autostart_file();
         if (!file_exists($autoStartFile)) return;
         $sequence = readAutostartConfig()['sequence'];
-        $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        $autoStartLines = fv3_prune_stale_autostart(
+            @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [],
+            $allContainerNames, $ctListComplete);
         $autoStartMap = [];
         foreach ($autoStartLines as $line) {
             $autoStartMap[explode(' ', $line, 2)[0]] = $line;
-        }
-        // Same #214/#231 guard as the folder path — a degraded Docker read must not prune entries
-        if ($ctListComplete) {
-            foreach ($autoStartMap as $name => $line) {
-                if (!in_array($name, $allContainerNames)) unset($autoStartMap[$name]);
-            }
         }
         $newAutoStart = [];
         foreach ($sequence as $name) {
@@ -451,6 +447,19 @@
             $names[] = $n;
         }
         return ['names' => $names, 'complete' => $complete];
+    }
+
+    // The one definition of "drop autostart entries whose container is gone". A degraded Docker
+    // read must never prune (#214/#231) — a transient blip would otherwise curtail the file.
+    function fv3_prune_stale_autostart(array $autoStartLines, array $allContainerNames, bool $ctListComplete): array {
+        if (!$ctListComplete) return $autoStartLines;
+        $kept = [];
+        foreach ($autoStartLines as $line) {
+            $name = explode(' ', $line, 2)[0];
+            if (in_array($name, $allContainerNames, true)) { $kept[] = $line; continue; }
+            fv3_debug_log("autostart: dropped stale entry '$name' (container no longer exists)");
+        }
+        return $kept;
     }
 
     // `folder.view3: <name>` label claims keyed by container name — getDockerContainers()
@@ -677,19 +686,13 @@
         // Unraid owns it, and writes it only when the user explicitly drag-reorders.
         $autoStartFile = fv3_autostart_file();
         if (file_exists($autoStartFile)) {
-            $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            $autoStartLines = fv3_prune_stale_autostart(
+                @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [],
+                $allContainerNames, $ctListComplete);
             $autoStartMap = [];
             foreach ($autoStartLines as $line) {
                 $parts = explode(' ', $line, 2);
                 $autoStartMap[$parts[0]] = $line;
-            }
-            if ($ctListComplete) {
-                foreach ($autoStartMap as $name => $line) {
-                    if (!in_array($name, $allContainerNames)) {
-                        fv3_debug_log("syncContainerOrder: removing stale autostart entry '$name' (container no longer exists)");
-                        unset($autoStartMap[$name]);
-                    }
-                }
             }
 
             $newAutoStart = [];
@@ -1575,16 +1578,13 @@
             $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
             $autoStart = array_map('var_split', $autoStartLines);
 
-            // Prune stale autostart entries only on a complete, fully-named container list.
-            // A failed/partial Docker read (empty $cts, or any entry without a name) must NOT prune, or a transient blip wipes/curtails the file.
+            // Only curate the file while FV3 actually manages autostart order
             $ctNames = array_map(function($c) { return ltrim($c['Names'][0] ?? '', '/'); }, $cts);
-            if (readAutostartConfig()['mode'] !== 'off' && !empty($ctNames) && !in_array('', $ctNames, true)) {
-                $cleanedLines = array_filter($autoStartLines, function($line) use ($ctNames) {
-                    return in_array(explode(' ', $line, 2)[0], $ctNames, true);
-                });
+            if (readAutostartConfig()['mode'] !== 'off') {
+                $cleanedLines = fv3_prune_stale_autostart($autoStartLines, $ctNames,
+                    !empty($ctNames) && !in_array('', $ctNames, true));
                 if (count($cleanedLines) < count($autoStartLines)) {
                     file_put_contents($autoStartFile, implode("\n", $cleanedLines) . "\n", LOCK_EX);
-                    fv3_debug_log("readInfo: removed " . (count($autoStartLines) - count($cleanedLines)) . " stale autostart entries");
                     $autoStart = array_map('var_split', $cleanedLines);
                 }
             }
