@@ -1400,13 +1400,14 @@ window.fv3ApiAvailable = null;
 window.fv3CpuCores = null;
 window.fv3UnraidTheme = null;
 
-window.fv3DetectApi = async () => {
+window.fv3DetectApi = async (signal) => {
     if (fv3ApiAvailable !== null) return fv3ApiAvailable;
     try {
         const resp = await fetch('/graphql', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
             credentials: 'same-origin',
+            signal: signal,
             body: JSON.stringify({ query: '{ info { os { release } cpu { cores } } }' })
         });
         if (resp.ok) {
@@ -1425,17 +1426,20 @@ window.fv3DetectApi = async () => {
             fv3ApiAvailable = false;
         }
     } catch (e) {
+        // an aborted probe proves nothing — leave fv3ApiAvailable unset so the next call retries
+        if (e && e.name === 'AbortError') return null;
         fv3ApiAvailable = false;
     }
     if (!fv3ApiAvailable) fv3Debug('API', 'GraphQL not available, using PHP fallback');
     return fv3ApiAvailable;
 };
 
-window.fv3GraphQL = async (query, variables) => {
+window.fv3GraphQL = async (query, variables, signal) => {
     const resp = await fetch('/graphql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
         credentials: 'same-origin',
+        signal: signal,
         body: JSON.stringify(variables ? { query: query, variables: variables } : { query: query })
     });
     if (!resp.ok) throw new Error('GraphQL HTTP ' + resp.status);
@@ -1528,11 +1532,12 @@ window.fv3VmAction = (action, uuid) => {
 // Neither fv3DetectApi nor fv3GraphQL has a timeout, so a hung /graphql would stall the
 // render this feeds. Cap it and fall through to the PHP value instead.
 window.fv3CheckUpdates = async (timeoutMs = 4000) => {
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var timer;
-    var bail = new Promise(resolve => { timer = setTimeout(() => resolve('__fv3_timeout'), timeoutMs); });
+    var bail = new Promise(resolve => { timer = setTimeout(() => { if (ctl) ctl.abort(); resolve('__fv3_timeout'); }, timeoutMs); });
     var work = (async () => {
-        if (!await fv3DetectApi()) return {};
-        var data = await fv3GraphQL('{ docker { containerUpdateStatuses { name updateStatus } } }');
+        if (!await fv3DetectApi(ctl && ctl.signal)) return {};
+        var data = await fv3GraphQL('{ docker { containerUpdateStatuses { name updateStatus } } }', undefined, ctl && ctl.signal);
         var statuses = data && data.docker && data.docker.containerUpdateStatuses;
         if (!statuses) return {};
         var result = {};
