@@ -1400,13 +1400,14 @@ window.fv3ApiAvailable = null;
 window.fv3CpuCores = null;
 window.fv3UnraidTheme = null;
 
-window.fv3DetectApi = async () => {
+window.fv3DetectApi = async (signal) => {
     if (fv3ApiAvailable !== null) return fv3ApiAvailable;
     try {
         const resp = await fetch('/graphql', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
             credentials: 'same-origin',
+            signal: signal,
             body: JSON.stringify({ query: '{ info { os { release } cpu { cores } } }' })
         });
         if (resp.ok) {
@@ -1425,17 +1426,20 @@ window.fv3DetectApi = async () => {
             fv3ApiAvailable = false;
         }
     } catch (e) {
+        // an aborted probe proves nothing — leave fv3ApiAvailable unset so the next call retries
+        if (e && e.name === 'AbortError') return null;
         fv3ApiAvailable = false;
     }
     if (!fv3ApiAvailable) fv3Debug('API', 'GraphQL not available, using PHP fallback');
     return fv3ApiAvailable;
 };
 
-window.fv3GraphQL = async (query, variables) => {
+window.fv3GraphQL = async (query, variables, signal) => {
     const resp = await fetch('/graphql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
         credentials: 'same-origin',
+        signal: signal,
         body: JSON.stringify(variables ? { query: query, variables: variables } : { query: query })
     });
     if (!resp.ok) throw new Error('GraphQL HTTP ' + resp.status);
@@ -1525,22 +1529,58 @@ window.fv3VmAction = (action, uuid) => {
     return phpFallback();
 };
 
-window.fv3CheckUpdates = async () => {
-    if (!await fv3DetectApi()) return {};
-    try {
-        var data = await fv3GraphQL('{ docker { containerUpdateStatuses { name updateStatus } } }');
+// Neither fv3DetectApi nor fv3GraphQL has a timeout, so a hung /graphql would stall the
+// render this feeds. Cap it and fall through to the PHP value instead.
+window.fv3CheckUpdates = async (timeoutMs = 4000) => {
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer;
+    var bail = new Promise(resolve => { timer = setTimeout(() => { if (ctl) ctl.abort(); resolve('__fv3_timeout'); }, timeoutMs); });
+    var work = (async () => {
+        if (!await fv3DetectApi(ctl && ctl.signal)) return {};
+        var data = await fv3GraphQL('{ docker { containerUpdateStatuses { name updateStatus } } }', undefined, ctl && ctl.signal);
         var statuses = data && data.docker && data.docker.containerUpdateStatuses;
         if (!statuses) return {};
         var result = {};
         for (var i = 0; i < statuses.length; i++) {
-            result[statuses[i].name] = statuses[i].updateStatus;
+            // API returns docker-style names ('/plex') — strip the slash to match FV3 names
+            result[(statuses[i].name || '').replace(/^\//, '')] = statuses[i].updateStatus;
         }
         fv3Debug('API', 'Update check complete:', Object.keys(result).length, 'containers');
         return result;
+    })();
+    // the loser of the race is still live — swallow its result so a late reject isn't unhandled
+    work.catch(() => {});
+    try {
+        var won = await Promise.race([work, bail]);
+        if (won === '__fv3_timeout') { fv3DebugWarn('API', 'Update check timed out after', timeoutMs, 'ms — using PHP status'); return {}; }
+        return won;
     } catch (e) {
         fv3Debug('API', 'Update check failed:', e.message);
         return {};
+    } finally {
+        clearTimeout(timer);
     }
+};
+
+// API is authoritative where it has an opinion; UNKNOWN/absent leaves the PHP value
+// (lib.php fv3_container_update_status) intact so non-API installs keep working.
+window.fv3ApplyUpdateStatuses = (containersInfo, statuses) => {
+    if (!containersInfo || !statuses || !Object.keys(statuses).length) return 0;
+    var map = { UPDATE_AVAILABLE: false, REBUILD_READY: false, UP_TO_DATE: true };
+    var applied = 0;
+    Object.keys(containersInfo).forEach(name => {
+        var st = statuses[name];
+        if (!Object.prototype.hasOwnProperty.call(map, st)) return;
+        var ct = containersInfo[name];
+        if (!ct || !ct.info || !ct.info.State) return;
+        if (ct.info.State.Updated !== map[st]) {
+            fv3Debug('API', 'Update status override:', name, ct.info.State.Updated, '->', map[st], `(${st})`);
+        }
+        ct.info.State.Updated = map[st];
+        applied++;
+    });
+    fv3Debug('API', 'Applied API update status to', applied, 'containers');
+    return applied;
 };
 
 // Organizer sync

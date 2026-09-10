@@ -1558,6 +1558,17 @@
         fv3_atomic_write($path, '{}');
     }
 
+    // Mirrors DockerContainers.php:82 — ':???' net-ref wins, then Unraid's per-container cache.
+    // Only 'updated' comes from that cache; WebUi/Shell stay live here (the cache holds unresolved [IP]/[PORT:n]).
+    function fv3_container_update_status(array $ct, string $name, array $cache, DockerUpdate $DockerUpdate): ?bool {
+        if (substr($ct['HostConfig']['NetworkMode'] ?? '', -4) === ':???') return false;
+        $entry = $cache[$name] ?? null;
+        if (is_array($entry) && array_key_exists('updated', $entry)) {
+            return $entry['updated'] === 'true' ? true : ($entry['updated'] === 'false' ? false : null);
+        }
+        return $DockerUpdate->getUpdateStatus($ct['info']['Config']['Image']);
+    }
+
     function readInfo(string $type): array {
         fv3_debug_log("readInfo called for type: $type");
         $info = [];
@@ -1577,6 +1588,8 @@
             $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
             $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
             $autoStart = array_map('var_split', $autoStartLines);
+            $dockerInfoCache = DockerUtil::loadJSON($dockerManPaths['webui-info'] ?? "/usr/local/emhttp/state/plugins/dynamix.docker.manager/docker.json");
+            if (!is_array($dockerInfoCache)) $dockerInfoCache = [];
 
             // Only curate the file while FV3 actually manages autostart order
             $ctNames = array_map(function($c) { return ltrim($c['Names'][0] ?? '', '/'); }, $cts);
@@ -1624,7 +1637,7 @@
 
                 $ct['info']['State']['Autostart'] = in_array($containerName, $autoStart);
                 $ct['info']['Config']['Image'] = DockerUtil::ensureImageTag($ct['info']['Config']['Image']);
-                $ct['info']['State']['Updated'] = $DockerUpdate->getUpdateStatus($ct['info']['Config']['Image']);
+                $ct['info']['State']['Updated'] = fv3_container_update_status($ct, $containerName, $dockerInfoCache, $DockerUpdate);
                 $ct['info']['State']['manager'] = $ct['Labels']['net.unraid.docker.managed'] ?? false;
                 $ct['shortId'] = substr(str_replace('sha256:', '', $ct['Id']), 0, 12);
                 $ct['shortImageId'] = substr(str_replace('sha256:', '', $ct['ImageID']), 0, 12);
