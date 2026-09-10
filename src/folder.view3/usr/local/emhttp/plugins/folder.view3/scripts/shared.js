@@ -749,6 +749,11 @@ window.fv3DropDownButton = (eventPrefix, globalFolders, id, postCallback) => {
     if (postCallback) postCallback();
 };
 
+// One home for "this container has an update to apply" — docker.js, dashboard.js and the
+// advanced preview all gate on it. Only dockerman containers can be updated from the UI.
+window.fv3HasUpdate = (ct) => !!(ct && ct.info && ct.info.State)
+    && ct.info.State.Updated === false && ct.info.State.manager === 'dockerman';
+
 // Allowlist sanitizer: the debug JSON only needs the fields the renderer actually
 // consumes. Dumping the full Docker inspect blob leaked host volume paths (Binds/Mounts),
 // ZFS mountpoints, log/template paths, and bloated the file ~10x. Keep an explicit allowlist.

@@ -515,7 +515,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                 fullId: ct.Id,
                 pause: ct.info.State.Paused,
                 state: ct.info.State.Running,
-                update: ct.info.State.Updated === false && ct.info.State.manager === 'dockerman',
+                update: fv3HasUpdate(ct),
                 managed: ct.info.State.manager === 'dockerman',
                 manager: ct.info.State.manager
             };
@@ -543,7 +543,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                     }
                 }
 
-                if (folder.settings.preview_update && ct.info.State.Updated === false && ct.info.State.manager === "dockerman") {
+                if (folder.settings.preview_update && fv3HasUpdate(ct)) {
                     let $appNameSpan = $previewElementTarget.children('span.inner').children('span.appname');
                     if (!$appNameSpan.length) {
                         $appNameSpan = $previewElementTarget.children('span.appname');
