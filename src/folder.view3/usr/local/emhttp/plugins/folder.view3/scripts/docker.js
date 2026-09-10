@@ -26,6 +26,9 @@ const createFolders = async () => {
     const containersInfo = fv3SafeParse(prom[2], {});
     let order = Object.values(fv3SafeParse(prom[3], {}));
 
+    // Must run before the render loop — every update surface reads ct.info.State.Updated
+    fv3ApplyUpdateStatuses(containersInfo, prom[4]);
+
     fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
     Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
@@ -220,29 +223,6 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'Assigned foldersDone to globalFolders:', {...globalFolders});
 
     requestAnimationFrame(() => fv3SyncPreviewHeights('docker_listview_mode'));
-
-    fv3CheckUpdates().then(statuses => {
-        if (!statuses || !Object.keys(statuses).length) return;
-        fv3Debug('createFolders', 'API update statuses received:', statuses);
-        for (const [folderId, folder] of Object.entries(globalFolders)) {
-            let folderHasUpdate = false;
-            if (!folder.containers) continue;
-            for (const containerName of Object.keys(folder.containers)) {
-                if (statuses[containerName] === 'UPDATE_AVAILABLE') {
-                    folderHasUpdate = true;
-                    break;
-                }
-            }
-            if (folderHasUpdate) {
-                const $badge = $(`tr.folder-id-${folderId} .folder-update-text`);
-                if ($badge.length && !$badge.hasClass('orange-text')) {
-                    $badge.removeClass('green-text').addClass('orange-text')
-                        .html(`<i class="fa fa-flash fa-fw"></i> ${$.i18n('update-ready')}`);
-                    fv3Debug('createFolders', `Folder ${folderId} has update available`);
-                }
-            }
-        }
-    });
 
     fv3SyncOrganizer(globalFolders);
 
@@ -1188,10 +1168,11 @@ window.loadlist = () => {
             $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
             $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
+            fv3CheckUpdates()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
-        fv3Debug('Patched loadlist', 'folderReq initialized with 4 promises.');
+        fv3Debug('Patched loadlist', 'folderReq initialized with 5 promises.');
     } else {
         fv3Debug('Patched loadlist', 'Skipping — requests already pending.');
     }

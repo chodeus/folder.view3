@@ -39,6 +39,9 @@ const createFolders = async () => {
         const containersInfo = fv3SafeParse(prom[2], {});
         let order = Object.values(fv3SafeParse(prom[3], {}));
 
+        // Must run before the render loop — every update surface reads ct.info.State.Updated
+        fv3ApplyUpdateStatuses(containersInfo, prom[4]);
+
         fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
         Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
@@ -136,22 +139,6 @@ const createFolders = async () => {
         }}));
 
         globalFolders.docker = foldersDone;
-
-        fv3CheckUpdates().then(statuses => {
-            if (!statuses || !Object.keys(statuses).length) return;
-            fv3Debug('dashboard', 'API update statuses received:', statuses);
-            for (const [folderId, folder] of Object.entries(globalFolders.docker || {})) {
-                if (!folder.containers) continue;
-                // containers stays an array on the dashboard (never replaced like docker.js does)
-                const memberNames = Array.isArray(folder.containers) ? folder.containers : Object.keys(folder.containers);
-                for (const containerName of memberNames) {
-                    if (statuses[containerName] === 'UPDATE_AVAILABLE') {
-                        folder.status.upToDate = false;
-                        break;
-                    }
-                }
-            }
-        });
 
         fv3SyncOrganizer(globalFolders.docker || {});
 
@@ -1842,7 +1829,8 @@ window.loadlist = (x) => {
             $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load Docker folder data. Try refreshing the page.', 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
             $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error'); }).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
+            fv3CheckUpdates()
         ];
     }
 
