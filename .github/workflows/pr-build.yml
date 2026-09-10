@@ -1,0 +1,27 @@
+# Caller for one test build of a pull request per press of the test-build label; replace PLUGIN.plg below. Needs
+# "PR publish", "PR cleanup" and a repo label named test-build. Mechanics: .github/workflows/unraid-plugin-pr-build.yml.
+
+name: PR build
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Only the label press builds; the pull request's own build script runs with a read-only token.
+    if: github.event.label.name == 'test-build'
+    # Pin to a reviewed chodeus-ops commit.
+    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-pr-build.yml@2ef08fcd646d269404bc80d30c249ecac949a724 # main
+    with:
+      plg_file: folder.view3.plg
+      pr_number: ${{ github.event.pull_request.number }}
+      head_sha: ${{ github.event.pull_request.head.sha }}
+      base_branch: ${{ github.event.pull_request.base.ref }}
