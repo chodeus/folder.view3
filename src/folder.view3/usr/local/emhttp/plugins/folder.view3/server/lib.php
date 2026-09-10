@@ -1574,7 +1574,9 @@
             if (!is_array($cts)) return '';
             $parts = [];
             foreach ($cts as $c) {
-                $parts[] = ($c['Id'] ?? '') . ':' . ($c['State'] ?? '') . ':' . ($c['ImageID'] ?? '');
+                // name included: readInfo() keys its payload by it, and a rename changes nothing else here
+                $parts[] = ($c['Id'] ?? '') . ':' . ($c['State'] ?? '') . ':' . ($c['ImageID'] ?? '')
+                    . ':' . ltrim($c['Names'][0] ?? '', '/');
             }
             sort($parts);
             $parts[] = 'autostart:' . (@filemtime(fv3_autostart_file()) ?: 0);
