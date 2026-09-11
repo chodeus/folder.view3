@@ -204,3 +204,5 @@ Originally created by [scolcipitato](https://github.com/scolcipitato/folder.view
 ## License
 
 The original codebase (scolcipitato/folder.view, VladoPortos/folder.view2) is unlicensed. This license applies to contributions made in this fork only.
+
+<!-- test-build pipeline check -->
