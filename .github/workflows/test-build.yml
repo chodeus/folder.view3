@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Optional YYYY.MM.DD[.N]. Empty = yesterday + .9<UTC build time>, which installs over the current release and is superseded by the next one.'
+        description: 'Optional. Empty = the branch release + .0<UTC build time>, which installs over the current release and is superseded by the next one.'
         type: string
         default: ''
 
@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: write
     # Pin to a reviewed chodeus-ops commit.
-    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-test-build.yml@c7105215e46ad278814e8e89ba8fd50813567039 # main
+    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-test-build.yml@2ef08fcd646d269404bc80d30c249ecac949a724 # main
     with:
       plg_file: folder.view3.plg
       version: ${{ inputs.version || '' }}
