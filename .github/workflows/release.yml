@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   release:
-    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-release.yml@c7105215e46ad278814e8e89ba8fd50813567039 # main
+    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-release.yml@142009888448ef52954f652a3f0f1a69e59fdd2a # main
     with:
       plg_file: folder.view3.plg
       stable_branch: main
