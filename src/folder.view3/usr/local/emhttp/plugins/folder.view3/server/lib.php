@@ -1068,6 +1068,27 @@
         return $themes;
     }
 
+    // True when $path resolves inside $baseReal (itself a realpath); re-check right before a write or delete
+    function fv3_path_within(string $path, string $baseReal): bool {
+        $real = realpath($path);
+        return $real !== false && $baseReal !== '' && strpos($real . '/', rtrim($baseReal, '/') . '/') === 0;
+    }
+
+    // Empties $dir without following a link out of $baseReal; entries named in $keep survive
+    function fv3_clear_tree(string $dir, string $baseReal, array $keep = []): void {
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($items as $item) {
+            if (in_array($item->getFilename(), $keep, true)) continue;
+            $p = $item->getPathname();
+            if (is_link($p)) { @unlink($p); continue; }
+            if (!fv3_path_within($p, $baseReal)) continue;
+            if ($item->isDir()) @rmdir($p); else @unlink($p);
+        }
+    }
+
     function toggleTheme(string $entry, bool $enable, bool $exclusive) : void {
         global $configDir;
         $stylesDir = "$configDir/styles";
@@ -1147,19 +1168,13 @@
         if (is_dir($themeDirEnabled)) $themeDir = $themeDirEnabled;
         elseif (is_dir($themeDirDisabled)) $themeDir = $themeDirDisabled;
         else $themeDir = $themeDirDisabled;
-        if (is_dir($themeDir)) {
-            $items = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($themeDir, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($items as $item) {
-                if ($item->getFilename() === '.fv3-source') continue;
-                if ($item->isDir()) @rmdir($item->getRealPath());
-                else @unlink($item->getRealPath());
-            }
-        } else {
-            @mkdir($themeDir, 0770, true);
+        if (!is_dir($themeDir)) { @mkdir($themeDir, 0770, true); }
+        $baseReal = (string)realpath($stylesDir);
+        // Never follow a linked theme folder out of styles/, for the cleanup or the writes below
+        if (is_link($themeDir) || !fv3_path_within($themeDir, $baseReal)) {
+            return ['error' => 'Theme folder resolves outside the styles directory.'];
         }
+        if ($isUpdate) { fv3_clear_tree($themeDir, $baseReal, ['.fv3-source']); }
         $downloaded = [];
         $cssFiles = array_slice($cssFiles, 0, $maxCssFiles);
         foreach ($cssFiles as $file) {
@@ -1235,15 +1250,12 @@
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
         if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }
+        // A linked entry is removed itself, never followed; anything else must resolve inside styles/
+        if (is_link($path)) { @unlink($path); return; }
+        $baseReal = (string)realpath($stylesDir);
+        if (!fv3_path_within($path, $baseReal)) { http_response_code(403); exit; }
         if (is_dir($path)) {
-            $items = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($items as $item) {
-                if ($item->isDir()) { @rmdir($item->getRealPath()); }
-                else { @unlink($item->getRealPath()); }
-            }
+            fv3_clear_tree($path, $baseReal);
             @rmdir($path);
         } else {
             @unlink($path);
@@ -1379,8 +1391,7 @@
                 $fullPath = "$stylesDir/$relPath";
                 $dir = dirname($fullPath);
                 if (!is_dir($dir)) @mkdir($dir, 0770, true);
-                $dirReal = realpath($dir);
-                if ($dirReal === false || strpos($dirReal, $baseReal) !== 0) continue;
+                if (!fv3_path_within($dir, (string)$baseReal)) continue;
                 fv3_atomic_write($fullPath, $content);
                 $restored[] = "styles/$relPath";
             }

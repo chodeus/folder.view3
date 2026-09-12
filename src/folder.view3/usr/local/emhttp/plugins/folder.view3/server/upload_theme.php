@@ -37,6 +37,7 @@
         }
         $files = $_FILES['files'] ?? [];
         $paths = $_POST['paths'] ?? [];
+        if (!is_array($paths)) { http_response_code(400); echo json_encode(['error' => 'Invalid paths.']); exit; }
         if (empty($files['name'])) {
             echo json_encode(['error' => 'No files received.']); exit;
         }
@@ -62,8 +63,7 @@
             $targetParent = dirname($targetPath);
             if (!is_dir($targetParent)) { @mkdir($targetParent, 0770, true); }
             // Re-confine the resolved parent under $destDir before writing (defence-in-depth vs traversal)
-            $realParent = realpath($targetParent);
-            if ($realDest === false || $realParent === false || strpos($realParent . '/', $realDest . '/') !== 0) continue;
+            if ($realDest === false || !fv3_path_within($targetParent, $realDest)) continue;
             if (move_uploaded_file($files['tmp_name'][$i], $targetPath)) {
                 @chmod($targetPath, 0660);
                 $saved++;
