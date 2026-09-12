@@ -2,8 +2,9 @@
     require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");
     fv3_post_init();
     header('Content-Type: application/json');
-    $type = $_POST['type'] ?? '';
+    $type = fv3_post_string('type');
     if (!in_array($type, ['css', 'folder'], true)) {
+        http_response_code(400);
         echo json_encode(['error' => 'Invalid type.']); exit;
     }
     global $configDir;
@@ -33,6 +34,7 @@
     } else {
         $folderName = fv3_post_string('folder_name');
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $folderName)) {
+            http_response_code(400);
             echo json_encode(['error' => 'Invalid folder name.']); exit;
         }
         $files = $_FILES['files'] ?? [];

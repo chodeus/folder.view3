@@ -158,6 +158,7 @@
     "folder-order-load-failed": "Impossibile caricare l'ordine delle cartelle. Ricarica la pagina.",
     "reset-order-failed": "Impossibile reimpostare l'ordine delle cartelle. Riprova.",
     "dashboard-settings-load-failed": "Impossibile caricare le impostazioni della dashboard, quindi vengono mostrati i layout predefiniti. Ricarica la pagina.",
+    "invalid-folder-export": "Questo file non è un'esportazione di cartelle.",
     "order": "Ordine:",
     "order-tooltip": "Trascina e rilascia le righe per riordinare i container. Spunta \"Incluso\" per aggiungere un container, \"Nascondi anteprima\" per escluderlo dalla riga di anteprima. Modificare il regex ripristina le selezioni manuali.",
     "table-name": "Nome",

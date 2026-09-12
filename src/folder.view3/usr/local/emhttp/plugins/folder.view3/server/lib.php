@@ -1248,7 +1248,8 @@
         $stylesDir = "$configDir/styles";
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
-        if (!file_exists($path)) { http_response_code(404); exit; }
+        // is_link: a link whose target is gone fails file_exists() but must stay deletable
+        if (!file_exists($path) && !is_link($path)) { http_response_code(404); exit; }
         if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }
         // A linked entry is removed itself, never followed; anything else must resolve inside styles/
         if (is_link($path)) { @unlink($path); return; }

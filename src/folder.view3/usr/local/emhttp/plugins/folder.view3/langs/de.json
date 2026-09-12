@@ -158,6 +158,7 @@
     "folder-order-load-failed": "Die Ordnerreihenfolge konnte nicht geladen werden. Lade die Seite neu.",
     "reset-order-failed": "Die Ordnerreihenfolge konnte nicht zurückgesetzt werden. Versuche es erneut.",
     "dashboard-settings-load-failed": "Die Dashboard-Einstellungen konnten nicht geladen werden, daher werden die Standardlayouts angezeigt. Lade die Seite neu.",
+    "invalid-folder-export": "Diese Datei ist kein Ordnerexport.",
     "order": "Reihenfolge:",
     "order-tooltip": "Ziehe Zeilen per Drag & Drop zum Neuordnen. Aktiviere „Eingeschlossen“, um einen Container hinzuzufügen, „Vorschau ausblenden“, um ihn aus der Vorschauzeile auszuschließen. Regex-Bearbeitung setzt manuelle Auswahl zurück.",
     "table-name": "Name",

@@ -158,6 +158,7 @@
     "folder-order-load-failed": "Nie można wczytać kolejności folderów. Odśwież stronę.",
     "reset-order-failed": "Nie można zresetować kolejności folderów. Spróbuj ponownie.",
     "dashboard-settings-load-failed": "Nie można wczytać ustawień pulpitu, więc wyświetlane są układy domyślne. Odśwież stronę.",
+    "invalid-folder-export": "Ten plik nie jest eksportem folderów.",
     "order": "Kolejność:",
     "order-tooltip": "Przeciągnij i upuść wiersze, aby zmienić kolejność kontenerów. Zaznacz „Dołączony”, aby dodać kontener, „Ukryj podgląd”, aby wykluczyć go z wiersza podglądu. Edycja regex resetuje ręczne wybory.",
     "table-name": "Nazwa",

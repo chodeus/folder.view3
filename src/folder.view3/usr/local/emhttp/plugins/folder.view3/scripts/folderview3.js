@@ -156,6 +156,10 @@ const fv3CountFolderExport = (parsed) => {
 
 // Imports every folder, carrying on past failures; closes any open modal or reports the ones refused
 const fv3ImportFolderMap = async (content, type) => {
+    if (!content || typeof content !== 'object' || Array.isArray(content)) {
+        swal({ title: 'Error', text: i18nOr('invalid-folder-export', 'This file is not a folder export.'), type: 'error' });
+        return;
+    }
     const failed = [];
     const save = async (url, data, label) => {
         try {
