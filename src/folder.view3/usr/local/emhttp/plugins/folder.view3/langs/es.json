@@ -157,6 +157,7 @@
     "import-failed": "Error al importar: $1",
     "folder-order-load-failed": "No se pudo cargar el orden de las carpetas. Recarga la página.",
     "reset-order-failed": "No se pudo restablecer el orden de las carpetas. Inténtalo de nuevo.",
+    "dashboard-settings-load-failed": "No se pudo cargar la configuración del panel, así que se muestran los diseños predeterminados. Recarga la página.",
     "order": "Orden:",
     "order-tooltip": "Arrastra y suelta filas para reordenar contenedores. Marca \"Incluido\" para agregar un contenedor, \"Ocultar vista previa\" para excluirlo de la fila de vista previa. Editar el regex restablecerá las selecciones manuales.",
     "table-name": "Nombre",

@@ -1424,7 +1424,10 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         dashboardContextGraph = parseInt(s.dashboard_context_graph || '1', 10);
         dashboardContextGraphTime = parseInt(s.dashboard_context_graph_time || '60', 10);
     } catch(e) {}
-}).catch(() => console.warn('[FV3] Dashboard settings unavailable, using default layouts'));
+}).catch((e) => {
+    console.warn('[FV3] Dashboard settings unavailable, using default layouts:', e);
+    fv3ShowBanner(fv3I18nOr('dashboard-settings-load-failed', 'Could not load Dashboard settings, so the default layouts are shown. Try refreshing the page.'));
+});
 
 let dashboardCpus = 1;
 const fv3InitDashboardStats = () => {

@@ -157,6 +157,7 @@
     "import-failed": "导入失败：$1",
     "folder-order-load-failed": "无法加载文件夹顺序。请刷新页面。",
     "reset-order-failed": "无法重置文件夹顺序。请重试。",
+    "dashboard-settings-load-failed": "无法加载仪表板设置，因此显示默认布局。请刷新页面。",
     "order": "排序:",
     "order-tooltip": "拖放行以重新排列容器。勾选\"已包含\"添加容器，\"隐藏预览\"从预览行中排除。编辑正则表达式将重置手动选择。",
     "table-name": "名称",
