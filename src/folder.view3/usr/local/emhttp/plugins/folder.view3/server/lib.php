@@ -196,7 +196,32 @@
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $raw = @file_get_contents("$configDir/$type.json");
-        return ($raw !== false) ? $raw : '{}';
+        if ($raw === false) { return '{}'; }
+        // Unparseable stays byte-identical so the client's cached-copy fallback still fires
+        $decoded = json_decode($raw, true);
+        $clean = is_array($decoded) ? json_encode((object)fv3_normalize_folders($decoded)) : false;
+        return $clean !== false ? $clean : $raw;
+    }
+
+    // Fills the fields every reader dereferences so a hand-edited folder can't break a render
+    // or the autostart sync; object fields stay JSON objects. Never writes the file.
+    function fv3_normalize_folders(array $folders): array {
+        $out = [];
+        foreach ($folders as $id => $f) {
+            if (!is_array($f)) { continue; }
+            $f['name'] = is_scalar($f['name'] ?? null) ? (string)$f['name'] : (string)$id;
+            $f['icon'] = is_string($f['icon'] ?? null) ? $f['icon'] : '';
+            $f['regex'] = is_string($f['regex'] ?? null) ? $f['regex'] : '';
+            $f['containers'] = is_array($f['containers'] ?? null) ? array_values($f['containers']) : [];
+            $f['hidden_preview'] = is_array($f['hidden_preview'] ?? null) ? array_values($f['hidden_preview']) : [];
+            $f['actions'] = is_array($f['actions'] ?? null) ? array_values(array_filter($f['actions'], 'is_array')) : [];
+            $f['settings'] = (object)(is_array($f['settings'] ?? null) ? $f['settings'] : []);
+            foreach (['containerImages', 'containerIds'] as $k) {
+                if (array_key_exists($k, $f)) { $f[$k] = (object)(is_array($f[$k]) ? $f[$k] : []); }
+            }
+            $out[$id] = $f;
+        }
+        return $out;
     }
 
     function readUserPrefs(string $type) : string {
@@ -498,13 +523,10 @@
     }
 
     // Effective membership — explicit > label > regex (issues #46/#55). Single source of
-    // truth shared by syncContainerOrder and read_membership.php (issue #61). Returns null
-    // on a corrupt persisted shape so callers fail closed instead of fataling mid-compute.
-    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): ?array {
-        foreach ($folders as $folder) {
-            if (!is_array($folder) || !is_array($folder['containers'] ?? [])
-                || (isset($folder['name']) && !is_string($folder['name']))) { return null; }
-        }
+    // truth shared by syncContainerOrder and read_membership.php (issue #61).
+    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): array {
+        // One malformed entry is dropped or filled in, not allowed to abort every folder's sync
+        $folders = fv3_normalize_folders($folders);
         $folderNameSet = [];
         foreach ($folders as $folder) {
             if (isset($folder['name'])) { $folderNameSet[$folder['name']] = true; }
@@ -600,11 +622,6 @@
             return;
         }
         $membership = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
-        // Corrupt persisted shapes fail closed before the autostart write, not fatal mid-sync
-        if ($membership === null) {
-            fv3_debug_log("syncContainerOrder: folder entry with invalid containers shape, aborting before write");
-            return;
-        }
         $folderContainers = $membership['containers'];
         $folderNames = $membership['names'];
         $assignedContainers = $membership['assigned'];
@@ -794,7 +811,7 @@
         $changed = false;
         foreach ($updates as $folderId => $patch) {
             if (!fv3_is_folder_id($folderId)) continue;
-            if (!isset($fileData[$folderId])) continue;
+            if (!is_array($fileData[$folderId] ?? null)) continue;
             if (isset($patch['containers']) && is_array($patch['containers'])) {
                 $fileData[$folderId]['containers'] = $patch['containers'];
                 $changed = true;

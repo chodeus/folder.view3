@@ -35,6 +35,11 @@ let labelFolderNames = new Set();
 let otherExplicitMembers = new Set();
 const type = new URLSearchParams(location.search).get('type');
 const folderId = new URLSearchParams(location.search).get('id');
+// Save stays blocked until an edited folder has loaded, so a failed load can't overwrite it with a blank form
+let fv3FolderLoaded = !folderId;
+// $.i18n returns the key itself until the language pack has loaded
+const i18nOr = (key, fallback) => { const s = $.i18n(key); return s && s !== key ? s : fallback; };
+const fv3LoadFailedAlert = () => swal({ title: 'Error', text: i18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
 
 const rgbToHex = (rgb) => {
     rgb = rgb.slice(4, -1).split(', ');
@@ -99,6 +104,10 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
     if (folderId) {
         const currFolder = folders[folderId];
+        if (!currFolder) {
+            swal({ title: 'Error', text: i18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
+            return;
+        }
         delete folders[folderId];
         if (!currFolder.settings) currFolder.settings = {};
 
@@ -153,6 +162,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         updateForm();
         updateRegex(form.regex);
         updateIcon(form.icon);
+        fv3FolderLoaded = true;
     } else {
         try {
             const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
@@ -265,7 +275,10 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     }
 
     $('.canvas form div.basic > dl > dt').css('cursor', 'default').wrapInner('<span style="cursor: help;"></span>');
-})();
+})().catch((err) => {
+    console.error('[FV3] Folder editor setup failed:', err);
+    if (!fv3FolderLoaded) fv3LoadFailedAlert();
+});
 
 // Update the folder icon preview from the icon field value.
 const updateIcon = (e) => {
@@ -445,6 +458,7 @@ const failReason = (err) => err.responseJSON?.error || (err.status ? 'HTTP ' + e
 
 // Serialize the form to a folder object, POST create/update, then return to the tab. Returns false.
 const submitForm = async (e) => {
+    if (!fv3FolderLoaded) { fv3LoadFailedAlert(); return false; }
     // 'root' is reserved by Unraid's Docker organizer — server rejects it too
     if (e.name.value.toString().trim().toLowerCase() === 'root') {
         swal({ title: 'Reserved Name', text: "'root' is reserved by Unraid's Docker organizer — please pick another folder name.", type: 'error' });
@@ -521,7 +535,12 @@ const submitForm = async (e) => {
     }
 
     if (type === 'docker') {
-        await $.post('/plugins/folder.view3/server/sync_order.php', { type: type });
+        // The folder is already saved; a failed order sync must not strand the editor
+        try {
+            await $.post('/plugins/folder.view3/server/sync_order.php', { type: type }).promise();
+        } catch (err) {
+            console.warn('[FV3] Autostart order sync failed after save:', failReason(err));
+        }
     }
 
     let loc = location.pathname.split('/');

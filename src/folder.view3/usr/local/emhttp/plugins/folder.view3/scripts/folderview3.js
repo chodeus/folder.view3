@@ -78,7 +78,7 @@ const populateTable = async () => {
         ]);
     } catch (e) {
         console.error('[FV3] Failed to load folder data:', e);
-        fv3ShowBanner?.('error', 'Failed to load folder data. Please refresh the page.');
+        swal({ title: 'Error', text: 'Failed to load folder data. Please refresh the page.', type: 'error' });
         return;
     }
     const dockerData = fv3SafeParse(proms[0], {});
@@ -154,18 +154,35 @@ const fv3CountFolderExport = (parsed) => {
     return (folders.length && folders.every(fv3IsFolderShaped)) ? folders.length : 0;
 };
 
+// Imports every folder, carrying on past failures; closes any open modal or reports the ones refused
 const fv3ImportFolderMap = async (content, type) => {
+    const failed = [];
+    const save = async (url, data, label) => {
+        try {
+            await $.post(url, data).promise();
+        } catch (error) {
+            console.error('Folder import error:', label, error);
+            failed.push(label);
+        }
+    };
     // Structural test, not `content.name` — an empty name is legal and would otherwise route a
     // single folder down the map path, writing its own keys (name, icon, settings…) as folder ids.
     if (fv3IsFolderShaped(content)) {
-        await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(content) });
+        await save('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(content) }, content.name || 'folder');
     } else {
         for (const [id, folder] of Object.entries(content)) {
-            await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: id });
+            await save('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: id }, folder?.name || id);
         }
-        if (type === 'docker') await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' });
+        if (type === 'docker') {
+            try {
+                await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' }).promise();
+            } catch (error) {
+                console.warn('[FV3] Autostart order sync failed after import:', failReason(error));
+            }
+        }
     }
     populateTable();
+    if (failed.length) { swal({ title: 'Error', text: $.i18n('import-folders-failed', failed.join(', ')), type: 'error' }); } else { swal.close(); }
 };
 
 const importDocker = () => {
@@ -628,11 +645,12 @@ const fv3ExportAll = async () => {
 window.fv3ExportAll = fv3ExportAll;
 
 const fv3ImportFolderExport = async (content, type) => {
-    swal.close();
+    // Replace the choice modal rather than close it: a swal reopened inside close()'s hide timer is blanked
+    swal({ title: 'Importing…', text: 'Importing folders, please wait.', showConfirmButton: false });
     try {
         await fv3ImportFolderMap(content, type);
     } catch (err) {
-        swal({ title: 'Error', text: 'Import failed.', type: 'error' });
+        swal({ title: 'Error', text: 'Import failed: ' + failReason(err), type: 'error' });
     }
 };
 
@@ -682,11 +700,19 @@ $('#fv3-import-all').on('change', function() {
                 text: 'This will overwrite current config with: ' + items.join(', ') + '.' + (parsed.exported ? '\nExported: ' + parsed.exported : ''),
                 type: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Import'
+                confirmButtonText: 'Import',
+                ...swalLoaderOpts
             }, async (confirmed) => {
                 if (!confirmed) return;
-                const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
-                const result = (typeof resp === 'object') ? resp : fv3SafeParse(resp, {});
+                let result;
+                try {
+                    const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
+                    result = (typeof resp === 'object' && resp !== null) ? resp : fv3SafeParse(resp, {});
+                } catch (err) {
+                    console.error('Import Everything error:', err);
+                    swal({ title: 'Error', text: 'Import failed: ' + failReason(err), type: 'error' });
+                    return;
+                }
                 if (result.error) {
                     swal({ title: 'Error', text: result.error, type: 'error' });
                 } else {

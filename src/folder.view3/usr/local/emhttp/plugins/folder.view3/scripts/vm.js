@@ -456,7 +456,8 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 // Autostart toggle handler: syncs each VM's autostart to the folder's new state.
 const folderAutostart = (el) => {
     const status = el.target.checked;
-    const id = el.target.id.split('-')[1];
+    // Element id is folder-<id>-auto and ids may contain '-', so strip the ends rather than split
+    const id = el.target.id.slice('folder-'.length, -'-auto'.length);
     const containers = $(`tr.folder-${id}-element`);
     for (const container of containers) {
         const el = $(container).children().last();
@@ -765,9 +766,9 @@ window.loadlist = (x) => {
         loadedFolder = false;
         folderReq = [
             $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(() => fv3ShowBanner('Could not load folder order. Try refreshing the page.', 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(() => fv3ShowBanner('Could not load folder order. Try refreshing the page.', 'error')).promise()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
     }

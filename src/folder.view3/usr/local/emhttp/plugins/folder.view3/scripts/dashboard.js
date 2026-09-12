@@ -1424,7 +1424,7 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         dashboardContextGraph = parseInt(s.dashboard_context_graph || '1', 10);
         dashboardContextGraphTime = parseInt(s.dashboard_context_graph_time || '60', 10);
     } catch(e) {}
-});
+}).catch(() => console.warn('[FV3] Dashboard settings unavailable, using default layouts'));
 
 let dashboardCpus = 1;
 const fv3InitDashboardStats = () => {
