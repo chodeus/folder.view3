@@ -1289,8 +1289,8 @@
                     var keep = await progress.confirm('Keep', 'Delete');
                     if (!keep) {
                         var del = await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
-                        progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', 'error');
-                        progress.status('Removed');
+                        progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', del.ok ? 'success' : 'error');
+                        progress.status(del.ok ? 'Removed' : 'Failed');
                     } else {
                         progress.status('Complete');
                     }
@@ -1384,7 +1384,7 @@
                 });
             },
             done: function() {
-                statusEl.textContent = 'Finished';
+                if (statusEl.textContent !== 'Failed') statusEl.textContent = 'Finished';
                 var spinner = titleEl.querySelector('.fv3-swal-spinner');
                 if (spinner) spinner.style.display = 'none';
                 if (dotsEl) dotsEl.style.display = 'none';
@@ -1428,7 +1428,7 @@
                         var keep = await progress.confirm('Keep', 'Delete');
                         if (!keep) {
                             var del = await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
-                            progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', 'error');
+                            progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', del.ok ? 'success' : 'error');
                             failed++;
                         } else {
                             succeeded++;
