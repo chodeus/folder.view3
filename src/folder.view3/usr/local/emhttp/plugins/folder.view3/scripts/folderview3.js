@@ -178,13 +178,13 @@ const fv3ImportFolderMap = async (content, type) => {
         for (const [id, folder] of Object.entries(content)) {
             await save('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: id }, folder?.name || id);
         }
-        if (type === 'docker') {
-            try {
-                await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' }).promise();
-            } catch (error) {
-                console.warn('[FV3] Autostart order sync failed after import:', failReason(error));
-                syncError = failReason(error);
-            }
+    }
+    if (type === 'docker') {
+        try {
+            await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' }).promise();
+        } catch (error) {
+            console.warn('[FV3] Autostart order sync failed after import:', failReason(error));
+            syncError = failReason(error);
         }
     }
     populateTable();
