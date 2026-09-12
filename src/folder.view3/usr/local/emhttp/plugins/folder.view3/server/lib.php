@@ -831,6 +831,8 @@
             echo json_encode(['error' => "$type.json is unreadable — refusing to delete so the folder config is not wiped"]);
             exit;
         }
+        // Already gone: delete stays idempotent, and there is nothing to rewrite
+        if (!array_key_exists($id, $fileData)) { return; }
         unset($fileData[$id]);
         $path = "$configDir/$type.json";
         fv3_atomic_write($path, json_encode($fileData));
@@ -1317,13 +1319,12 @@
                 }
                 continue;
             }
-            // Allowlist folder ids so a crafted backup can't plant one that breaks out of class/onclick markup (XSS)
+            // A key outside the id rule could break out of class/onclick markup (XSS): re-key it, keep the folder
             if ($key === 'docker' || $key === 'vm') {
                 $clean = [];
                 foreach ($data as $fid => $folder) {
-                    if (fv3_is_folder_id($fid) && is_array($folder)) {
-                        $clean[(string)$fid] = $folder;
-                    }
+                    if (!is_array($folder)) { continue; }
+                    $clean[fv3_is_folder_id($fid) ? (string)$fid : generateId()] = $folder;
                 }
                 // Imported bundles (and folder.view2 exports) can hold one container in two
                 // folders — first folder in bundle order keeps it (issue #62)

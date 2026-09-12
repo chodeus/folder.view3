@@ -563,7 +563,7 @@ const deleteFolderBtn = () => {
             loc.pop();
             location.href = loc.join('/');
         } catch (err) {
-            swal({ title: 'Error', text: 'Failed to delete folder: ' + failReason(err), type: 'error' });
+            swal({ title: 'Error', text: $.i18n('delete-folder-failed', folderName, failReason(err)), type: 'error' });
         }
     });
 };

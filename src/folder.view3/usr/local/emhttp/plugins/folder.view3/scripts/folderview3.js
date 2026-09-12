@@ -250,7 +250,7 @@ const deleteFolders = async (type, folders) => {
             await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
         } catch (error) {
             console.error(`${type} clear all error:`, id, error);
-            failed.push(folders[id].name);
+            failed.push(folders[id].name || id);
         }
     }
     return failed;
@@ -274,7 +274,7 @@ const clearDocker = (id) => {
                 await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
             } catch (error) {
                 console.error('Docker delete error:', error);
-                swal({ title: 'Error', text: 'Failed to delete folder: ' + failReason(error), type: 'error' });
+                swal({ title: 'Error', text: $.i18n('delete-folder-failed', dockers[id].name || id, failReason(error)), type: 'error' });
                 return;
             }
             swal.close();
@@ -330,7 +330,7 @@ const clearVm = (id) => {
                 await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
             } catch (error) {
                 console.error('VM delete error:', error);
-                swal({ title: 'Error', text: 'Failed to delete folder: ' + failReason(error), type: 'error' });
+                swal({ title: 'Error', text: $.i18n('delete-folder-failed', vms[id].name || id, failReason(error)), type: 'error' });
                 return;
             }
             swal.close();
@@ -594,7 +594,7 @@ $('#fv3-apply-defaults').on('click', function() {
                     }).promise();
                 } catch (error) {
                     console.error('Apply defaults error:', id, error);
-                    failed.push(folder.name);
+                    failed.push(folder.name || id);
                 }
             }
         }

@@ -713,7 +713,7 @@ window.fv3RmFolder = (type, globalFolders, loadlist, id) => {
             await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
         } catch (e) {
             $('div.spinner.fixed').hide('slow');
-            fv3ShowBanner($.i18n('delete-folder-failed', globalFolders[id].name, e.responseJSON?.error || (e.status ? 'HTTP ' + e.status : e.statusText || e.message)));
+            fv3ShowBanner($.i18n('delete-folder-failed', globalFolders[id].name || id, e.responseJSON?.error || (e.status ? 'HTTP ' + e.status : e.statusText || e.message)));
             return;
         }
         setTimeout(loadlist, 500);
