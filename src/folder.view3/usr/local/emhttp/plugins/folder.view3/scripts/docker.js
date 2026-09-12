@@ -1167,9 +1167,9 @@ window.loadlist = () => {
         fv3Debug('Patched loadlist', 'Set loadedFolder to false.');
         folderReq = [
             $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(() => fv3ShowBanner('Could not load folder order. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner('Could not load folder order. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
             fv3CheckUpdates()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
@@ -1386,6 +1386,7 @@ if (typeof resetSorting === 'function') {
         // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck
         $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true})
             .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}))
+            .fail(() => fv3ShowBanner(fv3I18nOr('reset-order-failed', 'Could not reset the folder order. Try again.')))
             .always(() => loadlist());
     };
     fv3Debug('init', 'resetSorting patched for folder-grouped autostart');

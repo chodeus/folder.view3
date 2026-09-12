@@ -78,7 +78,7 @@ const populateTable = async () => {
         ]);
     } catch (e) {
         console.error('[FV3] Failed to load folder data:', e);
-        swal({ title: 'Error', text: 'Failed to load folder data. Please refresh the page.', type: 'error' });
+        swal({ title: 'Error', text: i18nOr('folder-data-load-failed', 'Failed to load folder data. Please refresh the page.'), type: 'error' });
         return;
     }
     const dockerData = fv3SafeParse(proms[0], {});
@@ -255,6 +255,9 @@ const importVm = () => {
 
 // Server's JSON error when it sent one, else the HTTP status (HTTP/2 carries no status text)
 const failReason = (err) => err.responseJSON?.error || (err.status ? 'HTTP ' + err.status : err.statusText || err.message || 'Unknown error');
+
+// $.i18n returns the key itself until the language pack has loaded
+const i18nOr = (key, fallback) => { const s = $.i18n(key); return s && s !== key ? s : fallback; };
 
 // Confirm modals stay open until the request settles: a swal reopened inside close()'s hide timer is blanked
 const swalLoaderOpts = { showLoaderOnConfirm: true, closeOnConfirm: false };
@@ -646,11 +649,11 @@ window.fv3ExportAll = fv3ExportAll;
 
 const fv3ImportFolderExport = async (content, type) => {
     // Replace the choice modal rather than close it: a swal reopened inside close()'s hide timer is blanked
-    swal({ title: 'Importing…', text: 'Importing folders, please wait.', showConfirmButton: false });
+    swal({ title: i18nOr('importing-folders', 'Importing folders…'), text: '', showConfirmButton: false });
     try {
         await fv3ImportFolderMap(content, type);
     } catch (err) {
-        swal({ title: 'Error', text: 'Import failed: ' + failReason(err), type: 'error' });
+        swal({ title: 'Error', text: i18nOr('import-failed', 'Import failed: $1').replace('$1', failReason(err)), type: 'error' });
     }
 };
 
@@ -710,7 +713,7 @@ $('#fv3-import-all').on('change', function() {
                     result = (typeof resp === 'object' && resp !== null) ? resp : fv3SafeParse(resp, {});
                 } catch (err) {
                     console.error('Import Everything error:', err);
-                    swal({ title: 'Error', text: 'Import failed: ' + failReason(err), type: 'error' });
+                    swal({ title: 'Error', text: i18nOr('import-failed', 'Import failed: $1').replace('$1', failReason(err)), type: 'error' });
                     return;
                 }
                 if (result.error) {

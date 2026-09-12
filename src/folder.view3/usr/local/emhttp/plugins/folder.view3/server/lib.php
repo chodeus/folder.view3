@@ -196,7 +196,11 @@
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $raw = @file_get_contents("$configDir/$type.json");
-        if ($raw === false) { return '{}'; }
+        if ($raw === false) {
+            // Fail the request: a 200 '{}' would be cached client-side over the last good copy
+            http_response_code(500);
+            return json_encode(['error' => "$type.json is unreadable"]);
+        }
         // Unparseable stays byte-identical so the client's cached-copy fallback still fires
         $decoded = json_decode($raw, true);
         $clean = is_array($decoded) ? json_encode((object)fv3_normalize_folders($decoded)) : false;

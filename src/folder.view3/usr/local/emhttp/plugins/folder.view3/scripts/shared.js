@@ -686,6 +686,8 @@ window.fv3ShowBanner = (message, level) => {
     target.parentNode.insertBefore(banner, target);
     fv3Error('Banner', message);
 };
+// $.i18n returns the key itself until the language pack has loaded, so load-time text needs a fallback
+window.fv3I18nOr = (key, fallback) => { const s = $.i18n(key); return s && s !== key ? s : fallback; };
 
 window.fv3EditFolder = (type, basePath, id) => {
     location.href = basePath + '?type=' + type + '&id=' + id;
