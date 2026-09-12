@@ -31,7 +31,7 @@
         if (!empty($warnings)) $result['warnings'] = $warnings;
         echo json_encode($result);
     } else {
-        $folderName = $_POST['folder_name'] ?? '';
+        $folderName = fv3_post_string('folder_name');
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $folderName)) {
             echo json_encode(['error' => 'Invalid folder name.']); exit;
         }
@@ -52,7 +52,7 @@
             if (++$processed > $maxFiles) break;
             if (($files['size'][$i] ?? 0) > $maxSize) continue;
             if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== 'css') continue;
-            $relPath = isset($paths[$i]) ? $paths[$i] : $name;
+            $relPath = is_string($paths[$i] ?? null) ? $paths[$i] : $name;
             $safeParts = array_map(fn($p) => preg_replace('/[^a-zA-Z0-9._-]/', '-', $p), explode('/', $relPath));
             $safeParts = array_values(array_filter($safeParts, fn($p) => $p !== '' && $p !== '.' && $p !== '..'));
             $safePath = implode('/', $safeParts);

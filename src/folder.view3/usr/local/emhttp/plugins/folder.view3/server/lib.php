@@ -87,6 +87,16 @@
         return $type;
     }
 
+    // A POST field as a string, else a 400: like type above, an x[]= array must not reach a typed param
+    function fv3_post_string(string $key, string $default = ''): string {
+        $value = $_POST[$key] ?? $default;
+        if (!is_string($value)) {
+            http_response_code(400);
+            exit;
+        }
+        return $value;
+    }
+
     function fv3_security_headers(): void {
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');
