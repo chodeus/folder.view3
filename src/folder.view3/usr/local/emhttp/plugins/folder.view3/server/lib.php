@@ -1043,7 +1043,7 @@
         if (!is_dir($stylesDir)) return [];
         $themes = [];
         foreach (scandir($stylesDir) as $entry) {
-            if ($entry === '.' || $entry === '..') continue;
+            if ($entry === '.' || $entry === '..' || fv3_is_theme_scratch($entry)) continue;
             $path = "$stylesDir/$entry";
             if (!is_dir($path)) {
                 if (preg_match('/^_fv3-generated\./', $entry)) continue;
@@ -1080,22 +1080,32 @@
         return $real !== false && $baseReal !== '' && strpos($real . '/', rtrim($baseReal, '/') . '/') === 0;
     }
 
-    // Empties $dir without following a link out of $baseReal; entries named in $keep survive.
+    // Empties $dir without following a link out of $baseReal.
     // False when anything could not be removed, so a partial clear is never reported as done.
-    function fv3_clear_tree(string $dir, string $baseReal, array $keep = []): bool {
+    function fv3_clear_tree(string $dir, string $baseReal): bool {
+        if (is_link($dir) || !is_dir($dir)) return false;
         $ok = true;
         $items = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
             RecursiveIteratorIterator::CHILD_FIRST
         );
         foreach ($items as $item) {
-            if (in_array($item->getFilename(), $keep, true)) continue;
             $p = $item->getPathname();
             if (is_link($p)) { $ok = @unlink($p) && $ok; continue; }
             if (!fv3_path_within($p, $baseReal)) { $ok = false; continue; }
             $ok = ($item->isDir() ? @rmdir($p) : @unlink($p)) && $ok;
         }
         return $ok;
+    }
+
+    // fv3_clear_tree, then $dir itself
+    function fv3_remove_tree(string $dir, string $baseReal): bool {
+        return fv3_clear_tree($dir, $baseReal) && @rmdir($dir);
+    }
+
+    // importTheme's staging and replaced-theme folders: never listed or exported as themes
+    function fv3_is_theme_scratch(string $entry): bool {
+        return (bool)preg_match('/^\.fv3-(stage|old)-/', $entry);
     }
 
     function toggleTheme(string $entry, bool $enable, bool $exclusive) : void {
@@ -1174,37 +1184,47 @@
         $themeDirEnabled = "$stylesDir/$themeName";
         $themeDirDisabled = "$stylesDir/$themeName.disabled";
         $isUpdate = is_dir($themeDirEnabled) || is_dir($themeDirDisabled);
-        if (is_dir($themeDirEnabled)) $themeDir = $themeDirEnabled;
-        elseif (is_dir($themeDirDisabled)) $themeDir = $themeDirDisabled;
-        else $themeDir = $themeDirDisabled;
-        if (!is_dir($themeDir)) { @mkdir($themeDir, 0770, true); }
+        $themeDir = is_dir($themeDirEnabled) ? $themeDirEnabled : $themeDirDisabled;
+        if (!is_dir($stylesDir)) { @mkdir($stylesDir, 0770, true); }
         $baseReal = (string)realpath($stylesDir);
-        // Never follow a linked theme folder out of styles/, for the cleanup or the writes below
-        if (is_link($themeDir) || !fv3_path_within($themeDir, $baseReal)) {
+        // Never follow a linked theme folder out of styles/
+        if (is_link($themeDir) || ($isUpdate && !fv3_path_within($themeDir, $baseReal))) {
             return ['error' => 'Theme folder resolves outside the styles directory.'];
         }
-        if ($isUpdate && !fv3_clear_tree($themeDir, $baseReal, ['.fv3-source'])) {
-            return ['error' => 'Could not remove the old theme files.'];
+        // Files land in a hidden .disabled sibling (skipped by custom.php and listThemes) and replace
+        // the live theme only once every one is in, so a failed update leaves the old theme untouched
+        $stageDir = "$stylesDir/.fv3-stage-" . bin2hex(random_bytes(6)) . '.disabled';
+        if (!@mkdir($stageDir, 0770)) {
+            return ['error' => 'Could not create a staging folder for the theme.'];
         }
+        $fail = function (string $message) use ($stageDir, $baseReal): array {
+            fv3_remove_tree($stageDir, $baseReal);
+            return ['error' => $message];
+        };
         $downloaded = [];
+        $missing = [];
         $cssFiles = array_slice($cssFiles, 0, $maxCssFiles);
         foreach ($cssFiles as $file) {
             if (!isset($file['download_url'])) continue;
             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
             $subdir = $file['_subdir'] ?? '';
-            $targetDir = $themeDir;
+            $targetDir = $stageDir;
             if ($subdir !== '') {
                 $safeDir = preg_replace('/[^a-zA-Z0-9._-]/', '-', $subdir);
-                $targetDir = "$themeDir/$safeDir";
+                $targetDir = "$stageDir/$safeDir";
                 if (!is_dir($targetDir)) @mkdir($targetDir, 0770, true);
             }
+            $relPath = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
             $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes);
             if ($css !== false && fv3_atomic_write("$targetDir/$safeName", $css)) {
-                $downloaded[] = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
+                $downloaded[] = $relPath;
+            } else {
+                $missing[] = $relPath;
             }
         }
-        if (empty($downloaded)) return ['error' => 'Failed to download any CSS files.'];
-        $warnings = fv3_scan_css_warnings($themeDir, $downloaded);
+        if (empty($downloaded)) return $fail('Failed to download any CSS files.');
+        if ($missing) return $fail('Could not download: ' . implode(', ', $missing));
+        $warnings = fv3_scan_css_warnings($stageDir, $downloaded);
         $sourceData = ['repo' => $repoUrl, 'path' => $subPath, 'branch' => $branch, 'files' => []];
         foreach ($cssFiles as $file) {
             if (!isset($file['sha'])) continue;
@@ -1213,7 +1233,21 @@
             $sourceData['files'][$key] = $file['sha'];
         }
         $sourceData['updated'] = date('c');
-        fv3_atomic_write("$themeDir/.fv3-source", json_encode($sourceData));
+        if (!fv3_atomic_write("$stageDir/.fv3-source", json_encode($sourceData))) {
+            return $fail('Could not write the theme source file.');
+        }
+        // Swap: old theme aside, staged copy in (rolled back if that fails), then drop the old copy
+        $oldDir = "$stylesDir/.fv3-old-" . bin2hex(random_bytes(6)) . '.disabled';
+        if ($isUpdate && !@rename($themeDir, $oldDir)) {
+            return $fail('Could not replace the old theme files.');
+        }
+        if (!@rename($stageDir, $themeDir)) {
+            if ($isUpdate && !@rename($oldDir, $themeDir)) fv3_debug_log("importTheme: could not restore $oldDir to $themeDir");
+            return $fail('Could not install the theme files.');
+        }
+        if ($isUpdate && !fv3_remove_tree($oldDir, $baseReal)) {
+            fv3_debug_log("importTheme: left $oldDir behind after updating $themeName");
+        }
         $result = ['success' => true, 'name' => $themeName, 'files' => $downloaded, 'is_update' => $isUpdate];
         if (!empty($warnings)) $result['warnings'] = $warnings;
         return $result;
@@ -1267,7 +1301,7 @@
         } else {
             $baseReal = (string)realpath($stylesDir);
             if (!fv3_path_within($path, $baseReal)) { http_response_code(403); exit; }
-            $removed = is_dir($path) ? (fv3_clear_tree($path, $baseReal) && @rmdir($path)) : @unlink($path);
+            $removed = is_dir($path) ? fv3_remove_tree($path, $baseReal) : @unlink($path);
         }
         if (!$removed) {
             http_response_code(500);
@@ -1316,6 +1350,7 @@
                 if ($item->isFile() && (preg_match('/\.css$/i', $item->getFilename()) || $item->getFilename() === '.fv3-source')) {
                     if (preg_match('/^_fv3-generated\./', $item->getFilename())) continue;
                     $relPath = substr($item->getRealPath(), strlen(realpath($stylesDir)) + 1);
+                    if (fv3_is_theme_scratch($relPath)) continue;
                     $content = file_get_contents($item->getRealPath());
                     $cssSize += strlen($content);
                     $bundle['custom_styles'][$relPath] = $content;
