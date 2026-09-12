@@ -188,10 +188,12 @@ const fv3ImportFolderMap = async (content, type) => {
         }
     }
     populateTable();
+    const syncText = syncError ? i18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', syncError) : '';
     if (failed.length) {
-        swal({ title: 'Error', text: i18nOr('import-folders-failed', 'These folders could not be imported: $1', failed.join(', ')), type: 'error' });
-    } else if (syncError) {
-        swal({ title: 'Warning', text: i18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', syncError), type: 'warning' });
+        const text = i18nOr('import-folders-failed', 'These folders could not be imported: $1', failed.join(', '));
+        swal({ title: 'Error', text: syncText ? text + '\n' + syncText : text, type: 'error' });
+    } else if (syncText) {
+        swal({ title: 'Warning', text: syncText, type: 'warning' });
     } else {
         swal.close();
     }

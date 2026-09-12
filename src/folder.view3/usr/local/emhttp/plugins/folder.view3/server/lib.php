@@ -1074,8 +1074,10 @@
         return $real !== false && $baseReal !== '' && strpos($real . '/', rtrim($baseReal, '/') . '/') === 0;
     }
 
-    // Empties $dir without following a link out of $baseReal; entries named in $keep survive
-    function fv3_clear_tree(string $dir, string $baseReal, array $keep = []): void {
+    // Empties $dir without following a link out of $baseReal; entries named in $keep survive.
+    // False when anything could not be removed, so a partial clear is never reported as done.
+    function fv3_clear_tree(string $dir, string $baseReal, array $keep = []): bool {
+        $ok = true;
         $items = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS),
             RecursiveIteratorIterator::CHILD_FIRST
@@ -1083,10 +1085,11 @@
         foreach ($items as $item) {
             if (in_array($item->getFilename(), $keep, true)) continue;
             $p = $item->getPathname();
-            if (is_link($p)) { @unlink($p); continue; }
-            if (!fv3_path_within($p, $baseReal)) continue;
-            if ($item->isDir()) @rmdir($p); else @unlink($p);
+            if (is_link($p)) { $ok = @unlink($p) && $ok; continue; }
+            if (!fv3_path_within($p, $baseReal)) { $ok = false; continue; }
+            $ok = ($item->isDir() ? @rmdir($p) : @unlink($p)) && $ok;
         }
+        return $ok;
     }
 
     function toggleTheme(string $entry, bool $enable, bool $exclusive) : void {
@@ -1174,7 +1177,9 @@
         if (is_link($themeDir) || !fv3_path_within($themeDir, $baseReal)) {
             return ['error' => 'Theme folder resolves outside the styles directory.'];
         }
-        if ($isUpdate) { fv3_clear_tree($themeDir, $baseReal, ['.fv3-source']); }
+        if ($isUpdate && !fv3_clear_tree($themeDir, $baseReal, ['.fv3-source'])) {
+            return ['error' => 'Could not remove the old theme files.'];
+        }
         $downloaded = [];
         $cssFiles = array_slice($cssFiles, 0, $maxCssFiles);
         foreach ($cssFiles as $file) {
@@ -1188,8 +1193,7 @@
                 if (!is_dir($targetDir)) @mkdir($targetDir, 0770, true);
             }
             $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes);
-            if ($css !== false) {
-                fv3_atomic_write("$targetDir/$safeName", $css);
+            if ($css !== false && fv3_atomic_write("$targetDir/$safeName", $css)) {
                 $downloaded[] = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
             }
         }
@@ -1252,14 +1256,18 @@
         if (!file_exists($path) && !is_link($path)) { http_response_code(404); exit; }
         if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }
         // A linked entry is removed itself, never followed; anything else must resolve inside styles/
-        if (is_link($path)) { @unlink($path); return; }
-        $baseReal = (string)realpath($stylesDir);
-        if (!fv3_path_within($path, $baseReal)) { http_response_code(403); exit; }
-        if (is_dir($path)) {
-            fv3_clear_tree($path, $baseReal);
-            @rmdir($path);
+        if (is_link($path)) {
+            $removed = @unlink($path);
         } else {
-            @unlink($path);
+            $baseReal = (string)realpath($stylesDir);
+            if (!fv3_path_within($path, $baseReal)) { http_response_code(403); exit; }
+            $removed = is_dir($path) ? (fv3_clear_tree($path, $baseReal) && @rmdir($path)) : @unlink($path);
+        }
+        if (!$removed) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Some theme files could not be removed.']);
+            exit;
         }
     }
 
