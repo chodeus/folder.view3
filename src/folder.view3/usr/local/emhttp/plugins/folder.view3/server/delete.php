@@ -3,7 +3,8 @@
     fv3_post_init();
     $type = fv3_validate_type($_POST['type'] ?? '');
     $id = $_POST['id'] ?? '';
-    if (empty($id) || !preg_match('/^[A-Za-z0-9+\/=]+$/', $id)) {
+    // Any existing key stays deletable, including ids fv3_is_folder_id() refuses to write
+    if (!is_string($id) || $id === '') {
         http_response_code(400);
         exit;
     }

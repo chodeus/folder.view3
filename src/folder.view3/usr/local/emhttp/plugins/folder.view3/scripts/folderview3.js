@@ -236,6 +236,26 @@ const importVm = () => {
     input.click();
 };
 
+// Server's JSON error when it sent one, else the HTTP status (HTTP/2 carries no status text)
+const failReason = (err) => err.responseJSON?.error || (err.status ? 'HTTP ' + err.status : err.statusText || err.message || 'Unknown error');
+
+// Confirm modals stay open until the request settles: a swal reopened inside close()'s hide timer is blanked
+const swalLoaderOpts = { showLoaderOnConfirm: true, closeOnConfirm: false };
+
+// Deletes every folder, carrying on past failures; returns the names that could not be deleted
+const deleteFolders = async (type, folders) => {
+    const failed = [];
+    for (const id of Object.keys(folders)) {
+        try {
+            await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
+        } catch (error) {
+            console.error(`${type} clear all error:`, id, error);
+            failed.push(folders[id].name);
+        }
+    }
+    return failed;
+};
+
 const clearDocker = (id) => {
     if (id) {
         swal({
@@ -246,7 +266,7 @@ const clearDocker = (id) => {
             showCancelButton: true,
             confirmButtonText: 'Yes, delete it!',
             cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true
+            ...swalLoaderOpts
         },
         async (c) => {
             if (!c) { return; }
@@ -254,9 +274,10 @@ const clearDocker = (id) => {
                 await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
             } catch (error) {
                 console.error('Docker delete error:', error);
-                swal({ title: 'Error', text: 'Failed to delete folder: ' + error.statusText, type: 'error' });
+                swal({ title: 'Error', text: 'Failed to delete folder: ' + failReason(error), type: 'error' });
                 return;
             }
+            swal.close();
             populateTable();
         });
     } else {
@@ -268,20 +289,13 @@ const clearDocker = (id) => {
             showCancelButton: true,
             confirmButtonText: 'Yes, delete it!',
             cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true
+            ...swalLoaderOpts
         },
         async (c) => {
             if (!c) { return; }
-            try {
-                for (const cid of Object.keys(dockers)) {
-                    await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: cid }).promise();
-                }
-            } catch (error) {
-                console.error('Docker clear all error:', error);
-                swal({ title: 'Error', text: 'Failed to clear all folders', type: 'error' });
-                return;
-            }
+            const failed = await deleteFolders('docker', dockers);
             populateTable();
+            if (failed.length) { swal({ title: 'Error', text: $.i18n('clear-folders-failed', failed.join(', ')), type: 'error' }); } else { swal.close(); }
         });
     }
 };
@@ -308,7 +322,7 @@ const clearVm = (id) => {
             showCancelButton: true,
             confirmButtonText: 'Yes, delete it!',
             cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true
+            ...swalLoaderOpts
         },
         async (c) => {
             if (!c) { return; }
@@ -316,9 +330,10 @@ const clearVm = (id) => {
                 await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
             } catch (error) {
                 console.error('VM delete error:', error);
-                swal({ title: 'Error', text: 'Failed to delete folder', type: 'error' });
+                swal({ title: 'Error', text: 'Failed to delete folder: ' + failReason(error), type: 'error' });
                 return;
             }
+            swal.close();
             populateTable();
         });
     } else {
@@ -330,20 +345,13 @@ const clearVm = (id) => {
             showCancelButton: true,
             confirmButtonText: 'Yes, delete it!',
             cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true
+            ...swalLoaderOpts
         },
         async (c) => {
             if (!c) { return; }
-            try {
-                for (const cid of Object.keys(vms)) {
-                    await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: cid }).promise();
-                }
-            } catch (error) {
-                console.error('VM clear all error:', error);
-                swal({ title: 'Error', text: 'Failed to clear all folders', type: 'error' });
-                return;
-            }
+            const failed = await deleteFolders('vm', vms);
             populateTable();
+            if (failed.length) { swal({ title: 'Error', text: $.i18n('clear-folders-failed', failed.join(', ')), type: 'error' }); } else { swal.close(); }
         });
     }
 };
@@ -569,6 +577,7 @@ $('#fv3-apply-defaults').on('click', function() {
             update_column: settings.default_update_column === 'yes',
             use_global_defaults: true
         };
+        const failed = [];
         for (const [type, folders] of [['docker', dockers], ['vm', vms]]) {
             for (const [id, folder] of Object.entries(folders)) {
                 if (!folder.settings) folder.settings = {};
@@ -579,11 +588,17 @@ $('#fv3-apply-defaults').on('click', function() {
                     delete applyMap.preview_row_separator_color;
                 }
                 Object.assign(folder.settings, applyMap);
-                await $.post('/plugins/folder.view3/server/update.php', {
-                    type, id, content: JSON.stringify(folder)
-                }).promise();
+                try {
+                    await $.post('/plugins/folder.view3/server/update.php', {
+                        type, id, content: JSON.stringify(folder)
+                    }).promise();
+                } catch (error) {
+                    console.error('Apply defaults error:', id, error);
+                    failed.push(folder.name);
+                }
             }
         }
+        if (failed.length) { swal({ title: 'Error', text: $.i18n('defaults-not-applied', failed.join(', ')), type: 'error' }); return; }
         swal({ title: 'Done', text: 'Defaults applied to all folders.', type: 'success', timer: 1500 });
     });
 });

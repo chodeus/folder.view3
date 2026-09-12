@@ -440,6 +440,9 @@ const syncHidePreview = ($row) => {
 };
 
 
+// Server's JSON error when it sent one, else the HTTP status (HTTP/2 carries no status text)
+const failReason = (err) => err.responseJSON?.error || (err.status ? 'HTTP ' + err.status : err.statusText || err.message || 'Unknown error');
+
 // Serialize the form to a folder object, POST create/update, then return to the tab. Returns false.
 const submitForm = async (e) => {
     // 'root' is reserved by Unraid's Docker organizer — server rejects it too
@@ -506,10 +509,15 @@ const submitForm = async (e) => {
         hidden_preview: [...$('input.preview-switch:checked').map((i, e) => $(e).val())],
         actions
     }
-    if (folderId) {
-        await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: folderId });
-    } else {
-        await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
+    try {
+        if (folderId) {
+            await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: folderId });
+        } else {
+            await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
+        }
+    } catch (err) {
+        swal({ title: 'Error', text: $.i18n('save-folder-failed', failReason(err)), type: 'error' });
+        return false;
     }
 
     if (type === 'docker') {
@@ -544,7 +552,9 @@ const deleteFolderBtn = () => {
         confirmButtonText: $.i18n('delete') || 'Delete',
         cancelButtonText: $.i18n('cancel') || 'Cancel',
         confirmButtonColor: '#a02020',
-        closeOnConfirm: true
+        // Stay open until the delete settles: a swal reopened inside close()'s hide timer is blanked
+        showLoaderOnConfirm: true,
+        closeOnConfirm: false
     }, async (confirmed) => {
         if (!confirmed) return;
         try {
@@ -553,8 +563,7 @@ const deleteFolderBtn = () => {
             loc.pop();
             location.href = loc.join('/');
         } catch (err) {
-            const msg = err.responseText || err.statusText || err.message || 'Unknown error';
-            swal({ title: 'Error', text: 'Failed to delete folder: ' + msg, type: 'error' });
+            swal({ title: 'Error', text: 'Failed to delete folder: ' + failReason(err), type: 'error' });
         }
     });
 };

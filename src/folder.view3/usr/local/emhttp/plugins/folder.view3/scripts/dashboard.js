@@ -800,46 +800,10 @@ const expandFolderVM = (id) => {
 };
 
 // Confirm and delete a docker folder
-const rmDockerFolder = (id) => {
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders.docker[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        if (!c) { setTimeout(loadlist); return; }
-        $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
-        loadedFolder = false;
-        setTimeout(loadlist, 500)
-    });
-};
+const rmDockerFolder = (id) => fv3RmFolder('docker', globalFolders.docker, loadlist, id);
 
 // Confirm and delete a vm folder
-const rmVMFolder = (id) => {
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders.vms[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        if (!c) { setTimeout(loadlist); return; }
-        $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
-        loadedFolder = false;
-        setTimeout(loadlist, 500);
-    });
-};
+const rmVMFolder = (id) => fv3RmFolder('vm', globalFolders.vms, loadlist, id);
 
 // Navigate to the docker folder edit page
 const editDockerFolder = (id) => {

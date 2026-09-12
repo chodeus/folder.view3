@@ -740,8 +740,7 @@
 
     function updateFolder(string $type, string $content, string $id = '') : void {
         global $configDir;
-        if(!file_exists("$configDir/$type.json")) { createFile($type); if (empty($id)) $id = generateId(); }
-        if(empty($id)) { $id = generateId(); }
+        if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $decoded = json_decode($content, true);
         // A folder must be an object/array — reject scalars so a full-backup bundle can't pollute $type.json
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
@@ -761,6 +760,15 @@
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
+            exit;
+        }
+        // An unknown bad id (a folder-map import) gets a fresh one; a stored bad id is refused, never duplicated
+        if ($id === '' || (!fv3_is_folder_id($id) && !array_key_exists($id, $fileData))) {
+            $id = generateId();
+        } elseif (!fv3_is_folder_id($id)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Folder id may only contain letters, digits, _ and -']);
             exit;
         }
         $fileData[$id] = $decoded;
@@ -785,7 +793,7 @@
         }
         $changed = false;
         foreach ($updates as $folderId => $patch) {
-            if (!preg_match('/^[A-Za-z0-9+\/=]+$/', $folderId)) continue;
+            if (!fv3_is_folder_id($folderId)) continue;
             if (!isset($fileData[$folderId])) continue;
             if (isset($patch['containers']) && is_array($patch['containers'])) {
                 $fileData[$folderId]['containers'] = $patch['containers'];
@@ -1309,18 +1317,12 @@
                 }
                 continue;
             }
-            // Folder maps are id => folder — allowlist the id keys so a crafted backup can't
-            // plant a folder id that breaks out of class/onclick attributes at render (XSS).
-            // Alphanumeric ONLY: every generator (folder.view/2/3) strips +/= and never emits
-            // them, and an id containing +/= would break jQuery selectors at render time.
+            // Allowlist folder ids so a crafted backup can't plant one that breaks out of class/onclick markup (XSS)
             if ($key === 'docker' || $key === 'vm') {
                 $clean = [];
                 foreach ($data as $fid => $folder) {
-                    // (string) not is_string: json_decode gives an all-digit id an int key, which
-                    // the old check dropped — silently discarding that folder and reporting success
-                    $sid = (string)$fid;
-                    if (preg_match('#^[A-Za-z0-9]+$#D', $sid) && is_array($folder)) {
-                        $clean[$sid] = $folder;
+                    if (fv3_is_folder_id($fid) && is_array($folder)) {
+                        $clean[(string)$fid] = $folder;
                     }
                 }
                 // Imported bundles (and folder.view2 exports) can hold one container in two
@@ -1549,6 +1551,11 @@
 
     function generateId(int $length = 20) : string {
         return substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes((int)ceil($length * 3 / 4)))), 0, $length);
+    }
+
+    // Ids safe to write and to render into class/selector/onclick markup; int = all-digit JSON key
+    function fv3_is_folder_id($id) : bool {
+        return (is_string($id) || is_int($id)) && preg_match('/^[A-Za-z0-9_-]+$/D', (string)$id) === 1;
     }
 
     function createFile(string $type): void {

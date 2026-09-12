@@ -18,12 +18,12 @@
         folderi18n = () => {};
     }
     $.i18n({
-        'locale': '<? echo $loc?>'
-    }).load({
-        <?php
-            if($loc != 'en') {
-                echo "'$loc': '/plugins/folder.view3/langs/$loc.json',";
-            }
-        ?>'en': '/plugins/folder.view3/langs/en.json'
-    }).then(folderi18n, ()=>{});
+        'locale': <?= json_encode($loc) ?>
+    }).load(<?php
+        // autov() versions each URL so an update's new keys aren't masked by a cached pack
+        $packs = [];
+        if ($loc != 'en') { $packs[$loc] = autov("/plugins/folder.view3/langs/$loc.json", true); }
+        $packs['en'] = autov('/plugins/folder.view3/langs/en.json', true);
+        echo json_encode($packs);
+    ?>).then(folderi18n, ()=>{});
 </script>
