@@ -213,7 +213,13 @@
         }
         // Unparseable stays byte-identical so the client's cached-copy fallback still fires
         $decoded = json_decode($raw, true);
-        $clean = is_array($decoded) ? json_encode((object)fv3_normalize_folders($decoded)) : false;
+        if (json_last_error() !== JSON_ERROR_NONE) { return $raw; }
+        // Valid JSON that isn't a folder map fails like an unreadable file
+        if (!is_array($decoded)) {
+            http_response_code(500);
+            return json_encode(['error' => "$type.json does not contain a folder map"]);
+        }
+        $clean = json_encode((object)fv3_normalize_folders($decoded));
         return $clean !== false ? $clean : $raw;
     }
 
