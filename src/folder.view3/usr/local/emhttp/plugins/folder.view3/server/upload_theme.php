@@ -10,6 +10,7 @@
     global $configDir;
     $stylesDir = "$configDir/styles";
     if (!is_dir($stylesDir)) { @mkdir($stylesDir, 0770, true); }
+    $baseReal = (string)realpath($stylesDir);
     if ($type === 'css') {
         if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
             echo json_encode(['error' => 'Upload failed.']); exit;
@@ -23,6 +24,11 @@
         }
         $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '-', pathinfo($file['name'], PATHINFO_FILENAME)) . '.css';
         $dest = "$stylesDir/$safeName.disabled";
+        // A copy across filesystems writes through a link, so never write onto one
+        if (is_link($dest) || !fv3_path_within($stylesDir, $baseReal)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid destination.']); exit;
+        }
         if (!move_uploaded_file($file['tmp_name'], $dest)) {
             echo json_encode(['error' => 'Failed to save file.']); exit;
         }
@@ -45,6 +51,11 @@
         }
         $destDir = "$stylesDir/$folderName.disabled";
         if (!is_dir($destDir)) { @mkdir($destDir, 0770, true); }
+        // The theme folder must be a real directory inside styles/, never a link out of it
+        if (is_link($destDir) || !fv3_path_within($destDir, $baseReal)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid destination.']); exit;
+        }
         $maxSize = 2 * 1024 * 1024;
         $maxFiles = 200;
         $saved = 0;
@@ -63,9 +74,13 @@
             if ($safePath === '' || strtolower(pathinfo($safePath, PATHINFO_EXTENSION)) !== 'css') continue;
             $targetPath = "$destDir/$safePath";
             $targetParent = dirname($targetPath);
+            // mkdir -p follows a linked component, so confine the nearest existing ancestor first
+            $probe = $targetParent;
+            while (!file_exists($probe) && strlen($probe) > strlen($destDir)) { $probe = dirname($probe); }
+            if ($realDest === false || !fv3_path_within($probe, $realDest)) continue;
             if (!is_dir($targetParent)) { @mkdir($targetParent, 0770, true); }
-            // Re-confine the resolved parent under $destDir before writing (defence-in-depth vs traversal)
-            if ($realDest === false || !fv3_path_within($targetParent, $realDest)) continue;
+            // Re-confine the resolved parent, and never write onto a link
+            if (!fv3_path_within($targetParent, $realDest) || is_link($targetPath)) continue;
             if (move_uploaded_file($files['tmp_name'][$i], $targetPath)) {
                 @chmod($targetPath, 0660);
                 $saved++;

@@ -159,6 +159,7 @@
     "reset-order-failed": "Could not reset the folder order. Try again.",
     "dashboard-settings-load-failed": "Could not load Dashboard settings, so the default layouts are shown. Try refreshing the page.",
     "invalid-folder-export": "This file is not a folder export.",
+    "order-sync-failed": "Saved, but the Docker start order could not be updated: $1",
     "order": "Order:",
     "order-tooltip": "Drag and drop rows to reorder containers. Check 'Included' to add a container, 'Hide Preview' to exclude it from the preview row. Editing the regex will reset manual selections.",
     "table-name": "Name",

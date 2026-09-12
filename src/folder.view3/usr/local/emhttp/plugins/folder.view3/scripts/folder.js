@@ -38,7 +38,10 @@ const folderId = new URLSearchParams(location.search).get('id');
 // Save stays blocked until an edited folder has loaded, so a failed load can't overwrite it with a blank form
 let fv3FolderLoaded = !folderId;
 // $.i18n returns the key itself until the language pack has loaded
-const i18nOr = (key, fallback) => { const s = $.i18n(key); return s && s !== key ? s : fallback; };
+const i18nOr = (key, fallback, ...args) => {
+    const s = $.i18n(key, ...args);
+    return s && s !== key ? s : fallback.replace(/\$(\d+)/g, (m, n) => (args[n - 1] !== undefined ? args[n - 1] : m));
+};
 const fv3LoadFailedAlert = () => swal({ title: 'Error', text: i18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
 
 const rgbToHex = (rgb) => {
@@ -530,22 +533,22 @@ const submitForm = async (e) => {
             await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
         }
     } catch (err) {
-        swal({ title: 'Error', text: $.i18n('save-folder-failed', failReason(err)), type: 'error' });
+        swal({ title: 'Error', text: i18nOr('save-folder-failed', 'Could not save the folder: $1', failReason(err)), type: 'error' });
         return false;
     }
 
+    const back = () => { const loc = location.pathname.split('/'); loc.pop(); location.href = loc.join('/'); };
     if (type === 'docker') {
-        // The folder is already saved; a failed order sync must not strand the editor
+        // The folder is already saved: report a failed order sync, then still return to the tab
         try {
             await $.post('/plugins/folder.view3/server/sync_order.php', { type: type }).promise();
         } catch (err) {
             console.warn('[FV3] Autostart order sync failed after save:', failReason(err));
+            swal({ title: 'Warning', text: i18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', failReason(err)), type: 'warning' }, back);
+            return false;
         }
     }
-
-    let loc = location.pathname.split('/');
-    loc.pop();
-    location.href = loc.join('/');
+    back();
     
     return false;
 }
@@ -582,7 +585,7 @@ const deleteFolderBtn = () => {
             loc.pop();
             location.href = loc.join('/');
         } catch (err) {
-            swal({ title: 'Error', text: $.i18n('delete-folder-failed', folderName, failReason(err)), type: 'error' });
+            swal({ title: 'Error', text: i18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, failReason(err)), type: 'error' });
         }
     });
 };

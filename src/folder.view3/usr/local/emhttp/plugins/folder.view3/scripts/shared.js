@@ -687,7 +687,10 @@ window.fv3ShowBanner = (message, level) => {
     fv3Error('Banner', message);
 };
 // $.i18n returns the key itself until the language pack has loaded, so load-time text needs a fallback
-window.fv3I18nOr = (key, fallback) => { const s = $.i18n(key); return s && s !== key ? s : fallback; };
+window.fv3I18nOr = (key, fallback, ...args) => {
+    const s = $.i18n(key, ...args);
+    return s && s !== key ? s : fallback.replace(/\$(\d+)/g, (m, n) => (args[n - 1] !== undefined ? args[n - 1] : m));
+};
 
 window.fv3EditFolder = (type, basePath, id) => {
     location.href = basePath + '?type=' + type + '&id=' + id;
@@ -715,7 +718,7 @@ window.fv3RmFolder = (type, globalFolders, loadlist, id) => {
             await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
         } catch (e) {
             $('div.spinner.fixed').hide('slow');
-            fv3ShowBanner($.i18n('delete-folder-failed', globalFolders[id].name || id, e.responseJSON?.error || (e.status ? 'HTTP ' + e.status : e.statusText || e.message)));
+            fv3ShowBanner(fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', globalFolders[id].name || id, e.responseJSON?.error || (e.status ? 'HTTP ' + e.status : e.statusText || e.message)));
             return;
         }
         setTimeout(loadlist, 500);

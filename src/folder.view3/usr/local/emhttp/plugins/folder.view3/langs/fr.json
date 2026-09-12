@@ -159,6 +159,7 @@
     "reset-order-failed": "Impossible de réinitialiser l'ordre des dossiers. Réessayez.",
     "dashboard-settings-load-failed": "Impossible de charger les paramètres du tableau de bord, les dispositions par défaut sont donc affichées. Rechargez la page.",
     "invalid-folder-export": "Ce fichier n'est pas un export de dossiers.",
+    "order-sync-failed": "Enregistré, mais l'ordre de démarrage Docker n'a pas pu être mis à jour : $1",
     "order": "Ordre :",
     "order-tooltip": "Glissez-déposez les lignes pour réordonner les conteneurs. Cochez « Inclus » pour ajouter un conteneur, « Masquer l'aperçu » pour l'exclure de la barre d'aperçu. Modifier le regex réinitialise les sélections manuelles.",
     "table-name": "Nom",

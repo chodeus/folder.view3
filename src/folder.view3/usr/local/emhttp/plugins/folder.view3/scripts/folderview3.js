@@ -161,6 +161,7 @@ const fv3ImportFolderMap = async (content, type) => {
         return;
     }
     const failed = [];
+    let syncError = null;
     const save = async (url, data, label) => {
         try {
             await $.post(url, data).promise();
@@ -182,11 +183,18 @@ const fv3ImportFolderMap = async (content, type) => {
                 await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' }).promise();
             } catch (error) {
                 console.warn('[FV3] Autostart order sync failed after import:', failReason(error));
+                syncError = failReason(error);
             }
         }
     }
     populateTable();
-    if (failed.length) { swal({ title: 'Error', text: $.i18n('import-folders-failed', failed.join(', ')), type: 'error' }); } else { swal.close(); }
+    if (failed.length) {
+        swal({ title: 'Error', text: i18nOr('import-folders-failed', 'These folders could not be imported: $1', failed.join(', ')), type: 'error' });
+    } else if (syncError) {
+        swal({ title: 'Warning', text: i18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', syncError), type: 'warning' });
+    } else {
+        swal.close();
+    }
 };
 
 const importDocker = () => {
@@ -261,7 +269,10 @@ const importVm = () => {
 const failReason = (err) => err.responseJSON?.error || (err.status ? 'HTTP ' + err.status : err.statusText || err.message || 'Unknown error');
 
 // $.i18n returns the key itself until the language pack has loaded
-const i18nOr = (key, fallback) => { const s = $.i18n(key); return s && s !== key ? s : fallback; };
+const i18nOr = (key, fallback, ...args) => {
+    const s = $.i18n(key, ...args);
+    return s && s !== key ? s : fallback.replace(/\$(\d+)/g, (m, n) => (args[n - 1] !== undefined ? args[n - 1] : m));
+};
 
 // Confirm modals stay open until the request settles: a swal reopened inside close()'s hide timer is blanked
 const swalLoaderOpts = { showLoaderOnConfirm: true, closeOnConfirm: false };
@@ -298,7 +309,7 @@ const clearDocker = (id) => {
                 await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
             } catch (error) {
                 console.error('Docker delete error:', error);
-                swal({ title: 'Error', text: $.i18n('delete-folder-failed', dockers[id].name || id, failReason(error)), type: 'error' });
+                swal({ title: 'Error', text: i18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', dockers[id].name || id, failReason(error)), type: 'error' });
                 return;
             }
             swal.close();
@@ -319,7 +330,7 @@ const clearDocker = (id) => {
             if (!c) { return; }
             const failed = await deleteFolders('docker', dockers);
             populateTable();
-            if (failed.length) { swal({ title: 'Error', text: $.i18n('clear-folders-failed', failed.join(', ')), type: 'error' }); } else { swal.close(); }
+            if (failed.length) { swal({ title: 'Error', text: i18nOr('clear-folders-failed', 'These folders could not be deleted: $1', failed.join(', ')), type: 'error' }); } else { swal.close(); }
         });
     }
 };
@@ -354,7 +365,7 @@ const clearVm = (id) => {
                 await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
             } catch (error) {
                 console.error('VM delete error:', error);
-                swal({ title: 'Error', text: $.i18n('delete-folder-failed', vms[id].name || id, failReason(error)), type: 'error' });
+                swal({ title: 'Error', text: i18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', vms[id].name || id, failReason(error)), type: 'error' });
                 return;
             }
             swal.close();
@@ -375,7 +386,7 @@ const clearVm = (id) => {
             if (!c) { return; }
             const failed = await deleteFolders('vm', vms);
             populateTable();
-            if (failed.length) { swal({ title: 'Error', text: $.i18n('clear-folders-failed', failed.join(', ')), type: 'error' }); } else { swal.close(); }
+            if (failed.length) { swal({ title: 'Error', text: i18nOr('clear-folders-failed', 'These folders could not be deleted: $1', failed.join(', ')), type: 'error' }); } else { swal.close(); }
         });
     }
 };
@@ -622,7 +633,7 @@ $('#fv3-apply-defaults').on('click', function() {
                 }
             }
         }
-        if (failed.length) { swal({ title: 'Error', text: $.i18n('defaults-not-applied', failed.join(', ')), type: 'error' }); return; }
+        if (failed.length) { swal({ title: 'Error', text: i18nOr('defaults-not-applied', 'Defaults were not applied to these folders: $1', failed.join(', ')), type: 'error' }); return; }
         swal({ title: 'Done', text: 'Defaults applied to all folders.', type: 'success', timer: 1500 });
     });
 });
@@ -657,7 +668,7 @@ const fv3ImportFolderExport = async (content, type) => {
     try {
         await fv3ImportFolderMap(content, type);
     } catch (err) {
-        swal({ title: 'Error', text: i18nOr('import-failed', 'Import failed: $1').replace('$1', failReason(err)), type: 'error' });
+        swal({ title: 'Error', text: i18nOr('import-failed', 'Import failed: $1', failReason(err)), type: 'error' });
     }
 };
 
@@ -717,7 +728,7 @@ $('#fv3-import-all').on('change', function() {
                     result = (typeof resp === 'object' && resp !== null) ? resp : fv3SafeParse(resp, {});
                 } catch (err) {
                     console.error('Import Everything error:', err);
-                    swal({ title: 'Error', text: i18nOr('import-failed', 'Import failed: $1').replace('$1', failReason(err)), type: 'error' });
+                    swal({ title: 'Error', text: i18nOr('import-failed', 'Import failed: $1', failReason(err)), type: 'error' });
                     return;
                 }
                 if (result.error) {
