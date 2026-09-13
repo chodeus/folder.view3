@@ -23,9 +23,9 @@
             if (!is_dir($path)) {
                 if (preg_match('/^_fv3-generated\./', $entry)) continue;
                 // A disabled flat theme is foo.css.disabled; list it so it can be enabled again
-                if (!preg_match('/\.css(\.disabled)?$/', $entry)) continue;
+                if (!preg_match('/\.css(\.disabled)?$/i', $entry)) continue;
                 $disabled = (bool) preg_match('/\.disabled$/', $entry);
-                $name = preg_replace('/\.css(\.disabled)?$/', '', $entry);
+                $name = preg_replace('/\.css(\.disabled)?$/i', '', $entry);
             } else {
                 $disabled = (bool) preg_match('/\.disabled$/', $entry);
                 $name = preg_replace('/\.disabled$/', '', $entry);

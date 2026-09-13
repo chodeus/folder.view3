@@ -688,7 +688,7 @@ window.fv3ShowBanner = (message, level) => {
 };
 
 window.fv3EditFolder = (type, basePath, id) => {
-    location.href = basePath + '?type=' + type + '&id=' + id;
+    location.href = basePath + '?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id);
 };
 
 window.fv3CreateFolderBtn = (type, basePath) => {

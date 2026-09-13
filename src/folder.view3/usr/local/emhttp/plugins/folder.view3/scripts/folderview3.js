@@ -95,17 +95,18 @@ const populateTable = async () => {
     dockerTable.empty();
     vmsTable.empty();
 
+    // Ids reach the inline handlers as escaped JSON literals, so any stored key (quotes included) is passed intact, never run
     const dockerIds = orderFolderIds(dockers, currentDockerContainerOrder);
     for (const id of dockerIds) {
         const folder = dockers[id];
-        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadDocker('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
+        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadDocker(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
     const vmIds = orderFolderIds(vms, currentVmOrder);
     for (const id of vmIds) {
         const folder = vms[id];
-        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadVm('${escapeHtml(id)}')"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm('${escapeHtml(id)}')"><i class="fa fa-trash"></i></button></td></tr>`;
+        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadVm(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-trash"></i></button></td></tr>`;
         vmsTable.append($(fld));
     }
 

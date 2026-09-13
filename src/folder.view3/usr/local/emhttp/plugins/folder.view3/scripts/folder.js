@@ -35,8 +35,10 @@ let labelFolderNames = new Set();
 let otherExplicitMembers = new Set();
 const type = new URLSearchParams(location.search).get('type');
 const folderId = new URLSearchParams(location.search).get('id');
+// Only a missing id means a new folder: ?id= is a real (hand-edited) '' key, which must load, not be created again
+const isEdit = folderId !== null;
 // Save stays blocked until an edited folder has loaded, so a failed load can't overwrite it with a blank form
-let fv3FolderLoaded = !folderId;
+let fv3FolderLoaded = !isEdit;
 const fv3LoadFailedAlert = () => swal({ title: 'Error', text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
 
 const rgbToHex = (rgb) => {
@@ -100,7 +102,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
     choose = Object.values(fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_info.php?type=${type}`).promise(), {})).map(typeFilter);
 
-    if (folderId) {
+    if (isEdit) {
         const currFolder = folders[folderId];
         if (!currFolder) {
             swal({ title: 'Error', text: fv3I18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
@@ -519,7 +521,7 @@ const submitForm = async (e) => {
         actions
     }
     try {
-        if (folderId) {
+        if (isEdit) {
             await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: folderId });
         } else {
             await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
@@ -556,7 +558,7 @@ const cancelBtn = () => {
  * Handles the Delete folder button — confirmation dialog + POST to delete.php
  */
 const deleteFolderBtn = () => {
-    if (!folderId) return;
+    if (!isEdit) return;
     const folderName = $('div.canvas > form')[0]?.name?.value || folderId;
     swal({
         title: $.i18n('delete-folder-confirm-title') || 'Delete folder?',
