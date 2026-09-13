@@ -32,5 +32,7 @@
         if ($loc != 'en') { $packs[$loc] = autov("/plugins/folder.view3/langs/$loc.json", true); }
         $packs['en'] = autov('/plugins/folder.view3/langs/en.json', true);
         echo json_encode($packs);
-    ?>).then(folderi18n, ()=>{});
+    // Wait for the pack AND DOM ready: pages define their own folderi18n in a later <script>, so a
+    // cached pack resolves first and calls the stub. Failure stays a no-op — .i18n() with no messages shows raw keys.
+    ?>).then(() => $(() => folderi18n()), () => {});
 </script>
