@@ -1267,7 +1267,7 @@
         global $configDir;
         if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
         $config = json_decode($json, true);
-        if ($config === null) { http_response_code(400); echo 'Invalid JSON'; exit; }
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($config)) { http_response_code(400); echo 'Invalid JSON'; exit; }
         $allowedKeys = ['preset', 'global', 'dashboard', 'docker', 'vm', 'custom_css', 'custom_css_dashboard', 'custom_css_docker', 'custom_css_vm', 'toggle_style', 'custom_presets', 'user_notes', 'page_presets', 'page_values'];
         foreach (array_keys($config) as $k) {
             if (!in_array($k, $allowedKeys, true)) { unset($config[$k]); }
