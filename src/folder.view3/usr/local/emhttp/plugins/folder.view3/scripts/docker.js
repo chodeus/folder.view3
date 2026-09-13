@@ -1166,9 +1166,9 @@ window.loadlist = () => {
         fv3OrganizerSyncDone = false;
         fv3Debug('Patched loadlist', 'Set loadedFolder to false.');
         folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
             fv3CheckUpdates()
         ];

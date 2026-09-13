@@ -37,12 +37,7 @@ const type = new URLSearchParams(location.search).get('type');
 const folderId = new URLSearchParams(location.search).get('id');
 // Save stays blocked until an edited folder has loaded, so a failed load can't overwrite it with a blank form
 let fv3FolderLoaded = !folderId;
-// $.i18n returns the key itself until the language pack has loaded
-const i18nOr = (key, fallback, ...args) => {
-    const s = $.i18n(key, ...args);
-    return s && s !== key ? s : fallback.replace(/\$(\d+)/g, (m, n) => (args[n - 1] !== undefined ? args[n - 1] : m));
-};
-const fv3LoadFailedAlert = () => swal({ title: 'Error', text: i18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
+const fv3LoadFailedAlert = () => swal({ title: 'Error', text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
 
 const rgbToHex = (rgb) => {
     rgb = rgb.slice(4, -1).split(', ');
@@ -108,7 +103,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     if (folderId) {
         const currFolder = folders[folderId];
         if (!currFolder) {
-            swal({ title: 'Error', text: i18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
+            swal({ title: 'Error', text: fv3I18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
             return;
         }
         delete folders[folderId];
@@ -456,9 +451,6 @@ const syncHidePreview = ($row) => {
 };
 
 
-// Server's JSON error when it sent one, else the HTTP status (HTTP/2 carries no status text)
-const failReason = (err) => err.responseJSON?.error || (err.status ? 'HTTP ' + err.status : err.statusText || err.message || 'Unknown error');
-
 // Serialize the form to a folder object, POST create/update, then return to the tab. Returns false.
 const submitForm = async (e) => {
     if (!fv3FolderLoaded) { fv3LoadFailedAlert(); return false; }
@@ -533,7 +525,7 @@ const submitForm = async (e) => {
             await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
         }
     } catch (err) {
-        swal({ title: 'Error', text: i18nOr('save-folder-failed', 'Could not save the folder: $1', failReason(err)), type: 'error' });
+        swal({ title: 'Error', text: fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), type: 'error' });
         return false;
     }
 
@@ -543,8 +535,8 @@ const submitForm = async (e) => {
         try {
             await $.post('/plugins/folder.view3/server/sync_order.php', { type: type }).promise();
         } catch (err) {
-            console.warn('[FV3] Autostart order sync failed after save:', failReason(err));
-            swal({ title: 'Warning', text: i18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', failReason(err)), type: 'warning' }, back);
+            console.warn('[FV3] Autostart order sync failed after save:', fv3FailReason(err));
+            swal({ title: 'Warning', text: fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', fv3FailReason(err)), type: 'warning' }, back);
             return false;
         }
     }
@@ -585,7 +577,7 @@ const deleteFolderBtn = () => {
             loc.pop();
             location.href = loc.join('/');
         } catch (err) {
-            swal({ title: 'Error', text: i18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, failReason(err)), type: 'error' });
+            swal({ title: 'Error', text: fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), type: 'error' });
         }
     });
 };

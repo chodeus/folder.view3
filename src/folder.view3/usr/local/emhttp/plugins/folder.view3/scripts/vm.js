@@ -765,9 +765,9 @@ window.loadlist = (x) => {
         fv3FolderReqPending = true;
         loadedFolder = false;
         folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
