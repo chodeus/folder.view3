@@ -41,11 +41,6 @@
         exit;
     }
     $m = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
-    if ($m === null) {
-        http_response_code(500);
-        echo json_encode(['error' => 'folder config contains an invalid containers shape']);
-        exit;
-    }
     $out = [];
     foreach ($m['containers'] as $placeholder => $members) {
         foreach ($members as $ct) { $out[$ct] = $m['names'][$placeholder]; }

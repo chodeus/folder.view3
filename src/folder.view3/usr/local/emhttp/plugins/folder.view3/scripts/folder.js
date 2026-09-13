@@ -35,6 +35,9 @@ let labelFolderNames = new Set();
 let otherExplicitMembers = new Set();
 const type = new URLSearchParams(location.search).get('type');
 const folderId = new URLSearchParams(location.search).get('id');
+// Save stays blocked until an edited folder has loaded, so a failed load can't overwrite it with a blank form
+let fv3FolderLoaded = !folderId;
+const fv3LoadFailedAlert = () => swal({ title: 'Error', text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
 
 const rgbToHex = (rgb) => {
     rgb = rgb.slice(4, -1).split(', ');
@@ -99,6 +102,10 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
 
     if (folderId) {
         const currFolder = folders[folderId];
+        if (!currFolder) {
+            swal({ title: 'Error', text: fv3I18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
+            return;
+        }
         delete folders[folderId];
         if (!currFolder.settings) currFolder.settings = {};
 
@@ -153,6 +160,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         updateForm();
         updateRegex(form.regex);
         updateIcon(form.icon);
+        fv3FolderLoaded = true;
     } else {
         try {
             const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
@@ -265,7 +273,10 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     }
 
     $('.canvas form div.basic > dl > dt').css('cursor', 'default').wrapInner('<span style="cursor: help;"></span>');
-})();
+})().catch((err) => {
+    console.error('[FV3] Folder editor setup failed:', err);
+    if (!fv3FolderLoaded) fv3LoadFailedAlert();
+});
 
 // Update the folder icon preview from the icon field value.
 const updateIcon = (e) => {
@@ -442,6 +453,7 @@ const syncHidePreview = ($row) => {
 
 // Serialize the form to a folder object, POST create/update, then return to the tab. Returns false.
 const submitForm = async (e) => {
+    if (!fv3FolderLoaded) { fv3LoadFailedAlert(); return false; }
     // 'root' is reserved by Unraid's Docker organizer — server rejects it too
     if (e.name.value.toString().trim().toLowerCase() === 'root') {
         swal({ title: 'Reserved Name', text: "'root' is reserved by Unraid's Docker organizer — please pick another folder name.", type: 'error' });
@@ -506,19 +518,29 @@ const submitForm = async (e) => {
         hidden_preview: [...$('input.preview-switch:checked').map((i, e) => $(e).val())],
         actions
     }
-    if (folderId) {
-        await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: folderId });
-    } else {
-        await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
+    try {
+        if (folderId) {
+            await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: folderId });
+        } else {
+            await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
+        }
+    } catch (err) {
+        swal({ title: 'Error', text: fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), type: 'error' });
+        return false;
     }
 
+    const back = () => { const loc = location.pathname.split('/'); loc.pop(); location.href = loc.join('/'); };
     if (type === 'docker') {
-        await $.post('/plugins/folder.view3/server/sync_order.php', { type: type });
+        // The folder is already saved: report a failed order sync, then still return to the tab
+        try {
+            await $.post('/plugins/folder.view3/server/sync_order.php', { type: type }).promise();
+        } catch (err) {
+            console.warn('[FV3] Autostart order sync failed after save:', fv3FailReason(err));
+            swal({ title: 'Warning', text: fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', fv3FailReason(err)), type: 'warning' }, back);
+            return false;
+        }
     }
-
-    let loc = location.pathname.split('/');
-    loc.pop();
-    location.href = loc.join('/');
+    back();
     
     return false;
 }
@@ -544,7 +566,9 @@ const deleteFolderBtn = () => {
         confirmButtonText: $.i18n('delete') || 'Delete',
         cancelButtonText: $.i18n('cancel') || 'Cancel',
         confirmButtonColor: '#a02020',
-        closeOnConfirm: true
+        // Stay open until the delete settles: a swal reopened inside close()'s hide timer is blanked
+        showLoaderOnConfirm: true,
+        closeOnConfirm: false
     }, async (confirmed) => {
         if (!confirmed) return;
         try {
@@ -553,8 +577,7 @@ const deleteFolderBtn = () => {
             loc.pop();
             location.href = loc.join('/');
         } catch (err) {
-            const msg = err.responseText || err.statusText || err.message || 'Unknown error';
-            swal({ title: 'Error', text: 'Failed to delete folder: ' + msg, type: 'error' });
+            swal({ title: 'Error', text: fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), type: 'error' });
         }
     });
 };

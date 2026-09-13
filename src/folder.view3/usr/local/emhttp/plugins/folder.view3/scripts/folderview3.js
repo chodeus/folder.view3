@@ -78,7 +78,7 @@ const populateTable = async () => {
         ]);
     } catch (e) {
         console.error('[FV3] Failed to load folder data:', e);
-        fv3ShowBanner?.('error', 'Failed to load folder data. Please refresh the page.');
+        swal({ title: 'Error', text: fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), type: 'error' });
         return;
     }
     const dockerData = fv3SafeParse(proms[0], {});
@@ -154,18 +154,31 @@ const fv3CountFolderExport = (parsed) => {
     return (folders.length && folders.every(fv3IsFolderShaped)) ? folders.length : 0;
 };
 
+// Imports every folder, carrying on past failures; closes any open modal or reports the ones refused
 const fv3ImportFolderMap = async (content, type) => {
+    if (!content || typeof content !== 'object' || Array.isArray(content)) {
+        swal({ title: 'Error', text: fv3I18nOr('invalid-folder-export', 'This file is not a folder export.'), type: 'error' });
+        return;
+    }
     // Structural test, not `content.name` — an empty name is legal and would otherwise route a
     // single folder down the map path, writing its own keys (name, icon, settings…) as folder ids.
-    if (fv3IsFolderShaped(content)) {
-        await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(content) });
-    } else {
-        for (const [id, folder] of Object.entries(content)) {
-            await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: id });
+    const jobs = fv3IsFolderShaped(content)
+        ? [{ url: '/plugins/folder.view3/server/create.php', data: { type: type, content: JSON.stringify(content) }, label: content.name || 'folder' }]
+        : Object.entries(content).map(([id, folder]) => ({ url: '/plugins/folder.view3/server/update.php', data: { type: type, content: JSON.stringify(folder), id: id }, label: folder?.name || id }));
+    const failed = await postEach(jobs);
+    let syncError = null;
+    if (type === 'docker') {
+        try {
+            await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' }).promise();
+        } catch (error) {
+            console.warn('[FV3] Autostart order sync failed after import:', fv3FailReason(error));
+            syncError = fv3FailReason(error);
         }
-        if (type === 'docker') await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' });
     }
     populateTable();
+    const syncText = syncError ? fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', syncError) : '';
+    if (showBatchErrors(failed, { key: 'import-folders-failed', text: 'These folders could not be imported: $1' }, null, syncText)) return;
+    if (syncText) { swal({ title: 'Warning', text: syncText, type: 'warning' }); } else { swal.close(); }
 };
 
 const importDocker = () => {
@@ -236,55 +249,60 @@ const importVm = () => {
     input.click();
 };
 
-const clearDocker = (id) => {
-    if (id) {
-        swal({
-            title: 'Are you sure?',
-            text: `Remove folder: ${escapeHtml(dockers[id].name)}`,
-            type: 'warning',
-            html: true,
-            showCancelButton: true,
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true
-        },
-        async (c) => {
-            if (!c) { return; }
-            try {
-                await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
-            } catch (error) {
-                console.error('Docker delete error:', error);
-                swal({ title: 'Error', text: 'Failed to delete folder: ' + error.statusText, type: 'error' });
-                return;
-            }
-            populateTable();
-        });
-    } else {
-        swal({
-            title: 'Are you sure?',
-            text: 'Remove ALL folders',
-            type: 'warning',
-            html: true,
-            showCancelButton: true,
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true
-        },
-        async (c) => {
-            if (!c) { return; }
-            try {
-                for (const cid of Object.keys(dockers)) {
-                    await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: cid }).promise();
-                }
-            } catch (error) {
-                console.error('Docker clear all error:', error);
-                swal({ title: 'Error', text: 'Failed to clear all folders', type: 'error' });
-                return;
-            }
-            populateTable();
-        });
+// Confirm modals stay open until the request settles: a swal reopened inside close()'s hide timer is blanked
+const swalLoaderOpts = { showLoaderOnConfirm: true, closeOnConfirm: false };
+
+// Posts each job in turn, carrying on past failures; returns { label, reason } for each one that failed
+const postEach = async (jobs) => {
+    const failed = [];
+    for (const { url, data, label } of jobs) {
+        try {
+            await $.post(url, data).promise();
+        } catch (error) {
+            console.error('[FV3] Request failed:', label, error);
+            failed.push({ label, reason: fv3FailReason(error) });
+        }
     }
+    return failed;
 };
+
+// Replaces the open dialog with one error for a batch: a lone failure with its reason when `one` is given, else the
+// failed names. Returns false, showing nothing, when every job went through
+const showBatchErrors = (failed, many, one = null, extra = '') => {
+    if (!failed.length) return false;
+    const text = failed.length === 1 && one
+        ? fv3I18nOr(one.key, one.text, failed[0].label, failed[0].reason)
+        : fv3I18nOr(many.key, many.text, failed.map(f => f.label).join(', '));
+    swal({ title: 'Error', text: extra ? text + '\n' + extra : text, type: 'error' });
+    return true;
+};
+
+// Deletes one folder, or every folder of the type when id is omitted; the confirm stays open until the deletes settle
+const clearFolders = (type, id) => {
+    const folders = type === 'docker' ? dockers : vms;
+    const ids = id ? [id] : Object.keys(folders);
+    swal({
+        title: 'Are you sure?',
+        text: id ? `Remove folder: ${escapeHtml(folders[id].name)}` : 'Remove ALL folders',
+        type: 'warning',
+        html: true,
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel',
+        ...swalLoaderOpts
+    },
+    async (c) => {
+        if (!c) { return; }
+        const failed = await postEach(ids.map(fid => ({ url: '/plugins/folder.view3/server/delete.php', data: { type: type, id: fid }, label: folders[fid].name || fid })));
+        populateTable();
+        if (!showBatchErrors(failed,
+            { key: 'clear-folders-failed', text: 'These folders could not be deleted: $1' },
+            { key: 'delete-folder-failed', text: 'Could not delete folder "$1": $2' })) { swal.close(); }
+    });
+};
+
+const clearDocker = (id) => clearFolders('docker', id);
+const clearVm = (id) => clearFolders('vm', id);
 
 const downloadVm = async (id) => {
     if (id) {
@@ -295,56 +313,6 @@ const downloadVm = async (id) => {
         } catch (error) {
             downloadFile(`VM.json`, JSON.stringify(vms));
         }
-    }
-};
-
-const clearVm = (id) => {
-    if (id) {
-        swal({
-            title: 'Are you sure?',
-            text: `Remove folder: ${escapeHtml(vms[id].name)}`,
-            type: 'warning',
-            html: true,
-            showCancelButton: true,
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true
-        },
-        async (c) => {
-            if (!c) { return; }
-            try {
-                await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
-            } catch (error) {
-                console.error('VM delete error:', error);
-                swal({ title: 'Error', text: 'Failed to delete folder', type: 'error' });
-                return;
-            }
-            populateTable();
-        });
-    } else {
-        swal({
-            title: 'Are you sure?',
-            text: 'Remove ALL folders',
-            type: 'warning',
-            html: true,
-            showCancelButton: true,
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel',
-            showLoaderOnConfirm: true
-        },
-        async (c) => {
-            if (!c) { return; }
-            try {
-                for (const cid of Object.keys(vms)) {
-                    await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: cid }).promise();
-                }
-            } catch (error) {
-                console.error('VM clear all error:', error);
-                swal({ title: 'Error', text: 'Failed to clear all folders', type: 'error' });
-                return;
-            }
-            populateTable();
-        });
     }
 };
 
@@ -483,7 +451,7 @@ const loadDashboardSettings = async () => {
     }
 };
 
-const fv3SubmitSettings = async () => {
+const fv3SubmitSettings = async (quiet = false) => {
     const current = fv3CollectSettings();
     const changed = {};
     for (const [key, value] of Object.entries(current)) {
@@ -498,8 +466,8 @@ const fv3SubmitSettings = async () => {
         changed.dashboard_vm_expand_toggle = 'no';
     }
     if (Object.keys(changed).length === 0) {
-        swal({ title: 'No Changes', text: 'Settings are unchanged.', type: 'info', timer: 1500 });
-        return;
+        if (!quiet) swal({ title: 'No Changes', text: 'Settings are unchanged.', type: 'info', timer: 1500 });
+        return true;
     }
     try {
         await $.ajax({
@@ -509,11 +477,13 @@ const fv3SubmitSettings = async () => {
         }).promise();
         fv3LoadedSettings = { ...fv3LoadedSettings, ...changed };
         fv3ApplyFormState(fv3LoadedSettings);
-        swal({ title: 'Saved', text: 'Settings saved.', type: 'success', timer: 1500 });
+        if (!quiet) swal({ title: 'Saved', text: 'Settings saved.', type: 'success', timer: 1500 });
+        return true;
     } catch (e) {
         var msg = e.responseText || e.statusText || e.message || 'Unknown error';
         console.error('Failed to save settings:', msg);
         swal({ title: 'Error', text: 'Failed to save settings: ' + msg, type: 'error' });
+        return false;
     }
 };
 
@@ -539,10 +509,12 @@ $('#fv3-apply-defaults').on('click', function() {
         text: 'This will update all existing folders to use the current default settings. Per-folder overrides will be replaced.',
         type: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Apply'
+        confirmButtonText: 'Apply',
+        ...swalLoaderOpts
     }, async (confirmed) => {
         if (!confirmed) return;
-        await fv3SubmitSettings();
+        // Quiet: its timed toasts would close this dialog's result. A failed save shows its error and stops here
+        if (!(await fv3SubmitSettings(true))) return;
         const settings = fv3CollectSettings();
         const defaultMap = {
             preview: parseInt(settings.default_preview !== undefined ? settings.default_preview : '1', 10),
@@ -569,6 +541,7 @@ $('#fv3-apply-defaults').on('click', function() {
             update_column: settings.default_update_column === 'yes',
             use_global_defaults: true
         };
+        const jobs = [];
         for (const [type, folders] of [['docker', dockers], ['vm', vms]]) {
             for (const [id, folder] of Object.entries(folders)) {
                 if (!folder.settings) folder.settings = {};
@@ -579,11 +552,11 @@ $('#fv3-apply-defaults').on('click', function() {
                     delete applyMap.preview_row_separator_color;
                 }
                 Object.assign(folder.settings, applyMap);
-                await $.post('/plugins/folder.view3/server/update.php', {
-                    type, id, content: JSON.stringify(folder)
-                }).promise();
+                jobs.push({ url: '/plugins/folder.view3/server/update.php', data: { type, id, content: JSON.stringify(folder) }, label: folder.name || id });
             }
         }
+        const failed = await postEach(jobs);
+        if (showBatchErrors(failed, { key: 'defaults-not-applied', text: 'Defaults were not applied to these folders: $1' })) return;
         swal({ title: 'Done', text: 'Defaults applied to all folders.', type: 'success', timer: 1500 });
     });
 });
@@ -613,11 +586,12 @@ const fv3ExportAll = async () => {
 window.fv3ExportAll = fv3ExportAll;
 
 const fv3ImportFolderExport = async (content, type) => {
-    swal.close();
+    // Replace the choice modal rather than close it: a swal reopened inside close()'s hide timer is blanked
+    swal({ title: fv3I18nOr('importing-folders', 'Importing folders…'), text: '', showConfirmButton: false });
     try {
         await fv3ImportFolderMap(content, type);
     } catch (err) {
-        swal({ title: 'Error', text: 'Import failed.', type: 'error' });
+        swal({ title: 'Error', text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });
     }
 };
 
@@ -667,11 +641,21 @@ $('#fv3-import-all').on('change', function() {
                 text: 'This will overwrite current config with: ' + items.join(', ') + '.' + (parsed.exported ? '\nExported: ' + parsed.exported : ''),
                 type: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Import'
+                confirmButtonText: 'Import',
+                ...swalLoaderOpts
             }, async (confirmed) => {
                 if (!confirmed) return;
-                const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
-                const result = (typeof resp === 'object') ? resp : fv3SafeParse(resp, {});
+                let result;
+                try {
+                    const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
+                    result = (typeof resp === 'object' && resp !== null) ? resp : fv3SafeParse(resp, null);
+                    // A reply that isn't a result object is a failed restore, never "0 items restored"
+                    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Invalid restore response');
+                } catch (err) {
+                    console.error('Import Everything error:', err);
+                    swal({ title: 'Error', text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });
+                    return;
+                }
                 if (result.error) {
                     swal({ title: 'Error', text: result.error, type: 'error' });
                 } else {

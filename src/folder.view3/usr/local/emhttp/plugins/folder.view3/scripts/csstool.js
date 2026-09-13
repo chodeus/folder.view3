@@ -930,7 +930,7 @@
                 </div>`;
             defaultCard.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
                 for (const t of themes.filter(t => t.enabled && t.isDir && t.source)) {
-                    await postForm(API + '/toggle_theme.php', { entry: t.entry, enable: 'false' });
+                    if (!(await setThemeEnabled(t.entry, false))) break;
                 }
                 loadThemes();
             });
@@ -970,11 +970,11 @@
                         <button class="fv3-theme-delete" title="Delete"><i class="fa fa-trash"></i></button>
                     </div>`;
                 card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
-                    await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'true' });
+                    await setThemeEnabled(theme.entry, true);
                     loadThemes();
                 });
                 card.querySelector('.fv3-theme-disable')?.addEventListener('click', async () => {
-                    await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'false' });
+                    await setThemeEnabled(theme.entry, false);
                     loadThemes();
                 });
                 card.querySelector('.fv3-theme-update')?.addEventListener('click', async () => {
@@ -1082,11 +1082,11 @@
                             <button class="fv3-theme-delete" title="Delete"><i class="fa fa-trash"></i></button>
                         </div>`;
                     card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
-                        await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'true' });
+                        await setThemeEnabled(theme.entry, true);
                         loadThemes();
                     });
                     card.querySelector('.fv3-theme-disable')?.addEventListener('click', async () => {
-                        await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'false' });
+                        await setThemeEnabled(theme.entry, false);
                         loadThemes();
                     });
                     card.querySelector('.fv3-theme-delete')?.addEventListener('click', () => {
@@ -1288,9 +1288,9 @@
                     progress.log('This theme references external URLs. Keep it?');
                     var keep = await progress.confirm('Keep', 'Delete');
                     if (!keep) {
-                        await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
-                        progress.log('Theme deleted.', 'error');
-                        progress.status('Removed');
+                        var del = await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
+                        progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', del.ok ? 'success' : 'error');
+                        progress.status(del.ok ? 'Removed' : 'Failed');
                     } else {
                         progress.status('Complete');
                     }
@@ -1384,7 +1384,7 @@
                 });
             },
             done: function() {
-                statusEl.textContent = 'Finished';
+                if (statusEl.textContent !== 'Failed') statusEl.textContent = 'Finished';
                 var spinner = titleEl.querySelector('.fv3-swal-spinner');
                 if (spinner) spinner.style.display = 'none';
                 if (dotsEl) dotsEl.style.display = 'none';
@@ -1427,8 +1427,8 @@
                         progress.log('This theme references external URLs. Keep it?');
                         var keep = await progress.confirm('Keep', 'Delete');
                         if (!keep) {
-                            await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
-                            progress.log('Theme deleted.', 'error');
+                            var del = await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
+                            progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', del.ok ? 'success' : 'error');
                             failed++;
                         } else {
                             succeeded++;
@@ -1456,6 +1456,21 @@
         const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || (typeof csrf_token !== 'undefined' ? csrf_token : '');
         const body = Object.entries({ ...data, csrf_token: csrfToken }).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
         return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+    }
+
+    // A refused or failed toggle shows why instead of passing silently; returns whether it went through
+    async function setThemeEnabled(entry, enable) {
+        let reason;
+        try {
+            const resp = await postForm(API + '/toggle_theme.php', { entry: entry, enable: enable ? 'true' : 'false' });
+            if (resp.ok) return true;
+            reason = 'HTTP ' + resp.status;
+            try { reason = (await resp.json()).error || reason; } catch (e) {}
+        } catch (e) {
+            reason = e.message || 'Network error';
+        }
+        swal({ title: 'Error', text: 'Could not ' + (enable ? 'enable' : 'disable') + ' the theme: ' + reason, type: 'error' });
+        return false;
     }
 
     async function postFormJson(url, data) {

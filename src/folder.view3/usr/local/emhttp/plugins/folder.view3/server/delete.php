@@ -2,10 +2,6 @@
     require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");
     fv3_post_init();
     $type = fv3_validate_type($_POST['type'] ?? '');
-    $id = $_POST['id'] ?? '';
-    if (empty($id) || !preg_match('/^[A-Za-z0-9+\/=]+$/', $id)) {
-        http_response_code(400);
-        exit;
-    }
-    deleteFolder($type, $id);
+    // A missing or non-string id is refused; any existing key stays deletable, '' and ids fv3_is_folder_id() refuses included
+    deleteFolder($type, fv3_post_required('id'));
 ?>

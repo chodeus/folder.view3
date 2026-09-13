@@ -147,7 +147,7 @@ const createFolders = async () => {
         console.error('[FV3] Dashboard: Docker folder rendering failed:', e);
         // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
         document.documentElement.classList.add('fv3-docker-ready');
-        if (!e?.fv3Bannered) fv3ShowBanner('FolderView3: Docker folder rendering failed — see the browser console for details.', 'error');
+        if (!e?.fv3Bannered) fv3ShowBanner(fv3I18nOr('docker-render-failed', 'FolderView3: Docker folder rendering failed — see the browser console for details.'), 'error');
     } }
 
 
@@ -255,7 +255,7 @@ const createFolders = async () => {
     } catch (e) {
         console.error('[FV3] Dashboard: VM folder rendering failed:', e);
         document.documentElement.classList.add('fv3-vm-ready');
-        if (!e?.fv3Bannered) fv3ShowBanner('FolderView3: VM folder rendering failed — see the browser console for details.', 'error');
+        if (!e?.fv3Bannered) fv3ShowBanner(fv3I18nOr('vm-render-failed', 'FolderView3: VM folder rendering failed — see the browser console for details.'), 'error');
     } }
 
     folderDebugMode  = false;
@@ -800,46 +800,10 @@ const expandFolderVM = (id) => {
 };
 
 // Confirm and delete a docker folder
-const rmDockerFolder = (id) => {
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders.docker[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        if (!c) { setTimeout(loadlist); return; }
-        $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
-        loadedFolder = false;
-        setTimeout(loadlist, 500)
-    });
-};
+const rmDockerFolder = (id) => fv3RmFolder('docker', globalFolders.docker, loadlist, id);
 
 // Confirm and delete a vm folder
-const rmVMFolder = (id) => {
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders.vms[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        if (!c) { setTimeout(loadlist); return; }
-        $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
-        loadedFolder = false;
-        setTimeout(loadlist, 500);
-    });
-};
+const rmVMFolder = (id) => fv3RmFolder('vm', globalFolders.vms, loadlist, id);
 
 // Navigate to the docker folder edit page
 const editDockerFolder = (id) => {
@@ -1460,6 +1424,9 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         dashboardContextGraph = parseInt(s.dashboard_context_graph || '1', 10);
         dashboardContextGraphTime = parseInt(s.dashboard_context_graph_time || '60', 10);
     } catch(e) {}
+}).catch((e) => {
+    console.warn('[FV3] Dashboard settings unavailable, using default layouts:', e);
+    fv3ShowBanner(fv3I18nOr('dashboard-settings-load-failed', 'Could not load Dashboard settings, so the default layouts are shown. Try refreshing the page.'));
 });
 
 let dashboardCpus = 1;
@@ -1826,9 +1793,9 @@ window.loadlist = (x) => {
     loadedFolder = false;
     if($('tbody#docker_view').length > 0) {
         folderReq.docker = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load Docker folder data. Try refreshing the page.', 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('docker-folders-load-failed', 'Could not load Docker folder data. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
             fv3CheckUpdates()
         ];
@@ -1836,9 +1803,9 @@ window.loadlist = (x) => {
 
     if($('tbody#vm_view').length > 0) {
         folderReq.vm = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load VM folder data. Try refreshing the page.', 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-folders-load-failed', 'Could not load VM folder data. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
         ];
     }

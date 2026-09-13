@@ -709,7 +709,13 @@ window.fv3RmFolder = (type, globalFolders, loadlist, id) => {
     async (c) => {
         if (!c) { setTimeout(loadlist, 0); return; }
         $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
+        try {
+            await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
+        } catch (e) {
+            $('div.spinner.fixed').hide('slow');
+            fv3ShowBanner(fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', globalFolders[id].name || id, fv3FailReason(e)));
+            return;
+        }
         setTimeout(loadlist, 500);
     });
 };
@@ -1329,7 +1335,7 @@ window.fv3RunUserScript = async (act, prom) => {
         const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
         prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
     }
-    } catch (e) { fv3ShowBanner('Could not run the user script — check the User Scripts plugin is installed and the script exists.'); }
+    } catch (e) { fv3ShowBanner(fv3I18nOr('user-script-failed', 'Could not run the user script — check the User Scripts plugin is installed and the script exists.')); }
 };
 
 // Row separators
@@ -1507,7 +1513,7 @@ window.fv3ContainerAction = async (type, id, action) => {
 window.fv3DockerAction = (action, containerId, fullId) => {
     var gqlAction = fv3DockerActionMap[action];
     var phpFallback = () => $.post(window.eventURL || '/update.htm', { action: action, container: containerId }, null, 'json').promise()
-        .fail(() => fv3ShowBanner('Could not ' + action + ' container. Check your server connection.'));
+        .fail(() => fv3ShowBanner(fv3I18nOr('container-action-failed', 'The container action "$1" failed. Check your server connection.', action)));
     if (fv3ApiAvailable && gqlAction && fullId) {
         return fv3GraphQL('mutation($id: PrefixedID!) { docker { ' + gqlAction + '(id: $id) { id } } }', { id: fullId })
             .then(() => { fv3Debug('API', 'Docker', gqlAction, containerId, 'OK'); return { success: true }; })
@@ -1522,7 +1528,7 @@ window.fv3DockerAction = (action, containerId, fullId) => {
 window.fv3VmAction = (action, uuid) => {
     var gqlAction = fv3VmActionMap[action];
     var phpFallback = () => $.post('/plugins/dynamix.vm.manager/include/VMajax.php', { action: action, uuid: uuid }, null, 'json').promise()
-        .fail(() => fv3ShowBanner('Could not ' + action.replace('domain-', '') + ' VM. Check your server connection.'));
+        .fail(() => fv3ShowBanner(fv3I18nOr('vm-action-failed', 'The VM action "$1" failed. Check your server connection.', action.replace('domain-', ''))));
     if (fv3ApiAvailable && gqlAction) {
         return fv3GraphQL('mutation($id: PrefixedID!) { vm { ' + gqlAction + '(id: $id) } }', { id: uuid })
             .then(() => { fv3Debug('API', 'VM', gqlAction, uuid, 'OK'); return { success: true }; })

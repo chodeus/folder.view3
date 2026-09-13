@@ -87,6 +87,27 @@
         return $type;
     }
 
+    // A POST field as a string, else a 400: like type above, an x[]= array must not reach a typed param
+    function fv3_post_string(string $key, string $default = ''): string {
+        $value = $_POST[$key] ?? $default;
+        if (!is_string($value)) {
+            http_response_code(400);
+            exit;
+        }
+        return $value;
+    }
+
+    // For a field whose absence would read as "empty" and wipe saved state: missing is a 400, never a default
+    function fv3_post_required(string $key): string {
+        if (!array_key_exists($key, $_POST)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => "Missing field: $key"]);
+            exit;
+        }
+        return fv3_post_string($key);
+    }
+
     function fv3_security_headers(): void {
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');
@@ -196,7 +217,42 @@
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $raw = @file_get_contents("$configDir/$type.json");
-        return ($raw !== false) ? $raw : '{}';
+        if ($raw === false) {
+            // Fail the request: a 200 '{}' would be cached client-side over the last good copy
+            http_response_code(500);
+            return json_encode(['error' => "$type.json is unreadable"]);
+        }
+        // Unparseable stays byte-identical so the client's cached-copy fallback still fires
+        $decoded = json_decode($raw, true);
+        if (json_last_error() !== JSON_ERROR_NONE) { return $raw; }
+        // Valid JSON that isn't a folder map fails like an unreadable file
+        if (!is_array($decoded)) {
+            http_response_code(500);
+            return json_encode(['error' => "$type.json does not contain a folder map"]);
+        }
+        $clean = json_encode((object)fv3_normalize_folders($decoded));
+        return $clean !== false ? $clean : $raw;
+    }
+
+    // Fills the fields every reader dereferences so a hand-edited folder can't break a render
+    // or the autostart sync; object fields stay JSON objects. Never writes the file.
+    function fv3_normalize_folders(array $folders): array {
+        $out = [];
+        foreach ($folders as $id => $f) {
+            if (!is_array($f)) { continue; }
+            $f['name'] = is_scalar($f['name'] ?? null) ? (string)$f['name'] : (string)$id;
+            $f['icon'] = is_string($f['icon'] ?? null) ? $f['icon'] : '';
+            $f['regex'] = is_string($f['regex'] ?? null) ? $f['regex'] : '';
+            $f['containers'] = is_array($f['containers'] ?? null) ? array_values($f['containers']) : [];
+            $f['hidden_preview'] = is_array($f['hidden_preview'] ?? null) ? array_values($f['hidden_preview']) : [];
+            $f['actions'] = is_array($f['actions'] ?? null) ? array_values(array_filter($f['actions'], 'is_array')) : [];
+            $f['settings'] = (object)(is_array($f['settings'] ?? null) ? $f['settings'] : []);
+            foreach (['containerImages', 'containerIds'] as $k) {
+                if (array_key_exists($k, $f)) { $f[$k] = (object)(is_array($f[$k]) ? $f[$k] : []); }
+            }
+            $out[$id] = $f;
+        }
+        return $out;
     }
 
     function readUserPrefs(string $type) : string {
@@ -498,13 +554,10 @@
     }
 
     // Effective membership — explicit > label > regex (issues #46/#55). Single source of
-    // truth shared by syncContainerOrder and read_membership.php (issue #61). Returns null
-    // on a corrupt persisted shape so callers fail closed instead of fataling mid-compute.
-    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): ?array {
-        foreach ($folders as $folder) {
-            if (!is_array($folder) || !is_array($folder['containers'] ?? [])
-                || (isset($folder['name']) && !is_string($folder['name']))) { return null; }
-        }
+    // truth shared by syncContainerOrder and read_membership.php (issue #61).
+    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): array {
+        // One malformed entry is dropped or filled in, not allowed to abort every folder's sync
+        $folders = fv3_normalize_folders($folders);
         $folderNameSet = [];
         foreach ($folders as $folder) {
             if (isset($folder['name'])) { $folderNameSet[$folder['name']] = true; }
@@ -600,11 +653,6 @@
             return;
         }
         $membership = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
-        // Corrupt persisted shapes fail closed before the autostart write, not fatal mid-sync
-        if ($membership === null) {
-            fv3_debug_log("syncContainerOrder: folder entry with invalid containers shape, aborting before write");
-            return;
-        }
         $folderContainers = $membership['containers'];
         $folderNames = $membership['names'];
         $assignedContainers = $membership['assigned'];
@@ -738,10 +786,9 @@
         return $folders;
     }
 
-    function updateFolder(string $type, string $content, string $id = '') : void {
+    function updateFolder(string $type, string $content, ?string $id = null) : void {
         global $configDir;
-        if(!file_exists("$configDir/$type.json")) { createFile($type); if (empty($id)) $id = generateId(); }
-        if(empty($id)) { $id = generateId(); }
+        if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $decoded = json_decode($content, true);
         // A folder must be an object/array — reject scalars so a full-backup bundle can't pollute $type.json
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
@@ -761,6 +808,16 @@
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
+            exit;
+        }
+        // null (create.php) gets a fresh id, and so does an unknown bad id from a folder-map import; a stored bad id,
+        // '' included, is refused, never duplicated
+        if ($id === null || (!fv3_is_folder_id($id) && !array_key_exists($id, $fileData))) {
+            $id = generateId();
+        } elseif (!fv3_is_folder_id($id)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Folder id may only contain letters, digits, _ and -']);
             exit;
         }
         $fileData[$id] = $decoded;
@@ -785,8 +842,8 @@
         }
         $changed = false;
         foreach ($updates as $folderId => $patch) {
-            if (!preg_match('/^[A-Za-z0-9+\/=]+$/', $folderId)) continue;
-            if (!isset($fileData[$folderId])) continue;
+            if (!fv3_is_folder_id($folderId)) continue;
+            if (!is_array($fileData[$folderId] ?? null)) continue;
             if (isset($patch['containers']) && is_array($patch['containers'])) {
                 $fileData[$folderId]['containers'] = $patch['containers'];
                 $changed = true;
@@ -823,6 +880,8 @@
             echo json_encode(['error' => "$type.json is unreadable — refusing to delete so the folder config is not wiped"]);
             exit;
         }
+        // Already gone: delete stays idempotent, and there is nothing to rewrite
+        if (!array_key_exists($id, $fileData)) { return; }
         unset($fileData[$id]);
         $path = "$configDir/$type.json";
         fv3_atomic_write($path, json_encode($fileData));
@@ -990,224 +1049,8 @@
         @chmod($path, 0660);
     }
 
-    function listThemes() : array {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        if (!is_dir($stylesDir)) return [];
-        $themes = [];
-        foreach (scandir($stylesDir) as $entry) {
-            if ($entry === '.' || $entry === '..') continue;
-            $path = "$stylesDir/$entry";
-            if (!is_dir($path)) {
-                if (preg_match('/^_fv3-generated\./', $entry)) continue;
-                if (!preg_match('/\.css$/', $entry)) continue;
-                $disabled = false;
-                $name = preg_replace('/\.css$/', '', $entry);
-            } else {
-                $disabled = (bool) preg_match('/\.disabled$/', $entry);
-                $name = preg_replace('/\.disabled$/', '', $entry);
-            }
-            $source = null;
-            if (is_dir($path)) {
-                $srcFile = $path . '/.fv3-source';
-                if (file_exists($srcFile)) {
-                    $raw = trim(file_get_contents($srcFile));
-                    $parsed = json_decode($raw, true);
-                    $source = is_array($parsed) ? $parsed : ['repo' => $raw];
-                }
-            }
-            $themes[] = [
-                'name' => $name,
-                'entry' => $entry,
-                'isDir' => is_dir($path),
-                'enabled' => !$disabled,
-                'source' => $source
-            ];
-        }
-        return $themes;
-    }
-
-    function toggleTheme(string $entry, bool $enable, bool $exclusive) : void {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
-        $path = "$stylesDir/$entry";
-        if (!file_exists($path)) { http_response_code(404); exit; }
-        if ($exclusive && $enable) {
-            foreach (scandir($stylesDir) as $e) {
-                if ($e === '.' || $e === '..' || !is_dir("$stylesDir/$e")) continue;
-                if (preg_match('/^_fv3-generated\./', $e)) continue;
-                $ePath = "$stylesDir/$e";
-                if (!preg_match('/\.disabled$/', $e) && $e !== $entry) {
-                    @rename($ePath, $ePath . '.disabled');
-                }
-            }
-        }
-        $isDisabled = (bool) preg_match('/\.disabled$/', $entry);
-        if ($enable && $isDisabled) {
-            $newName = preg_replace('/\.disabled$/', '', $entry);
-            @rename($path, "$stylesDir/$newName");
-        } else if (!$enable && !$isDisabled) {
-            @rename($path, $path . '.disabled');
-        }
-    }
-
-    function importTheme(string $repoUrl, string $subPath = '', string $branch = '') : array {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        $maxCssBytes = 2 * 1024 * 1024;
-        $maxCssFiles = 200;
-        if (!preg_match('#^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$#', $repoUrl)) {
-            return ['error' => 'Invalid repo format. Use owner/repo.'];
-        }
-        $ctx = stream_context_create(['http' => [
-            'header' => "User-Agent: FolderView3\r\n",
-            'timeout' => 15
-        ]]);
-        $refParam = $branch !== '' ? '?ref=' . rawurlencode($branch) : '';
-        $apiBase = "https://api.github.com/repos/$repoUrl/contents/";
-        $fetchPath = ($subPath !== '' ? $apiBase . rawurlencode($subPath) : $apiBase) . $refParam;
-        $raw = @file_get_contents($fetchPath, false, $ctx);
-        if ($raw === false) return ['error' => 'Failed to fetch repo contents.'];
-        $contents = json_decode($raw, true);
-        if (!is_array($contents)) return ['error' => 'Invalid GitHub API response.'];
-        $cssFiles = [];
-        foreach ($contents as $f) {
-            if (!isset($f['name']) || $f['type'] !== 'file') continue;
-            if (preg_match('/\.css$/i', $f['name'])) $cssFiles[] = $f;
-        }
-        if ($subPath === '') {
-            $dirs = array_filter($contents, fn($f) => isset($f['name']) && $f['type'] === 'dir');
-            foreach ($dirs as $dir) {
-                $subRaw = @file_get_contents($apiBase . rawurlencode($dir['name']) . $refParam, false, $ctx);
-                if ($subRaw === false) continue;
-                $subContents = json_decode($subRaw, true);
-                if (!is_array($subContents)) continue;
-                foreach ($subContents as $sf) {
-                    if (isset($sf['name']) && $sf['type'] === 'file' && preg_match('/\.css$/i', $sf['name'])) {
-                        $sf['_subdir'] = $dir['name'];
-                        $cssFiles[] = $sf;
-                    }
-                }
-            }
-        }
-        if (empty($cssFiles)) return ['error' => 'No CSS files found.'];
-        $repoParts = explode('/', $repoUrl);
-        $owner = $repoParts[0];
-        $repoSlug = $repoParts[1];
-        $baseName = $subPath !== '' ? "$owner-$subPath" : "$owner-$repoSlug";
-        if ($branch !== '' && !in_array($branch, ['main', 'master'])) {
-            $baseName .= "-$branch";
-        }
-        $themeName = preg_replace('/[^a-zA-Z0-9._-]/', '-', $baseName);
-        $themeDirEnabled = "$stylesDir/$themeName";
-        $themeDirDisabled = "$stylesDir/$themeName.disabled";
-        $isUpdate = is_dir($themeDirEnabled) || is_dir($themeDirDisabled);
-        if (is_dir($themeDirEnabled)) $themeDir = $themeDirEnabled;
-        elseif (is_dir($themeDirDisabled)) $themeDir = $themeDirDisabled;
-        else $themeDir = $themeDirDisabled;
-        if (is_dir($themeDir)) {
-            $items = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($themeDir, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($items as $item) {
-                if ($item->getFilename() === '.fv3-source') continue;
-                if ($item->isDir()) @rmdir($item->getRealPath());
-                else @unlink($item->getRealPath());
-            }
-        } else {
-            @mkdir($themeDir, 0770, true);
-        }
-        $downloaded = [];
-        $cssFiles = array_slice($cssFiles, 0, $maxCssFiles);
-        foreach ($cssFiles as $file) {
-            if (!isset($file['download_url'])) continue;
-            $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
-            $subdir = $file['_subdir'] ?? '';
-            $targetDir = $themeDir;
-            if ($subdir !== '') {
-                $safeDir = preg_replace('/[^a-zA-Z0-9._-]/', '-', $subdir);
-                $targetDir = "$themeDir/$safeDir";
-                if (!is_dir($targetDir)) @mkdir($targetDir, 0770, true);
-            }
-            $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes);
-            if ($css !== false) {
-                fv3_atomic_write("$targetDir/$safeName", $css);
-                $downloaded[] = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
-            }
-        }
-        if (empty($downloaded)) return ['error' => 'Failed to download any CSS files.'];
-        $warnings = fv3_scan_css_warnings($themeDir, $downloaded);
-        $sourceData = ['repo' => $repoUrl, 'path' => $subPath, 'branch' => $branch, 'files' => []];
-        foreach ($cssFiles as $file) {
-            if (!isset($file['sha'])) continue;
-            $subdir = $file['_subdir'] ?? '';
-            $key = $subdir !== '' ? $subdir . '/' . $file['name'] : $file['name'];
-            $sourceData['files'][$key] = $file['sha'];
-        }
-        $sourceData['updated'] = date('c');
-        fv3_atomic_write("$themeDir/.fv3-source", json_encode($sourceData));
-        $result = ['success' => true, 'name' => $themeName, 'files' => $downloaded, 'is_update' => $isUpdate];
-        if (!empty($warnings)) $result['warnings'] = $warnings;
-        return $result;
-    }
-
-    function fv3_scan_css_warnings(string $baseDir, array $relPaths): array {
-        $warnings = [];
-        $patterns = [
-            'url(' => '/url\s*\(/i',
-            '@import' => '/@import\b/i',
-            'expression(' => '/expression\s*\(/i',
-            'javascript:' => '/javascript\s*:/i'
-        ];
-        foreach ($relPaths as $relPath) {
-            $filePath = "$baseDir/$relPath";
-            if (!file_exists($filePath)) continue;
-            $lines = file($filePath, FILE_IGNORE_NEW_LINES);
-            foreach ($lines as $lineNum => $line) {
-                foreach ($patterns as $label => $regex) {
-                    if (preg_match($regex, $line)) {
-                        $trimmed = trim($line);
-                        if (strlen($trimmed) > 120) $trimmed = substr($trimmed, 0, 120) . '...';
-                        $warning = [
-                            'file' => $relPath,
-                            'line' => $lineNum + 1,
-                            'type' => $label,
-                            'code' => $trimmed
-                        ];
-                        if ($label === 'url(' && preg_match('/url\s*\(\s*["\']?([^"\')\s]+)/i', $line, $urlMatch)) {
-                            $warning['url'] = $urlMatch[1];
-                        }
-                        $warnings[] = $warning;
-                    }
-                }
-            }
-        }
-        return $warnings;
-    }
-
-    function deleteTheme(string $entry) : void {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
-        $path = "$stylesDir/$entry";
-        if (!file_exists($path)) { http_response_code(404); exit; }
-        if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }
-        if (is_dir($path)) {
-            $items = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($items as $item) {
-                if ($item->isDir()) { @rmdir($item->getRealPath()); }
-                else { @unlink($item->getRealPath()); }
-            }
-            @rmdir($path);
-        } else {
-            @unlink($path);
-        }
-    }
+    // Theme listing, import, toggle and delete, and the styles/ confinement helpers they share
+    require_once(__DIR__ . '/themes.php');
 
     function exportAll() : array {
         global $configDir;
@@ -1248,6 +1091,7 @@
                 if ($item->isFile() && (preg_match('/\.css$/i', $item->getFilename()) || $item->getFilename() === '.fv3-source')) {
                     if (preg_match('/^_fv3-generated\./', $item->getFilename())) continue;
                     $relPath = substr($item->getRealPath(), strlen(realpath($stylesDir)) + 1);
+                    if (fv3_is_theme_scratch($relPath)) continue;
                     $content = file_get_contents($item->getRealPath());
                     $cssSize += strlen($content);
                     $bundle['custom_styles'][$relPath] = $content;
@@ -1309,19 +1153,12 @@
                 }
                 continue;
             }
-            // Folder maps are id => folder — allowlist the id keys so a crafted backup can't
-            // plant a folder id that breaks out of class/onclick attributes at render (XSS).
-            // Alphanumeric ONLY: every generator (folder.view/2/3) strips +/= and never emits
-            // them, and an id containing +/= would break jQuery selectors at render time.
+            // A key outside the id rule could break out of class/onclick markup (XSS): re-key it, keep the folder
             if ($key === 'docker' || $key === 'vm') {
                 $clean = [];
                 foreach ($data as $fid => $folder) {
-                    // (string) not is_string: json_decode gives an all-digit id an int key, which
-                    // the old check dropped — silently discarding that folder and reporting success
-                    $sid = (string)$fid;
-                    if (preg_match('#^[A-Za-z0-9]+$#D', $sid) && is_array($folder)) {
-                        $clean[$sid] = $folder;
-                    }
+                    if (!is_array($folder)) { continue; }
+                    $clean[fv3_is_folder_id($fid) ? (string)$fid : generateId()] = $folder;
                 }
                 // Imported bundles (and folder.view2 exports) can hold one container in two
                 // folders — first folder in bundle order keeps it (issue #62)
@@ -1343,10 +1180,7 @@
                 if (!preg_match('/\.css$/i', $relPath) && basename($relPath) !== '.fv3-source') continue;
                 if (preg_match('/\.\./', $relPath)) continue;
                 $fullPath = "$stylesDir/$relPath";
-                $dir = dirname($fullPath);
-                if (!is_dir($dir)) @mkdir($dir, 0770, true);
-                $dirReal = realpath($dir);
-                if ($dirReal === false || strpos($dirReal, $baseReal) !== 0) continue;
+                if (!fv3_mkdir_within(dirname($fullPath), (string)$baseReal)) continue;
                 fv3_atomic_write($fullPath, $content);
                 $restored[] = "styles/$relPath";
             }
@@ -1549,6 +1383,11 @@
 
     function generateId(int $length = 20) : string {
         return substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes((int)ceil($length * 3 / 4)))), 0, $length);
+    }
+
+    // Ids safe to write and to render into class/selector/onclick markup; int = all-digit JSON key
+    function fv3_is_folder_id($id) : bool {
+        return (is_string($id) || is_int($id)) && preg_match('/^[A-Za-z0-9_-]+$/D', (string)$id) === 1;
     }
 
     function createFile(string $type): void {
