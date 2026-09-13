@@ -648,7 +648,9 @@ $('#fv3-import-all').on('change', function() {
                 let result;
                 try {
                     const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
-                    result = (typeof resp === 'object' && resp !== null) ? resp : fv3SafeParse(resp, {});
+                    result = (typeof resp === 'object' && resp !== null) ? resp : fv3SafeParse(resp, null);
+                    // A reply that isn't a result object is a failed restore, never "0 items restored"
+                    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Invalid restore response');
                 } catch (err) {
                     console.error('Import Everything error:', err);
                     swal({ title: 'Error', text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });

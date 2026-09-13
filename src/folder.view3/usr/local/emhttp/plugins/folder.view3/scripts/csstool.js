@@ -1458,15 +1458,19 @@
         return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
     }
 
-    // A refused toggle shows the server's reason instead of passing silently; returns whether it went through
+    // A refused or failed toggle shows why instead of passing silently; returns whether it went through
     async function setThemeEnabled(entry, enable) {
-        const resp = await postForm(API + '/toggle_theme.php', { entry: entry, enable: enable ? 'true' : 'false' });
-        if (!resp.ok) {
-            let reason = 'HTTP ' + resp.status;
+        let reason;
+        try {
+            const resp = await postForm(API + '/toggle_theme.php', { entry: entry, enable: enable ? 'true' : 'false' });
+            if (resp.ok) return true;
+            reason = 'HTTP ' + resp.status;
             try { reason = (await resp.json()).error || reason; } catch (e) {}
-            swal({ title: 'Error', text: 'Could not ' + (enable ? 'enable' : 'disable') + ' the theme: ' + reason, type: 'error' });
+        } catch (e) {
+            reason = e.message || 'Network error';
         }
-        return resp.ok;
+        swal({ title: 'Error', text: 'Could not ' + (enable ? 'enable' : 'disable') + ' the theme: ' + reason, type: 'error' });
+        return false;
     }
 
     async function postFormJson(url, data) {

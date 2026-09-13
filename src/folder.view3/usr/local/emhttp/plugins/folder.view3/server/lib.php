@@ -775,7 +775,7 @@
         return $folders;
     }
 
-    function updateFolder(string $type, string $content, string $id = '') : void {
+    function updateFolder(string $type, string $content, ?string $id = null) : void {
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $decoded = json_decode($content, true);
@@ -799,8 +799,9 @@
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
             exit;
         }
-        // An unknown bad id (a folder-map import) gets a fresh one; a stored bad id is refused, never duplicated
-        if ($id === '' || (!fv3_is_folder_id($id) && !array_key_exists($id, $fileData))) {
+        // null (create.php) gets a fresh id, and so does an unknown bad id from a folder-map import; a stored bad id,
+        // '' included, is refused, never duplicated
+        if ($id === null || (!fv3_is_folder_id($id) && !array_key_exists($id, $fileData))) {
             $id = generateId();
         } elseif (!fv3_is_folder_id($id)) {
             http_response_code(400);

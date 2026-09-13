@@ -22,9 +22,10 @@
             $path = "$stylesDir/$entry";
             if (!is_dir($path)) {
                 if (preg_match('/^_fv3-generated\./', $entry)) continue;
-                if (!preg_match('/\.css$/', $entry)) continue;
-                $disabled = false;
-                $name = preg_replace('/\.css$/', '', $entry);
+                // A disabled flat theme is foo.css.disabled; list it so it can be enabled again
+                if (!preg_match('/\.css(\.disabled)?$/', $entry)) continue;
+                $disabled = (bool) preg_match('/\.disabled$/', $entry);
+                $name = preg_replace('/\.css(\.disabled)?$/', '', $entry);
             } else {
                 $disabled = (bool) preg_match('/\.disabled$/', $entry);
                 $name = preg_replace('/\.disabled$/', '', $entry);
@@ -102,7 +103,8 @@
         // A rename never replaces an existing entry, and one that fails is reported instead of a silent 200
         $move = fn(string $from, string $to): bool => !file_exists($to) && !is_link($to) && @rename($from, $to);
         $failed = [];
-        if ($exclusive && $enable) {
+        // Switching themes is for theme folders: enabling a flat CSS file leaves the folder themes alone
+        if ($exclusive && $enable && is_dir($path)) {
             foreach (fv3_scan_styles($stylesDir) as $e) {
                 if ($e === '.' || $e === '..' || !is_dir("$stylesDir/$e")) continue;
                 if (preg_match('/^_fv3-generated\./', $e)) continue;
@@ -164,6 +166,8 @@
             }
         }
         if (empty($cssFiles)) return ['error' => 'No CSS files found.'];
+        // All or nothing, like the downloads: a theme over the cap is refused, not installed short
+        if (count($cssFiles) > $maxCssFiles) return ['error' => "This theme has more than $maxCssFiles CSS files."];
         $repoParts = explode('/', $repoUrl);
         $owner = $repoParts[0];
         $repoSlug = $repoParts[1];
@@ -196,7 +200,6 @@
         $missing = [];
         $clashes = [];
         $seen = [];
-        $cssFiles = array_slice($cssFiles, 0, $maxCssFiles);
         foreach ($cssFiles as $file) {
             if (!isset($file['download_url'])) continue;
             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
