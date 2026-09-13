@@ -894,12 +894,12 @@
                 window._fv3ThemeUpdateCache[theme.name] = hasUpdate ? 'update' : 'current';
                 try { localStorage.setItem('fv3_theme_update_cache', JSON.stringify(window._fv3ThemeUpdateCache)); } catch(e) {}
                 if (hasUpdate) {
-                    checkEl.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="apply-update" style="color:#3b82f6">update ready</span></span>';
+                    checkEl.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="update-ready" style="color:#3b82f6">' + escapeAttr(fv3I18nOr('update-ready', 'update ready')) + '</span></span>';
                     const card = checkEl.closest('.fv3-theme-card');
                     const updateBtn = card?.querySelector('.fv3-theme-update');
                     if (updateBtn) updateBtn.style.display = '';
                 } else {
-                    checkEl.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">up-to-date</span></span>';
+                    checkEl.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">' + escapeAttr(fv3I18nOr('up-to-date', 'up-to-date')) + '</span></span>';
                 }
             } catch (e) {
                 console.warn('[FV3] Update check error for', theme.name, e);
@@ -966,7 +966,7 @@
                             ? '<button class="fv3-theme-disable">Disable</button>'
                             : '<button class="fv3-theme-activate">Enable</button>'}
                         ${repo ? '<button class="fv3-theme-check-update" title="Check for updates"><i class="fa fa-refresh"></i></button>' : ''}
-                        <button class="fv3-theme-update" title="Update from GitHub" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">apply update</span></button>
+                        <button class="fv3-theme-update" title="Update from GitHub" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">${escapeAttr(fv3I18nOr('apply-update', 'apply update'))}</span></button>
                         <button class="fv3-theme-delete" title="Delete"><i class="fa fa-trash"></i></button>
                     </div>`;
                 card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
@@ -1019,7 +1019,7 @@
             if (githubThemes.length > 0) {
                 const btnBar = document.createElement('div');
                 btnBar.className = 'fv3-theme-button-bar';
-                btnBar.innerHTML = '<button class="fv3-theme-check-all"><span data-i18n="check-for-updates">Check for Updates</span></button><button class="fv3-theme-update-all"><span data-i18n="update-all">Update All</span></button>';
+                btnBar.innerHTML = '<button class="fv3-theme-check-all"><span data-i18n="check-for-updates">' + escapeAttr(fv3I18nOr('check-for-updates', 'Check for Updates')) + '</span></button><button class="fv3-theme-update-all"><span data-i18n="update-all">' + escapeAttr(fv3I18nOr('update-all', 'Update All')) + '</span></button>';
                 btnBar.querySelector('.fv3-theme-check-all').addEventListener('click', () => {
                     runThemeUpdateCheck();
                 });
@@ -1132,11 +1132,11 @@
                 container.querySelectorAll('.fv3-update-check[data-theme]').forEach(el => {
                     var status = window._fv3ThemeUpdateCache[el.dataset.theme];
                     if (status === 'update') {
-                        el.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="apply-update" style="color:#3b82f6">update ready</span></span>';
+                        el.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="update-ready" style="color:#3b82f6">' + escapeAttr(fv3I18nOr('update-ready', 'update ready')) + '</span></span>';
                         var updateBtn = el.closest('.fv3-theme-card')?.querySelector('.fv3-theme-update');
                         if (updateBtn) updateBtn.style.display = '';
                     } else if (status === 'current') {
-                        el.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">up-to-date</span></span>';
+                        el.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">' + escapeAttr(fv3I18nOr('up-to-date', 'up-to-date')) + '</span></span>';
                     }
                 });
             }
