@@ -1182,7 +1182,9 @@
                 if (!preg_match('/\.css$/i', $relPath) && basename($relPath) !== '.fv3-source') continue;
                 if (preg_match('/\.\./', $relPath)) continue;
                 $fullPath = "$stylesDir/$relPath";
-                if (!fv3_mkdir_within(dirname($fullPath), (string)$baseReal)) continue;
+                if (!fv3_mkdir_within(dirname($fullPath), (string)$baseReal)) {
+                    return ['error' => "Could not create the folder for styles/$relPath (earlier sections were imported)", 'restored' => $restored];
+                }
                 if (!fv3_atomic_write($fullPath, $content)) {
                     return ['error' => "Could not write styles/$relPath (earlier sections were imported)", 'restored' => $restored];
                 }

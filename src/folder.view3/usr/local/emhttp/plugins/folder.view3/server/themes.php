@@ -218,6 +218,7 @@
         $missing = [];
         $clashes = [];
         $seen = [];
+        $stageReal = (string)realpath($stageDir);
         foreach ($cssFiles as $file) {
             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
             $subdir = $file['_subdir'] ?? '';
@@ -237,7 +238,8 @@
             $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes + 1);
             if ($css !== false && strlen($css) > $maxCssBytes) {
                 $missing[] = "$relPath (over 2 MB)";
-            } elseif ($css !== false && fv3_atomic_write("$targetDir/$safeName", $css)) {
+            // Re-confine right before the write: a swapped-in link since mkdir must not send the file outside staging
+            } elseif ($css !== false && fv3_path_within($targetDir, $stageReal) && fv3_atomic_write("$targetDir/$safeName", $css)) {
                 $downloaded[] = $relPath;
             } else {
                 $missing[] = $relPath;
@@ -285,8 +287,9 @@
         ];
         foreach ($relPaths as $relPath) {
             $filePath = "$baseDir/$relPath";
-            if (!file_exists($filePath)) continue;
-            $lines = file($filePath, FILE_IGNORE_NEW_LINES);
+            // Advisory scan only (url() is allowed by design): skip a file we can't read rather than crash or block the install
+            $lines = @file($filePath, FILE_IGNORE_NEW_LINES);
+            if ($lines === false) continue;
             foreach ($lines as $lineNum => $line) {
                 foreach ($patterns as $label => $regex) {
                     if (preg_match($regex, $line)) {
