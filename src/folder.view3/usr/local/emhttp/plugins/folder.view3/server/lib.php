@@ -1288,7 +1288,8 @@
             }
         }
         // Generate CSS file BEFORE object cast (generateCssFile expects arrays)
-        // Generated first, so a failed write leaves the saved config and its CSS in step
+        // Generated first so a failed write leaves css-config.json unchanged; files already
+        // written can sit ahead of it until the next successful save
         if (!generateCssFile($config)) {
             http_response_code(500);
             header('Content-Type: application/json');

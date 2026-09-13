@@ -24,11 +24,11 @@
                 if (preg_match('/^_fv3-generated\./', $entry)) continue;
                 // A disabled flat theme is foo.css.disabled; list it so it can be enabled again
                 if (!preg_match('/\.css(\.disabled)?$/i', $entry)) continue;
-                $disabled = (bool) preg_match('/\.disabled$/', $entry);
+                $disabled = (bool) preg_match('/\.disabled$/i', $entry);
                 $name = preg_replace('/\.css(\.disabled)?$/i', '', $entry);
             } else {
-                $disabled = (bool) preg_match('/\.disabled$/', $entry);
-                $name = preg_replace('/\.disabled$/', '', $entry);
+                $disabled = (bool) preg_match('/\.disabled$/i', $entry);
+                $name = preg_replace('/\.disabled$/i', '', $entry);
             }
             $source = null;
             // A linked entry stays listed so it can be deleted, but nothing is read through a link
@@ -100,7 +100,8 @@
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
-        $isDisabled = (bool) preg_match('/\.disabled$/', $entry);
+        // Case-insensitive like custom.php's folder filter, so the listed state matches what actually loads
+        $isDisabled = (bool) preg_match('/\.disabled$/i', $entry);
         $moves = [];
         // Switching themes is for theme folders. Flat CSS files are custom CSS that custom.php layers over any
         // theme, so they are deliberately left as they are
@@ -108,11 +109,11 @@
             foreach (fv3_scan_styles($stylesDir) as $e) {
                 if ($e === '.' || $e === '..' || !is_dir("$stylesDir/$e")) continue;
                 if (preg_match('/^_fv3-generated\./', $e)) continue;
-                if (!preg_match('/\.disabled$/', $e) && $e !== $entry) $moves[] = ["$stylesDir/$e", "$stylesDir/$e.disabled", $e];
+                if (!preg_match('/\.disabled$/i', $e) && $e !== $entry) $moves[] = ["$stylesDir/$e", "$stylesDir/$e.disabled", $e];
             }
         }
         if ($enable && $isDisabled) {
-            $moves[] = [$path, "$stylesDir/" . preg_replace('/\.disabled$/', '', $entry), $entry];
+            $moves[] = [$path, "$stylesDir/" . preg_replace('/\.disabled$/i', '', $entry), $entry];
         } else if (!$enable && !$isDisabled) {
             $moves[] = [$path, "$path.disabled", $entry];
         }
