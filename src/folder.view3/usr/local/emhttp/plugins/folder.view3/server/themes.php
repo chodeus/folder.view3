@@ -100,28 +100,43 @@
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
-        // A rename never replaces an existing entry, and one that fails is reported instead of a silent 200
-        $move = fn(string $from, string $to): bool => !file_exists($to) && !is_link($to) && @rename($from, $to);
-        $failed = [];
-        // Switching themes is for theme folders: enabling a flat CSS file leaves the folder themes alone
+        $isDisabled = (bool) preg_match('/\.disabled$/', $entry);
+        $moves = [];
+        // Switching themes is for theme folders. Flat CSS files are custom CSS that custom.php layers over any
+        // theme, so they are deliberately left as they are
         if ($exclusive && $enable && is_dir($path)) {
             foreach (fv3_scan_styles($stylesDir) as $e) {
                 if ($e === '.' || $e === '..' || !is_dir("$stylesDir/$e")) continue;
                 if (preg_match('/^_fv3-generated\./', $e)) continue;
-                $ePath = "$stylesDir/$e";
-                if (!preg_match('/\.disabled$/', $e) && $e !== $entry && !$move($ePath, $ePath . '.disabled')) $failed[] = $e;
+                if (!preg_match('/\.disabled$/', $e) && $e !== $entry) $moves[] = ["$stylesDir/$e", "$stylesDir/$e.disabled", $e];
             }
         }
-        $isDisabled = (bool) preg_match('/\.disabled$/', $entry);
         if ($enable && $isDisabled) {
-            if (!$move($path, "$stylesDir/" . preg_replace('/\.disabled$/', '', $entry))) $failed[] = $entry;
+            $moves[] = [$path, "$stylesDir/" . preg_replace('/\.disabled$/', '', $entry), $entry];
         } else if (!$enable && !$isDisabled) {
-            if (!$move($path, $path . '.disabled')) $failed[] = $entry;
+            $moves[] = [$path, "$path.disabled", $entry];
         }
-        if ($failed) {
+        // All or nothing: every destination must be free before the first rename, and a rename that still fails
+        // puts the earlier ones back
+        $blocked = array_column(array_filter($moves, fn($m) => file_exists($m[1]) || is_link($m[1])), 2);
+        $stuck = [];
+        if (!$blocked) {
+            $done = [];
+            foreach ($moves as $m) {
+                if (@rename($m[0], $m[1])) { $done[] = $m; continue; }
+                $blocked = [$m[2]];
+                foreach (array_reverse($done) as $d) {
+                    if (!@rename($d[1], $d[0])) $stuck[] = $d[2];
+                }
+                break;
+            }
+        }
+        if ($blocked) {
             http_response_code(500);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Could not rename: ' . implode(', ', $failed)]);
+            $error = 'Could not rename: ' . implode(', ', $blocked);
+            if ($stuck) $error .= '. Could not restore: ' . implode(', ', $stuck);
+            echo json_encode(['error' => $error]);
             exit;
         }
     }

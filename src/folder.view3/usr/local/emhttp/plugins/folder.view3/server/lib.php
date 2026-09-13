@@ -97,6 +97,17 @@
         return $value;
     }
 
+    // For a field whose absence would read as "empty" and wipe saved state: missing is a 400, never a default
+    function fv3_post_required(string $key): string {
+        if (!array_key_exists($key, $_POST)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => "Missing field: $key"]);
+            exit;
+        }
+        return fv3_post_string($key);
+    }
+
     function fv3_security_headers(): void {
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');
