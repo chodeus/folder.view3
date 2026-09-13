@@ -167,11 +167,12 @@
         }
         if ($subPath === '') {
             $dirs = array_filter($contents, fn($f) => isset($f['name']) && $f['type'] === 'dir');
+            $failedDirs = [];
             foreach ($dirs as $dir) {
                 $subRaw = @file_get_contents($apiBase . rawurlencode($dir['name']) . $refParam, false, $ctx);
-                if ($subRaw === false) continue;
+                if ($subRaw === false) { $failedDirs[] = $dir['name']; continue; }
                 $subContents = json_decode($subRaw, true);
-                if (!is_array($subContents)) continue;
+                if (!is_array($subContents)) { $failedDirs[] = $dir['name']; continue; }
                 foreach ($subContents as $sf) {
                     if (isset($sf['name']) && $sf['type'] === 'file' && preg_match('/\.css$/i', $sf['name'])) {
                         $sf['_subdir'] = $dir['name'];
@@ -179,6 +180,8 @@
                     }
                 }
             }
+            // A dir we could not inspect might hold theme files; installing the rest would be a partial theme
+            if ($failedDirs) return ['error' => 'Could not inspect theme folders: ' . implode(', ', $failedDirs)];
         }
         if (empty($cssFiles)) return ['error' => 'No CSS files found.'];
         // All or nothing, like the downloads: a theme over the cap is refused, not installed short

@@ -37,8 +37,8 @@ const type = new URLSearchParams(location.search).get('type');
 const folderId = new URLSearchParams(location.search).get('id');
 // Only a missing id means a new folder: ?id= is a real (hand-edited) '' key, which must load, not be created again
 const isEdit = folderId !== null;
-// Save stays blocked until an edited folder has loaded, so a failed load can't overwrite it with a blank form
-let fv3FolderLoaded = !isEdit;
+// Save stays blocked until setup finishes: a rejected load (either mode) must not overwrite a folder with a half-built form
+let fv3FolderLoaded = false;
 const fv3LoadFailedAlert = () => swal({ title: 'Error', text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
 
 const rgbToHex = (rgb) => {
@@ -162,7 +162,6 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         updateForm();
         updateRegex(form.regex);
         updateIcon(form.icon);
-        fv3FolderLoaded = true;
     } else {
         try {
             const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
@@ -275,6 +274,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     }
 
     $('.canvas form div.basic > dl > dt').css('cursor', 'default').wrapInner('<span style="cursor: help;"></span>');
+    // Reached only if every await above resolved; a rejection skips this and the catch alerts
+    fv3FolderLoaded = true;
 })().catch((err) => {
     console.error('[FV3] Folder editor setup failed:', err);
     if (!fv3FolderLoaded) fv3LoadFailedAlert();

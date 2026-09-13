@@ -1299,18 +1299,14 @@
                 $config[$mapKey] = (object)$config[$mapKey];
             }
         }
-        $path = "$configDir/css-config.json";
+        // Atomic write (temp + rename): a short write can't leave css-config.json truncated, and a reader never sees a torn file
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($config, JSON_PRETTY_PRINT));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
+        if (!fv3_atomic_write("$configDir/css-config.json", json_encode($config, JSON_PRETTY_PRINT))) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not save the CSS configuration.']);
+            exit;
+        }
     }
 
     // False when a generated file could not be written or removed
