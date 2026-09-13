@@ -130,7 +130,7 @@ const buildOrderedExport = async (folders, type) => {
 };
 
 const downloadDocker = async (id) => {
-    if (id) {
+    if (id !== undefined) {
         downloadFile(`${dockers[id].name}.json`, JSON.stringify(dockers[id]));
     } else {
         try {
@@ -280,10 +280,11 @@ const showBatchErrors = (failed, many, one = null, extra = '') => {
 // Deletes one folder, or every folder of the type when id is omitted; the confirm stays open until the deletes settle
 const clearFolders = (type, id) => {
     const folders = type === 'docker' ? dockers : vms;
-    const ids = id ? [id] : Object.keys(folders);
+    // Only an omitted id means every folder: '' is a real (hand-edited) key
+    const ids = id !== undefined ? [id] : Object.keys(folders);
     swal({
         title: 'Are you sure?',
-        text: id ? `Remove folder: ${escapeHtml(folders[id].name)}` : 'Remove ALL folders',
+        text: id !== undefined ? `Remove folder: ${escapeHtml(folders[id].name)}` : 'Remove ALL folders',
         type: 'warning',
         html: true,
         showCancelButton: true,
@@ -305,7 +306,7 @@ const clearDocker = (id) => clearFolders('docker', id);
 const clearVm = (id) => clearFolders('vm', id);
 
 const downloadVm = async (id) => {
-    if (id) {
+    if (id !== undefined) {
         downloadFile(`${vms[id].name}.json`, JSON.stringify(vms[id]));
     } else {
         try {

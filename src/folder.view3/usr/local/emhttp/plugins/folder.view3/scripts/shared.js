@@ -1340,7 +1340,7 @@ window.fv3RunUserScript = async (act, prom) => {
 
 // Row separators
 window.fv3UpdateRowSeparators = (folderMap, folderId) => {
-    const ids = folderId ? [folderId] : Object.keys(folderMap);
+    const ids = folderId !== undefined ? [folderId] : Object.keys(folderMap);
     ids.forEach(id => {
         const folder = folderMap[id];
         if (!folder || !folder.settings.preview_row_separator || folder.settings.preview_overflow !== 1) return;

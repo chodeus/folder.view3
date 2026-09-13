@@ -216,7 +216,6 @@
         $clashes = [];
         $seen = [];
         foreach ($cssFiles as $file) {
-            if (!isset($file['download_url'])) continue;
             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
             $subdir = $file['_subdir'] ?? '';
             $targetDir = $stageDir;
@@ -229,6 +228,8 @@
             // Two GitHub names can clean up to one file name, and the later would overwrite the earlier
             if (isset($seen[$relPath])) { $clashes[] = ($subdir !== '' ? "$subdir/" : '') . $file['name']; continue; }
             $seen[$relPath] = true;
+            // A listed file with no download link fails the import like any other file that can't be fetched
+            if (!is_string($file['download_url'] ?? null)) { $missing[] = "$relPath (no download link)"; continue; }
             // One byte past the cap tells a too-large file from one that fits exactly
             $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes + 1);
             if ($css !== false && strlen($css) > $maxCssBytes) {
