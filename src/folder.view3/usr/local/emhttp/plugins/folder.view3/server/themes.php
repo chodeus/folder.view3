@@ -1,10 +1,23 @@
 <?php
+    // Lists styles/ or answers 500: an unreadable folder must not look like "no themes"
+    function fv3_scan_styles(string $stylesDir): array {
+        $entries = @scandir($stylesDir);
+        if ($entries === false) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'The styles folder could not be read.']);
+            exit;
+        }
+        return $entries;
+    }
+
     function listThemes() : array {
         global $configDir;
         $stylesDir = "$configDir/styles";
         if (!is_dir($stylesDir)) return [];
+        $baseReal = (string)realpath($stylesDir);
         $themes = [];
-        foreach (scandir($stylesDir) as $entry) {
+        foreach (fv3_scan_styles($stylesDir) as $entry) {
             if ($entry === '.' || $entry === '..' || fv3_is_theme_scratch($entry)) continue;
             $path = "$stylesDir/$entry";
             if (!is_dir($path)) {
@@ -17,9 +30,10 @@
                 $name = preg_replace('/\.disabled$/', '', $entry);
             }
             $source = null;
-            if (is_dir($path)) {
+            // A linked entry stays listed so it can be deleted, but nothing is read through a link
+            if (is_dir($path) && !is_link($path) && fv3_path_within($path, $baseReal)) {
                 $srcFile = $path . '/.fv3-source';
-                if (file_exists($srcFile)) {
+                if (file_exists($srcFile) && !is_link($srcFile)) {
                     $raw = trim(file_get_contents($srcFile));
                     $parsed = json_decode($raw, true);
                     $source = is_array($parsed) ? $parsed : ['repo' => $raw];
@@ -85,22 +99,28 @@
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
+        // A rename never replaces an existing entry, and one that fails is reported instead of a silent 200
+        $move = fn(string $from, string $to): bool => !file_exists($to) && !is_link($to) && @rename($from, $to);
+        $failed = [];
         if ($exclusive && $enable) {
-            foreach (scandir($stylesDir) as $e) {
+            foreach (fv3_scan_styles($stylesDir) as $e) {
                 if ($e === '.' || $e === '..' || !is_dir("$stylesDir/$e")) continue;
                 if (preg_match('/^_fv3-generated\./', $e)) continue;
                 $ePath = "$stylesDir/$e";
-                if (!preg_match('/\.disabled$/', $e) && $e !== $entry) {
-                    @rename($ePath, $ePath . '.disabled');
-                }
+                if (!preg_match('/\.disabled$/', $e) && $e !== $entry && !$move($ePath, $ePath . '.disabled')) $failed[] = $e;
             }
         }
         $isDisabled = (bool) preg_match('/\.disabled$/', $entry);
         if ($enable && $isDisabled) {
-            $newName = preg_replace('/\.disabled$/', '', $entry);
-            @rename($path, "$stylesDir/$newName");
+            if (!$move($path, "$stylesDir/" . preg_replace('/\.disabled$/', '', $entry))) $failed[] = $entry;
         } else if (!$enable && !$isDisabled) {
-            @rename($path, $path . '.disabled');
+            if (!$move($path, $path . '.disabled')) $failed[] = $entry;
+        }
+        if ($failed) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not rename: ' . implode(', ', $failed)]);
+            exit;
         }
     }
 
@@ -174,6 +194,8 @@
         };
         $downloaded = [];
         $missing = [];
+        $clashes = [];
+        $seen = [];
         $cssFiles = array_slice($cssFiles, 0, $maxCssFiles);
         foreach ($cssFiles as $file) {
             if (!isset($file['download_url'])) continue;
@@ -186,15 +208,22 @@
                 if (!is_dir($targetDir)) @mkdir($targetDir, 0770, true);
             }
             $relPath = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
-            $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes);
-            if ($css !== false && fv3_atomic_write("$targetDir/$safeName", $css)) {
+            // Two GitHub names can clean up to one file name, and the later would overwrite the earlier
+            if (isset($seen[$relPath])) { $clashes[] = ($subdir !== '' ? "$subdir/" : '') . $file['name']; continue; }
+            $seen[$relPath] = true;
+            // One byte past the cap tells a too-large file from one that fits exactly
+            $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes + 1);
+            if ($css !== false && strlen($css) > $maxCssBytes) {
+                $missing[] = "$relPath (over 2 MB)";
+            } elseif ($css !== false && fv3_atomic_write("$targetDir/$safeName", $css)) {
                 $downloaded[] = $relPath;
             } else {
                 $missing[] = $relPath;
             }
         }
+        if ($clashes) return $fail('These files would overwrite another once their names are cleaned up: ' . implode(', ', $clashes));
+        if ($missing) return $fail(($downloaded ? 'Could not download: ' : 'Failed to download any CSS files: ') . implode(', ', $missing));
         if (empty($downloaded)) return $fail('Failed to download any CSS files.');
-        if ($missing) return $fail('Could not download: ' . implode(', ', $missing));
         $warnings = fv3_scan_css_warnings($stageDir, $downloaded);
         $sourceData = ['repo' => $repoUrl, 'path' => $subPath, 'branch' => $branch, 'files' => []];
         foreach ($cssFiles as $file) {

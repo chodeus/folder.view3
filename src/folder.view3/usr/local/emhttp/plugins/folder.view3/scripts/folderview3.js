@@ -467,7 +467,7 @@ const fv3SubmitSettings = async (quiet = false) => {
     }
     if (Object.keys(changed).length === 0) {
         if (!quiet) swal({ title: 'No Changes', text: 'Settings are unchanged.', type: 'info', timer: 1500 });
-        return;
+        return true;
     }
     try {
         await $.ajax({
@@ -478,10 +478,12 @@ const fv3SubmitSettings = async (quiet = false) => {
         fv3LoadedSettings = { ...fv3LoadedSettings, ...changed };
         fv3ApplyFormState(fv3LoadedSettings);
         if (!quiet) swal({ title: 'Saved', text: 'Settings saved.', type: 'success', timer: 1500 });
+        return true;
     } catch (e) {
         var msg = e.responseText || e.statusText || e.message || 'Unknown error';
         console.error('Failed to save settings:', msg);
         swal({ title: 'Error', text: 'Failed to save settings: ' + msg, type: 'error' });
+        return false;
     }
 };
 
@@ -511,8 +513,8 @@ $('#fv3-apply-defaults').on('click', function() {
         ...swalLoaderOpts
     }, async (confirmed) => {
         if (!confirmed) return;
-        // Quiet: its timed toasts would close this dialog's result before it could be read
-        await fv3SubmitSettings(true);
+        // Quiet: its timed toasts would close this dialog's result. A failed save shows its error and stops here
+        if (!(await fv3SubmitSettings(true))) return;
         const settings = fv3CollectSettings();
         const defaultMap = {
             preview: parseInt(settings.default_preview !== undefined ? settings.default_preview : '1', 10),
