@@ -1168,7 +1168,9 @@
             $path = "$configDir/$filename";
             $flags = JSON_PRETTY_PRINT;
             if (empty($data)) $flags |= JSON_FORCE_OBJECT;
-            fv3_atomic_write($path, json_encode($data, $flags));
+            if (!fv3_atomic_write($path, json_encode($data, $flags))) {
+                return ['error' => "Could not write $filename (earlier sections were imported)", 'restored' => $restored];
+            }
             $restored[] = $filename;
         }
         if (isset($bundle['custom_styles']) && is_array($bundle['custom_styles'])) {
@@ -1181,12 +1183,16 @@
                 if (preg_match('/\.\./', $relPath)) continue;
                 $fullPath = "$stylesDir/$relPath";
                 if (!fv3_mkdir_within(dirname($fullPath), (string)$baseReal)) continue;
-                fv3_atomic_write($fullPath, $content);
+                if (!fv3_atomic_write($fullPath, $content)) {
+                    return ['error' => "Could not write styles/$relPath (earlier sections were imported)", 'restored' => $restored];
+                }
                 $restored[] = "styles/$relPath";
             }
         }
         if (isset($bundle['css_config']) && is_array($bundle['css_config'])) {
-            generateCssFile($bundle['css_config']);
+            if (!generateCssFile($bundle['css_config'])) {
+                return ['error' => 'Could not write the generated CSS (earlier sections were imported)', 'restored' => $restored];
+            }
         }
         // apply the restored folder layout / autostart mode to the live start order immediately
         syncContainerOrder('docker');
@@ -1280,7 +1286,13 @@
             }
         }
         // Generate CSS file BEFORE object cast (generateCssFile expects arrays)
-        generateCssFile($config);
+        // Generated first, so a failed write leaves the saved config and its CSS in step
+        if (!generateCssFile($config)) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not write the generated CSS files.']);
+            exit;
+        }
         // Ensure map keys are always serialized as JSON objects (PHP encodes empty arrays as [])
         foreach (['global', 'dashboard', 'docker', 'vm', 'page_presets', 'page_values'] as $mapKey) {
             if (isset($config[$mapKey]) && is_array($config[$mapKey])) {
@@ -1301,8 +1313,10 @@
         @chmod($path, 0660);
     }
 
-    function generateCssFile(array $config) : void {
+    // False when a generated file could not be written or removed
+    function generateCssFile(array $config) : bool {
         global $configDir;
+        $ok = true;
         $defaults = readCssDefaults();
         $stylesDir = "$configDir/styles";
         if (!is_dir($stylesDir)) { @mkdir($stylesDir, 0770, true); }
@@ -1343,9 +1357,9 @@
         }
         $outPath = "$stylesDir/_fv3-generated.docker-vm-dashboard.css";
         if ($hasGlobal) {
-            fv3_atomic_write($outPath, $globalCss);
+            $ok = fv3_atomic_write($outPath, $globalCss) && $ok;
         } else {
-            @unlink($outPath);
+            $ok = (!file_exists($outPath) || @unlink($outPath)) && $ok;
         }
 
         // Page-scoped variables + custom CSS → per-page files
@@ -1374,11 +1388,12 @@
 
             $scopePath = "$stylesDir/_fv3-generated.{$scope}.css";
             if ($hasScope) {
-                fv3_atomic_write($scopePath, $scopeCss);
+                $ok = fv3_atomic_write($scopePath, $scopeCss) && $ok;
             } else {
-                @unlink($scopePath);
+                $ok = (!file_exists($scopePath) || @unlink($scopePath)) && $ok;
             }
         }
+        return $ok;
     }
 
     function generateId(int $length = 20) : string {
