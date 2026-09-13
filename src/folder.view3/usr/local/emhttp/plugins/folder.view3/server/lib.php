@@ -1164,6 +1164,8 @@
                 // folders — first folder in bundle order keeps it (issue #62)
                 $data = fv3_dedupe_explicit_members($clean);
             }
+            // Same validation an interactive save gets, before it is written AND before it is generated
+            if ($key === 'css_config') { $data = fv3_sanitize_css_config($data); $bundle['css_config'] = $data; }
             $filename = $key === 'css_config' ? 'css-config.json' : "$key.json";
             $path = "$configDir/$filename";
             $flags = JSON_PRETTY_PRINT;
@@ -1263,11 +1265,9 @@
         ];
     }
 
-    function updateCssConfig(string $json) : void {
-        global $configDir;
-        if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
-        $config = json_decode($json, true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($config)) { http_response_code(400); echo 'Invalid JSON'; exit; }
+    // Allowlisted keys, stripped custom CSS, scalar variable values: the CSS endpoint and a restore
+    // must not disagree about what is storable
+    function fv3_sanitize_css_config(array $config) : array {
         $allowedKeys = ['preset', 'global', 'dashboard', 'docker', 'vm', 'custom_css', 'custom_css_dashboard', 'custom_css_docker', 'custom_css_vm', 'toggle_style', 'custom_presets', 'user_notes', 'page_presets', 'page_values'];
         foreach (array_keys($config) as $k) {
             if (!in_array($k, $allowedKeys, true)) { unset($config[$k]); }
@@ -1287,6 +1287,15 @@
                 }
             }
         }
+        return $config;
+    }
+
+    function updateCssConfig(string $json) : void {
+        global $configDir;
+        if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
+        $config = json_decode($json, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($config)) { http_response_code(400); echo 'Invalid JSON'; exit; }
+        $config = fv3_sanitize_css_config($config);
         // Generate CSS file BEFORE object cast (generateCssFile expects arrays)
         // Generated first so a failed write leaves css-config.json unchanged; files already
         // written can sit ahead of it until the next successful save
