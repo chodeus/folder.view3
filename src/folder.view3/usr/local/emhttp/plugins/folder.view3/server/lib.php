@@ -1080,6 +1080,15 @@
         return $real !== false && $baseReal !== '' && strpos($real . '/', rtrim($baseReal, '/') . '/') === 0;
     }
 
+    // mkdir -p that can't lead out of $baseReal: the nearest existing ancestor (a dangling link counts) must resolve inside it
+    function fv3_mkdir_within(string $dir, string $baseReal): bool {
+        $probe = $dir;
+        while (!file_exists($probe) && !is_link($probe) && dirname($probe) !== $probe) { $probe = dirname($probe); }
+        if (!fv3_path_within($probe, $baseReal)) return false;
+        if (!is_dir($dir)) @mkdir($dir, 0770, true);
+        return is_dir($dir) && fv3_path_within($dir, $baseReal);
+    }
+
     // Empties $dir without following a link out of $baseReal.
     // False when anything could not be removed, so a partial clear is never reported as done.
     function fv3_clear_tree(string $dir, string $baseReal): bool {
@@ -1439,9 +1448,7 @@
                 if (!preg_match('/\.css$/i', $relPath) && basename($relPath) !== '.fv3-source') continue;
                 if (preg_match('/\.\./', $relPath)) continue;
                 $fullPath = "$stylesDir/$relPath";
-                $dir = dirname($fullPath);
-                if (!is_dir($dir)) @mkdir($dir, 0770, true);
-                if (!fv3_path_within($dir, (string)$baseReal)) continue;
+                if (!fv3_mkdir_within(dirname($fullPath), (string)$baseReal)) continue;
                 fv3_atomic_write($fullPath, $content);
                 $restored[] = "styles/$relPath";
             }

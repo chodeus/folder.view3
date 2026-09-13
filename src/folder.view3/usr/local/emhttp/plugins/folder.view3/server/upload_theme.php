@@ -73,14 +73,8 @@
             // Re-validate the extension on the ACTUAL on-disk name — paths[] is independent of the .css-checked upload name
             if ($safePath === '' || strtolower(pathinfo($safePath, PATHINFO_EXTENSION)) !== 'css') continue;
             $targetPath = "$destDir/$safePath";
-            $targetParent = dirname($targetPath);
-            // mkdir -p follows a linked component, so confine the nearest existing ancestor first
-            $probe = $targetParent;
-            while (!file_exists($probe) && strlen($probe) > strlen($destDir)) { $probe = dirname($probe); }
-            if ($realDest === false || !fv3_path_within($probe, $realDest)) continue;
-            if (!is_dir($targetParent)) { @mkdir($targetParent, 0770, true); }
-            // Re-confine the resolved parent, and never write onto a link
-            if (!fv3_path_within($targetParent, $realDest) || is_link($targetPath)) continue;
+            // Parent folders stay inside the theme folder, and a link is never written through
+            if ($realDest === false || !fv3_mkdir_within(dirname($targetPath), $realDest) || is_link($targetPath)) continue;
             if (move_uploaded_file($files['tmp_name'][$i], $targetPath)) {
                 @chmod($targetPath, 0660);
                 $saved++;
