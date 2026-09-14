@@ -390,6 +390,12 @@
         return $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
     }
 
+    // null when the file cannot be read: a caller that rebuilds the file from these lines must stop, not write []
+    function fv3_read_autostart_lines(string $file): ?array {
+        $lines = @file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        return $lines === false ? null : $lines;
+    }
+
     function readAutostartConfig(): array {
         global $configDir;
         $cfg = fv3_read_json_strict("$configDir/autostart.json");
@@ -446,7 +452,7 @@
         // Fold wait edits into the live file — a name only matches a line that already has autostart enabled
         $autoStartFile = fv3_autostart_file();
         if (!empty($waits) && file_exists($autoStartFile)) {
-            $lines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            $lines = fv3_read_autostart_lines($autoStartFile) ?? [];
             $changed = false;
             foreach ($lines as $i => $line) {
                 $name = explode(' ', $line, 2)[0];
@@ -470,9 +476,9 @@
         $autoStartFile = fv3_autostart_file();
         if (!file_exists($autoStartFile)) return;
         $sequence = readAutostartConfig()['sequence'];
-        $autoStartLines = fv3_prune_stale_autostart(
-            @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [],
-            $allContainerNames, $ctListComplete);
+        $rawLines = fv3_read_autostart_lines($autoStartFile);
+        if ($rawLines === null) { fv3_debug_log("fv3_apply_custom_autostart: $autoStartFile unreadable, not rewriting"); return; }
+        $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
         $autoStartMap = [];
         foreach ($autoStartLines as $line) {
             $autoStartMap[explode(' ', $line, 2)[0]] = $line;
@@ -734,9 +740,9 @@
         // Unraid owns it, and writes it only when the user explicitly drag-reorders.
         $autoStartFile = fv3_autostart_file();
         if (file_exists($autoStartFile)) {
-            $autoStartLines = fv3_prune_stale_autostart(
-                @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [],
-                $allContainerNames, $ctListComplete);
+            $rawLines = fv3_read_autostart_lines($autoStartFile);
+            if ($rawLines === null) { fv3_debug_log("syncContainerOrder: $autoStartFile unreadable, not rewriting"); return; }
+            $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
             $autoStartMap = [];
             foreach ($autoStartLines as $line) {
                 $parts = explode(' ', $line, 2);
@@ -895,7 +901,8 @@
             fv3_atomic_write($path, '{}');
         }
         $raw = @file_get_contents($path);
-        return ($raw !== false) ? $raw : '{}';
+        // A blank or hand-edited file is answered as '{}': every client parses this body as JSON
+        return ($raw !== false && is_object(json_decode($raw))) ? $raw : '{}';
     }
 
     function updateSettings(string $key, string $value) : void {
@@ -1111,46 +1118,28 @@
         if (strlen($json) > 5242880) return ['error' => 'Bundle too large (5MB max)'];
         $bundle = json_decode($json, true);
         if (!$bundle || !isset($bundle['fv3_export_version'])) return ['error' => 'Invalid FV3 export file'];
-        $restored = [];
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
-        // Confinement gate for EVERY write below, not just the snapshot branch: refuse the
-        // whole import if the config dir path resolves through a symlink or doesn't exist.
+        // Confinement gate for EVERY write below: refuse the whole import if the config dir path
+        // resolves through a symlink or doesn't exist.
         if (realpath($configDir) !== $configDir) {
             return ['error' => 'Plugin config directory failed its confinement check — import aborted'];
         }
+        $files = [];  // relative path => content, applied together by fv3_replace_files()
+        $clear = [];  // relative paths the bundle says to remove
         foreach (['docker', 'vm', 'settings', 'autostart', 'css_config', 'order_docker', 'order_vm'] as $key) {
             if (!isset($bundle[$key]) || !is_array($bundle[$key])) continue;
             $data = $bundle[$key];
             if ($key === 'order_docker' || $key === 'order_vm') {
                 $t = $key === 'order_docker' ? 'docker' : 'vm';
-                $snapFile = fv3_order_snapshot_file($t);
-                if ($data === []) {
-                    // Exactly [] is how export represents "source has no snapshot" — clear any
-                    // pre-existing destination snapshot so it can't position the freshly
-                    // imported folders. A bundle without the key leaves the destination alone.
-                    if (file_exists($snapFile)) {
-                        if (!@unlink($snapFile)) {
-                            // A stale snapshot the bundle said to remove must not survive a "success"
-                            return ['error' => "Could not clear order-$t.json — remove it manually (earlier sections were imported)"];
-                        }
-                        $restored[] = "order-$t.json (cleared)";
-                    }
-                    continue;
-                }
+                // Exactly [] is how export represents "source has no snapshot" — clear any
+                // pre-existing destination snapshot so it can't position the freshly
+                // imported folders. A bundle without the key leaves the destination alone.
+                if ($data === []) { $clear[] = "order-$t.json"; continue; }
                 // Same validation as export: a malformed wrapper is corrupt/tampered input and
                 // must not fall through to the clear branch or to a destructive restore.
                 $entries = fv3_validate_order_snapshot($data);
                 if ($entries === null) { continue; }
-                if (saveOrderSnapshot($t, $entries)) {
-                    $restored[] = "order-$t.json";
-                } else {
-                    // Validated entries can only fail on the atomic write itself; the source
-                    // provably had a different snapshot, so drop the stale destination copy
-                    // rather than let it position the imported folders (heal simply disables).
-                    if (file_exists($snapFile) && !@unlink($snapFile)) {
-                        return ['error' => "Could not update order-$t.json — remove it manually (earlier sections were imported)"];
-                    }
-                }
+                $files["order-$t.json"] = json_encode(['fv3_order_version' => 1, 'entries' => $entries], JSON_PRETTY_PRINT);
                 continue;
             }
             // A key outside the id rule could break out of class/onclick markup (XSS): re-key it, keep the folder
@@ -1166,41 +1155,83 @@
             }
             // Same validation an interactive save gets, before it is written AND before it is generated
             if ($key === 'css_config') { $data = fv3_sanitize_css_config($data); $bundle['css_config'] = $data; }
-            $filename = $key === 'css_config' ? 'css-config.json' : "$key.json";
-            $path = "$configDir/$filename";
             $flags = JSON_PRETTY_PRINT;
             if (empty($data)) $flags |= JSON_FORCE_OBJECT;
-            if (!fv3_atomic_write($path, json_encode($data, $flags))) {
-                return ['error' => "Could not write $filename (earlier sections were imported)", 'restored' => $restored];
-            }
-            $restored[] = $filename;
+            $files[$key === 'css_config' ? 'css-config.json' : "$key.json"] = json_encode($data, $flags);
         }
         if (isset($bundle['custom_styles']) && is_array($bundle['custom_styles'])) {
-            $stylesDir = "$configDir/styles";
-            if (!is_dir($stylesDir)) @mkdir($stylesDir, 0770, true);
-            $baseReal = realpath($stylesDir);
             foreach ($bundle['custom_styles'] as $relPath => $content) {
                 if (!is_string($content) || !is_string($relPath)) continue;
                 if (!preg_match('/\.css$/i', $relPath) && basename($relPath) !== '.fv3-source') continue;
                 if (preg_match('/\.\./', $relPath)) continue;
-                $fullPath = "$stylesDir/$relPath";
-                if (!fv3_mkdir_within(dirname($fullPath), (string)$baseReal)) {
-                    return ['error' => "Could not create the folder for styles/$relPath (earlier sections were imported)", 'restored' => $restored];
-                }
-                if (!fv3_atomic_write($fullPath, $content)) {
-                    return ['error' => "Could not write styles/$relPath (earlier sections were imported)", 'restored' => $restored];
-                }
-                $restored[] = "styles/$relPath";
+                $files["styles/$relPath"] = $content;
             }
         }
+        $result = fv3_replace_files($configDir, $files, $clear);
+        if (isset($result['error'])) return $result;
+        $restored = [];
+        foreach ($result['applied'] as $rel => $hadOld) { $restored[] = isset($files[$rel]) ? $rel : "$rel (cleared)"; }
         if (isset($bundle['css_config']) && is_array($bundle['css_config'])) {
             if (!generateCssFile($bundle['css_config'])) {
-                return ['error' => 'Could not write the generated CSS (earlier sections were imported)', 'restored' => $restored];
+                return ['error' => 'Could not write the generated CSS (the configuration files were imported)', 'restored' => $restored];
             }
         }
         // apply the restored folder layout / autostart mode to the live start order immediately
         syncContainerOrder('docker');
         return ['success' => true, 'restored' => $restored];
+    }
+
+    // Writes $files (relative path => content) under $baseDir and removes $clear as one step: everything lands in a
+    // hidden staging folder first, then moves in with the old copies set aside, and a failed move puts back whatever
+    // already moved. styles/ entries are confined to the real styles folder, everything else to $baseDir.
+    function fv3_replace_files(string $baseDir, array $files, array $clear): array {
+        $stage = "$baseDir/.fv3-import-" . bin2hex(random_bytes(6));
+        if (!@mkdir($stage, 0770)) return ['error' => 'Could not create a staging folder for the import'];
+        $stageReal = (string)realpath($stage);
+        $discard = function (array $result) use ($stage, $baseDir): array { fv3_remove_tree($stage, $baseDir); return $result; };
+        foreach ($files as $rel => $content) {
+            if (!fv3_mkdir_within(dirname("$stage/$rel"), $stageReal) || !fv3_atomic_write("$stage/$rel", $content)) {
+                return $discard(['error' => "Could not write $rel — nothing was imported"]);
+            }
+        }
+        $applied = [];  // rel => true when its previous copy now sits in $stage/.old
+        $move = function (string $rel, bool $hasNew) use ($baseDir, $stage, $stageReal, &$applied): bool {
+            $live = "$baseDir/$rel";
+            $old = "$stage/.old/$rel";
+            $within = $baseDir;
+            if (strpos($rel, 'styles/') === 0) {
+                if (!is_dir("$baseDir/styles")) @mkdir("$baseDir/styles", 0770, true);
+                $within = (string)realpath("$baseDir/styles");
+            }
+            if (!fv3_mkdir_within(dirname($live), $within)) return false;
+            $exists = file_exists($live) || is_link($live);
+            if ($exists && !(fv3_mkdir_within(dirname($old), $stageReal) && @rename($live, $old))) return false;
+            if ($hasNew && !@rename("$stage/$rel", $live)) {
+                if ($exists) @rename($old, $live);
+                return false;
+            }
+            $applied[$rel] = $exists;
+            return true;
+        };
+        $rollback = function (string $failed) use ($baseDir, $stage, $discard, &$applied): array {
+            $stuck = [];
+            foreach (array_reverse(array_keys($applied)) as $rel) {
+                @rename("$baseDir/$rel", "$stage/$rel");
+                if ($applied[$rel] && !@rename("$stage/.old/$rel", "$baseDir/$rel")) $stuck[] = $rel;
+            }
+            if ($stuck) {
+                return ['error' => "Could not replace $failed, and " . implode(', ', $stuck)
+                    . ' could not be put back; the previous copies are in ' . basename($stage) . '/.old'];
+            }
+            return $discard(['error' => "Could not replace $failed — nothing was imported"]);
+        };
+        foreach (array_keys($files) as $rel) {
+            if (!$move($rel, true)) return $rollback($rel);
+        }
+        foreach ($clear as $rel) {
+            if ((file_exists("$baseDir/$rel") || is_link("$baseDir/$rel")) && !$move($rel, false)) return $rollback($rel);
+        }
+        return $discard(['applied' => $applied]);
     }
 
     function readCssConfig() : string {
@@ -1448,7 +1479,7 @@
             $cts = $dockerClient->getDockerJSON("/containers/json?all=1");
             if (!is_array($cts)) $cts = [];
             $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
-            $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            $autoStartLines = fv3_read_autostart_lines($autoStartFile) ?? [];
             $autoStart = array_map('var_split', $autoStartLines);
             $dockerInfoCache = DockerUtil::loadJSON($dockerManPaths['webui-info'] ?? "/usr/local/emhttp/state/plugins/dynamix.docker.manager/docker.json");
             if (!is_array($dockerInfoCache)) $dockerInfoCache = [];

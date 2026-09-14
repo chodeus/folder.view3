@@ -6,7 +6,10 @@
     $autoStartFile = fv3_autostart_file();
     $entries = [];
     if (file_exists($autoStartFile)) {
-        foreach (@file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        $lines = fv3_read_autostart_lines($autoStartFile);
+        // Unreadable is an error, not "nothing autostarts"
+        if ($lines === null) { http_response_code(500); echo json_encode(['error' => 'The autostart file could not be read']); exit; }
+        foreach ($lines as $line) {
             $parts = explode(' ', $line, 2);
             $entries[] = ['name' => $parts[0], 'wait' => isset($parts[1]) ? (int)trim($parts[1]) : 0];
         }
