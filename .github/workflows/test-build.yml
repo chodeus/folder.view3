@@ -1,0 +1,31 @@
+# On-demand test build; the run summary shows the install URL. Inputs: chodeus-ops unraid-plugin-test-build.yml.
+
+name: Test build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional. Empty = the branch release + .0<UTC build time>, which installs over the current release and is superseded by the next one.'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+# Each build publishes its own test-<version> pre-release and removes the others, so runs never overlap
+# and a pending run replaced by a newer one only skips a build the newer would remove anyway.
+concurrency:
+  group: plg-test-build
+  cancel-in-progress: false
+
+jobs:
+  test-build:
+    # The called workflow can use at most what this job grants: it publishes the pre-release and removes older ones.
+    permissions:
+      contents: write
+    # Pin to a reviewed chodeus-ops commit.
+    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-test-build.yml@2ef08fcd646d269404bc80d30c249ecac949a724 # main
+    with:
+      plg_file: folder.view3.plg
+      version: ${{ inputs.version || '' }}

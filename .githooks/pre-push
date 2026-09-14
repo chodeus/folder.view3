@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# pre-push: block pushes when folder.view3.plg pluginURL doesn't match the
+# current branch. The URL gets clobbered easily by main<->beta merges; this
+# catches it before it ships to a user.
+#
+# Setup (one-time per clone):  git config core.hooksPath .githooks
+# Override (rare):              git push --no-verify
+
+set -eu
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+plg="folder.view3.plg"
+
+# Only main and beta have a fixed URL convention; ignore other branches.
+case "$branch" in
+  main|beta) ;;
+  *) exit 0 ;;
+esac
+
+[ -f "$plg" ] || exit 0
+
+actual_url=$(grep '<!ENTITY pluginURL' "$plg" | sed -E 's/.*"([^"]+)".*/\1/' || true)
+expected_segment="&github;/${branch}/&name;.plg"
+
+if ! printf '%s' "$actual_url" | grep -qF "$expected_segment"; then
+  echo "ERROR: pre-push blocked — folder.view3.plg pluginURL doesn't match branch '$branch'."
+  echo "  Expected segment: $expected_segment"
+  echo "  Actual URL:       $actual_url"
+  echo ""
+  echo "Fix it:"
+  echo "  1. Edit folder.view3.plg and set"
+  echo "       <!ENTITY pluginURL \"https://raw.githubusercontent.com/&github;/${branch}/&name;.plg\">"
+  echo "  2. Re-commit, then push again."
+  echo ""
+  echo "If you genuinely need to push without fixing this, use:  git push --no-verify"
+  exit 1
+fi
+
+exit 0

@@ -1,0 +1,714 @@
+(function() {
+    var isModern = !!document.querySelector('link[href*="default-base"]');
+    document.body.dataset.fv3Unraid = isModern ? 'modern' : 'legacy';
+    window.fv3UnraidLegacy = !isModern;
+})();
+
+const escapeHtml = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
+const fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
+    if (raw !== null && typeof raw === 'object') return raw;
+    try { return JSON.parse(raw); }
+    catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
+});
+
+if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
+    $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
+        if (options.type?.toUpperCase() === 'POST' && options.url?.includes('/plugins/folder.view3/')) {
+            if (typeof options.data === 'string') {
+                options.data += (options.data ? '&' : '') + 'csrf_token=' + encodeURIComponent(csrf_token);
+            } else if (options.data && typeof options.data === 'object') {
+                options.data.csrf_token = csrf_token;
+            }
+        }
+    });
+}
+
+let choose = [];
+let selectedRegex = [];
+let selected = [];
+let hiddenPreview = [];
+let labelFolderNames = new Set();
+let otherExplicitMembers = new Set();
+const type = new URLSearchParams(location.search).get('type');
+const folderId = new URLSearchParams(location.search).get('id');
+// Only a missing id means a new folder: ?id= is a real (hand-edited) '' key, which must load, not be created again
+const isEdit = folderId !== null;
+// Save stays blocked until setup finishes: a rejected load (either mode) must not overwrite a folder with a half-built form
+let fv3FolderLoaded = false;
+const fv3LoadFailedAlert = () => swal({ title: 'Error', text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
+
+const rgbToHex = (rgb) => {
+    rgb = rgb.slice(4, -1).split(', ');
+    return "#" + (1 << 24 | rgb[0] << 16 | rgb[1] << 8 | rgb[2]).toString(16).slice(1);
+}
+
+$('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));
+$('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));
+
+(async () => {
+    const previewSummary = document.getElementById('fv3-preview-summary') || document.querySelectorAll('.fv3-section summary')[1];
+    if (previewSummary) {
+        previewSummary.removeAttribute('data-i18n');
+        const lbl = document.createElement('label');
+        lbl.className = 'fv3-global-defaults-toggle';
+        lbl.title = 'Use global defaults from Plugin Settings > Defaults';
+        lbl.onclick = (e) => e.stopPropagation();
+        lbl.innerHTML = '<input type="checkbox" name="use_global_defaults" onchange="fv3ToggleGlobalDefaults(this.checked)"><span><i class="fa fa-refresh"></i> Use Global Defaults</span>';
+        previewSummary.appendChild(lbl);
+    }
+
+    const fv3SyncSwitchButtons = () => {
+        $('input.fv3-checkbox').each(function() {
+            const $bg = $(this).siblings('.switch-button-background');
+            if (!$bg.length) return;
+            $bg.toggleClass('checked', this.checked);
+            $(this).siblings('.switch-button-label.on').toggle(this.checked);
+            $(this).siblings('.switch-button-label.off').toggle(!this.checked);
+        });
+    };
+
+    if (type !== 'docker') {
+        $('[constraint*="docker"]').hide();
+    }
+    let folders = fv3SafeParse(await $.get(`/plugins/folder.view3/server/read.php?type=${type}`).promise(), {});
+    labelFolderNames = new Set(Object.values(folders).map(f => f.name));
+    // Other folders' explicit containers[] — their claims beat label/regex here (issue #55).
+    // Must be set before the edit-branch updateRegex() call below, which runs pre-prune.
+    otherExplicitMembers = new Set(Object.entries(folders).filter(([fid]) => fid !== folderId).flatMap(([, f]) => Array.isArray(f.containers) ? f.containers : []));
+    let typeFilter;
+    if (type === 'docker') {
+        typeFilter = (e) => {
+            return {
+                'Name': e.info.Name,
+                'Icon': e.info.Config?.Labels?.['net.unraid.docker.icon'],
+                'Label': e.info.Config?.Labels?.['folder.view3'],
+                'Image': e.info.Config?.Image || ''
+            }
+        };
+    } else if (type === 'vm') {
+        typeFilter = (e) => {
+            return {
+                'Name': e.name,
+                'Icon': e.icon,
+                'Label': undefined,
+                'ContainerId': e.uuid || ''
+            }
+        };
+    }
+
+    choose = Object.values(fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_info.php?type=${type}`).promise(), {})).map(typeFilter);
+
+    if (isEdit) {
+        const currFolder = folders[folderId];
+        if (!currFolder) {
+            swal({ title: 'Error', text: fv3I18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
+            return;
+        }
+        delete folders[folderId];
+        if (!currFolder.settings) currFolder.settings = {};
+
+        const form = $('div.canvas > form')[0];
+        form.name.value = currFolder.name;
+        form.icon.value = currFolder.icon;
+        form.folder_webui.checked = currFolder.settings.folder_webui || false;
+        form.folder_webui_url.value = currFolder.settings.folder_webui_url || '';
+        form.preview.value = (currFolder.settings.preview ?? 1).toString();
+        form.preview_hover.checked = currFolder.settings.preview_hover;
+        form.preview_update.checked = currFolder.settings.preview_update;
+        form.preview_update_folder.checked = currFolder.settings.preview_update_folder || false;
+        form.preview_text_width.value = currFolder.settings.preview_text_width || '';
+        form.preview_grayscale.checked = currFolder.settings.preview_grayscale;
+        if (form.preview_status) form.preview_status.value = currFolder.settings.preview_status || 'none';
+        form.preview_webui.checked = currFolder.settings.preview_webui;
+        form.preview_logs.checked = currFolder.settings.preview_logs;
+        form.preview_console.checked = currFolder.settings.preview_console || false;
+        form.preview_vertical_bars.checked = currFolder.settings.preview_vertical_bars || false;
+        form.preview_overflow.value = (currFolder.settings.preview_overflow || 0).toString();
+        form.preview_row_separator.checked = currFolder.settings.preview_row_separator || false;
+        form.preview_row_separator_color.value = currFolder.settings.preview_row_separator_color || rgbToHex($('body').css('color'));
+        form.context.value = currFolder.settings.context?.toString() || '1';
+        form.context_trigger.value = currFolder.settings.context_trigger?.toString() || '0';
+        form.context_graph.value = currFolder.settings.context_graph?.toString() || '1';
+        form.context_graph_time.value = currFolder.settings.context_graph_time?.toString() || '60';
+        form.preview_border.checked = currFolder.settings.preview_border || false;
+        form.preview_border_color.value = currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
+        form.preview_vertical_bars_color.value = currFolder.settings.preview_vertical_bars_color || currFolder.settings.preview_border_color || rgbToHex($('body').css('color'));
+        form.lock_colors.checked = currFolder.settings.lock_colors || false;
+        form.update_column.checked = currFolder.settings.update_column || false;
+        if (form.use_global_defaults) form.use_global_defaults.checked = currFolder.settings.use_global_defaults || false;
+        form.default_action.checked = currFolder.settings.default_action || false;
+        form.expand_tab.checked = currFolder.settings.expand_tab;
+        form.override_default_actions.checked = currFolder.settings.override_default_actions;
+        form.expand_dashboard.checked = currFolder.settings.expand_dashboard;
+        form.regex.value = currFolder.regex;
+        for (const ct of currFolder.containers) {
+            const index = choose.findIndex((e) => e.Name === ct);
+            if (index > -1) {
+                selected.push(choose.splice(index, 1)[0]);
+            }
+        };
+
+        hiddenPreview = currFolder.hidden_preview || [];
+
+        currFolder.actions?.forEach((e, i) => {
+            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}">${escapeHtml(e.name)} <button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
+        });
+
+
+        updateForm();
+        updateRegex(form.regex);
+        updateIcon(form.icon);
+    } else {
+        try {
+            const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
+            const s = await resp.json();
+            const form = $('div.canvas > form')[0];
+            if (s.default_preview) form.preview.value = s.default_preview;
+            if (s.default_preview_hover === 'yes') form.preview_hover.checked = true;
+            if (s.default_preview_update === 'yes') form.preview_update.checked = true;
+            if (s.default_preview_update_folder === 'yes') form.preview_update_folder.checked = true;
+            if (s.default_preview_grayscale === 'yes') form.preview_grayscale.checked = true;
+            if (form.preview_status && s.default_preview_status) form.preview_status.value = s.default_preview_status;
+            if (s.default_preview_webui === 'yes') form.preview_webui.checked = true;
+            if (s.default_preview_logs === 'yes') form.preview_logs.checked = true;
+            if (s.default_preview_console === 'yes') form.preview_console.checked = true;
+            if (s.default_preview_vertical_bars === 'yes') form.preview_vertical_bars.checked = true;
+            if (s.default_vertical_bars_color) form.preview_vertical_bars_color.value = s.default_vertical_bars_color;
+            if (s.default_preview_border === 'yes') form.preview_border.checked = true;
+            if (s.default_border_color) form.preview_border_color.value = s.default_border_color;
+            if (s.default_row_separator === 'yes') form.preview_row_separator.checked = true;
+            if (s.default_separator_color) form.preview_row_separator_color.value = s.default_separator_color;
+            if (s.default_preview_text_width) form.preview_text_width.value = s.default_preview_text_width;
+            if (s.default_overflow === 'expand') form.preview_overflow.value = '1';
+            else if (s.default_overflow === 'scroll') form.preview_overflow.value = '2';
+            if (s.default_context) form.context.value = s.default_context;
+            if (s.default_update_column === 'yes') form.update_column.checked = true;
+            updateForm();
+        } catch (e) {}
+    }
+
+    let _fv3ApplyingDefaults = false;
+    window.fv3ToggleGlobalDefaults = async (checked) => {
+        if (!checked) return;
+        _fv3ApplyingDefaults = true;
+        try {
+            const resp = await fetch('/plugins/folder.view3/server/read_settings.php', { credentials: 'same-origin' });
+            const s = await resp.json();
+            const form = $('div.canvas > form')[0];
+            form.preview.value = s.default_preview || '1';
+            form.preview_hover.checked = s.default_preview_hover === 'yes';
+            form.preview_update.checked = s.default_preview_update === 'yes';
+            form.preview_update_folder.checked = s.default_preview_update_folder === 'yes';
+            form.preview_grayscale.checked = s.default_preview_grayscale === 'yes';
+            if (form.preview_status) form.preview_status.value = s.default_preview_status || 'none';
+            form.preview_webui.checked = s.default_preview_webui === 'yes';
+            form.preview_logs.checked = s.default_preview_logs === 'yes';
+            form.preview_console.checked = s.default_preview_console === 'yes';
+            form.preview_vertical_bars.checked = s.default_preview_vertical_bars === 'yes';
+            form.preview_border.checked = s.default_preview_border === 'yes';
+            form.preview_row_separator.checked = s.default_row_separator === 'yes';
+            if (!form.lock_colors.checked) {
+                if (s.default_vertical_bars_color) form.preview_vertical_bars_color.value = s.default_vertical_bars_color;
+                if (s.default_border_color) form.preview_border_color.value = s.default_border_color;
+                if (s.default_separator_color) form.preview_row_separator_color.value = s.default_separator_color;
+            }
+            form.preview_text_width.value = s.default_preview_text_width || '';
+            if (s.default_overflow === 'expand') form.preview_overflow.value = '1';
+            else if (s.default_overflow === 'scroll') form.preview_overflow.value = '2';
+            else form.preview_overflow.value = '0';
+            form.context.value = s.default_context || '1';
+            form.context_trigger.value = s.default_context_trigger || '0';
+            form.context_graph.value = s.default_context_graph || '1';
+            form.context_graph_time.value = s.default_context_graph_time || '60';
+            form.update_column.checked = s.default_update_column === 'yes';
+            updateForm();
+            fv3SyncSwitchButtons();
+        } catch (e) {
+            console.error('[FV3] Failed to load global defaults:', e);
+        }
+        _fv3ApplyingDefaults = false;
+    };
+
+    $(document).on('change input', 'select[name="preview"], select[name="preview_overflow"], select[name="context"], input[name="preview_hover"], input[name="preview_update"], input[name="preview_update_folder"], input[name="preview_grayscale"], input[name="preview_webui"], input[name="preview_logs"], input[name="preview_console"], input[name="preview_vertical_bars"], input[name="preview_vertical_bars_color"], input[name="preview_border"], input[name="preview_border_color"], input[name="preview_row_separator"], input[name="preview_row_separator_color"], input[name="preview_text_width"], input[name="lock_colors"], input[name="update_column"], select[name="context_trigger"], select[name="context_graph"], input[name="context_graph_time"]', function() {
+        if (_fv3ApplyingDefaults) return;
+        const cb = document.querySelector('input[name="use_global_defaults"]');
+        if (cb && cb.checked) cb.checked = false;
+    });
+
+
+    for (const [folderId, value] of Object.entries(folders)) {
+        // Only explicit members block availability — containers held elsewhere by regex stay pickable (issue #46)
+        for (const container of (Array.isArray(value.containers) ? value.containers : [])) {
+            const index = choose.findIndex((e) => e.Name === container);
+            if (index > -1) {
+                choose.splice(index, 1);
+            }
+        }
+    }
+
+    choose.sort((a, b) => a.Name.localeCompare(b.Name));
+
+    updateList();
+
+    // Must run after checkbox states are set.
+    try {
+        const cssConfig = await (await fetch('/plugins/folder.view3/server/read_css_config.php', { credentials: 'same-origin' })).json();
+        const style = cssConfig.toggle_style || 'default';
+        window._fv3FolderToggleStyle = style;
+        if (style === 'default') {
+            $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+            fv3SyncSwitchButtons();
+        } else {
+            document.querySelectorAll('input.fv3-checkbox[type="checkbox"]').forEach(el => {
+                el.classList.add('fv3-toggle');
+                if (style !== 'flat') el.classList.add('fv3-toggle-' + style);
+            });
+        }
+    } catch (e) {
+        $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+        fv3SyncSwitchButtons();
+    }
+
+    $('.canvas form div.basic > dl > dt').css('cursor', 'default').wrapInner('<span style="cursor: help;"></span>');
+    // Reached only if every await above resolved; a rejection skips this and the catch alerts
+    fv3FolderLoaded = true;
+})().catch((err) => {
+    console.error('[FV3] Folder editor setup failed:', err);
+    if (!fv3FolderLoaded) fv3LoadFailedAlert();
+});
+
+// Update the folder icon preview from the icon field value.
+const updateIcon = (e) => {
+    e.previousElementSibling.src = e.value;
+};
+
+// Re-partition choose/selectedRegex by matching the regex field against container names.
+const updateRegex = (e) => {
+    choose = choose.concat(selectedRegex);
+    const fldName = $('[name="name"]')[0].value;
+    // A label claim is void for containers explicitly assigned to another folder (issue #55)
+    selectedRegex = choose.filter(el => el.Label === fldName && !otherExplicitMembers.has(el.Name));
+    choose = choose.filter(el => el.Label !== fldName || otherExplicitMembers.has(el.Name));
+    if (e.value) {
+        try {
+            const regex = new RegExp(e.value);
+            for (let i = 0; i < choose.length; i++) {
+                // Containers label-claimed or explicitly assigned elsewhere can't be regex-captured (matches render, issues #46/#55)
+                if (regex.test(choose[i].Name) && !(choose[i].Label && labelFolderNames.has(choose[i].Label)) && !otherExplicitMembers.has(choose[i].Name)) {
+                    const tmpSel = choose.splice(i, 1)[0];
+                    if(!selectedRegex.includes(tmpSel)) {
+                        selectedRegex.push(tmpSel);
+                    }
+                    i--;
+                }
+            }
+        } catch (e) { console.error('[FV3] Invalid regex:', e); }
+    }
+    updateList();
+};
+
+// Toggle constraint-based visibility for the selected preview mode.
+const previewChange = (e) => {
+    $('[constraint^="preview-"]').hide();
+    $(`[constraint*="preview-${e.value}"]`).show();
+    if (type !== 'docker') {
+        $('[constraint*="docker"]').hide();
+    }
+};
+
+// Recompute all constraint-based setting visibility from current form state.
+const updateForm = () => {
+    const form = $('div.canvas > form')[0];
+    $('[constraint*="preview-"]').hide();
+    $(`[constraint*="preview-${form.preview.value}"]`).show();
+    $('[constraint*="context-"]').hide();
+    $(`[constraint*="context-${form.context.value}"]`).show();
+    $('[constraint*="border-color"]').hide();
+    $('[constraint*="bars-color"]').hide();
+    if(form.preview_border.checked) {
+        $('[constraint*="border-color"]').show();
+    }
+    if(form.preview_vertical_bars.checked) {
+        $('[constraint*="bars-color"]').show();
+    }
+    $('[constraint*="overflow-expand"]').hide();
+    $('[constraint*="separator-color"]').hide();
+    if(form.preview_overflow.value === '1') {
+        $('[constraint*="overflow-expand"]').show();
+        if(form.preview_row_separator.checked) {
+            $('[constraint*="separator-color"]').show();
+        }
+    }
+    $('[constraint*="folder-webui"]').hide();
+    if(form.folder_webui.checked) {
+        $('[constraint*="folder-webui"]').show();
+    }
+
+    if (type !== 'docker') {
+        $('[constraint*="docker"]').hide();
+    }
+};
+
+// Rebuild the container select table from selected/choose/selectedRegex.
+const updateList = () => {
+    const table = $('.sortable > tbody');
+    table.empty();
+
+    for (const el of selected) {
+        const isHidden = hiddenPreview.includes(el.Name);
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
+    }
+
+    for (const el of choose) {
+        // fa-tag marker: this container carries a live label claim (issue #55)
+        const labelClaim = el.Label && labelFolderNames.has(el.Label) ? `<span class="fv3-label-claim" title="${escapeHtml($.i18n('label-claim-tooltip'))}" data-i18n="[title]label-claim-tooltip"><i class="fa fa-tag" aria-hidden="true"></i> ${escapeHtml(el.Label)}</span>` : '';
+        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}${labelClaim}</td><td><input class="container-switch fv3-checkbox" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
+    }
+
+    for (const el of selectedRegex) {
+        const isHidden = hiddenPreview.includes(el.Name);
+        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
+    }
+
+    $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().css('opacity', '0.5').css('cursor', 'default');
+
+    $('table.sortable').off('change', 'input.container-switch').on('change', 'input.container-switch', function() {
+        syncHidePreview($(this).closest('tr'));
+    });
+
+    $('.item').css('border-color', $('body').css('color'));
+
+    $('.sortable > tbody > .item[draggable="true"] > td:first-child').wrapInner('<span style="cursor: move;"></span>');
+
+    $('.sortable').on('dragover', sortTable).on('dragenter', (e) => { e.preventDefault(); });
+
+    $('.item').on('dragstart', (e) => { e.target.classList.add("dragging") }).on('dragend', (e) => { e.target.classList.remove("dragging") });
+
+    $('.item[draggable="true"]').on('touchstart', function() {
+        this.classList.add('dragging');
+    }).on('touchmove', function(e) {
+        if (!this.classList.contains('dragging')) return;
+        e.preventDefault();
+        const touch = e.originalEvent.touches[0];
+        sortTable({ clientY: touch.clientY, preventDefault: () => {}, delegateTarget: this.closest('table') });
+    }).on('touchend', function() {
+        this.classList.remove('dragging');
+    });
+
+    if (typeof window._fv3FolderToggleStyle === 'string') {
+        var newSwitches = $('table.sortable input.fv3-checkbox[type="checkbox"]');
+        if (window._fv3FolderToggleStyle === 'default') {
+            newSwitches.not('.switchButton-init').each(function() {
+                $(this).addClass('switchButton-init').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+                var bg = $(this).next('.switch-button-background');
+                if (bg.length) bg.toggleClass('checked', this.checked);
+            });
+        } else {
+            newSwitches.each(function() {
+                if (!this.classList.contains('fv3-toggle')) {
+                    this.classList.add('fv3-toggle');
+                    if (window._fv3FolderToggleStyle !== 'flat') this.classList.add('fv3-toggle-' + window._fv3FolderToggleStyle);
+                }
+            });
+        }
+    }
+};
+
+const sortTable = (e) => {
+    e.preventDefault();
+
+    const sib = [...$('.item:not(.dragging)')];
+
+    const bound = e.delegateTarget.getBoundingClientRect();
+
+    const near = sib.find(el => {
+        return e.clientY - bound.top <= el.offsetTop + el.offsetHeight / 2;
+    });
+
+    $(near).before($('.dragging'));
+}
+
+const syncHidePreview = ($row) => {
+    const $cb = $row.find('input.container-switch');
+    const isIncluded = $cb.is(':checked');
+    const $td = $row.find('td:nth-child(3)');
+    if (isIncluded) {
+        if (!$td.find('input.preview-switch').length) {
+            const style = window._fv3FolderToggleStyle || 'default';
+            const cls = (style !== 'default') ? ' fv3-toggle' + (style !== 'flat' ? ' fv3-toggle-' + style : '') : '';
+            const $newCb = $(`<input class="preview-switch fv3-checkbox${cls}" type="checkbox" value="${escapeHtml($cb.val())}">`);
+            $td.html($newCb);
+            if (style === 'default') {
+                $newCb.switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+                var bg = $newCb.next('.switch-button-background');
+                if (bg.length) bg.toggleClass('checked', $newCb[0].checked);
+            }
+        }
+    } else {
+        $td.empty();
+    }
+};
+
+
+// Serialize the form to a folder object, POST create/update, then return to the tab. Returns false.
+const submitForm = async (e) => {
+    if (!fv3FolderLoaded) { fv3LoadFailedAlert(); return false; }
+    // 'root' is reserved by Unraid's Docker organizer — server rejects it too
+    if (e.name.value.toString().trim().toLowerCase() === 'root') {
+        swal({ title: 'Reserved Name', text: "'root' is reserved by Unraid's Docker organizer — please pick another folder name.", type: 'error' });
+        return;
+    }
+    const actions = $('input[name*="custom_action"]').map((i, e) => fv3SafeParse(atob($(e).val()), {})).get();
+    const folder = {
+        name: e.name.value.toString(),
+        icon: e.icon.value.toString(),
+        settings: {
+            folder_webui: e.folder_webui.checked,
+            folder_webui_url: e.folder_webui_url.value.toString(),
+            preview: parseInt(e.preview.value.toString()),
+            preview_hover: e.preview_hover.checked,
+            preview_update: e.preview_update.checked,
+            preview_update_folder: e.preview_update_folder.checked,
+            preview_text_width: e.preview_text_width.value,
+            preview_grayscale: e.preview_grayscale.checked,
+            preview_status: e.preview_status?.value || 'none',
+            preview_webui: e.preview_webui.checked,
+            preview_logs: e.preview_logs.checked,
+            preview_console: e.preview_console.checked,
+            preview_vertical_bars: e.preview_vertical_bars.checked,
+            preview_overflow: parseInt(e.preview_overflow.value.toString()),
+            preview_row_separator: e.preview_row_separator.checked,
+            preview_row_separator_color: e.preview_row_separator_color.value.toString(),
+            context: parseInt(e.context.value.toString()),
+            context_trigger: parseInt(e.context_trigger.value.toString()),
+            context_graph: parseInt(e.context_graph.value.toString()),
+            context_graph_time: parseInt(e.context_graph_time.value.toString()),
+            preview_border: e.preview_border.checked,
+            preview_border_color: e.preview_border_color.value.toString(),
+            preview_vertical_bars_color: e.preview_vertical_bars_color.value.toString(),
+            lock_colors: e.lock_colors.checked,
+            update_column: e.update_column.checked,
+            use_global_defaults: e.use_global_defaults?.checked || false,
+            default_action: e.default_action.checked,
+            expand_tab: e.expand_tab.checked,
+            override_default_actions: e.override_default_actions.checked,
+            expand_dashboard: e.expand_dashboard.checked,
+        },
+        regex: e.regex.value.toString(),
+        containers: [...$('input[name*="containers"]:checked:not(:disabled)').map((i, e) => $(e).val())],
+        containerIds: type === 'vm' ? (() => {
+            const ids = {};
+            const allKnown = [...selected, ...selectedRegex, ...choose];
+            for (const name of [...$('input[name*="containers"]:checked:not(:disabled)').map((i, e) => $(e).val())]) {
+                const entry = allKnown.find(c => c.Name === name);
+                if (entry && entry.ContainerId) ids[name] = entry.ContainerId;
+            }
+            return ids;
+        })() : undefined,
+        containerImages: type === 'docker' ? (() => {
+            const imgs = {};
+            const allKnown = [...selected, ...selectedRegex, ...choose];
+            for (const name of [...$('input[name*="containers"]:checked:not(:disabled)').map((i, e) => $(e).val())]) {
+                const entry = allKnown.find(c => c.Name === name);
+                if (entry && entry.Image) imgs[name] = entry.Image;
+            }
+            return imgs;
+        })() : undefined,
+        hidden_preview: [...$('input.preview-switch:checked').map((i, e) => $(e).val())],
+        actions
+    }
+    try {
+        if (isEdit) {
+            await $.post('/plugins/folder.view3/server/update.php', { type: type, content: JSON.stringify(folder), id: folderId });
+        } else {
+            await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
+        }
+    } catch (err) {
+        swal({ title: 'Error', text: fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), type: 'error' });
+        return false;
+    }
+
+    const back = () => { const loc = location.pathname.split('/'); loc.pop(); location.href = loc.join('/'); };
+    if (type === 'docker') {
+        // The folder is already saved: report a failed order sync, then still return to the tab
+        try {
+            await $.post('/plugins/folder.view3/server/sync_order.php', { type: type }).promise();
+        } catch (err) {
+            console.warn('[FV3] Autostart order sync failed after save:', fv3FailReason(err));
+            swal({ title: 'Warning', text: fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', fv3FailReason(err)), type: 'warning' }, back);
+            return false;
+        }
+    }
+    back();
+    
+    return false;
+}
+
+// Return to the tab without saving.
+const cancelBtn = () => {
+    let loc = location.pathname.split('/');
+    loc.pop();
+    location.href = loc.join('/');
+};
+
+/**
+ * Handles the Delete folder button — confirmation dialog + POST to delete.php
+ */
+const deleteFolderBtn = () => {
+    if (!isEdit) return;
+    const folderName = $('div.canvas > form')[0]?.name?.value || folderId;
+    swal({
+        title: $.i18n('delete-folder-confirm-title') || 'Delete folder?',
+        text: ($.i18n('delete-folder-confirm-text') || 'This will permanently delete the folder "$1" and remove all its contained containers/VMs back to the main list. Containers/VMs themselves are NOT deleted.').replace('$1', folderName),
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: $.i18n('delete') || 'Delete',
+        cancelButtonText: $.i18n('cancel') || 'Cancel',
+        confirmButtonColor: '#a02020',
+        // Stay open until the delete settles: a swal reopened inside close()'s hide timer is blanked
+        showLoaderOnConfirm: true,
+        closeOnConfirm: false
+    }, async (confirmed) => {
+        if (!confirmed) return;
+        try {
+            await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: folderId }).promise();
+            let loc = location.pathname.split('/');
+            loc.pop();
+            location.href = loc.join('/');
+        } catch (err) {
+            swal({ title: 'Error', text: fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), type: 'error' });
+        }
+    });
+};
+
+// Set the folder icon to the clicked element's icon.
+const setIconAsContainer = (e) => {
+    $('div.canvas > form')[0].icon.value = e.firstChild.src;
+    $($('div.canvas > form')[0].icon).trigger('input');
+};
+
+// Open the custom-action dialog to add (action undefined) or edit an existing action.
+const customAction = (action = undefined) => {
+    let config = {
+        name: '',
+        type: 0,
+        action: 0,
+        modes: 0,
+        conatiners: [],
+        script_icon: ''
+    }
+    if(action !== undefined) {
+        config = fv3SafeParse(atob($('input[name*="custom_action"]').map((i, e) => $(e).val()).get()[action]), {});
+    }
+    const selectCt = $('.action-subject [name="action_elements"]');
+    selectCt.children().remove();
+    [...$('input[name*="containers"]:checked:not(:disabled)').map((i, e) => $(e).val()), ...selectedRegex.map(e => e.Name)].forEach((e) => {
+        if(config.conatiners?.includes(e)) {
+            selectCt.append(`<option value="${escapeHtml(e)}" selected>${escapeHtml(e)}</option>`);
+        } else {
+            selectCt.append(`<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`);
+        }
+    });
+    const dialog = $('.dialogCustomAction');
+    const customNumber = $('input[name*="custom_action"]').length;
+    dialog.html($('.templateDialogCustomAction').html());
+    dialog.find('[name="action_elements"]').multiselect({
+        header: false,
+        noneSelectedText: "Select options",
+        zIndex: 99998,
+        appendTo: document.body,
+        selectedText: (numChecked, numTotal, checkedItems) => {
+            return checkedItems.map(e => e.value).join(', ');
+        },
+        classes: 'multiselect-container'
+    });
+    dialog.find('[name="action_name"]').val(config.name);
+    dialog.find('[name="action_type"]').val(config.type);
+    dialog.find('[constraint*=\'action-type-\']').hide();
+    dialog.find(`[constraint*=\'action-type-${config.type}\']`).show();
+    dialog.find('input.basic-switch-sync').addClass('fv3-toggle').prop("checked", config.script_sync || false);
+    if(config.type === 0) {
+        dialog.find('[name="action_standard"]').val(config.action);
+        dialog.find('[constraint*=\'action-standard-\']').hide();
+        dialog.find(`[constraint*=\'action-standard-${config.action}\']`).show();
+        if(config.action === 0) {
+            dialog.find('[name="action_cycle"]').val(config.modes);
+        } else if(config.action === 1) {
+            dialog.find('[name="action_set"]').val(config.modes);
+        }
+    } else if(config.type === 1){
+        dialog.find('[name="action_script"]').val(config.script || '');
+        dialog.find('[name="action_script_args"]').val(config.script_args || '');
+    }
+    dialog.find('[name="action_script_icon"]').val(config.script_icon);
+    let buttons = {};
+    buttons[(action !== undefined) ? $.i18n('action-edit-btn') : $.i18n('action-add-btn')] = function() {
+        const that = $(this);
+        let cfg = {
+            name: that.find('[name="action_name"]').val(),
+            type: parseInt(that.find('[name="action_type"]').val()),
+        }
+        cfg.script_icon = that.find('[name="action_script_icon"]').val() || ((cfg.type === 0) ? 'fa-cogs' : ((cfg.type === 1) ? 'fa-file-text-o' : 'fa-bolt'));
+        if(cfg.type === 0) {
+            cfg.conatiners = that.find('[name="action_elements"]').val();
+            cfg.action = parseInt(that.find('[name="action_standard"]').val());
+            if(cfg.action === 0) {
+                cfg.modes = parseInt(that.find('[name="action_cycle"]').val());
+            } else if(cfg.action === 1) {
+                cfg.modes = parseInt(that.find('[name="action_set"]').val());
+            }
+        } else if(cfg.type === 1) {
+            cfg.script = that.find('[name="action_script"]').val();
+            cfg.script_args = that.find('[name="action_script_args"]').val();
+            cfg.script_sync = that.find('[name="action_script_sync"]').prop("checked");
+        }
+        if(action !== undefined) {
+            $(`.custom-action-n-${action} > input[type="hidden"]`).val(btoa(JSON.stringify(cfg)));
+            $(`.custom-action-n-${action} > span`).text(cfg.name + ' ');
+        } else {
+            $('.custom-action-wrapper').append(`<div class="custom-action-n-${(action !== undefined) ? action : customNumber}"><span>${escapeHtml(cfg.name)} </span><button onclick="return customAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(cfg))}"></div>`);
+        }
+        $(this).dialog("close");
+    };
+    buttons[$.i18n('cancel')] = function() {
+        $(this).dialog("close");
+    };
+    dialog.dialog({
+        title: (action !== undefined) ? $.i18n('action-edit') : $.i18n('action-add'),
+        resizable: false,
+        width: Math.min(800, window.innerWidth - 40),
+        modal: true,
+        show: { effect: 'fade', duration: 250 },
+        hide: { effect: 'fade', duration: 250 },
+        buttons,
+        close: () => {
+            dialog.find('[name="action_elements"]').multiselect("destroy");
+        }
+    });
+    $(".ui-dialog .ui-dialog-titlebar").addClass('menu');
+    $('.ui-dialog .ui-dialog-titlebar-close').css({'display':'none'});
+    $(".ui-dialog .ui-dialog-title").css({'text-align':'center','width':'100%'});
+    $(".ui-dialog .ui-dialog-content").css({'padding-top':'15px','vertical-align':'bottom'});
+    $(".ui-button-text").css({'padding':'0px 5px'});
+    return false;
+};
+
+// Remove a custom action from the folder.
+const rCcustomAction =  (action) => {
+    $(`.custom-action-n-${action}`).remove();
+    return false;
+};
+
+const nameInput = document.querySelector('input[name="name"]');
+const nameWarning = document.getElementById('fv3-name-warning');
+if (nameInput && nameWarning) {
+    nameInput.addEventListener('input', function() {
+        nameWarning.style.display = this.value.length > 20 ? 'block' : 'none';
+    });
+    if (nameInput.value.length > 20) nameWarning.style.display = 'block';
+}
+

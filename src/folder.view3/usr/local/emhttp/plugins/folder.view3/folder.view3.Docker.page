@@ -1,0 +1,38 @@
+Menu="Docker"
+Icon="folder-open-o"
+Type="xmenu"
+Tabs="true"
+Markdown="false"
+---
+<?php
+$type = 'docker';
+require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
+?>
+<!-- Anti-FOUC: hide the native container list until FV3 builds folders (revealed via fv3-docker-ready in customEvents.js); 8s failsafe reveals it if the JS bundle never runs -->
+<style>@media screen{html:not(.fv3-docker-ready) #docker_containers tbody#docker_list{visibility:hidden}}</style>
+<script>setTimeout(function(){document.documentElement.classList.add('fv3-docker-ready')},8000)</script>
+<script>
+    $(document).ready(() => {
+        folderi18n = () => {
+            var $btn = $(`<input type="button" class="fv3-add-folder-btn" onclick="createFolderBtn()" value="Add Folder" data-i18n="[value]add-folder">`);
+            if ($('.js-actions').length) { $btn.prependTo('.js-actions'); } else { $btn.insertBefore('input[value="Add Container"]'); }
+            $('body').i18n();
+            $('[type="button"]').i18n();
+        }
+        folderi18n();
+    });
+</script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/customEvents.js')?>"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/shared.js')?>"></script>
+<?php require_once('/usr/local/emhttp/plugins/folder.view3/scripts/custom.php') ?>
+
+<script src="<?php autov('/plugins/folder.view3/scripts/include/chart.min.js')?>"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/moment.min.js')?>"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/chartjs-adapter-moment.min.js')?>"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/include/chartjs-plugin-streaming.min.js')?>"></script>
+<script src="<?php autov('/plugins/folder.view3/scripts/advanced-preview.js')?>"></script>
+<script defer src="<?php autov('/plugins/folder.view3/scripts/docker.js')?>"></script>
+
+<link rel="stylesheet" href="<?php autov('/plugins/folder.view3/styles/folder-common.css')?>">
+<link rel="stylesheet" href="<?php autov('/plugins/folder.view3/styles/docker.css')?>">
+<?php require_once('/usr/local/emhttp/plugins/folder.view3/styles/custom.php') ?>

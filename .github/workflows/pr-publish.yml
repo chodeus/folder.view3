@@ -1,0 +1,33 @@
+# Caller that turns a finished "PR build" into a pr-<number>-<version> pre-release, comments the install URL and
+# takes the test-build label off; runs default-branch code only. Mechanics: .github/workflows/unraid-plugin-pr-publish.yml.
+
+name: PR publish
+
+on:
+  workflow_run:
+    workflows: ["PR build"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-publish-${{ github.event.workflow_run.head_repository.owner.login }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    # The called workflow can use at most what this job grants: releases, the comment, the artifact.
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    # Pin to a reviewed chodeus-ops commit.
+    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-pr-publish.yml@2ef08fcd646d269404bc80d30c249ecac949a724 # main
+    with:
+      run_id: ${{ github.event.workflow_run.id }}
+      head_owner: ${{ github.event.workflow_run.head_repository.owner.login }}
+      head_branch: ${{ github.event.workflow_run.head_branch }}
+      head_sha: ${{ github.event.workflow_run.head_sha }}
+      plg_file: folder.view3.plg

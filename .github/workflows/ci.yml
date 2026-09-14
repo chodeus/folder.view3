@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, beta]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Lint + build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libxml2-utils
+
+      - name: PHP syntax check
+        run: |
+          status=0
+          while IFS= read -r f; do
+            php -l "$f" || status=1
+          done < <(find src -name '*.php')
+          exit $status
+
+      - name: Validate plugin manifest (XML)
+        run: xmllint --noout folder.view3.plg
+
+      - name: Checkout release scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: chodeus/chodeus-ops
+          ref: 142009888448ef52954f652a3f0f1a69e59fdd2a # main
+          path: .ops
+          sparse-checkout: scripts
+
+      # CHANGELOG.md must render to the committed CHANGES block for this branch's channel,
+      # pluginURL must point at this branch, and the manifest md5 must match the served package.
+      - name: Verify changelog, manifest and served package agree
+        run: |
+          branch="${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
+          channel=stable
+          [ "$branch" != beta ] || channel=beta
+          python3 .ops/scripts/plg_release.py check \
+            --changelog CHANGELOG.md --plg folder.view3.plg \
+            --channel "$channel" --branch "$branch" --verify-asset
+
+      - name: Test build
+        run: |
+          bash pkg_build.sh --version 0000.00.00 --branch "${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
+          test -f dist/folder.view3-0000.00.00-x86_64-1.txz

@@ -1,0 +1,493 @@
+/* ===== Grid layout for label/control alignment ===== */
+/* Unraid 7.2 uses float:left on dt, but 7.0.x doesn't — grid works on both */
+.canvas .basic dl {
+    display: grid;
+    grid-template-columns: 35% 1fr;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    margin: 0;
+    padding: 0.5rem 0;
+    line-height: normal;
+}
+
+.canvas .basic dt {
+    float: none;
+    clear: none;
+    width: auto;
+    margin-right: 0;
+    text-align: right;
+    font-weight: normal;
+}
+
+.canvas .basic dd {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 0;
+}
+
+/* Color picker row needs gap */
+.canvas form dd:has(> input[type="color"]) {
+    gap: 0.5em;
+}
+
+/* Hidden spacer images should not take space */
+.canvas .basic dd > img.img[style*="visibility: hidden"] {
+    display: none;
+}
+
+/* Text inputs and selects fill remaining width */
+.canvas .basic dd > input[type="text"],
+.canvas .basic dd > input[type="number"],
+.canvas .basic dd > select {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Remove bullet points from constraint lists */
+.canvas form ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Toggle ON/OFF label to the right, not underneath */
+.canvas dd .switch-button-background {
+    float: none;
+}
+
+.canvas dd .switch-button-label {
+    float: none;
+    display: inline;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.canvas dd .switch-button-label + div[style*="clear"] {
+    display: none;
+}
+
+/* Only show the active ON/OFF label */
+.canvas dd .switch-button-background.checked ~ .switch-button-label.on {
+    display: inline;
+}
+
+.canvas dd .switch-button-background.checked ~ .switch-button-label.off {
+    display: none;
+}
+
+.canvas dd .switch-button-background:not(.checked) ~ .switch-button-label.on {
+    display: none;
+}
+
+.canvas dd .switch-button-background:not(.checked) ~ .switch-button-label.off {
+    display: inline;
+}
+
+/* Order table: 50% width, centered */
+dl.fv3-folder-settings {
+    display: block;
+    float: none;
+    width: 100%;
+    clear: both;
+    padding: 16px;
+}
+
+dl.fv3-folder-settings dt {
+    display: none;
+}
+
+.fv3-folder-settings .fv3-order-dd {
+    display: block;
+    margin: 0 auto;
+    width: 50%;
+    float: none;
+}
+
+/* Use Global Defaults toggle — inline in summary bar via flexbox */
+.fv3-global-defaults-toggle {
+    --_accent: var(--fv3-accent-color, #f97316);
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: normal;
+    padding: 5px 12px;
+    border-radius: 3px;
+    border: 1px solid color-mix(in srgb, var(--_accent) 30%, transparent);
+    background: color-mix(in srgb, var(--_accent) 8%, transparent);
+    color: var(--_accent);
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.15s;
+}
+.fv3-global-defaults-toggle:hover {
+    opacity: 1;
+}
+.fv3-global-defaults-toggle input {
+    vertical-align: middle;
+    margin: 0 4px 0 0;
+    accent-color: var(--_accent);
+}
+.fv3-global-defaults-toggle span {
+    color: var(--_accent);
+}
+
+/* Color reset button */
+.fv3-color-reset {
+    width: 32px;
+    height: 28px;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* ===== Container/VM order table ===== */
+table.sortable {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+table.sortable th {
+    padding: 0.6em 1em;
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.7;
+    border-bottom: var(--fv3-border, 2px solid rgba(128,128,128,0.3));
+}
+
+table.sortable td {
+    padding: 0.8em 1em;
+    border-bottom: var(--fv3-border, 1px solid rgba(128,128,128,0.15));
+}
+
+table.sortable tbody tr:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.06));
+}
+
+table.sortable th:first-child,
+table.sortable td:first-child {
+    width: 55%;
+    text-align: left;
+}
+
+table.sortable th:nth-child(2),
+table.sortable td:nth-child(2) {
+    width: 22%;
+    text-align: center;
+}
+
+table.sortable th:last-child,
+table.sortable td:last-child {
+    width: 23%;
+    text-align: center;
+}
+
+/* fa-tag claim marker rendered by updateList() for label-claimed containers (issue #55) */
+.fv3-label-claim {
+    margin-left: 0.6em;
+    font-size: 0.85em;
+    color: var(--orange-500, inherit);
+    white-space: nowrap;
+    cursor: help;
+}
+
+table.sortable td .switch-button-background,
+table.sortable td .fv3-toggle {
+    float: none;
+    display: inline-block;
+    margin: 0 auto;
+}
+
+table.sortable td .switch-button-label {
+    display: inline;
+    float: none;
+    clear: none;
+    margin-left: 4px;
+}
+
+table.sortable td .switch-button-label[style*="display: none"] {
+    display: none;
+}
+
+table.sortable td .switch-button-label + div[style*="clear"] {
+    display: none;
+}
+
+/* Drag handle icon hint */
+table.sortable tbody tr td:first-child::before {
+    content: '\f0c9';
+    font-family: FontAwesome;
+    opacity: 0.3;
+    margin-right: 8px;
+}
+
+.item {
+    height: 4em;
+}
+
+.item img {
+    pointer-events: none;
+    width: 36px;
+    height: 36px;
+    vertical-align: middle;
+    margin-right: 8px;
+    border-radius: 4px;
+}
+
+.sortable > tbody > .item[draggable="true"] {
+    cursor: grab;
+}
+
+.sortable > tbody > .item[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.dragging {
+    opacity: 20%;
+}
+
+/* ===== Custom actions ===== */
+.custom-action-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.multiselect-container {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ===== Dialog theming ===== */
+.ui-dialog.ui-widget.ui-widget-content {
+    --fv3-dialog-bg: hsl(var(--background, 0 0% 11%));
+    --fv3-dialog-text: hsl(var(--text, 0 0% 95%));
+    --fv3-dialog-header: hsl(var(--header, 0 0% 16%));
+    --fv3-dialog-border: hsl(var(--line, 0 0% 50% / 0.3));
+    background: var(--fv3-dialog-bg);
+    color: var(--fv3-dialog-text);
+    border: 1px solid var(--fv3-dialog-border);
+    border-radius: 4px;
+}
+
+.ui-dialog .ui-dialog-titlebar.ui-widget-header {
+    background: var(--fv3-dialog-header);
+    color: var(--fv3-dialog-text);
+    border-bottom: 1px solid var(--fv3-dialog-border);
+}
+
+.ui-dialog .ui-dialog-content {
+    color: var(--fv3-dialog-text);
+}
+
+.ui-dialog .ui-dialog-content select {
+    min-width: 120px;
+}
+
+.ui-dialog .ui-dialog-content select,
+.ui-dialog .ui-dialog-content input[type="text"] {
+    background: var(--fv3-dialog-bg);
+    color: var(--fv3-dialog-text);
+    border: 1px solid var(--fv3-dialog-border);
+}
+
+.ui-dialog .ui-dialog-buttonpane {
+    background: var(--fv3-dialog-bg);
+    border-top: 1px solid var(--fv3-dialog-border);
+}
+
+.ui-dialog .ui-dialog-buttonpane .ui-button {
+    color: var(--fv3-dialog-text);
+    border: 1px solid var(--fv3-dialog-border);
+    background: var(--fv3-dialog-bg);
+}
+
+.ui-dialog .ui-dialog-buttonpane .ui-button:hover {
+    background: var(--fv3-dialog-header);
+}
+
+.ui-multiselect-menu.ui-widget.ui-widget-content {
+    background: var(--fv3-dialog-bg, hsl(0 0% 11%));
+    color: var(--fv3-dialog-text, hsl(0 0% 95%));
+    border: 1px solid var(--fv3-dialog-border, hsl(0 0% 50% / 0.3));
+}
+
+.ui-multiselect-menu label {
+    color: var(--fv3-dialog-text, hsl(0 0% 95%));
+}
+
+/* ===== Collapsible sections ===== */
+.fv3-section {
+    margin-bottom: 4px;
+    border: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fv3-section > summary {
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--fv3-surface-tint, rgba(128,128,128,0.08));
+    border-bottom: 1px solid transparent;
+    user-select: none;
+}
+
+.fv3-section[open] > summary {
+    border-bottom-color: rgba(128,128,128,0.3);
+}
+
+.fv3-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.fv3-section > summary::before {
+    content: '\f054';
+    font-family: FontAwesome;
+    font-size: 0.75em;
+    transition: transform 0.15s;
+    display: inline-block;
+    width: 1em;
+    text-align: center;
+}
+
+.fv3-section[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.fv3-section > summary:hover {
+    background: var(--fv3-hover-bg, rgba(128,128,128,0.15));
+}
+
+.fv3-section > :not(summary) {
+    padding: 0 16px;
+}
+
+/* Toggle switches are in folder-common.css */
+
+/* ===== Mobile / Narrow Screen ===== */
+@media (max-width: 768px) {
+    .fv3-setting-row {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    /* Keep float so toggles stay inline with labels, just left-align */
+    .fv3-folder-settings dt {
+        text-align: left;
+    }
+
+    /* Keep toggle ON/OFF label next to switch on mobile */
+    .canvas dd .switch-button-background {
+        display: inline-block;
+        vertical-align: middle;
+    }
+    .canvas dd .switch-button-label {
+        display: inline;
+        vertical-align: middle;
+    }
+
+    /* Text inputs and selects: full width forces them to wrap below the label */
+    .fv3-folder-settings input[type="text"],
+    .fv3-folder-settings input[type="number"],
+    .fv3-folder-settings select {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .fv3-section > dl,
+    .canvas .basic > dl {
+        padding: 6px 10px;
+    }
+
+    .fv3-section > :not(summary):not(dl) {
+        padding: 0 10px;
+    }
+
+    table.sortable th,
+    table.sortable td {
+        padding: 0.6em 0.5em;
+    }
+
+    table.sortable th:first-child,
+    table.sortable td:first-child {
+        width: 50%;
+    }
+
+    table.sortable th:nth-child(2),
+    table.sortable td:nth-child(2) {
+        width: 25%;
+    }
+
+    table.sortable th:last-child,
+    table.sortable td:last-child {
+        width: 25%;
+    }
+
+    .item img {
+        width: 28px;
+        height: 28px;
+        margin-right: 6px;
+    }
+
+    .fv3-folder-settings .fv3-order-dd {
+        width: 100%;
+    }
+}
+
+/* ===== Touch Devices ===== */
+@media (hover: none) {
+    .fv3-toggle {
+        width: 48px;
+        height: 28px;
+    }
+
+    .fv3-toggle::before {
+        width: 22px;
+        height: 22px;
+    }
+
+    .fv3-toggle:checked::before {
+        transform: translateX(20px);
+    }
+
+    .fv3-toggle.fv3-toggle-rounded {
+        width: 52px;
+        height: 30px;
+    }
+
+    .fv3-toggle.fv3-toggle-rounded::before {
+        width: 24px;
+        height: 24px;
+    }
+
+    .fv3-toggle.fv3-toggle-rounded:checked::before {
+        transform: translateX(22px);
+    }
+}
+
+/* Form actions row: Submit/Cancel on left, Delete on far-right */
+.fv3-form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 12px;
+}
+.fv3-form-actions-right { margin-left: auto; }
+.fv3-form-actions-right input.fv3-delete-folder-btn {
+    background: #a02020;
+    color: #fff;
+    border-color: #7a1818;
+}
+.fv3-form-actions-right input.fv3-delete-folder-btn:hover { background: #b92828; }

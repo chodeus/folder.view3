@@ -1,0 +1,30 @@
+/* FolderView3 VM-specific styles */
+
+.tab-content.content:has(#kvm_table) {
+    padding-top: 0;
+}
+
+.folder-appname-id {
+    display: none;
+}
+
+.folder-preview-wrapper .inner > a {
+    display: inline-block;
+    overflow: clip;
+    white-space: nowrap;
+    word-break: break-all;
+}
+
+div.folder-preview-4 span.outer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    align-content: center;
+}
+
+
+@media (max-width: 768px) {
+    #kvm_table td {
+        white-space: nowrap;
+    }
+}

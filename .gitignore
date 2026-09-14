@@ -1,0 +1,10 @@
+claude.md
+CLAUDE.md
+.claude/
+AGENTS.md
+tests/
+dev/tests/
+.DS_Store
+tmp/
+dist/
+.ops/

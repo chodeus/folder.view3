@@ -1,0 +1,1003 @@
+.folder-storage {
+    display:none;
+}
+
+
+.orange-text.blue-text {
+    color: var(--color-orange, #f0a30a);
+}
+
+/* ===== Shared: folder name label in child panels ===== */
+.fv3-layout-accordion .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-layout-embossed .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-layout-inset .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-fullwidth-panel[data-folder-name]::after {
+    content: attr(data-folder-name);
+    display: block;
+    width: 100%;
+    text-align: right;
+    font-size: 0.7em;
+    opacity: 0.5;
+    margin-top: 0;
+    padding-right: 8px;
+    padding-bottom: 2px;
+    box-sizing: border-box;
+}
+
+.fv3-label-hidden .folder-showcase[data-folder-name]:not(:empty)::after,
+.fv3-label-hidden .fv3-embossed-panel[data-folder-name]::after,
+.fv3-label-hidden .fv3-fullwidth-panel[data-folder-name]::after {
+    content: none;
+}
+
+.fv3-label-hidden.fv3-layout-inset .folder-showcase > span.outer:last-child {
+    margin-bottom: 7px;
+}
+
+
+/* ===== Dashboard Layout: Inset Panel ===== */
+.fv3-layout-inset {
+    display: flex;
+    flex-wrap: wrap;
+    padding-right: 4px;
+}
+
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+    flex-basis: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 0;
+    background-color: var(--fv3-inset-bg, transparent);
+}
+
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer {
+    padding: 4px;
+    margin: 0;
+    align-self: flex-start;
+    position: relative;
+    background: transparent;
+}
+
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer::before,
+.fv3-layout-inset .folder-showcase-outer[expanded="true"] > span.outer::after {
+    content: none;
+}
+
+.fv3-layout-inset .folder-showcase:not(:empty) {
+    border: none;
+    margin: 0;
+    padding: 12px 8px 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background-color: var(--fv3-showcase-bg, transparent);
+}
+
+.fv3-layout-inset .folder-showcase:not(:empty)::before {
+    content: none;
+}
+
+.fv3-inset-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.fv3-inset-lshape {
+    fill: var(--fv3-inset-fill, none);
+    stroke: var(--fv3-inset-border-color, rgba(128,128,128,0.3));
+    stroke-width: 1;
+    stroke-linejoin: round;
+}
+
+.fv3-inset-innerbox {
+    fill: var(--fv3-inset-showcase-fill, none);
+    stroke: var(--fv3-inset-showcase-border, rgba(128,128,128,0.2));
+    stroke-width: 1;
+}
+
+.fv3-layout-inset .folder-showcase > span.outer.solid,
+.fv3-layout-inset .folder-showcase > span.outer.apps {
+    transform: none;
+    background: none;
+    border: none;
+    border-bottom: none;
+    box-shadow: none;
+    overflow: hidden;
+    margin-bottom: 0;
+    margin-right: 0;
+    width: calc(25% - 5px);
+}
+
+/* ===== Dashboard Layout: Accordion ===== */
+.fv3-layout-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 4px;
+}
+
+.fv3-layout-accordion .folder-showcase-outer {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+
+.fv3-layout-accordion .folder-showcase-outer > span.outer {
+    width: 100%;
+}
+
+.fv3-layout-accordion .folder-showcase:not(:empty) {
+    border: 1px solid var(--fv3-panel-border, rgba(128,128,128,0.2));
+    border-left: 3px solid var(--fv3-accent-color, var(--color-orange, #f0a30a));
+    border-radius: 4px;
+    margin: 6px 4px 4px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background-color: var(--fv3-panel-bg, rgba(128,128,128,0.08));
+}
+
+.fv3-layout-accordion .folder-showcase > span.outer.solid,
+.fv3-layout-accordion .folder-showcase > span.outer.apps {
+    transform: none;
+    background: none;
+    border: none;
+    border-bottom: none;
+    box-shadow: none;
+    overflow: hidden;
+    margin-bottom: 0;
+    margin-right: 0;
+    width: calc(25% - 5px);
+}
+
+.fv3-layout-accordion > span.outer:not(.folder-docker):not(.folder-vm) {
+    width: 100%;
+}
+
+/* ===== Dashboard Layout: Full-width Panel ===== */
+.fv3-layout-fullwidth {
+    display: flex;
+    flex-wrap: wrap;
+    position: relative;
+    overflow: hidden;
+}
+
+.fv3-layout-fullwidth .folder-showcase-outer {
+    display: contents;
+}
+
+.fv3-layout-fullwidth .folder-showcase:empty,
+.fv3-layout-fullwidth .folder-storage {
+    display: none;
+}
+
+.fv3-fullwidth-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border: 1px solid var(--fv3-panel-border, rgba(128,128,128,0.2));
+    border-left: 3px solid var(--fv3-accent-color, var(--color-orange, #f0a30a));
+    border-radius: 4px;
+    margin: 6px 0;
+    padding: 8px;
+    width: 100%;
+    min-width: 100%;
+    box-sizing: border-box;
+    background-color: var(--fv3-panel-bg, rgba(128,128,128,0.08));
+}
+
+.fv3-fullwidth-panel > span.outer.solid,
+.fv3-fullwidth-panel > span.outer.apps {
+    transform: none;
+    background: none;
+    border: none;
+    border-bottom: none;
+    box-shadow: none;
+    overflow: hidden;
+    margin-bottom: 0;
+    margin-right: 0;
+    width: calc(25% - 5px);
+}
+
+/* ===== Dashboard Layout: Embossed ===== */
+.fv3-layout-embossed {
+    display: flex;
+    flex-wrap: wrap;
+    padding-right: 4px;
+}
+
+.fv3-layout-embossed .folder-showcase-outer {
+    display: contents;
+}
+
+.fv3-layout-embossed .folder-showcase-outer[expanded="true"] {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    border: 1px solid var(--fv3-embossed-border, rgba(128,128,128,0.3));
+    border-left: 4px solid var(--fv3-embossed-accent, var(--color-orange, #f0a30a));
+    border-radius: 6px;
+    background-color: var(--fv3-embossed-bg, transparent);
+    box-shadow: none;
+}
+
+.fv3-layout-embossed .folder-showcase-outer[expanded="true"] > span.outer {
+    padding: 6px 8px;
+    margin: 0;
+}
+
+.fv3-layout-embossed .folder-showcase:not(:empty) {
+    border: 1px solid var(--fv3-embossed-inner-border, rgba(128,128,128,0.2));
+    border-radius: 4px;
+    margin: 0 6px 6px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background-color: var(--fv3-embossed-inner-bg, var(--fv3-panel-bg, rgba(128,128,128,0.08)));
+}
+
+.fv3-layout-embossed .folder-showcase:not(:empty)::before {
+    content: none;
+}
+
+.fv3-layout-embossed .folder-showcase > span.outer.solid,
+.fv3-layout-embossed .folder-showcase > span.outer.apps {
+    transform: none;
+    background: none;
+    border: none;
+    border-bottom: none;
+    box-shadow: none;
+    overflow: hidden;
+    margin-bottom: 0;
+    margin-right: 0;
+    width: calc(25% - 5px);
+}
+
+.fv3-layout-embossed .folder-showcase-outer:not([expanded="true"]) .fv3-folder-appname {
+    display: inline-block;
+    max-width: var(--fv3-appname-max-width, 120px);
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.fv3-layout-fullwidth.fv3-collapse-padded > span.outer,
+.fv3-layout-fullwidth .fv3-collapse-enabled > span.outer {
+    padding-right: 10px;
+}
+
+.fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer {
+    margin-bottom: 5px;
+    position: relative;
+    align-self: flex-start;
+}
+
+.fv3-layout-fullwidth button.fv3-collapse-toggle {
+    position: absolute;
+    right: 22px;
+    top: 8px;
+}
+
+/* ===== Collapse toggle button ===== */
+.fv3-expanded-tab {
+    display: inline-flex;
+    align-items: center;
+}
+
+button.fv3-collapse-toggle {
+    position: static;
+    min-width: 0;
+    width: 18px;
+    height: 18px;
+    max-width: 18px;
+    padding: 0;
+    margin: 0 0 0 10px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1;
+    font-size: 10px;
+    background: transparent;
+    border: 2px solid var(--fv3-toggle-color, var(--color-orange, #ff8c2f));
+    border-radius: 3px;
+    color: var(--fv3-toggle-color, var(--color-orange, #ff8c2f));
+    cursor: pointer;
+}
+
+button.fv3-collapse-toggle:hover {
+    border-color: var(--fv3-toggle-hover-color, var(--color-orange, #ffad5c));
+    color: var(--fv3-toggle-hover-color, var(--color-orange, #ffad5c));
+}
+
+.fv3-collapse-toggle i.fa {
+    display: block;
+    width: 100%;
+    text-align: center;
+    line-height: 1;
+    font-size: inherit;
+    padding-left: 1px;
+}
+
+.fv3-layout-fullwidth .folder-showcase-outer[expanded="true"] > span.outer,
+.fv3-layout-accordion .folder-showcase-outer[expanded="true"] > span.outer {
+    margin-bottom: 5px;
+}
+
+/* ===== Dashboard Layout: Classic ===== */
+td.fv3-layout-classic {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.fv3-layout-classic .folder-showcase-outer {
+    display: contents;
+}
+
+.fv3-layout-classic .folder-showcase {
+    display: contents;
+}
+
+.fv3-layout-fullwidth .fv3-folder-appname {
+    display: inline-block;
+    max-width: calc(100% - 30px);
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.fv3-layout-inset .folder-showcase-outer:not([expanded="true"]) .fv3-folder-appname {
+    display: inline-block;
+    max-width: var(--fv3-appname-max-width, 120px);
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.fv3-layout-classic .fv3-folder-appname {
+    display: inline-block;
+    max-width: var(--fv3-appname-max-width, 120px);
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* ===== Expand/collapse animation ===== */
+.fv3-animate .folder-showcase,
+.fv3-animate .fv3-fullwidth-panel {
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+
+/* ===== Greyscale collapsed folders when one is expanded ===== */
+.fv3-greyscale-active .folder-showcase-outer:not([expanded="true"]) > span.outer {
+    filter: grayscale(100%);
+    opacity: 0.5;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.fv3-greyscale-active .folder-showcase-outer[expanded="true"] > span.outer {
+    filter: none;
+    opacity: 1;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.fv3-greyscale-active > span.outer:not(:empty) {
+    filter: grayscale(100%);
+    opacity: 0.5;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+table.dashboard tr:last-child > td {
+    padding-bottom: 5px;
+}
+
+/* ===== Hidden folder overrides (must come after all layout rules) ===== */
+.fv3-layout-classic .folder-showcase-outer.fv3-hidden,
+.fv3-layout-inset .folder-showcase-outer.fv3-hidden,
+.fv3-layout-embossed .folder-showcase-outer.fv3-hidden,
+.fv3-layout-fullwidth .folder-showcase-outer.fv3-hidden,
+.fv3-layout-accordion .folder-showcase-outer.fv3-hidden {
+    display: none;
+}
+
+.fv3-layout-classic .folder-showcase-outer.fv3-hidden > *,
+.fv3-layout-embossed .folder-showcase-outer.fv3-hidden > *,
+.fv3-layout-fullwidth .folder-showcase-outer.fv3-hidden > * {
+    display: none;
+}
+
+/* ===== Mobile responsive: table overflow fix ===== */
+@media (max-width: 768px) {
+    td.fv3-layout-accordion,
+    td.fv3-layout-embossed,
+    td.fv3-layout-inset {
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .fv3-layout-embossed .folder-showcase-outer[expanded="true"],
+    .fv3-layout-inset .folder-showcase-outer[expanded="true"],
+    .fv3-layout-accordion .folder-showcase-outer[expanded="true"] {
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+
+    .fv3-layout-inset .folder-showcase:not(:empty),
+    .fv3-layout-embossed .folder-showcase:not(:empty) {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .fv3-layout-accordion .folder-showcase:not(:empty) {
+        min-width: 0;
+        box-sizing: border-box;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .fv3-fullwidth-panel {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* ===== Mobile responsive: child tile widths ===== */
+@media (max-width: 768px) {
+    .fv3-layout-inset .folder-showcase > span.outer.solid,
+    .fv3-layout-inset .folder-showcase > span.outer.apps,
+    .fv3-layout-embossed .folder-showcase > span.outer.solid,
+    .fv3-layout-embossed .folder-showcase > span.outer.apps,
+    .fv3-layout-accordion .folder-showcase > span.outer.solid,
+    .fv3-layout-accordion .folder-showcase > span.outer.apps,
+    .fv3-fullwidth-panel > span.outer.solid,
+    .fv3-fullwidth-panel > span.outer.apps {
+        width: calc(33.33% - 5px);
+    }
+}
+
+@media (max-width: 480px) {
+    .fv3-layout-inset .folder-showcase > span.outer.solid,
+    .fv3-layout-inset .folder-showcase > span.outer.apps,
+    .fv3-layout-embossed .folder-showcase > span.outer.solid,
+    .fv3-layout-embossed .folder-showcase > span.outer.apps,
+    .fv3-layout-accordion .folder-showcase > span.outer.solid,
+    .fv3-layout-accordion .folder-showcase > span.outer.apps,
+    .fv3-fullwidth-panel > span.outer.solid,
+    .fv3-fullwidth-panel > span.outer.apps {
+        width: calc(50% - 4px);
+    }
+}
+
+@media (max-width: 360px) {
+    .fv3-layout-inset .folder-showcase,
+    .fv3-layout-embossed .folder-showcase,
+    .fv3-layout-accordion .folder-showcase,
+    .fv3-fullwidth-panel .folder-showcase {
+        width: calc(100% - 4px);
+    }
+}
+
+
+/* Incognito mode toggle (dashboard — inline next to All Apps/VMs toggle) */
+.fv3-incognito-btn {
+    min-width: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0 0 0 8px;
+    border: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.fv3-incognito-btn:hover {
+    opacity: 0.7;
+}
+
+.fv3-incognito-btn.fv3-incognito-active {
+    opacity: 1;
+    color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+    border-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
+}
+
+/* Restyle Unraid switches marked by FV3 on Dashboard */
+body[data-fv3-toggle="flat"] .fv3-styled-switch {
+    border-radius: 3px; width: 30px; height: 16px; background: rgba(128,128,128,0.25); border: 1px solid rgba(128,128,128,0.4);
+}
+body[data-fv3-toggle="flat"] .fv3-styled-switch .switch-button-button {
+    border-radius: 2px; width: 12px; height: 12px; top: 2px; left: 2px; background: rgba(128,128,128,0.6);
+}
+body[data-fv3-toggle="flat"] .fv3-styled-switch.checked {
+    background: #2d4a1e; border-color: #4a7c2e;
+}
+body[data-fv3-toggle="flat"] .fv3-styled-switch.checked .switch-button-button {
+    left: 16px; background: #5cb85c;
+}
+
+body[data-fv3-toggle="rounded"] .fv3-styled-switch {
+    border-radius: 16px; width: 32px; height: 18px; background: #555; border: none;
+}
+body[data-fv3-toggle="rounded"] .fv3-styled-switch .switch-button-button {
+    border-radius: 50%; width: 10px; height: 10px; top: 4px; left: 4px; background: #ccc;
+}
+body[data-fv3-toggle="rounded"] .fv3-styled-switch.checked {
+    background: #f0a30a;
+}
+body[data-fv3-preset][data-fv3-toggle="rounded"] .fv3-styled-switch.checked {
+    background: var(--fv3-accent-color, #f0a30a);
+}
+body[data-fv3-toggle="rounded"] .fv3-styled-switch.checked .switch-button-button {
+    left: 18px; background: #fff;
+}
+
+body[data-fv3-toggle="material"] .fv3-styled-switch {
+    border-radius: 10px; width: 28px; height: 10px; background: rgba(128,128,128,0.4); border: none;
+}
+body[data-fv3-toggle="material"] .fv3-styled-switch .switch-button-button {
+    border-radius: 50%; width: 16px; height: 16px; top: -3px; left: -2px; background: #aaa; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+body[data-fv3-toggle="material"] .fv3-styled-switch.checked {
+    background: rgba(240,163,10,0.4);
+}
+body[data-fv3-toggle="material"] .fv3-styled-switch.checked .switch-button-button {
+    left: 14px; background: #f0a30a;
+}
+body[data-fv3-preset][data-fv3-toggle="material"] .fv3-styled-switch.checked {
+    background: color-mix(in srgb, var(--fv3-accent-color, #f0a30a) 40%, transparent);
+}
+body[data-fv3-preset][data-fv3-toggle="material"] .fv3-styled-switch.checked .switch-button-button {
+    background: var(--fv3-accent-color, #f0a30a);
+}
+
+body[data-fv3-toggle="pill"] .fv3-styled-switch {
+    border-radius: 18px; width: 38px; height: 20px; background: #444; border: none;
+}
+body[data-fv3-toggle="pill"] .fv3-styled-switch .switch-button-button {
+    border-radius: 50%; width: 18px; height: 18px; top: 1px; left: 1px; background: #888;
+}
+body[data-fv3-toggle="pill"] .fv3-styled-switch.checked {
+    background: #f0a30a;
+}
+body[data-fv3-preset][data-fv3-toggle="pill"] .fv3-styled-switch.checked {
+    background: var(--fv3-accent-color, #f0a30a);
+}
+body[data-fv3-toggle="pill"] .fv3-styled-switch.checked .switch-button-button {
+    left: 19px; background: #fff;
+}
+
+body[data-fv3-toggle] .fv3-styled-switch .switch-button-button {
+    border: none;
+    box-sizing: border-box;
+    position: absolute;
+    transition: left 0.15s ease;
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+}
+
+body[data-fv3-toggle="material"] .fv3-styled-switch {
+    overflow: visible;
+}
+
+body[data-fv3-toggle="material"] .fv3-styled-switch .switch-button-button {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
+    display: none;
+}
+
+/* === Advanced preview popup (duplicated from docker.css) === */
+
+.folder-update-text {
+    white-space: nowrap;
+}
+
+/* --- Tooltipster Base Styling --- */
+.tooltipster-docker-folder.tooltipster-base {
+    background: transparent;
+}
+
+.tooltipster-docker-folder>.tooltipster-box {
+    border: initial;
+    background: initial;
+}
+
+.tooltipster-docker-folder>.tooltipster-box>.tooltipster-content {
+    color: inherit;
+    padding: initial;
+    overflow: visible;
+}
+
+/* --- Tooltip Content Layout (Theme-agnostic) --- */
+.preview-outbox {
+    min-width: min(var(--fv3-tooltip-min-width), 90vw);
+    max-width: 90vw;
+    min-height: 400px;
+    max-height: var(--fv3-tooltip-max-height);
+    padding: var(--tooltip-spacing);
+    background-color: var(--background-color, rgb(29, 27, 27));
+    color: inherit;
+    border: 1px solid rgba(128, 128, 128, 0.4);
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--tooltip-spacing);
+    overflow: auto;
+}
+
+.tooltipster-docker-folder {
+    color: inherit;
+    background-color: inherit;
+}
+
+.preview-img > .folder-img {
+    width: 50px;
+    height: 50px;
+    margin-right: var(--tooltip-spacing);
+}
+
+/* --- First Row (Header-like info) --- */
+.first-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    border: var(--fv3-border);
+    border-radius: 5px;
+    padding: var(--tooltip-spacing);
+    background-color: var(--fv3-surface-tint);
+    gap: var(--tooltip-spacing);
+    flex-shrink: 0;
+}
+
+.preview-name {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.preview-actual-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preview-status {
+    background-color: inherit;
+    margin: inherit;
+    border-collapse: separate;
+    width: 100%;
+}
+
+.status-header {
+    text-align: left;
+}
+
+.status-header th {
+    padding: 4px 8px;
+}
+
+.status-header-version {
+    border-radius: 5px 0 0 5px;
+    background-color: var(--fv3-hover-bg);
+}
+
+.status-header-stats {
+    background-color: var(--fv3-hover-bg);
+}
+
+.status-header-autostart {
+    border-radius: 0 5px 5px 0;
+    background-color: var(--fv3-hover-bg);
+}
+
+.preview-status td {
+    padding: 4px 8px;
+    vertical-align: top;
+}
+
+/* --- Second Row (Main content: Actions and Info Tabs) --- */
+.second-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: calc(var(--tooltip-spacing) * 1.5);
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.action-info {
+    position: relative;
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: var(--fv3-tooltip-action-pane-width);
+    display: flex;
+    flex-direction: column;
+}
+
+.action {
+    display: flex;
+    margin-bottom: 1em;
+}
+
+.action ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.action a {
+    display: block;
+    padding: 2px 6px;
+    line-height: 24px;
+    color: inherit;
+    white-space: nowrap;
+    text-decoration: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.action a:hover {
+    background-color: var(--fv3-hover-bg);
+}
+
+.action-left {
+    margin-right: var(--tooltip-spacing);
+}
+
+.action-right {
+}
+
+.info-ct {
+    margin-top: auto;
+    border-radius: 5px;
+    background-color: var(--fv3-surface-tint);
+    border: var(--fv3-border);
+    padding: 5px;
+    font-size: 0.9em;
+    word-break: break-all;
+}
+
+.info-section {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0;
+    background-color: inherit;
+    border: none;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Tab Specific Styling --- */
+.info-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+    padding-left: 0;
+    list-style: none;
+    flex-shrink: 0;
+}
+
+.info-tabs a {
+    padding: 8px 10px;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+}
+
+.info-tabs > li {
+    margin-right: 2px;
+}
+
+.info-tabs > li[aria-selected="true"] a {
+    background-color: var(--fv3-tab-active-bg);
+    border-color: var(--fv3-tab-active-border);
+    position: relative;
+}
+
+.info-tabs > li[aria-selected="true"] {
+}
+
+.info-tabs > li:not([aria-selected="true"]) a:hover {
+    background-color: var(--fv3-surface-tint);
+}
+
+.info-tabs > li[aria-disabled="true"] {
+    display: none;
+}
+
+.info-section .ui-tabs-panel {
+    padding: var(--tooltip-spacing);
+    clear: both;
+    background-color: var(--fv3-surface-tint);
+    border: var(--fv3-border);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+    color: inherit;
+}
+
+.info-section.ui-tabs.ui-widget.ui-widget-content {
+    border: none;
+    background: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.info-section .ui-tabs-nav.ui-helper-reset.ui-helper-clearfix.ui-widget-header {
+    border: none;
+    background: none;
+    border-bottom: 1px solid var(--fv3-tab-active-border);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.info-ports, .info-volumes {
+    min-height: 100%;
+    box-sizing: border-box;
+    color: inherit;
+}
+
+.info-ports a, .info-volumes a {
+    color: var(--blue-400, #6a9fd4);
+}
+
+/* Graph Canvas Responsiveness */
+.comb-stat-graph, .cpu-stat-graph, .mem-stat-graph {
+    padding: 5px;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.comb-stat-graph canvas,
+.cpu-stat-graph canvas,
+.mem-stat-graph canvas {
+    max-width: 100%;
+    min-height: 150px;
+}
+
+/* --- Specific Colors --- */
+.preview-outbox div.status-stats div.usage-disk.mm span:first-of-type {
+    background-color: var(--folder-view3-graph-cpu);
+}
+
+.preview-outbox div.status-stats div.usage-disk.mm span:last-of-type {
+    background-color: var(--folder-view3-graph-mem);
+}
+
+/* === MOBILE: Advanced Preview Hybrid Layout === */
+@media (max-width: 768px) {
+    .preview-outbox {
+        min-height: 200px;
+        background-color: var(--background-color, rgb(29, 27, 27));
+    }
+
+    .first-row {
+        flex-wrap: wrap;
+    }
+
+    .preview-status {
+        font-size: 0.85em;
+    }
+
+    .second-row {
+        flex-direction: column;
+        flex-wrap: wrap;
+        gap: 0;
+        overflow: visible;
+    }
+
+    .action-info {
+        flex-basis: auto;
+        width: 100%;
+    }
+
+    .action {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        margin-bottom: 0.5em;
+    }
+
+    .action-left, .action-right {
+        margin: 0;
+    }
+
+    .info-section {
+        width: 100%;
+        flex-basis: auto;
+    }
+
+    .fv3-mobile-details {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+
+    .fv3-mobile-details > summary {
+        cursor: pointer;
+        padding: 8px 12px;
+        background: var(--fv3-surface-tint, rgba(128,128,128,0.08));
+        border: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.9em;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+    }
+
+    .fv3-mobile-details > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .fv3-mobile-details > summary::before {
+        content: '\f054';
+        font-family: FontAwesome;
+        font-size: 0.75em;
+        transition: transform 0.15s;
+        display: inline-block;
+        width: 1em;
+        text-align: center;
+    }
+
+    .fv3-mobile-details[open] > summary::before {
+        transform: rotate(90deg);
+    }
+
+    .fv3-mobile-details[open] > summary {
+        border-radius: 4px 4px 0 0;
+        border-bottom-color: transparent;
+    }
+
+    .fv3-mobile-details > .action-info,
+    .fv3-mobile-details > .info-section {
+        border: var(--fv3-border, 1px solid rgba(128,128,128,0.3));
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        padding: 8px;
+        /* width:100% + content-box + this padding/border would overflow the popup off-screen on
+           mobile — keep the padding inside the 100% width. */
+        box-sizing: border-box;
+    }
+}

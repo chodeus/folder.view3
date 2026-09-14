@@ -1,0 +1,21 @@
+# Caller that removes a pull request's test builds when it closes. Checks out nothing.
+# Mechanics: .github/workflows/unraid-plugin-pr-cleanup.yml.
+
+name: PR cleanup
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    permissions:
+      contents: write
+      pull-requests: write
+    # Pin to a reviewed chodeus-ops commit.
+    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-pr-cleanup.yml@2ef08fcd646d269404bc80d30c249ecac949a724 # main
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
