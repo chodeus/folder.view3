@@ -45,21 +45,41 @@ Both are the same team and the same stack, at two levels of maturity.
 | Translation platform | none | none |
 | Validation tooling | none | 11 scripts, ~3,200 lines, gated in CI |
 | Contributor intake | GitHub PRs | Discord + GitHub Discussions |
+| Translation rules | `AGENTS.md`/`CLAUDE.md` exist but contain **no** i18n guidance | `web/AGENTS.md` — rules, commands, add-a-language checklist |
+| AI policy | none stated | AI welcome, **disclosure mandatory** in PR template; Gemini-authored PRs refused |
 
 Both are GPL-2.0. **We are MIT**, so we can borrow their *ideas* freely but must not copy their script
 source into this repo.
 
-### How the work actually gets done
+### Exactly how a language gets added
 
-qui's public documentation says plainly:
+Traced from git history and the PRs themselves. Every qui locale arrived the same way:
 
-> Community members contribute translations. To add or improve a language, start a Discussion or contact
-> the team on Discord. The file [`web/AGENTS.md`](https://github.com/autobrr/qui/blob/develop/web/AGENTS.md)
-> documents the translation workflow.
+| locale | PR | date | author | added |
+|---|---|---|---|---|
+| `en` + `zh-CN` | [#1732](https://github.com/autobrr/qui/pull/1732) | 2026-05-28 | soup (maintainer) | 174 files, +20,676 |
+| `fr` | [#1956](https://github.com/autobrr/qui/pull/1956) | 2026-05-30 | OlziYT | 19 files, +6,534 |
+| `de` | [#1965](https://github.com/autobrr/qui/pull/1965) | 2026-05-31 | soup (maintainer) | 15 files, +6,573 |
+| `it` | [#2011](https://github.com/autobrr/qui/pull/2011) | 2026-06-13 | soup (maintainer) | 15 files, +6,537 |
+| `ko` | [#2042](https://github.com/autobrr/qui/pull/2042) | 2026-06-24 | Justin Sawyer | 16 files, +6,541 |
+| `uk` | [#2032](https://github.com/autobrr/qui/pull/2032) | 2026-06-25 | Rodion TECH | 15 files, +6,657 |
+| `cs` | [#2049](https://github.com/autobrr/qui/pull/2049) | 2026-07-01 | Lucian Maly | 17 files, +6,643 |
+| `pt-BR` | [#2136](https://github.com/autobrr/qui/pull/2136) | 2026-07-18 | Matheus Castro | 16 files, +6,688 |
+| `zh-TW` | [#2367](https://github.com/autobrr/qui/pull/2367) | 2026-08-20 | Kaden | 17 files, +6,385 |
 
-That pointer is the tell. `AGENTS.md` is the instruction file for AI coding agents — qui also ships
-`CLAUDE.md` and `GEMINI.md`. Their documented "translation workflow" is a set of rules written for a
-model to follow, not a style guide for human translators. The substance of it:
+The shape is uniform: **one language, one contributor, one PR, the complete pack in a single drop** —
+all 10 namespaces, ~6,500 lines, never incremental. Nine languages in under three months. autobrr is the
+same pattern (`en`+`zh-CN` by uifor, `fr`/`de` by maintainer ze0s, `ru`/`no` by NoeR, `es` by jabloink,
+`cs` by Lucian Maly — the same person who did qui's Czech).
+
+The seven steps:
+
+**1. Intake.** A volunteer announces in Discord or GitHub Discussions. qui's docs say: *"Community members
+contribute translations… The file `web/AGENTS.md` documents the translation workflow."*
+
+**2. The contributor follows `web/AGENTS.md`** — which is the instruction file for AI coding agents. qui
+also ships `CLAUDE.md` and `GEMINI.md`. Their "translation workflow" is a rules file written for a model,
+not a style guide for human translators:
 
 - Read the English namespace JSON **and the surrounding UI** first; translate in product context rather
   than string by string.
@@ -73,6 +93,47 @@ model to follow, not a style guide for human translators. The substance of it:
 
 Adding a language is a documented 5-step checklist that ends in "run `pnpm check:i18n`" and "update the
 promoted language list in the README and docs so it stays accurate".
+
+**3. AI is explicitly allowed, and disclosure is mandatory.** `.github/CONTRIBUTING.md`:
+
+> **AI-assisted contributions.** AI help is welcome. Fill in the AI disclosure section of the PR template
+> honestly.
+>
+> We do not accept PRs authored by Gemini models. Their hallucination rate in past contributions was too
+> high.
+
+The PR template ends with a required section: *"## AI disclosure — Please do not lie about the AI usage
+in this PR. Was any AI used in this PR? Roughly how much of the code was AI-written, and what
+model/tool?"* The Gemini ban is enforced with a prompt-injection guard aimed at the model itself, marked
+as overriding user prompts in the repository.
+
+**4. The contributor ships a checker with the translation.** Step 3 of the documented "Adding Languages"
+checklist is "add/adapt a locale coverage script". The pt-BR PR did exactly that — its description says
+it "sets up tooling to prevent future translation drift" and adds `check-pt-br-coverage.mjs` plus a
+`check:i18n:pt-br` package script checking "missing keys, extra keys, interpolation mismatches
+(`{{key}}`), and HTML tag mismatches". The per-language scripts were later folded into one parameterised
+checker by the maintainer (`refactor(i18n): consolidate locale coverage checkers`, #2627).
+
+**5. Review is deep, human, and blocking.** On the Korean PR the maintainer's verdict was "the Korean is
+genuinely high quality" and the wiring "textbook-correct" — and still blocked the merge on 75 keys added
+to `develop` after submission, a `package.json` conflict, and 17 translation corrections covering
+announce/reannounce tracker terminology, grammatical particles, and Korean sentence composition. Seven
+commits before it merged. CodeRabbit reviews translations too and flags tone, verbosity and terminology;
+the pt-BR PR needed four more commits after its review.
+
+**6. Defect classes become written rules plus a mechanical check.** This is the actual engine. The French
+PR ([#2014](https://github.com/autobrr/qui/pull/2014)) is titled *"improve French translation, fix
+hardcoded UI statuses, **and update agent rules**"* — while translating, olzi hit UI statuses hardcoded
+in JSX where no translation could reach them, and the one PR fixed the French, fixed the hardcoded
+statuses, added this line to `web/AGENTS.md`:
+
+> **Never hardcode text or raw backend variables (e.g., `run.status`, `task.status`) directly into JSX.**
+> If a status or string is displayed to the user, you MUST create a corresponding `i18n` key…
+
+…and registered a new script, `check:i18n:raw-backend-values`, to enforce it. Found once by a human,
+never repeatable after.
+
+**7. CI gates it.** `pnpm check:i18n` runs in `.github/workflows/lint.yml` on every PR.
 
 ### The failure modes are visible in their history
 
