@@ -1534,8 +1534,9 @@ const fv3UpdateInsetBorders = () => {
         document.querySelectorAll('.fv3-layout-inset .folder-showcase-outer[expanded="true"]').forEach(outer => {
             const tab = outer.querySelector(':scope > span.outer');
             const showcase = outer.querySelector('.folder-showcase');
+            if (!tab || !showcase) return;
             const visibleChildren = showcase.querySelectorAll(':scope > span.outer:not([style*="display: none"])');
-            if (!tab || !showcase || visibleChildren.length === 0) return;
+            if (visibleChildren.length === 0) return;
 
             outer.style.border = 'none';
             outer.style.outline = 'none';

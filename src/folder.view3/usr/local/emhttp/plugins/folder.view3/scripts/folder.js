@@ -42,9 +42,9 @@ let fv3FolderLoaded = false;
 const fv3LoadFailedAlert = () => swal({ title: 'Error', text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
 
 const rgbToHex = (rgb) => {
-    rgb = rgb.slice(4, -1).split(', ');
-    return "#" + (1 << 24 | rgb[0] << 16 | rgb[1] << 8 | rgb[2]).toString(16).slice(1);
-}
+    const m = rgb.match(/\d+/g);
+    return m ? '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('') : rgb;
+};
 
 $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));
 $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));
@@ -155,7 +155,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         hiddenPreview = currFolder.hidden_preview || [];
 
         currFolder.actions?.forEach((e, i) => {
-            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}">${escapeHtml(e.name)} <button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
+            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}"><span>${escapeHtml(e.name)} </span><button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
         });
 
 
