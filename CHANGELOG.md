@@ -4,12 +4,15 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix(pkg_build): resolve --out before building so a relative path works
-- fix: resolve container update status per container, not per image (#69)
-- refactor: give the has-an-update predicate one home (#70)
-- refactor: one owner for stale-autostart pruning (#71)
-- fix: stuck folders can be deleted, and a failed delete no longer freezes the page (#75)
-- Test build per pull request via the test-build label (beta) (#73) (fde4de4)
+- Containers that share an image tag no longer copy each other's update state
+- A degraded Docker read can no longer trim your autostart file
+- A folder that refused to delete can now be removed, and a failed delete no longer freezes the page
+- Folder ids are validated and escaped wherever they are rendered
+- A failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused rather than half-installed
+- A theme declined at the external-URL warning is now removed
+- Themes marked disabled are recognised whatever the capitalisation
+- Backup restores and CSS settings now report a failed write
+- The settings page and the CSS Tool's theme labels are translated
 
 ## 2026.08.28
 
