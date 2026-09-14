@@ -2,6 +2,15 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix(pkg_build): resolve --out before building so a relative path works
+- fix: resolve container update status per container, not per image (#69)
+- refactor: give the has-an-update predicate one home (#70)
+- refactor: one owner for stale-autostart pruning (#71)
+- fix: stuck folders can be deleted, and a failed delete no longer freezes the page (#75)
+- Test build per pull request via the test-build label (beta) (#73) (fde4de4)
+
 ## 2026.08.28
 
 - Containers assigned by a `folder.view3` Docker label (including Compose services) no longer override a folder you picked explicitly, and can't end up in two folders at once
