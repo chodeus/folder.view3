@@ -1288,7 +1288,7 @@
                     progress.log('This theme references external URLs. Keep it?');
                     var keep = await progress.confirm('Keep', 'Delete');
                     if (!keep) {
-                        var del = await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
+                        var del = await postForm(API + '/delete_theme.php', { entry: result.entry });
                         progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', del.ok ? 'success' : 'error');
                         progress.status(del.ok ? 'Removed' : 'Failed');
                     } else {
@@ -1427,7 +1427,7 @@
                         progress.log('This theme references external URLs. Keep it?');
                         var keep = await progress.confirm('Keep', 'Delete');
                         if (!keep) {
-                            var del = await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
+                            var del = await postForm(API + '/delete_theme.php', { entry: result.entry });
                             progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', del.ok ? 'success' : 'error');
                             failed++;
                         } else {

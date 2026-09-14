@@ -278,7 +278,8 @@
         if ($isUpdate && !fv3_remove_tree($oldDir, $baseReal)) {
             fv3_debug_log("importTheme: left $oldDir behind after updating $themeName");
         }
-        $result = ['success' => true, 'name' => $themeName, 'files' => $downloaded, 'is_update' => $isUpdate];
+        // entry is the installed folder name — an update keeps an enabled theme unsuffixed, and the UI deletes by entry
+        $result = ['success' => true, 'name' => $themeName, 'entry' => basename($themeDir), 'files' => $downloaded, 'is_update' => $isUpdate];
         if (!empty($warnings)) $result['warnings'] = $warnings;
         return $result;
     }
