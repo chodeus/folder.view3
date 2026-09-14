@@ -292,7 +292,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     fv3Debug('createFolder', id, 'combinedContainers', [...combinedContainers]);
 
     const colspan = document.querySelector("#docker_containers > thead > tr").childElementCount - 5;
-    const fld = `<tr class="sortable folder-id-${id} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="ct-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${id}" onclick="addDockerFolderContext('${id}')" class="hand folder-hand"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><span class="appname" style="display: none;"><a>folder-${id}</a></span><a class="exec folder-appname" onclick='editFolder("${id}")'>${escapeHtml(folder.name)}</a><br><i id="load-folder-${id}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${id} folder-dropdown" onclick="dropDownButton('${id}')" ><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td class="updatecolumn folder-update"><span class="green-text folder-update-text"><i class="fa fa-check fa-fw"></i> ${$.i18n('up-to-date')}</span><div class="advanced" style="display: ${advanced ? 'block' : 'none'};"><a class="exec" onclick="forceUpdateFolder('${id}');"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i> ${$.i18n('force-update')}</span></a></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="advanced folder-advanced" ${advanced ? 'style="display: table-cell;"' : ''}><span class="cpu-folder-${id} folder-cpu">0%</span><div class="usage-disk mm folder-load"><span id="cpu-folder-${id}" class="folder-cpu-bar" style="width:0%"></span><span></span></div><br><span class="mem-folder-${id} folder-mem">0 / 0</span></td><td class="folder-autostart"><input type="checkbox" id="folder-${id}-auto" class="autostart" style="display:none"><div style="clear:left"></div></td><td></td></tr>`;
+    const fld = `<tr class="sortable folder-id-${escapeHtml(id)} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="ct-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${escapeHtml(id)}" onclick="addDockerFolderContext(${escapeHtml(JSON.stringify(id))})" class="hand folder-hand"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><span class="appname" style="display: none;"><a>folder-${escapeHtml(id)}</a></span><a class="exec folder-appname" onclick='editFolder(${escapeHtml(JSON.stringify(id))})'>${escapeHtml(folder.name)}</a><br><i id="load-folder-${escapeHtml(id)}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${escapeHtml(id)} folder-dropdown" onclick="dropDownButton(${escapeHtml(JSON.stringify(id))})" ><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td class="updatecolumn folder-update"><span class="green-text folder-update-text"><i class="fa fa-check fa-fw"></i> ${$.i18n('up-to-date')}</span><div class="advanced" style="display: ${advanced ? 'block' : 'none'};"><a class="exec" onclick="forceUpdateFolder(${escapeHtml(JSON.stringify(id))});"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i> ${$.i18n('force-update')}</span></a></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="advanced folder-advanced" ${advanced ? 'style="display: table-cell;"' : ''}><span class="cpu-folder-${escapeHtml(id)} folder-cpu">0%</span><div class="usage-disk mm folder-load"><span id="cpu-folder-${escapeHtml(id)}" class="folder-cpu-bar" style="width:0%"></span><span></span></div><br><span class="mem-folder-${escapeHtml(id)} folder-mem">0 / 0</span></td><td class="folder-autostart"><input type="checkbox" id="folder-${escapeHtml(id)}-auto" class="autostart" style="display:none"><div style="clear:left"></div></td><td></td></tr>`;
     fv3Debug('createFolder', id, `colspan=${colspan}. Generated folder HTML (fld).`);
 
     if (positionInMainOrder === 0) {
@@ -690,7 +690,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     } else if (!upToDate) {
         $(`tr.folder-id-${id} > td.updatecolumn > span`).replaceWith($(`<div class="advanced" style="display: ${advanced ? 'block' : 'none'};"><span class="orange-text folder-update-text" style="white-space:nowrap;"><i class="fa fa-flash fa-fw"></i> ${$.i18n('update-ready')}</span></div>`));
         $(`tr.folder-id-${id} > td.updatecolumn > div.advanced:has(a)`).remove();
-        $(`tr.folder-id-${id} > td.updatecolumn`).append($(`<a class="exec" onclick="updateFolder('${id}');"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i> ${$.i18n('apply-update')}</span></a>`));
+        $(`tr.folder-id-${id} > td.updatecolumn`).append($(`<a class="exec" onclick="updateFolder(${escapeHtml(JSON.stringify(id))});"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i> ${$.i18n('apply-update')}</span></a>`));
         fv3Debug('createFolder', id, 'Set update ready status in update column.');
         if (folder.settings && folder.settings.preview_update_folder) {
             $(`tr.folder-id-${id} a.folder-appname`).addClass('orange-text');
@@ -751,7 +751,8 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 const folderAutostart = async (el) => {
     fv3Debug('folderAutostart', 'Entry. Event target:', el.target);
     const status = el.target.checked;
-    const id = el.target.id.split('-')[1];
+    // Element id is folder-<id>-auto and ids may contain '-', so strip the ends rather than split
+    const id = el.target.id.slice('folder-'.length, -'-auto'.length);
     fv3Debug('folderAutostart', `Folder ID: ${id}, New Status: ${status}`);
     const containers = $(`.folder-${id}-element`);
     fv3Debug('folderAutostart', `Found ${containers.length} containers in folder ${id}.`);
@@ -1165,10 +1166,10 @@ window.loadlist = () => {
         fv3OrganizerSyncDone = false;
         fv3Debug('Patched loadlist', 'Set loadedFolder to false.');
         folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
             fv3CheckUpdates()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
@@ -1382,11 +1383,11 @@ if (typeof resetSorting === 'function') {
     window.resetSorting = function() {
         if ($.cookie('lockbutton') == null) return;
         $('input[type=button]').prop('disabled', true);
-        $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true}, function() {
-            $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}, function() {
-                loadlist();
-            });
-        });
+        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck
+        $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true})
+            .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}))
+            .fail(() => fv3ShowBanner(fv3I18nOr('reset-order-failed', 'Could not reset the folder order. Try again.')))
+            .always(() => loadlist());
     };
     fv3Debug('init', 'resetSorting patched for folder-grouped autostart');
 }

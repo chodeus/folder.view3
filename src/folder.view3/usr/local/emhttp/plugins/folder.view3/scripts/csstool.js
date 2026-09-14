@@ -894,12 +894,12 @@
                 window._fv3ThemeUpdateCache[theme.name] = hasUpdate ? 'update' : 'current';
                 try { localStorage.setItem('fv3_theme_update_cache', JSON.stringify(window._fv3ThemeUpdateCache)); } catch(e) {}
                 if (hasUpdate) {
-                    checkEl.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="apply-update" style="color:#3b82f6">update ready</span></span>';
+                    checkEl.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="update-ready" style="color:#3b82f6">' + escapeAttr(fv3I18nOr('update-ready', 'update ready')) + '</span></span>';
                     const card = checkEl.closest('.fv3-theme-card');
                     const updateBtn = card?.querySelector('.fv3-theme-update');
                     if (updateBtn) updateBtn.style.display = '';
                 } else {
-                    checkEl.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">up-to-date</span></span>';
+                    checkEl.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">' + escapeAttr(fv3I18nOr('up-to-date', 'up-to-date')) + '</span></span>';
                 }
             } catch (e) {
                 console.warn('[FV3] Update check error for', theme.name, e);
@@ -930,7 +930,7 @@
                 </div>`;
             defaultCard.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
                 for (const t of themes.filter(t => t.enabled && t.isDir && t.source)) {
-                    await postForm(API + '/toggle_theme.php', { entry: t.entry, enable: 'false' });
+                    if (!(await setThemeEnabled(t.entry, false))) break;
                 }
                 loadThemes();
             });
@@ -966,15 +966,15 @@
                             ? '<button class="fv3-theme-disable">Disable</button>'
                             : '<button class="fv3-theme-activate">Enable</button>'}
                         ${repo ? '<button class="fv3-theme-check-update" title="Check for updates"><i class="fa fa-refresh"></i></button>' : ''}
-                        <button class="fv3-theme-update" title="Update from GitHub" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">apply update</span></button>
+                        <button class="fv3-theme-update" title="Update from GitHub" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">${escapeAttr(fv3I18nOr('apply-update', 'apply update'))}</span></button>
                         <button class="fv3-theme-delete" title="Delete"><i class="fa fa-trash"></i></button>
                     </div>`;
                 card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
-                    await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'true' });
+                    await setThemeEnabled(theme.entry, true);
                     loadThemes();
                 });
                 card.querySelector('.fv3-theme-disable')?.addEventListener('click', async () => {
-                    await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'false' });
+                    await setThemeEnabled(theme.entry, false);
                     loadThemes();
                 });
                 card.querySelector('.fv3-theme-update')?.addEventListener('click', async () => {
@@ -1019,7 +1019,7 @@
             if (githubThemes.length > 0) {
                 const btnBar = document.createElement('div');
                 btnBar.className = 'fv3-theme-button-bar';
-                btnBar.innerHTML = '<button class="fv3-theme-check-all"><span data-i18n="check-for-updates">Check for Updates</span></button><button class="fv3-theme-update-all"><span data-i18n="update-all">Update All</span></button>';
+                btnBar.innerHTML = '<button class="fv3-theme-check-all"><span data-i18n="check-for-updates">' + escapeAttr(fv3I18nOr('check-for-updates', 'Check for Updates')) + '</span></button><button class="fv3-theme-update-all"><span data-i18n="update-all">' + escapeAttr(fv3I18nOr('update-all', 'Update All')) + '</span></button>';
                 btnBar.querySelector('.fv3-theme-check-all').addEventListener('click', () => {
                     runThemeUpdateCheck();
                 });
@@ -1082,11 +1082,11 @@
                             <button class="fv3-theme-delete" title="Delete"><i class="fa fa-trash"></i></button>
                         </div>`;
                     card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
-                        await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'true' });
+                        await setThemeEnabled(theme.entry, true);
                         loadThemes();
                     });
                     card.querySelector('.fv3-theme-disable')?.addEventListener('click', async () => {
-                        await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'false' });
+                        await setThemeEnabled(theme.entry, false);
                         loadThemes();
                     });
                     card.querySelector('.fv3-theme-delete')?.addEventListener('click', () => {
@@ -1132,11 +1132,11 @@
                 container.querySelectorAll('.fv3-update-check[data-theme]').forEach(el => {
                     var status = window._fv3ThemeUpdateCache[el.dataset.theme];
                     if (status === 'update') {
-                        el.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="apply-update" style="color:#3b82f6">update ready</span></span>';
+                        el.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="update-ready" style="color:#3b82f6">' + escapeAttr(fv3I18nOr('update-ready', 'update ready')) + '</span></span>';
                         var updateBtn = el.closest('.fv3-theme-card')?.querySelector('.fv3-theme-update');
                         if (updateBtn) updateBtn.style.display = '';
                     } else if (status === 'current') {
-                        el.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">up-to-date</span></span>';
+                        el.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">' + escapeAttr(fv3I18nOr('up-to-date', 'up-to-date')) + '</span></span>';
                     }
                 });
             }
@@ -1288,9 +1288,9 @@
                     progress.log('This theme references external URLs. Keep it?');
                     var keep = await progress.confirm('Keep', 'Delete');
                     if (!keep) {
-                        await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
-                        progress.log('Theme deleted.', 'error');
-                        progress.status('Removed');
+                        var del = await postForm(API + '/delete_theme.php', { entry: result.entry });
+                        progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', del.ok ? 'success' : 'error');
+                        progress.status(del.ok ? 'Removed' : 'Failed');
                     } else {
                         progress.status('Complete');
                     }
@@ -1384,7 +1384,7 @@
                 });
             },
             done: function() {
-                statusEl.textContent = 'Finished';
+                if (statusEl.textContent !== 'Failed') statusEl.textContent = 'Finished';
                 var spinner = titleEl.querySelector('.fv3-swal-spinner');
                 if (spinner) spinner.style.display = 'none';
                 if (dotsEl) dotsEl.style.display = 'none';
@@ -1427,8 +1427,8 @@
                         progress.log('This theme references external URLs. Keep it?');
                         var keep = await progress.confirm('Keep', 'Delete');
                         if (!keep) {
-                            await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
-                            progress.log('Theme deleted.', 'error');
+                            var del = await postForm(API + '/delete_theme.php', { entry: result.entry });
+                            progress.log(del.ok ? 'Theme deleted.' : 'Could not delete the theme.', del.ok ? 'success' : 'error');
                             failed++;
                         } else {
                             succeeded++;
@@ -1456,6 +1456,21 @@
         const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || (typeof csrf_token !== 'undefined' ? csrf_token : '');
         const body = Object.entries({ ...data, csrf_token: csrfToken }).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
         return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+    }
+
+    // A refused or failed toggle shows why instead of passing silently; returns whether it went through
+    async function setThemeEnabled(entry, enable) {
+        let reason;
+        try {
+            const resp = await postForm(API + '/toggle_theme.php', { entry: entry, enable: enable ? 'true' : 'false' });
+            if (resp.ok) return true;
+            reason = 'HTTP ' + resp.status;
+            try { reason = (await resp.json()).error || reason; } catch (e) {}
+        } catch (e) {
+            reason = e.message || 'Network error';
+        }
+        swal({ title: 'Error', text: 'Could not ' + (enable ? 'enable' : 'disable') + ' the theme: ' + reason, type: 'error' });
+        return false;
     }
 
     async function postFormJson(url, data) {
