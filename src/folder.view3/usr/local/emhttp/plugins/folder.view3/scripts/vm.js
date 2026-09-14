@@ -348,7 +348,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                     if (!sel.length) {
                         sel = element;
                     }
-                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('log', ${escapeHtml(JSON.stringify(container))}, ${escapeHtml(JSON.stringify(ct.logs))})"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
                 }
 
                 const isVmRunning = ct.state !== 'shutoff';

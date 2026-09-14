@@ -1104,12 +1104,6 @@
                 const deleteBar = document.createElement('div');
                 deleteBar.className = 'fv3-theme-button-bar';
                 deleteBar.innerHTML = '<button class="fv3-theme-delete-selected" disabled><i class="fa fa-trash"></i> Delete Selected</button>';
-                container.addEventListener('change', (e) => {
-                    if (e.target.classList.contains('fv3-theme-select')) {
-                        const checked = container.querySelectorAll('.fv3-theme-select:checked').length;
-                        deleteBar.querySelector('.fv3-theme-delete-selected').disabled = !checked;
-                    }
-                });
                 deleteBar.querySelector('.fv3-theme-delete-selected').addEventListener('click', () => {
                     const selected = container.querySelectorAll('.fv3-theme-select:checked');
                     if (!selected.length) return;
@@ -1527,6 +1521,13 @@
             });
         }
 
+        // Delegated once: loadThemes() rebuilds the cards and the delete bar on every call
+        document.getElementById('fv3-theme-list')?.addEventListener('change', (e) => {
+            if (!e.target.classList.contains('fv3-theme-select')) return;
+            const list = e.currentTarget;
+            const btn = list.querySelector('.fv3-theme-delete-selected');
+            if (btn) btn.disabled = !list.querySelectorAll('.fv3-theme-select:checked').length;
+        });
         document.getElementById('fv3-css-save')?.addEventListener('click', () => saveConfig());
         document.getElementById('fv3-css-reset')?.addEventListener('click', resetConfig);
         document.getElementById('fv3-css-save-preset')?.addEventListener('click', savePreset);

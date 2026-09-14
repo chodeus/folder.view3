@@ -1002,7 +1002,8 @@ document.addEventListener('click', function(e) {
     if (!a) return;
     const cssDirty = window.fv3IsCssDirty && window.fv3IsCssDirty();
     const settingsDirty = typeof fv3IsSettingsDirty === 'function' && fv3IsSettingsDirty();
-    if (!(cssDirty || settingsDirty)) return;
+    const autostartDirty = typeof fv3IsAutostartDirty === 'function' && fv3IsAutostartDirty();
+    if (!(cssDirty || settingsDirty || autostartDirty)) return;
     e.preventDefault();
     e.stopPropagation();
     const href = a.getAttribute('href') || '';
