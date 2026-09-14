@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.09.15.1 (beta)
 
 - Containers that share an image tag no longer copy each other's update state
 - A degraded Docker read can no longer trim your autostart file
