@@ -2,6 +2,18 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Containers that share an image tag no longer copy each other's update state
+- A degraded Docker read can no longer trim your autostart file
+- A folder that refused to delete can now be removed, and a failed delete no longer freezes the page
+- Folder ids are validated and escaped wherever they are rendered
+- A failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused rather than half-installed
+- A theme declined at the external-URL warning is now removed
+- Themes marked disabled are recognised whatever the capitalisation
+- Backup restores and CSS settings now report a failed write
+- The settings page and the CSS Tool's theme labels are translated
+
 ## 2026.08.28
 
 - Containers assigned by a `folder.view3` Docker label (including Compose services) no longer override a folder you picked explicitly, and can't end up in two folders at once
