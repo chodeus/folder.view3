@@ -267,7 +267,12 @@
             return $fail('Could not replace the old theme files.');
         }
         if (!@rename($stageDir, $themeDir)) {
-            if ($isUpdate && !@rename($oldDir, $themeDir)) fv3_debug_log("importTheme: could not restore $oldDir to $themeDir");
+            // A failed restore leaves the only copy of the old theme in a scratch folder every surface hides, so name it
+            if ($isUpdate && !@rename($oldDir, $themeDir)) {
+                fv3_debug_log("importTheme: could not restore $oldDir to $themeDir");
+                return $fail('Could not install the theme files. The previous theme is still on the flash drive as styles/'
+                    . basename($oldDir) . ' and has to be renamed back by hand.');
+            }
             return $fail('Could not install the theme files.');
         }
         if ($isUpdate && !fv3_remove_tree($oldDir, $baseReal)) {
