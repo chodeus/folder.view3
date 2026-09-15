@@ -243,7 +243,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                         }));
                         charts.push(new Chart($(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), {
                             type: 'line',
-                            data: { datasets: [ { label: 'MEM', data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ] },
+                            data: { datasets: [ { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ] },
                             options: options
                         }));
                          fv3Debug('tooltipster', ct.shortId, 'Split charts created. CPU canvas:', $(`.cpu-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), "MEM canvas:", $(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0));
@@ -273,7 +273,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     try {
                         charts.push(new Chart($(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), {
                             type: 'line',
-                            data: { datasets: [ { label: 'MEM', data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ] },
+                            data: { datasets: [ { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ] },
                             options: options
                         }));
                         fv3Debug('tooltipster', ct.shortId, 'MEM chart created. Canvas:', $(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0));
@@ -292,7 +292,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                             data: {
                                 datasets: [
                                     { label: 'CPU', data: CPU, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), tension: 0.4, pointRadius: 0, borderWidth: 1 },
-                                    { label: 'MEM', data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 }
+                                    { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 }
                                 ]
                             },
                             options: options
@@ -346,11 +346,11 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                 const $infoSection = $secondRow.children('.info-section');
                 const $infoCt = $actionInfo.children('.info-ct');
 
-                const $actionsDetails = $(`<details class="fv3-mobile-details" open><summary>${$.i18n('quick-actions') || 'Quick Actions'}</summary></details>`);
+                const $actionsDetails = $(`<details class="fv3-mobile-details" open><summary>${fv3I18nOr('quick-actions', 'Quick Actions')}</summary></details>`);
                 $actionInfo.before($actionsDetails);
                 $actionsDetails.append($actionInfo);
 
-                const $graphDetails = $(`<details class="fv3-mobile-details"><summary>${$.i18n('graph-details') || 'Graph & Details'}</summary></details>`);
+                const $graphDetails = $(`<details class="fv3-mobile-details"><summary>${fv3I18nOr('graph-details', 'Graph & Details')}</summary></details>`);
                 $infoSection.before($graphDetails);
                 $graphDetails.append($infoSection);
 
@@ -482,7 +482,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                         </div>
                     </div>
                     <table class="preview-status">
-                        <thead class="status-header"><tr><th class="status-header-version">${$.i18n('version')}</th><th class="status-header-stats">CPU/MEM</th><th class="status-header-autostart">${$.i18n('autostart')}</th></tr></thead>
+                        <thead class="status-header"><tr><th class="status-header-version">${$.i18n('version')}</th><th class="status-header-stats">${fv3I18nOr('cpu-mem', 'CPU/MEM')}</th><th class="status-header-autostart">${$.i18n('autostart')}</th></tr></thead>
                         <tbody><tr>
                             <td><div class="status-version">${ct.info.State.manager === 'composeman' ? `<span class="folder-update-text"><i class="fa fa-docker fa-fw"></i> ${$.i18n('compose')}</span>` : ct.info.State.manager !== 'dockerman' ? `<span class="folder-update-text"><i class="fa fa-docker fa-fw"></i> ${$.i18n('third-party')}</span>` : !fv3HasUpdate(ct) ? `<span class="green-text folder-update-text"><i class="fa fa-check fa-fw"></i>${$.i18n('up-to-date')}</span><br><a class="exec" onclick="hideAllTips(); updateContainer(${fv3JsArg(ct.info.Name)});"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i>${$.i18n('force-update')}</span></a>` : `<span class="orange-text folder-update-text" style="white-space:nowrap;"><i class="fa fa-flash fa-fw"></i>${$.i18n('update-ready')}</span><br><a class="exec" onclick="hideAllTips(); updateContainer(${fv3JsArg(ct.info.Name)});"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i>${$.i18n('apply-update')}</span></a>`}<br><i class="fa fa-info-circle fa-fw"></i> ${escapeHtml(ct.info.Config.Image.split(':').pop())}</div></td>
                             <td><div class="status-stats"><span class="cpu-${ct.shortId}">0%</span><div class="usage-disk mm"><span id="cpu-${ct.shortId}" style="width: 0%;"></span><span></span></div><br><span class="mem-${ct.shortId}">0 / 0</span></div></td>
