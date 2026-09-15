@@ -192,10 +192,9 @@ Language packs live in `src/folder.view3/usr/local/emhttp/plugins/folder.view3/l
 - **Improve a language** — edit the values only. Keep every key, the `$1`/`$2` placeholders, any HTML tags, and names such as Docker, VM, WebUI and Unraid.
 - **Plurals** — `{{PLURAL:$1|file|files}}`, with as many forms as the language needs (Polish: `{{PLURAL:$1|plik|pliki|plików}}`).
 - **Add a language** — copy `en.json` to its two-letter code (e.g. `pt.json`), set `locale` and `authors` in `@metadata`, translate every value, and add it to the language list under Features.
-- **Check the keys** before submitting; the list must match `en.json`:
+- **Check before submitting** — this compares every pack's keys, placeholders, HTML tags and plurals with `en.json`, and CI runs it on every pull request:
   ```bash
-  cd src/folder.view3/usr/local/emhttp/plugins/folder.view3/langs
-  diff <(jq -r 'keys_unsorted[]' en.json) <(jq -r 'keys_unsorted[]' de.json) && echo OK
+  python3 .github/scripts/check-langs.py src/folder.view3/usr/local/emhttp/plugins/folder.view3/langs
   ```
 - **Pull requests** — target the `beta` branch, one language per PR. Say whether you are a native speaker and whether any of it was machine- or AI-translated.
 - **New UI text in code** — use `fv3I18nOr('key', 'English text')` in JavaScript or a `data-i18n` attribute in markup, and add the key to all seven packs.
