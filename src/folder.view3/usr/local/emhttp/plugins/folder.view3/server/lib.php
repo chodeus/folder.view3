@@ -1231,7 +1231,11 @@
                 $undone = $gone || (fv3_path_within(dirname($live), $baseFor($rel)) && ($applied[$rel] ? @rename("$stage/.old/$rel", $live) : @unlink($live)));
                 if (!$undone) $stuck[] = $rel;
             }
-            foreach ($madeDirs as $d) { if (fv3_path_within($d, $baseReal)) @rmdir($d); }
+            foreach ($madeDirs as $d) {
+                if (fv3_path_within($d, $baseReal)) @rmdir($d);
+                // A folder still standing is named too, so "nothing was imported" is never claimed over a leftover
+                if (is_dir($d)) $stuck[] = substr($d, strlen($baseDir) + 1) . '/';
+            }
             if ($stuck) {
                 return ['error' => "Could not replace $failed, and could not undo " . implode(', ', $stuck)
                     . '; previous copies, where there were any, are in ' . basename($stage) . '/.old'];
