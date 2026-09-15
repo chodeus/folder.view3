@@ -68,7 +68,7 @@ const createFolders = async () => {
                     foldersDone[id] = folders[id];
                 } catch (e) {
                     console.error(`[FV3] VM: folder "${folders[id].name}" failed to render:`, e);
-                    fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                    fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', folders[id].name), 'error');
                 }
                 delete folders[id];
             }
@@ -82,7 +82,7 @@ const createFolders = async () => {
             foldersDone[id] = folders[id];
         } catch (e) {
             console.error(`[FV3] VM: folder "${value.name}" failed to render:`, e);
-            fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+            fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', value.name), 'error');
         }
         delete folders[id];
     }
@@ -348,7 +348,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                     if (!sel.length) {
                         sel = element;
                     }
-                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('log', ${escapeHtml(JSON.stringify(container))}, ${escapeHtml(JSON.stringify(ct.logs))})"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
                 }
 
                 const isVmRunning = ct.state !== 'shutoff';
@@ -519,7 +519,7 @@ const actionFolder = async (id, action) => {
     }
 
     const settled = await Promise.allSettled(proms);
-    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
+    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || fv3I18nOr('request-failed', 'Request failed') });
     errors = proms.filter(e => e.success !== true);
     const errorMessages = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
@@ -529,7 +529,7 @@ const actionFolder = async (id, action) => {
             text:errorMessages.join('<br>'),
             type:'error',
             html:true,
-            confirmButtonText:'Ok'
+            confirmButtonText: fv3I18nOr('ok', 'Ok')
         }, loadlist);
     }
 

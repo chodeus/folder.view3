@@ -185,6 +185,20 @@ Originally created by [scolcipitato](https://github.com/scolcipitato/folder.view
 - **Unraid Forum:** [FolderView3 Support Thread](https://forums.unraid.net/topic/197223-plugin-folderview3/)
 - **GitHub Issues:** [chodeus/folder.view3](https://github.com/chodeus/folder.view3/issues)
 
+## Contributing Translations
+
+Language packs live in `src/folder.view3/usr/local/emhttp/plugins/folder.view3/langs/`, one JSON file per language. `en.json` is the source, and anything missing from a pack shows in English. FolderView3 picks the pack from the first two letters of Unraid's display language (`de_DE` → `de.json`).
+
+- **Improve a language** — edit the values only. Keep every key, the `$1`/`$2` placeholders, any HTML tags, and names such as Docker, VM, WebUI and Unraid.
+- **Plurals** — `{{PLURAL:$1|file|files}}`, with as many forms as the language needs (Polish: `{{PLURAL:$1|plik|pliki|plików}}`).
+- **Add a language** — copy `en.json` to its two-letter code (e.g. `pt.json`), set `locale` and `authors` in `@metadata`, translate every value, and add it to the language list under Features.
+- **Check before submitting** — this compares every pack's keys, placeholders, HTML tags and plurals with `en.json`, checks that every key the code uses exists, and CI runs it on every pull request:
+  ```bash
+  python3 .github/scripts/check-langs.py src/folder.view3/usr/local/emhttp/plugins/folder.view3/langs
+  ```
+- **Pull requests** — target the `beta` branch, one language per PR. Say whether you are a native speaker and whether any of it was machine- or AI-translated.
+- **New UI text in code** — use `fv3I18nOr('key', 'English text')` in JavaScript or a `data-i18n` attribute in markup, and add the key to every language pack.
+
 ## Libraries
 
 - [Chart.js](https://www.chartjs.org/)

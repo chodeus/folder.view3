@@ -137,7 +137,7 @@ const createFolders = async () => {
                     foldersDone[id] = folders[id];
                 } catch (e) {
                     console.error(`[FV3] Docker: folder "${folders[id].name}" failed to render:`, e);
-                    fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                    fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', folders[id].name), 'error');
                 }
                 delete folders[id];
                 fv3Debug('createFolders', `Folder ${id} moved to foldersDone. Updated foldersDone:`, {...foldersDone}, "Remaining folders:", {...folders});
@@ -158,7 +158,7 @@ const createFolders = async () => {
             foldersDone[id] = folders[id];
         } catch (e) {
             console.error(`[FV3] Docker: folder "${value.name}" failed to render:`, e);
-            fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+            fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', value.name), 'error');
         }
         delete folders[id];
         fv3Debug('createFolders', `Remaining folder ${id} moved to foldersDone. Updated foldersDone:`, {...foldersDone}, "Remaining folders:", {...folders});
@@ -237,11 +237,6 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     fv3Debug('createFolder', id, 'Entry', { folder: JSON.parse(JSON.stringify(folder)), id, positionInMainOrder, orderInitialSnapshot: [...liveOrderArray], containersInfoKeys: Object.keys(containersInfo).length, foldersDone: [...foldersDone] });
 
     const orderSnapshotAtFolderStart = [...liveOrderArray];
-    if (FV3_DEBUG && id === "2l2rPNIkZHWN5WLqAuzPaCZHSqI") {
-        fv3Debug('createFolder', 'Network folder containers', JSON.parse(JSON.stringify(folder.containers)));
-        fv3Debug('createFolder', 'Network folder regex', folder.regex);
-        fv3Debug('createFolder', 'Network folder orderSnapshot', [...orderSnapshotAtFolderStart]);
-    }
 
     fv3Debug('createFolder', id, 'Dispatching docker-pre-folder-creation event.');
     folderEvents.dispatchEvent(new CustomEvent('docker-pre-folder-creation', {detail: {
@@ -573,7 +568,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
                 if (folder.settings.preview_console) {
                     if ($targetForAppend.length) {
-                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '${escapeHtml(ct.info.Shell)}');"><i class="fa fa-terminal" aria-hidden="true"></i></a></span>`));
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-console"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('docker', ${escapeHtml(JSON.stringify(ct.info.Name))}, ${escapeHtml(JSON.stringify(ct.info.Shell))});"><i class="fa fa-terminal" aria-hidden="true"></i></a></span>`));
                         fv3Debug('createFolder', id, container_name_in_folder, 'Appended Console icon to preview.');
                     } else {
                          fv3DebugWarn('createFolder', id, container_name_in_folder, 'Console icon: Could not find target for append in preview element.');
@@ -582,7 +577,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
 
                 if (folder.settings.preview_logs) {
                     if ($targetForAppend.length) {
-                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('docker', '${escapeHtml(ct.info.Name)}', '.log');"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                        $targetForAppend.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('docker', ${escapeHtml(JSON.stringify(ct.info.Name))}, '.log');"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
                         fv3Debug('createFolder', id, container_name_in_folder, 'Appended Logs icon to preview.');
                     } else {
                         fv3DebugWarn('createFolder', id, container_name_in_folder, 'Logs icon: Could not find target for append in preview element.');
@@ -863,7 +858,7 @@ const actionFolder = async (id, action) => {
 
     fv3Debug('actionFolder', id, `Awaiting ${proms.length} promises.`);
     const settled = await Promise.allSettled(proms);
-    const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
+    const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || fv3I18nOr('request-failed', 'Request failed') });
     fv3Debug('actionFolder', id, 'Promises resolved. Results:', results);
 
     errors = results.filter(e => e.success !== true);
@@ -877,7 +872,7 @@ const actionFolder = async (id, action) => {
             text:errorMessages.join('<br>'),
             type:'error',
             html:true,
-            confirmButtonText:'Ok'
+            confirmButtonText: fv3I18nOr('ok', 'Ok')
         }, loadlist);
     } else {
         fv3Debug('actionFolder', id, 'No errors. Reloading list.');
@@ -1224,29 +1219,30 @@ let fv3WsDebounceTimer = null;
 
 // SSE stats fallback (when GraphQL WebSocket isn't available)
 const fv3InitSSEStats = () => {
-    fv3Debug('init', 'requesting CPU count for SSE fallback');
-    $.get('/plugins/folder.view3/server/cpu.php').promise().then((data) => {
-        cpus = parseInt(data);
-        fv3Debug('CPU count received', `${cpus}. Attaching SSE listener for dockerload.`);
-        dockerload.addEventListener('message', (e_sse) => {
-            const sseData = (typeof e_sse.data === 'string') ? e_sse.data : (typeof e_sse === 'string' ? e_sse : null);
-            if (!sseData || !sseData.trim()) return;
-            if (window.fv3StatsMark) window.fv3StatsMark('sse');
+    // Listener first: a failed cpu.php must not leave the tab without live stats (divisor stays 1)
+    dockerload.addEventListener('message', (e_sse) => {
+        const sseData = (typeof e_sse.data === 'string') ? e_sse.data : (typeof e_sse === 'string' ? e_sse : null);
+        if (!sseData || !sseData.trim()) return;
+        if (window.fv3StatsMark) window.fv3StatsMark('sse');
 
-            let load = {};
-            const lines = sseData.split('\n');
-            lines.forEach((line_str) => {
-                if (!line_str.trim()) return;
-                const exp = line_str.split(';');
-                if (exp.length >= 3) {
-                    load[exp[0]] = { cpu: exp[1], mem: exp[2].split(' / ') };
-                }
-            });
-
-            fv3UpdateFolderStats(load);
-
-            folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { load, source: 'sse' } }));
+        let load = {};
+        const lines = sseData.split('\n');
+        lines.forEach((line_str) => {
+            if (!line_str.trim()) return;
+            const exp = line_str.split(';');
+            if (exp.length >= 3) {
+                load[exp[0]] = { cpu: exp[1], mem: exp[2].split(' / ') };
+            }
         });
+
+        fv3UpdateFolderStats(load);
+
+        folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { load, source: 'sse' } }));
+    });
+    $.get('/plugins/folder.view3/server/cpu.php').promise().then((data) => {
+        const n = parseInt(data, 10);
+        if (n > 0) cpus = n;
+        fv3Debug('init', `CPU count for SSE stats: ${cpus}`);
     }).catch(err => {
         fv3DebugWarn('init', 'error fetching CPU count', err);
     });

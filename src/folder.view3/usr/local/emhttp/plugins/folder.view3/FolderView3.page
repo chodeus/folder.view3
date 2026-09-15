@@ -15,6 +15,8 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <script>
     folderi18n = () => {
         $('body').i18n();
+        // $.fn.i18n sets one attribute per element; the repo box needs its title as well
+        $('#fv3-theme-repo').attr('title', fv3I18nOr('css-theme-repo-tooltip', 'Supports: owner/repo (default branch), owner/repo/tree/branch, or owner/repo:branch'));
     }
 </script>
 <link rel="stylesheet" href="<?php autov('/plugins/folder.view3/styles/folder-common.css')?>">
@@ -111,7 +113,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>How Docker folders appear on the Dashboard. <b>Classic</b> shows a simple icon grid. <b>Full-width Panel</b> expands containers into a full-width row below. <b>Accordion</b> expands one folder at a time. <b>Inset Panel</b> and <b>Embossed</b> offer styled panel layouts.</p>
+                    <p data-i18n="[html]dashboard-docker-layout-tooltip">How Docker folders appear on the Dashboard. <b>Classic</b> shows a simple icon grid. <b>Full-width Panel</b> expands containers into a full-width row below. <b>Accordion</b> expands one folder at a time. <b>Inset Panel</b> and <b>Embossed</b> offer styled panel layouts.</p>
                 </blockquote>
             </div>
 
@@ -121,7 +123,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-docker-folder-label" type="checkbox" /></dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>Displays the folder name as a label inside the expanded panel.</p>
+                    <p data-i18n="dashboard-docker-folder-label-tooltip">Displays the folder name as a label inside the expanded panel.</p>
                 </blockquote>
             </div>
 
@@ -131,7 +133,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-docker-expand-toggle" type="checkbox" /></dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>Adds a small collapse/expand toggle button to each folder on the Dashboard for quick one-click toggling.</p>
+                    <p data-i18n="dashboard-docker-expand-toggle-tooltip">Adds a small collapse/expand toggle button to each folder on the Dashboard for quick one-click toggling.</p>
                 </blockquote>
             </div>
 
@@ -141,7 +143,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-docker-greyscale" type="checkbox" /></dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>Shows collapsed folder icons in greyscale to visually distinguish them from expanded folders.</p>
+                    <p data-i18n="dashboard-docker-greyscale-tooltip">Shows collapsed folder icons in greyscale to visually distinguish them from expanded folders.</p>
                 </blockquote>
             </div>
 
@@ -151,7 +153,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-update-folder" type="checkbox" /></dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>On the Dashboard, highlights the folder name in orange when any container in the folder has an update available.</p>
+                    <p data-i18n="dashboard-update-folder-tooltip">On the Dashboard, highlights the folder name in orange when any container in the folder has an update available.</p>
                 </blockquote>
             </div>
 
@@ -161,7 +163,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-update-container" type="checkbox" /></dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>On the Dashboard, highlights container names in the folder showcase in orange when an update is available.</p>
+                    <p data-i18n="dashboard-update-container-tooltip">On the Dashboard, highlights container names in the folder showcase in orange when an update is available.</p>
                 </blockquote>
             </div>
 
@@ -178,7 +180,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p><b>Default</b> uses Unraid's built-in container menu (the existing behavior). <b>Advanced</b> replaces it with FolderView3's popup showing CPU/MEM graphs, container info, and quick actions. <b>Open WebUI</b> makes clicking a container tile in an expanded folder open its WebUI in a new tab (containers without a WebUI keep the menu).</p>
+                    <p data-i18n="[html]dashboard-context-tooltip"><b>Default</b> uses Unraid's built-in container menu (the existing behavior). <b>Advanced</b> replaces it with FolderView3's popup showing CPU/MEM graphs, container info, and quick actions. <b>Open WebUI</b> makes clicking a container tile in an expanded folder open its WebUI in a new tab (containers without a WebUI keep the menu).</p>
                 </blockquote>
             </div>
 
@@ -194,7 +196,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>How the Dashboard advanced popup opens. <b>Click</b> requires clicking a container, <b>Hover</b> opens it on mouse-over.</p>
+                    <p data-i18n="[html]context-trigger-tooltip">How the advanced preview opens. <b>Click</b> requires clicking a container, <b>Hover</b> opens on mouse-over.</p>
                 </blockquote>
             </div>
 
@@ -213,7 +215,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>Which real-time graphs to display in the Dashboard advanced popup.</p>
+                    <p data-i18n="[html]context-graph-tooltip">Choose which real-time graphs to display. <b>Combined</b> shows CPU and memory on one chart, <b>Split</b> shows them separately.</p>
                 </blockquote>
             </div>
 
@@ -226,7 +228,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>How many seconds of history the Dashboard popup graph displays. 5–600 seconds.</p>
+                    <p data-i18n="context-graph-time-tooltip">How many seconds of history the graph displays. Default is 60 (1 minute).</p>
                 </blockquote>
             </div>
         </div>
@@ -249,7 +251,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>How VM folders appear on the Dashboard. Same layout options as Docker above.</p>
+                    <p data-i18n="dashboard-vm-layout-tooltip">How VM folders appear on the Dashboard. Same layout options as Docker above.</p>
                 </blockquote>
             </div>
 
@@ -259,7 +261,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-vm-folder-label" type="checkbox" /></dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>Displays the folder name as a label inside the expanded VM panel.</p>
+                    <p data-i18n="dashboard-vm-folder-label-tooltip">Displays the folder name as a label inside the expanded VM panel.</p>
                 </blockquote>
             </div>
 
@@ -269,7 +271,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-vm-expand-toggle" type="checkbox" /></dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>Adds a quick collapse/expand toggle button to each VM folder on the Dashboard.</p>
+                    <p data-i18n="dashboard-vm-expand-toggle-tooltip">Adds a quick collapse/expand toggle button to each VM folder on the Dashboard.</p>
                 </blockquote>
             </div>
 
@@ -279,7 +281,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-vm-greyscale" type="checkbox" /></dd>
                 </dl>
                 <blockquote class="inline_help">
-                    <p>Shows collapsed VM folder icons in greyscale.</p>
+                    <p data-i18n="dashboard-vm-greyscale-tooltip">Shows collapsed VM folder icons in greyscale.</p>
                 </blockquote>
             </div>
         </div>
@@ -294,7 +296,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                 <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="dashboard-animation" type="checkbox" /></dd>
             </dl>
             <blockquote class="inline_help">
-                <p>Enables a smooth slide animation when expanding or collapsing folders on the Dashboard.</p>
+                <p data-i18n="dashboard-animation-tooltip">Enables a smooth slide animation when expanding or collapsing folders on the Dashboard.</p>
             </blockquote>
         </div>
 
@@ -313,11 +315,11 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 
     <div class="basic">
         <dl>
-            <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-preview-update-folder" data-i18n="preview-update-folder">Orange folder text on update</label></dt>
+            <dt><span class="fv3-scope-badge" data-i18n="docker-only">Docker only</span> <label for="default-preview-update-folder" data-i18n="preview-update-folder">Orange folder text on update</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-update-folder" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>On the Docker page, highlights the folder name in orange when any container in the folder has an update available.</p>
+            <p data-i18n="preview-update-folder-tooltip">On the Docker page, highlights the folder name in orange when any container in the folder has an update available.</p>
         </blockquote>
     </div>
 
@@ -338,27 +340,27 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Default preview style for new folders. Individual folders can override this in their settings.</p>
+            <p data-i18n="default-preview-tooltip">Default preview style for new folders. Individual folders can override this in their settings.</p>
         </blockquote>
     </div>
 
     <div class="basic" data-fv3-show-preview="1 3 4">
         <dl>
-            <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-preview-update" data-i18n="preview-update">Orange container text on update</label></dt>
+            <dt><span class="fv3-scope-badge" data-i18n="docker-only">Docker only</span> <label for="default-preview-update" data-i18n="preview-update">Orange container text on update</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-update" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>On the Docker page, highlights container names in the folder preview in orange when an update is available.</p>
+            <p data-i18n="preview-update-tooltip">On the Docker page, highlights container names in the folder preview in orange when an update is available.</p>
         </blockquote>
     </div>
 
     <div class="basic" data-fv3-show-preview="1 3 4">
         <dl>
             <dt><label for="default-preview-text-width" data-i18n="preview-text-width">Preview text width</label></dt>
-            <dd><img class="img" style="visibility: hidden;"><input type="text" id="default-preview-text-width" placeholder="e.g. 80px, 6rem (blank = no limit)" style="max-width:200px;"></dd>
+            <dd><img class="img" style="visibility: hidden;"><input type="text" id="default-preview-text-width" placeholder="e.g. 80px, 6rem (blank = no limit)" data-i18n="[placeholder]preview-text-width-placeholder" style="max-width:200px;"></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Maximum width for container names in the preview. Long names are truncated with an ellipsis. Leave blank for no limit.</p>
+            <p data-i18n="[html]preview-text-width-tooltip">Limits the maximum width of container names in the preview, truncating long names with an ellipsis. Enter a CSS value like <b>80px</b> or <b>6rem</b>. Leave blank for no limit.</p>
         </blockquote>
     </div>
 
@@ -375,7 +377,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Status indicator for containers in <b>Only icon</b> preview mode. <b>Symbol</b> shows a green play / red square next to each icon. <b>Greyscale stopped</b> desaturates stopped container icons and buttons.</p>
+            <p data-i18n="[html]preview-status-tooltip">Status indicator for containers in <b>Only icon</b> preview mode. <b>Symbol</b> shows a green play / red square next to each icon. <b>Greyscale stopped</b> desaturates stopped container icons and buttons.</p>
         </blockquote>
     </div>
 
@@ -385,7 +387,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-hover" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Hides the preview until you hover over the folder row.</p>
+            <p data-i18n="preview-hover-tooltip">Hides the preview until you hover over the folder row.</p>
         </blockquote>
     </div>
 
@@ -395,17 +397,17 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-grayscale" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Displays container icons in greyscale instead of color.</p>
+            <p data-i18n="preview-grayscale-tooltip">Displays container icons in greyscale instead of color.</p>
         </blockquote>
     </div>
 
     <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
-            <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-preview-webui" data-i18n="preview-webui">Show WebUI icon in preview</label></dt>
+            <dt><span class="fv3-scope-badge" data-i18n="docker-only">Docker only</span> <label for="default-preview-webui" data-i18n="preview-webui">Show WebUI icon in preview</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-webui" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Shows a globe icon next to containers that have a WebUI configured.</p>
+            <p data-i18n="preview-webui-tooltip">Adds a globe icon next to containers that have a WebUI configured.</p>
         </blockquote>
     </div>
 
@@ -415,7 +417,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-logs" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Shows a log icon next to each container for quick access to logs.</p>
+            <p data-i18n="preview-logs-tooltip">Adds a log icon next to each container for quick access to logs.</p>
         </blockquote>
     </div>
 
@@ -425,7 +427,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-preview-console" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Shows a console icon next to each container for quick terminal access.</p>
+            <p data-i18n="preview-console-tooltip">Adds a console icon next to each container for quick terminal access.</p>
         </blockquote>
     </div>
 
@@ -444,7 +446,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Shows vertical divider lines between containers in the preview. Enable to choose a custom color.</p>
+            <p data-i18n="preview-vertical-bars-tooltip">Shows vertical divider lines between containers in the preview row.</p>
         </blockquote>
     </div>
 
@@ -463,7 +465,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Draws a border around the preview area. Enable to choose a custom color.</p>
+            <p data-i18n="border-tooltip">Draws a border around the preview area.</p>
         </blockquote>
     </div>
 
@@ -480,7 +482,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>What happens when there are too many containers to fit in the preview. <b>Expand</b> grows the row, <b>Scroll</b> adds a horizontal scrollbar.</p>
+            <p data-i18n="[html]preview-overflow-tooltip">Controls what happens when there are too many containers to fit in the preview area.<br><b>Default:</b> Extra containers are hidden when the row is too narrow.<br><b>Expand row:</b> The preview area grows taller to show all containers on multiple lines.<br><b>Scroll:</b> A horizontal scrollbar appears to access all containers.</p>
         </blockquote>
     </div>
 
@@ -499,13 +501,13 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Shows a horizontal line between rows when the preview expands to multiple lines (expand overflow mode only).</p>
+            <p data-i18n="row-separator-tooltip">Shows a faint horizontal line between rows when the preview expands to multiple lines.</p>
         </blockquote>
     </div>
 
     <div class="basic" data-fv3-show-preview="1 2 3 4">
         <dl>
-            <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-context" data-i18n="context">Preview context</label></dt>
+            <dt><span class="fv3-scope-badge" data-i18n="docker-only">Docker only</span> <label for="default-context" data-i18n="context">Preview context</label></dt>
             <dd>
                 <img class="img" style="visibility: hidden;">
                 <select id="default-context">
@@ -517,7 +519,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Controls the detail popup when clicking a container in the preview. <b>Default</b> shows basic info, <b>Advanced</b> shows detailed stats with CPU/memory graphs, <b>Open WebUI</b> opens the container's WebUI in a new tab.</p>
+            <p data-i18n="[html]context-tooltip">Controls the detail popup when clicking a container. <b>Default</b> shows basic info, <b>Advanced</b> shows stats with CPU/memory graphs. <b>Open WebUI</b> opens the container's WebUI in a new tab (containers without a WebUI show the default menu).</p>
         </blockquote>
     </div>
 
@@ -533,7 +535,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>How the advanced preview popup opens. <b>Click</b> requires clicking a container, <b>Hover</b> opens it on mouse-over.</p>
+            <p data-i18n="[html]context-trigger-tooltip">How the advanced preview opens. <b>Click</b> requires clicking a container, <b>Hover</b> opens on mouse-over.</p>
         </blockquote>
     </div>
 
@@ -552,7 +554,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Choose which real-time graphs to display in the advanced preview.</p>
+            <p data-i18n="[html]context-graph-tooltip">Choose which real-time graphs to display. <b>Combined</b> shows CPU and memory on one chart, <b>Split</b> shows them separately.</p>
         </blockquote>
     </div>
 
@@ -565,7 +567,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             </dd>
         </dl>
         <blockquote class="inline_help">
-            <p>How many seconds of history the graph displays. Default is 60.</p>
+            <p data-i18n="context-graph-time-tooltip">How many seconds of history the graph displays. Default is 60 (1 minute).</p>
         </blockquote>
     </div>
 
@@ -573,11 +575,11 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 
     <div class="basic">
         <dl>
-            <dt><span class="fv3-scope-badge">Docker only</span> <label for="default-update-column" data-i18n="update-column">Hide update column</label></dt>
+            <dt><span class="fv3-scope-badge" data-i18n="docker-only">Docker only</span> <label for="default-update-column" data-i18n="update-column">Hide update column</label></dt>
             <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="default-update-column" type="checkbox" /></dd>
         </dl>
         <blockquote class="inline_help">
-            <p>Hides the "Version" update column for all folder rows, freeing up horizontal space.</p>
+            <p data-i18n="default-update-column-tooltip">Hides the "Version" update column for all folder rows, freeing up horizontal space.</p>
         </blockquote>
     </div>
 
@@ -606,12 +608,12 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <button onclick="fv3CancelAutostart()" data-i18n="reset">Reset</button>
         </div>
         <blockquote class="inline_help">
-            <p>Folder-based keeps today's behaviour: the container start order follows your folder layout on the Docker page. Custom sequence uses the order below instead — it cuts across folders and overrides the Docker page order, and survives reboots. Off hands the start order fully back to Unraid; FolderView3 stops writing it entirely.</p>
+            <p data-i18n="autostart-mode-tooltip">Folder-based keeps today's behaviour: the container start order follows your folder layout on the Docker page. Custom sequence uses the order below instead — it cuts across folders and overrides the Docker page order, and survives reboots. Off hands the start order fully back to Unraid; FolderView3 stops writing it entirely.</p>
         </blockquote>
     </div>
 
     <dt class="fv3-section-heading" data-i18n="autostart-sequence">Startup sequence</dt>
-    <p class="fv3-backup-hint">Drag rows or type a position number to set the global start order (top starts first). Wait is the pause in seconds after that container starts. Editable only while Start order mode is set to Custom sequence; changes apply on Apply.</p>
+    <p class="fv3-backup-hint" data-i18n="autostart-sequence-hint">Drag rows or type a position number to set the global start order (top starts first). Wait is the pause in seconds after that container starts. Editable only while Start order mode is set to Custom sequence; changes apply on Apply.</p>
     <div class="fv3-folder-table-wrap">
         <table class="fv3-folder-table fv3-as-table fv3-as-seq-table">
             <thead>
@@ -628,7 +630,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
     </div>
 
     <dt class="fv3-section-heading" data-i18n="autostart-not-started">Not autostarted</dt>
-    <p class="fv3-backup-hint">Containers that don't start automatically. Switch one on to add it to the end of the sequence.</p>
+    <p class="fv3-backup-hint" data-i18n="autostart-not-started-hint">Containers that don't start automatically. Switch one on to add it to the end of the sequence.</p>
     <div class="fv3-folder-table-wrap">
         <table class="fv3-folder-table fv3-as-table">
             <tbody id="fv3-as-off-rows"></tbody>
@@ -646,7 +648,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         <div class="fv3-tier-panel" id="fv3-tier-themes">
             <p data-i18n="css-themes-help">Import community CSS themes from GitHub. Only one theme can be active at a time. CSS variables are always applied on top.</p>
             <div class="fv3-theme-import">
-                <input type="text" id="fv3-theme-repo" placeholder="owner/repo or owner/repo/tree/branch" title="Supports: owner/repo (default branch), owner/repo/tree/branch, or owner/repo:branch">
+                <input type="text" id="fv3-theme-repo" placeholder="owner/repo or owner/repo/tree/branch" data-i18n="[placeholder]css-theme-repo-placeholder" title="Supports: owner/repo (default branch), owner/repo/tree/branch, or owner/repo:branch">
                 <button id="fv3-theme-import-btn" data-i18n="css-theme-import">Import from GitHub</button>
             </div>
             <div id="fv3-theme-list"></div>
@@ -654,20 +656,20 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 
         <div class="fv3-tier-panel" id="fv3-tier-customize" style="display:none">
             <div class="fv3-customize-section">
-                <div class="fv3-section-heading">Presets</div>
-                <p class="fv3-customize-hint">Select a preset to apply its values. You can then modify individual variables below.</p>
+                <div class="fv3-section-heading" data-i18n="css-presets">Presets</div>
+                <p class="fv3-customize-hint" data-i18n="css-presets-help">Select a preset to apply its values. You can then modify individual variables below.</p>
                 <div class="fv3-preset-grid" id="fv3-preset-grid"></div>
             </div>
 
             <div class="fv3-customize-section">
-                <div class="fv3-section-heading">Toggle Style</div>
-                <p class="fv3-customize-hint">Choose how toggle switches appear on FolderView3 pages.</p>
+                <div class="fv3-section-heading" data-i18n="css-toggle-style">Toggle Style</div>
+                <p class="fv3-customize-hint" data-i18n="css-toggle-style-help">Choose how toggle switches appear on FolderView3 pages.</p>
                 <div id="fv3-toggle-picker" class="fv3-toggle-picker"></div>
             </div>
 
             <div class="fv3-customize-columns">
                 <div class="fv3-customize-col-left">
-                    <div class="fv3-section-heading">Variables</div>
+                    <div class="fv3-section-heading" data-i18n="css-variables">Variables</div>
                     <div class="fv3-subtabs">
                         <button class="fv3-subtab fv3-subtab-active" data-scope="global" data-i18n="css-global">Global</button>
                         <button class="fv3-subtab" data-scope="dashboard" data-i18n="css-dashboard-scope">Dashboard</button>
@@ -677,21 +679,21 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                     <div id="fv3-var-list"></div>
                 </div>
                 <div class="fv3-customize-col-right">
-                    <div class="fv3-section-heading">Custom CSS <span id="fv3-css-scope-label" class="fv3-css-scope-badge">Global (all pages)</span></div>
+                    <div class="fv3-section-heading"><span data-i18n="css-custom-css">Custom CSS</span> <span id="fv3-css-scope-label" class="fv3-css-scope-badge" data-i18n="css-scope-global-label">Global (all pages)</span></div>
                     <textarea id="fv3-custom-css" spellcheck="false" placeholder=".folder-name-sub { font-weight: bold; }"></textarea>
                     <div id="fv3-css-url-warning" class="fv3-css-warning" style="display:none">
                         <i class="fa fa-exclamation-triangle"></i>
                         <span data-i18n="css-url-warning">Your CSS contains url() references. Verify these URLs are trusted before saving.</span>
                     </div>
-                    <div class="fv3-section-heading" style="margin-top: 1.5rem;">User Notes</div>
-                    <textarea id="fv3-user-notes" spellcheck="false" placeholder="Save snippets, CSS experiments, or notes..."></textarea>
+                    <div class="fv3-section-heading" style="margin-top: 1.5rem;" data-i18n="css-user-notes">User Notes</div>
+                    <textarea id="fv3-user-notes" spellcheck="false" placeholder="Save snippets, CSS experiments, or notes..." data-i18n="[placeholder]css-user-notes-placeholder"></textarea>
                 </div>
             </div>
 
             <div class="fv3-csstool-actions">
                 <button id="fv3-css-save" data-i18n="css-save">Save</button>
                 <button id="fv3-css-reset" data-i18n="css-reset">Reset to Defaults</button>
-                <button id="fv3-css-save-preset"><i class="fa fa-save"></i> Save Preset</button>
+                <button id="fv3-css-save-preset"><i class="fa fa-save"></i> <span data-i18n="css-save-preset">Save Preset</span></button>
                 <button id="fv3-css-export" data-i18n="css-export">Export Config</button>
                 <button id="fv3-css-import-btn" data-i18n="css-import">Import Config</button>
                 <input type="file" id="fv3-css-import" style="display:none" accept=".json">

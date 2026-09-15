@@ -39,12 +39,12 @@ const folderId = new URLSearchParams(location.search).get('id');
 const isEdit = folderId !== null;
 // Save stays blocked until setup finishes: a rejected load (either mode) must not overwrite a folder with a half-built form
 let fv3FolderLoaded = false;
-const fv3LoadFailedAlert = () => swal({ title: 'Error', text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
+const fv3LoadFailedAlert = () => swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
 
 const rgbToHex = (rgb) => {
-    rgb = rgb.slice(4, -1).split(', ');
-    return "#" + (1 << 24 | rgb[0] << 16 | rgb[1] << 8 | rgb[2]).toString(16).slice(1);
-}
+    const m = rgb.match(/\d+/g);
+    return m ? '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('') : rgb;
+};
 
 $('div.canvas > form')[0].preview_border_color.value = rgbToHex($('body').css('color'));
 $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body').css('color'));
@@ -55,9 +55,10 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         previewSummary.removeAttribute('data-i18n');
         const lbl = document.createElement('label');
         lbl.className = 'fv3-global-defaults-toggle';
-        lbl.title = 'Use global defaults from Plugin Settings > Defaults';
+        lbl.title = fv3I18nOr('use-global-defaults-tooltip', 'Use global defaults from Plugin Settings > Defaults');
+        lbl.setAttribute('data-i18n', '[title]use-global-defaults-tooltip');
         lbl.onclick = (e) => e.stopPropagation();
-        lbl.innerHTML = '<input type="checkbox" name="use_global_defaults" onchange="fv3ToggleGlobalDefaults(this.checked)"><span><i class="fa fa-refresh"></i> Use Global Defaults</span>';
+        lbl.innerHTML = '<input type="checkbox" name="use_global_defaults" onchange="fv3ToggleGlobalDefaults(this.checked)"><span><i class="fa fa-refresh"></i> <span data-i18n="use-global-defaults">' + escapeHtml(fv3I18nOr('use-global-defaults', 'Use Global Defaults')) + '</span></span>';
         previewSummary.appendChild(lbl);
     }
 
@@ -105,7 +106,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     if (isEdit) {
         const currFolder = folders[folderId];
         if (!currFolder) {
-            swal({ title: 'Error', text: fv3I18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
+            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
             return;
         }
         delete folders[folderId];
@@ -155,7 +156,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         hiddenPreview = currFolder.hidden_preview || [];
 
         currFolder.actions?.forEach((e, i) => {
-            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}">${escapeHtml(e.name)} <button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
+            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}"><span>${escapeHtml(e.name)} </span><button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
         });
 
 
@@ -260,7 +261,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         const style = cssConfig.toggle_style || 'default';
         window._fv3FolderToggleStyle = style;
         if (style === 'default') {
-            $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+            $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', ...fv3SwitchLabels() });
             fv3SyncSwitchButtons();
         } else {
             document.querySelectorAll('input.fv3-checkbox[type="checkbox"]').forEach(el => {
@@ -269,7 +270,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             });
         }
     } catch (e) {
-        $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+        $('input.fv3-checkbox[type="checkbox"]').switchButton({ labels_placement: 'right', ...fv3SwitchLabels() });
         fv3SyncSwitchButtons();
     }
 
@@ -365,7 +366,7 @@ const updateList = () => {
 
     for (const el of choose) {
         // fa-tag marker: this container carries a live label claim (issue #55)
-        const labelClaim = el.Label && labelFolderNames.has(el.Label) ? `<span class="fv3-label-claim" title="${escapeHtml($.i18n('label-claim-tooltip'))}" data-i18n="[title]label-claim-tooltip"><i class="fa fa-tag" aria-hidden="true"></i> ${escapeHtml(el.Label)}</span>` : '';
+        const labelClaim = el.Label && labelFolderNames.has(el.Label) ? `<span class="fv3-label-claim" title="${escapeHtml(fv3I18nOr('label-claim-tooltip', 'Claimed by a folder.view3 label — an explicit folder assignment anywhere overrides it'))}" data-i18n="[title]label-claim-tooltip"><i class="fa fa-tag" aria-hidden="true"></i> ${escapeHtml(el.Label)}</span>` : '';
         table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}${labelClaim}</td><td><input class="container-switch fv3-checkbox" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
     }
 
@@ -403,7 +404,7 @@ const updateList = () => {
         var newSwitches = $('table.sortable input.fv3-checkbox[type="checkbox"]');
         if (window._fv3FolderToggleStyle === 'default') {
             newSwitches.not('.switchButton-init').each(function() {
-                $(this).addClass('switchButton-init').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+                $(this).addClass('switchButton-init').switchButton({ labels_placement: 'right', ...fv3SwitchLabels() });
                 var bg = $(this).next('.switch-button-background');
                 if (bg.length) bg.toggleClass('checked', this.checked);
             });
@@ -443,7 +444,7 @@ const syncHidePreview = ($row) => {
             const $newCb = $(`<input class="preview-switch fv3-checkbox${cls}" type="checkbox" value="${escapeHtml($cb.val())}">`);
             $td.html($newCb);
             if (style === 'default') {
-                $newCb.switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+                $newCb.switchButton({ labels_placement: 'right', ...fv3SwitchLabels() });
                 var bg = $newCb.next('.switch-button-background');
                 if (bg.length) bg.toggleClass('checked', $newCb[0].checked);
             }
@@ -459,7 +460,7 @@ const submitForm = async (e) => {
     if (!fv3FolderLoaded) { fv3LoadFailedAlert(); return false; }
     // 'root' is reserved by Unraid's Docker organizer — server rejects it too
     if (e.name.value.toString().trim().toLowerCase() === 'root') {
-        swal({ title: 'Reserved Name', text: "'root' is reserved by Unraid's Docker organizer — please pick another folder name.", type: 'error' });
+        swal({ title: fv3I18nOr('reserved-name', 'Reserved Name'), text: fv3I18nOr('reserved-name-root', "'root' is reserved by Unraid's Docker organizer — please pick another folder name."), type: 'error' });
         return;
     }
     const actions = $('input[name*="custom_action"]').map((i, e) => fv3SafeParse(atob($(e).val()), {})).get();
@@ -528,7 +529,7 @@ const submitForm = async (e) => {
             await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
         }
     } catch (err) {
-        swal({ title: 'Error', text: fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), type: 'error' });
+        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), type: 'error' });
         return false;
     }
 
@@ -539,7 +540,7 @@ const submitForm = async (e) => {
             await $.post('/plugins/folder.view3/server/sync_order.php', { type: type }).promise();
         } catch (err) {
             console.warn('[FV3] Autostart order sync failed after save:', fv3FailReason(err));
-            swal({ title: 'Warning', text: fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', fv3FailReason(err)), type: 'warning' }, back);
+            swal({ title: fv3I18nOr('warning', 'Warning'), text: fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', fv3FailReason(err)), type: 'warning' }, back);
             return false;
         }
     }
@@ -562,12 +563,12 @@ const deleteFolderBtn = () => {
     if (!isEdit) return;
     const folderName = $('div.canvas > form')[0]?.name?.value || folderId;
     swal({
-        title: $.i18n('delete-folder-confirm-title') || 'Delete folder?',
-        text: ($.i18n('delete-folder-confirm-text') || 'This will permanently delete the folder "$1" and remove all its contained containers/VMs back to the main list. Containers/VMs themselves are NOT deleted.').replace('$1', folderName),
+        title: fv3I18nOr('delete-folder-confirm-title', 'Delete folder?'),
+        text: fv3I18nOr('delete-folder-confirm-text', 'This will permanently delete the folder "$1". The containers/VMs inside are NOT deleted — they return to the main list.', folderName),
         type: 'warning',
         showCancelButton: true,
-        confirmButtonText: $.i18n('delete') || 'Delete',
-        cancelButtonText: $.i18n('cancel') || 'Cancel',
+        confirmButtonText: fv3I18nOr('delete', 'Delete'),
+        cancelButtonText: fv3I18nOr('cancel', 'Cancel'),
         confirmButtonColor: '#a02020',
         // Stay open until the delete settles: a swal reopened inside close()'s hide timer is blanked
         showLoaderOnConfirm: true,
@@ -580,7 +581,7 @@ const deleteFolderBtn = () => {
             loc.pop();
             location.href = loc.join('/');
         } catch (err) {
-            swal({ title: 'Error', text: fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), type: 'error' });
+            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), type: 'error' });
         }
     });
 };
@@ -618,7 +619,7 @@ const customAction = (action = undefined) => {
     dialog.html($('.templateDialogCustomAction').html());
     dialog.find('[name="action_elements"]').multiselect({
         header: false,
-        noneSelectedText: "Select options",
+        noneSelectedText: fv3I18nOr('select-options', 'Select options'),
         zIndex: 99998,
         appendTo: document.body,
         selectedText: (numChecked, numTotal, checkedItems) => {
@@ -646,7 +647,7 @@ const customAction = (action = undefined) => {
     }
     dialog.find('[name="action_script_icon"]').val(config.script_icon);
     let buttons = {};
-    buttons[(action !== undefined) ? $.i18n('action-edit-btn') : $.i18n('action-add-btn')] = function() {
+    buttons[(action !== undefined) ? fv3I18nOr('action-edit-btn', 'Save') : fv3I18nOr('action-add-btn', 'Add')] = function() {
         const that = $(this);
         let cfg = {
             name: that.find('[name="action_name"]').val(),
@@ -674,11 +675,11 @@ const customAction = (action = undefined) => {
         }
         $(this).dialog("close");
     };
-    buttons[$.i18n('cancel')] = function() {
+    buttons[fv3I18nOr('cancel', 'Cancel')] = function() {
         $(this).dialog("close");
     };
     dialog.dialog({
-        title: (action !== undefined) ? $.i18n('action-edit') : $.i18n('action-add'),
+        title: (action !== undefined) ? fv3I18nOr('action-edit', 'Edit action') : fv3I18nOr('action-add', 'Add action'),
         resizable: false,
         width: Math.min(800, window.innerWidth - 40),
         modal: true,
