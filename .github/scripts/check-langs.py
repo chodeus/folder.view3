@@ -24,6 +24,7 @@ SOURCE_KEYS = [re.compile(p) for p in (
 
 
 def load(path, errors):
+    """Load a UTF-8 JSON file, appending format errors and returning None on failure."""
     raw = path.read_bytes()
     if raw.startswith(b'\xef\xbb\xbf'):
         errors.append(f'{path.name}: starts with a byte order mark')
@@ -36,6 +37,7 @@ def load(path, errors):
 
 
 def check_value(name, key, value, source, errors):
+    """Append validation errors for a translation value relative to its source string."""
     if not isinstance(value, str) or not value.strip():
         errors.append(f'{name} "{key}": empty')
         return
@@ -53,6 +55,7 @@ def check_value(name, key, value, source, errors):
 
 
 def source_keys(plugin_dir):
+    """Map literal translation keys to the first plugin source file that references them."""
     found = {}
     files = sorted(plugin_dir.glob('*.page')) + sorted((plugin_dir / 'scripts').glob('*.js')) + [plugin_dir / 'langs' / 'script.php']
     for f in files:
@@ -67,6 +70,7 @@ def source_keys(plugin_dir):
 
 
 def main(langs_dir):
+    """Validate every JSON pack under langs_dir and return a process exit status."""
     errors = []
     langs = Path(langs_dir)
     packs = {p.name: load(p, errors) for p in sorted(langs.glob('*.json'))}
@@ -105,6 +109,7 @@ def main(langs_dir):
 
 
 def report(errors, count):
+    """Print GitHub annotations and a summary, then return a process exit status."""
     for e in errors:
         print(f'::error::{e}')
     print(f'{count} packs checked, {len(errors)} problem(s)')
