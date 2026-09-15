@@ -10,6 +10,7 @@ PLACEHOLDER = re.compile(r'\$\d+')
 TAG = re.compile(r'</?[A-Za-z][A-Za-z0-9]*')
 MAGIC = re.compile(r'\{\{(.*?)\}\}', re.S)
 PLURAL = re.compile(r'PLURAL:\$\d+(\|[^|{}]*)+')
+REQUIRED_PACKS = ('en.json', 'de.json', 'es.json', 'fr.json', 'it.json', 'pl.json', 'zh.json')
 # Literal keys only; a key ending in "-" is a prefix the code completes at runtime
 SOURCE_KEYS = [re.compile(p) for p in (
     r"fv3I18nOr\(\s*'([a-z0-9-]+)'",
@@ -38,7 +39,9 @@ def check_value(name, key, value, source, errors):
     if not isinstance(value, str) or not value.strip():
         errors.append(f'{name} "{key}": empty')
         return
-    if set(PLACEHOLDER.findall(value)) != set(PLACEHOLDER.findall(source)):
+    # Plural forms may repeat or drop the count placeholder, so counts are compared outside {{…}} only
+    if (set(PLACEHOLDER.findall(value)) != set(PLACEHOLDER.findall(source))
+            or Counter(PLACEHOLDER.findall(MAGIC.sub('', value))) != Counter(PLACEHOLDER.findall(MAGIC.sub('', source)))):
         errors.append(f'{name} "{key}": placeholders differ from en.json')
     if Counter(TAG.findall(value)) != Counter(TAG.findall(source)):
         errors.append(f'{name} "{key}": HTML tags differ from en.json')
@@ -67,6 +70,9 @@ def main(langs_dir):
     errors = []
     langs = Path(langs_dir)
     packs = {p.name: load(p, errors) for p in sorted(langs.glob('*.json'))}
+    missing_packs = [n for n in REQUIRED_PACKS if n not in packs]
+    if missing_packs:
+        errors.append(f'missing language packs: {", ".join(missing_packs)}')
     en = packs.get('en.json')
     if not isinstance(en, dict):
         errors.append('en.json: missing or unreadable')

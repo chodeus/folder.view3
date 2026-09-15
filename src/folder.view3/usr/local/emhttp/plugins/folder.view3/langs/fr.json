@@ -331,7 +331,7 @@
     "css-user-notes-placeholder": "Enregistrez des extraits, des essais CSS ou des notes...",
     "css-save-preset": "Enregistrer le préréglage",
     "unknown-error": "Erreur inconnue",
-    "name-length-warning": "20 caractères est le maximum recommandé — les noms plus longs seront tronqués.",
+    "name-length-warning": "La longueur maximale recommandée est de 20 caractères — les noms plus longs seront tronqués.",
     "regex-placeholder": "ex. plex.* ou ^my-stack-",
     "error": "Erreur",
     "warning": "Avertissement",
