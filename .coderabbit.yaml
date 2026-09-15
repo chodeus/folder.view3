@@ -19,9 +19,8 @@ reviews:
     base_branches:
       - "^beta$"   # anchored — base_branches are regex; unanchored could match feature/beta etc.
 
-  # Exclude vendored libraries, release artifacts, images, and the dev/ scratch
-  # tree so review focuses on hand-written plugin source. CI already validates
-  # the .plg (xmllint) and PHP syntax (php -l); don't re-lint those here.
+  # Vendored libraries, release artifacts, images and dev/ are excluded so review stays on
+  # hand-written source; CI already runs xmllint on the .plg and php -l, so those aren't re-linted.
   path_filters:
     - "!archive/**"
     - "!screenshots/**"
@@ -172,18 +171,15 @@ reviews:
         - Enumerate allowed states positively (== 'success' || == 'skipped'),
           never by negation; pin third-party actions by commit SHA; never
           interpolate untrusted input (PR title, branch name) into `run:`.
-    - path: "{pkg_build.sh,copy_to_git.sh,.githooks/**}"
+    - path: "{pkg_build.sh,.githooks/**}"
       instructions: |
-        Packaging, source-sync and pre-push scripts:
+        Packaging and pre-push scripts:
         - pkg_build.sh's guards must stay: filecount >= 10, package >= 1000
           bytes, and the post-sed re-read that fails when the .plg version or
           md5 does not match what was built. Its rm -rf / chmod -R / sed -i
           must only touch tmp/, dist/ and folder.view3.plg. The version comes
           from --version (the release workflow owns numbering); never
           reintroduce date or archive-glob versioning here.
-        - copy_to_git.sh has no set -e, rm -Rf's the plugin source tree before
-          copying, and chmod/chown -R's the WHOLE cwd — flag any change that
-          widens a path or runs it outside the repo root; quote $CWD.
         - .githooks/pre-push must fail closed: an unreadable .plg or a
           pluginURL that does not name the branch being pushed is a rejection.
     - path: "**"
@@ -208,13 +204,10 @@ reviews:
     # Secret scanning across the whole tree — always on.
     gitleaks:
       enabled: true
-    # semgrep OFF: CodeRabbit only runs Semgrep when the repo has a committed
-    # config and ships no community rules, so enabling it without a semgrep.yaml
-    # is inert. Add a committed PHP ruleset later if SAST is wanted.
-    # phpstan OFF: emhttp plugins have no Composer/autoloader and rely on
-    # global $var + Unraid-provided functions from auto_prepend, so phpstan
-    # floods with false "undefined symbol" noise. CI's `php -l` covers syntax;
-    # semantic PHP risks are covered by AI review + path_instructions.
+    # semgrep OFF: CodeRabbit only runs it against a committed config and ships no community
+    # rules, so without a semgrep.yaml the switch is inert.
+    # phpstan OFF: emhttp plugins have no autoloader and rely on Unraid globals, so it floods
+    # with false undefined-symbol noise; php -l in CI covers syntax, path_instructions the rest.
     phpstan:
       enabled: false
     # phpmd/phpcs OFF for the same reason: no ruleset, no PSR conformance, and
@@ -223,10 +216,8 @@ reviews:
       enabled: false
     phpcs:
       enabled: false
-    # biome/eslint/oxc OFF: vanilla jQuery with no JS lint config and many injected
-    # globals ($, jQuery, Unraid page globals) — a config-less run is mostly
-    # no-undef noise that would also fight the repo's formatting. DOM-safety and
-    # correctness are enforced via the JS path_instructions instead.
+    # biome/eslint/oxc OFF: vanilla jQuery with injected page globals and no lint config is
+    # mostly no-undef noise that fights the repo's formatting; the JS path_instructions cover it.
     biome:
       enabled: false
     eslint:
