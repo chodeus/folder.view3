@@ -1190,6 +1190,12 @@
         if (!@mkdir($stage, 0770)) return ['error' => 'Could not create a staging folder for the import'];
         $stageReal = (string)realpath($stage);
         $discard = function (array $result) use ($stage, $baseDir): array { fv3_remove_tree($stage, $baseDir); return $result; };
+        $baseReal = (string)realpath($baseDir);
+        // Where a path may land: styles/ paths in the real styles folder, which must itself resolve inside $baseDir
+        $baseFor = function (string $rel) use ($baseDir, $baseReal): string {
+            if (strpos($rel, 'styles/') !== 0) return $baseReal;
+            return fv3_path_within("$baseDir/styles", $baseReal) ? (string)realpath("$baseDir/styles") : '';
+        };
         foreach ($files as $rel => $content) {
             if (!fv3_mkdir_within(dirname("$stage/$rel"), $stageReal) || !fv3_atomic_write("$stage/$rel", $content)) {
                 return $discard(['error' => "Could not write $rel — nothing was imported"]);
@@ -1197,17 +1203,13 @@
         }
         $applied = [];  // rel => true when its previous copy now sits in $stage/.old
         $madeDirs = []; // folders the swap created, deepest first, removed again on rollback
-        $move = function (string $rel, bool $hasNew) use ($baseDir, $stage, $stageReal, &$applied, &$madeDirs): bool {
+        $move = function (string $rel, bool $hasNew) use ($baseDir, $stage, $stageReal, $baseFor, &$applied, &$madeDirs): bool {
             $live = "$baseDir/$rel";
             $old = "$stage/.old/$rel";
             $made = [];
             for ($d = dirname($live); $d !== $baseDir && !file_exists($d) && !is_link($d); $d = dirname($d)) { $made[] = $d; }
-            $within = $baseDir;
-            if (strpos($rel, 'styles/') === 0) {
-                if (!is_dir("$baseDir/styles")) @mkdir("$baseDir/styles", 0770, true);
-                $within = (string)realpath("$baseDir/styles");
-            }
-            $ok = fv3_mkdir_within(dirname($live), $within);
+            if (strpos($rel, 'styles/') === 0 && !is_dir("$baseDir/styles")) @mkdir("$baseDir/styles", 0770, true);
+            $ok = fv3_mkdir_within(dirname($live), $baseFor($rel));
             $madeDirs = array_merge($made, $madeDirs);
             if (!$ok) return false;
             $exists = file_exists($live) || is_link($live);
@@ -1220,15 +1222,16 @@
             $applied[$rel] = $exists;
             return true;
         };
-        $rollback = function (string $failed) use ($baseDir, $stage, $discard, &$applied, &$madeDirs): array {
+        $rollback = function (string $failed) use ($baseDir, $baseReal, $stage, $discard, $baseFor, &$applied, &$madeDirs): array {
             $stuck = [];
             foreach (array_reverse(array_keys($applied)) as $rel) {
                 $live = "$baseDir/$rel";
-                // A previous copy is renamed back over the new file; a file that had none is deleted
-                $undone = $applied[$rel] ? @rename("$stage/.old/$rel", $live) : ((!file_exists($live) && !is_link($live)) || @unlink($live));
+                $gone = !$applied[$rel] && !file_exists($live) && !is_link($live);
+                // Re-confined first; a previous copy goes back over the new file, a file that had none is deleted
+                $undone = $gone || (fv3_path_within(dirname($live), $baseFor($rel)) && ($applied[$rel] ? @rename("$stage/.old/$rel", $live) : @unlink($live)));
                 if (!$undone) $stuck[] = $rel;
             }
-            foreach ($madeDirs as $d) { @rmdir($d); }
+            foreach ($madeDirs as $d) { if (fv3_path_within($d, $baseReal)) @rmdir($d); }
             if ($stuck) {
                 return ['error' => "Could not replace $failed, and could not undo " . implode(', ', $stuck)
                     . '; previous copies, where there were any, are in ' . basename($stage) . '/.old'];
@@ -1436,6 +1439,8 @@
         global $configDir;
         $stylesDir = "$configDir/styles";
         if (!is_dir($stylesDir)) { @mkdir($stylesDir, 0770, true); }
+        // Every write and removal below lands in styles/, so it must still resolve inside the config folder
+        if (!fv3_path_within($stylesDir, (string)realpath($configDir))) return false;
         $ok = true;
         foreach (fv3_render_css_files($config) as $name => $css) {
             $path = "$stylesDir/$name";
