@@ -78,7 +78,7 @@ const populateTable = async () => {
         ]);
     } catch (e) {
         console.error('[FV3] Failed to load folder data:', e);
-        swal({ title: 'Error', text: fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), type: 'error' });
+        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), type: 'error' });
         return;
     }
     const dockerData = fv3SafeParse(proms[0], {});
@@ -99,14 +99,14 @@ const populateTable = async () => {
     const dockerIds = orderFolderIds(dockers, currentDockerContainerOrder);
     for (const id of dockerIds) {
         const folder = dockers[id];
-        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadDocker(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearDocker(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-trash"></i></button></td></tr>`;
+        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="${escapeHtml(fv3I18nOr('export', 'Export'))}" onclick="downloadDocker(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-download"></i></button><button title="${escapeHtml(fv3I18nOr('delete', 'Delete'))}" onclick="clearDocker(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
     const vmIds = orderFolderIds(vms, currentVmOrder);
     for (const id of vmIds) {
         const folder = vms[id];
-        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="Export" onclick="downloadVm(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-download"></i></button><button title="Delete" onclick="clearVm(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-trash"></i></button></td></tr>`;
+        const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="${escapeHtml(fv3I18nOr('export', 'Export'))}" onclick="downloadVm(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-download"></i></button><button title="${escapeHtml(fv3I18nOr('delete', 'Delete'))}" onclick="clearVm(${escapeHtml(JSON.stringify(id))})"><i class="fa fa-trash"></i></button></td></tr>`;
         vmsTable.append($(fld));
     }
 
@@ -158,13 +158,13 @@ const fv3CountFolderExport = (parsed) => {
 // Imports every folder, carrying on past failures; closes any open modal or reports the ones refused
 const fv3ImportFolderMap = async (content, type) => {
     if (!content || typeof content !== 'object' || Array.isArray(content)) {
-        swal({ title: 'Error', text: fv3I18nOr('invalid-folder-export', 'This file is not a folder export.'), type: 'error' });
+        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('invalid-folder-export', 'This file is not a folder export.'), type: 'error' });
         return;
     }
     // Structural test, not `content.name` — an empty name is legal and would otherwise route a
     // single folder down the map path, writing its own keys (name, icon, settings…) as folder ids.
     const jobs = fv3IsFolderShaped(content)
-        ? [{ url: '/plugins/folder.view3/server/create.php', data: { type: type, content: JSON.stringify(content) }, label: content.name || 'folder' }]
+        ? [{ url: '/plugins/folder.view3/server/create.php', data: { type: type, content: JSON.stringify(content) }, label: content.name || fv3I18nOr('folder-unnamed', 'folder') }]
         : Object.entries(content).map(([id, folder]) => ({ url: '/plugins/folder.view3/server/update.php', data: { type: type, content: JSON.stringify(folder), id: id }, label: folder?.name || id }));
     const failed = await postEach(jobs);
     let syncError = null;
@@ -179,7 +179,7 @@ const fv3ImportFolderMap = async (content, type) => {
     populateTable();
     const syncText = syncError ? fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', syncError) : '';
     if (showBatchErrors(failed, { key: 'import-folders-failed', text: 'These folders could not be imported: $1' }, null, syncText)) return;
-    if (syncText) { swal({ title: 'Warning', text: syncText, type: 'warning' }); } else { swal.close(); }
+    if (syncText) { swal({ title: fv3I18nOr('warning', 'Warning'), text: syncText, type: 'warning' }); } else { swal.close(); }
 };
 
 const importDocker = () => {
@@ -199,15 +199,15 @@ const importDocker = () => {
                 content = JSON.parse(content);
             } catch (error) {
                 swal({
-                    title: 'Error',
-                    text: 'Error parsing the input file, please select a JSON file',
+                    title: fv3I18nOr('error', 'Error'),
+                    text: fv3I18nOr('import-parse-error', 'Error parsing the input file, please select a JSON file'),
                     type: 'error',
                 });
                 return;
             }
 
             if (content && content.fv3_export_version) {
-                swal({ title: 'Wrong import', text: 'This is a full backup bundle — use "Import Everything" to restore it, or select a Docker folders export here.', type: 'error' });
+                swal({ title: fv3I18nOr('wrong-import', 'Wrong import'), text: fv3I18nOr('wrong-import-docker', 'This is a full backup bundle — use "Import Everything" to restore it, or select a Docker folders export here.'), type: 'error' });
                 return;
             }
             await fv3ImportFolderMap(content, 'docker');
@@ -233,15 +233,15 @@ const importVm = () => {
                 content = JSON.parse(content);
             } catch (error) {
                 swal({
-                    title: 'Error',
-                    text: 'Error parsing the input file, please select a JSON file',
+                    title: fv3I18nOr('error', 'Error'),
+                    text: fv3I18nOr('import-parse-error', 'Error parsing the input file, please select a JSON file'),
                     type: 'error',
                 });
                 return;
             }
 
             if (content && content.fv3_export_version) {
-                swal({ title: 'Wrong import', text: 'This is a full backup bundle — use "Import Everything" to restore it, or select a VM folders export here.', type: 'error' });
+                swal({ title: fv3I18nOr('wrong-import', 'Wrong import'), text: fv3I18nOr('wrong-import-vm', 'This is a full backup bundle — use "Import Everything" to restore it, or select a VM folders export here.'), type: 'error' });
                 return;
             }
             await fv3ImportFolderMap(content, 'vm');
@@ -274,7 +274,7 @@ const showBatchErrors = (failed, many, one = null, extra = '') => {
     const text = failed.length === 1 && one
         ? fv3I18nOr(one.key, one.text, failed[0].label, failed[0].reason)
         : fv3I18nOr(many.key, many.text, failed.map(f => f.label).join(', '));
-    swal({ title: 'Error', text: extra ? text + '\n' + extra : text, type: 'error' });
+    swal({ title: fv3I18nOr('error', 'Error'), text: extra ? text + '\n' + extra : text, type: 'error' });
     return true;
 };
 
@@ -284,13 +284,13 @@ const clearFolders = (type, id) => {
     // Only an omitted id means every folder: '' is a real (hand-edited) key
     const ids = id !== undefined ? [id] : Object.keys(folders);
     swal({
-        title: 'Are you sure?',
-        text: id !== undefined ? `Remove folder: ${escapeHtml(folders[id].name)}` : 'Remove ALL folders',
+        title: fv3I18nOr('are-you-sure', 'Are you sure?'),
+        text: id !== undefined ? fv3I18nOr('remove-folder-named', 'Remove folder: $1', escapeHtml(folders[id].name)) : fv3I18nOr('remove-all-folders', 'Remove ALL folders'),
         type: 'warning',
         html: true,
         showCancelButton: true,
-        confirmButtonText: 'Yes, delete it!',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: fv3I18nOr('yes-delete', 'Yes, delete it!'),
+        cancelButtonText: fv3I18nOr('cancel', 'Cancel'),
         ...swalLoaderOpts
     },
     async (c) => {
@@ -468,7 +468,7 @@ const fv3SubmitSettings = async (quiet = false) => {
         changed.dashboard_vm_expand_toggle = 'no';
     }
     if (Object.keys(changed).length === 0) {
-        if (!quiet) swal({ title: 'No Changes', text: 'Settings are unchanged.', type: 'info', timer: 1500 });
+        if (!quiet) swal({ title: fv3I18nOr('no-changes', 'No Changes'), text: fv3I18nOr('settings-unchanged', 'Settings are unchanged.'), type: 'info', timer: 1500 });
         return true;
     }
     try {
@@ -479,12 +479,12 @@ const fv3SubmitSettings = async (quiet = false) => {
         }).promise();
         fv3LoadedSettings = { ...fv3LoadedSettings, ...changed };
         fv3ApplyFormState(fv3LoadedSettings);
-        if (!quiet) swal({ title: 'Saved', text: 'Settings saved.', type: 'success', timer: 1500 });
+        if (!quiet) swal({ title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('settings-saved', 'Settings saved.'), type: 'success', timer: 1500 });
         return true;
     } catch (e) {
-        var msg = e.responseText || e.statusText || e.message || 'Unknown error';
+        var msg = fv3FailReason(e);
         console.error('Failed to save settings:', msg);
-        swal({ title: 'Error', text: 'Failed to save settings: ' + msg, type: 'error' });
+        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('save-settings-failed', 'Failed to save settings: $1', msg), type: 'error' });
         return false;
     }
 };
@@ -507,11 +507,12 @@ fv3ColorFields.forEach(cf => {
 
 $('#fv3-apply-defaults').on('click', function() {
     swal({
-        title: 'Apply Defaults?',
-        text: 'This will update all existing folders to use the current default settings. Per-folder overrides will be replaced.',
+        title: fv3I18nOr('apply-defaults-confirm-title', 'Apply Defaults?'),
+        text: fv3I18nOr('apply-defaults-confirm-text', 'This will update all existing folders to use the current default settings. Per-folder overrides will be replaced.'),
         type: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Apply',
+        confirmButtonText: fv3I18nOr('apply', 'Apply'),
+        cancelButtonText: fv3I18nOr('cancel', 'Cancel'),
         ...swalLoaderOpts
     }, async (confirmed) => {
         if (!confirmed) return;
@@ -559,7 +560,7 @@ $('#fv3-apply-defaults').on('click', function() {
         }
         const failed = await postEach(jobs);
         if (showBatchErrors(failed, { key: 'defaults-not-applied', text: 'Defaults were not applied to these folders: $1' })) return;
-        swal({ title: 'Done', text: 'Defaults applied to all folders.', type: 'success', timer: 1500 });
+        swal({ title: fv3I18nOr('done', 'Done'), text: fv3I18nOr('defaults-applied', 'Defaults applied to all folders.'), type: 'success', timer: 1500 });
     });
 });
 
@@ -569,7 +570,7 @@ const fv3ExportAll = async () => {
         const data = await resp.json();
         if (!resp.ok || data.error) {
             // Never save an aborted export as a backup file
-            swal({ title: 'Export Failed', text: data.error || ('Server returned ' + resp.status), type: 'error' });
+            swal({ title: fv3I18nOr('export-failed-title', 'Export Failed'), text: data.error || fv3I18nOr('server-returned-status', 'Server returned $1', resp.status), type: 'error' });
             return;
         }
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -579,10 +580,10 @@ const fv3ExportAll = async () => {
         a.click();
         URL.revokeObjectURL(a.href);
         if (data.css_skipped) {
-            swal({ title: 'Partial Export', text: data.css_skipped_reason || 'Custom CSS files were too large and were excluded. Export them manually via File Manager.', type: 'warning' });
+            swal({ title: fv3I18nOr('partial-export', 'Partial Export'), text: data.css_skipped_reason || fv3I18nOr('css-skipped-export', 'Custom CSS files were too large and were excluded. Export them manually via File Manager.'), type: 'warning' });
         }
     } catch (e) {
-        swal({ title: 'Error', text: 'Export failed: ' + e.message, type: 'error' });
+        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('export-failed', 'Export failed: $1', e.message), type: 'error' });
     }
 };
 window.fv3ExportAll = fv3ExportAll;
@@ -593,7 +594,7 @@ const fv3ImportFolderExport = async (content, type) => {
     try {
         await fv3ImportFolderMap(content, type);
     } catch (err) {
-        swal({ title: 'Error', text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });
+        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });
     }
 };
 
@@ -609,19 +610,19 @@ $('#fv3-import-all').on('change', function() {
             if (!parsed.fv3_export_version) {
                 // folder.view2 exports land here — take them rather than dead-ending the user.
                 const count = fv3CountFolderExport(parsed);
-                if (!count) { swal({ title: 'Error', text: 'Not a valid FV3 backup file.', type: 'error' }); return; }
+                if (!count) { swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('invalid-backup-file', 'Not a valid FV3 backup file.'), type: 'error' }); return; }
                 // The choice can't ride on the confirm/cancel boolean: swal reports ESC and Cancel
                 // identically, so a dismissal would silently import as whichever type lost the coin toss.
                 swal({
-                    title: 'Folder export detected',
-                    text: `<p>This file holds ${count} folder${count === 1 ? '' : 's'} — a FolderView2 or per-type export, not a full FV3 backup.</p>`
-                        + '<p>Import as:</p><p>'
-                        + '<button class="fv3-choice" style="margin:0 4px" data-fv3-type="docker">Docker folders</button>'
-                        + '<button class="fv3-choice" style="margin:0 4px" data-fv3-type="vm">VM folders</button></p>',
+                    title: fv3I18nOr('folder-export-detected', 'Folder export detected'),
+                    text: `<p>${escapeHtml(fv3I18nOr('folder-export-detected-text', `This file holds $1 folder${count === 1 ? '' : 's'} — a FolderView2 or per-type export, not a full FV3 backup.`, count))}</p>`
+                        + `<p>${escapeHtml(fv3I18nOr('import-as', 'Import as:'))}</p><p>`
+                        + `<button class="fv3-choice" style="margin:0 4px" data-fv3-type="docker">${escapeHtml(fv3I18nOr('docker-folders', 'Docker folders'))}</button>`
+                        + `<button class="fv3-choice" style="margin:0 4px" data-fv3-type="vm">${escapeHtml(fv3I18nOr('vm-folders', 'VM folders'))}</button></p>`,
                     html: true,
                     showConfirmButton: false,
                     showCancelButton: true,
-                    cancelButtonText: 'Cancel'
+                    cancelButtonText: fv3I18nOr('cancel', 'Cancel')
                 });
                 // An inline onclick inside swal's own markup never fires — bind explicitly instead.
                 // The buttons exist synchronously once swal() has returned.
@@ -631,19 +632,20 @@ $('#fv3-import-all').on('change', function() {
                 return;
             }
             const items = [];
-            if (parsed.docker && Object.keys(parsed.docker).length) items.push(Object.keys(parsed.docker).length + ' Docker folders');
-            if (parsed.vm && Object.keys(parsed.vm).length) items.push(Object.keys(parsed.vm).length + ' VM folders');
-            if (parsed.settings && Object.keys(parsed.settings).length) items.push('settings');
-            if (parsed.autostart && Object.keys(parsed.autostart).length) items.push('autostart order');
-            if (parsed.css_config && Object.keys(parsed.css_config).length) items.push('CSS config');
-            if (parsed.custom_styles && Object.keys(parsed.custom_styles).length) items.push(Object.keys(parsed.custom_styles).length + ' custom CSS files');
-            if (parsed.css_skipped) items.push('(custom CSS excluded — too large)');
+            if (parsed.docker && Object.keys(parsed.docker).length) items.push(fv3I18nOr('backup-item-docker', '$1 Docker folders', Object.keys(parsed.docker).length));
+            if (parsed.vm && Object.keys(parsed.vm).length) items.push(fv3I18nOr('backup-item-vm', '$1 VM folders', Object.keys(parsed.vm).length));
+            if (parsed.settings && Object.keys(parsed.settings).length) items.push(fv3I18nOr('backup-item-settings', 'settings'));
+            if (parsed.autostart && Object.keys(parsed.autostart).length) items.push(fv3I18nOr('backup-item-autostart', 'autostart order'));
+            if (parsed.css_config && Object.keys(parsed.css_config).length) items.push(fv3I18nOr('backup-item-css-config', 'CSS config'));
+            if (parsed.custom_styles && Object.keys(parsed.custom_styles).length) items.push(fv3I18nOr('backup-item-custom-css', '$1 custom CSS files', Object.keys(parsed.custom_styles).length));
+            if (parsed.css_skipped) items.push(fv3I18nOr('backup-item-css-skipped', '(custom CSS excluded — too large)'));
             swal({
-                title: 'Import Backup?',
-                text: 'This will overwrite current config with: ' + items.join(', ') + '.' + (parsed.exported ? '\nExported: ' + parsed.exported : ''),
+                title: fv3I18nOr('import-backup-confirm-title', 'Import Backup?'),
+                text: fv3I18nOr('import-backup-confirm-text', 'This will overwrite current config with: $1.', items.join(', ')) + (parsed.exported ? '\n' + fv3I18nOr('backup-exported-on', 'Exported: $1', parsed.exported) : ''),
                 type: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Import',
+                confirmButtonText: fv3I18nOr('import', 'Import'),
+                cancelButtonText: fv3I18nOr('cancel', 'Cancel'),
                 ...swalLoaderOpts
             }, async (confirmed) => {
                 if (!confirmed) return;
@@ -652,21 +654,21 @@ $('#fv3-import-all').on('change', function() {
                     const resp = await $.post('/plugins/folder.view3/server/import_all.php', { bundle: JSON.stringify(parsed) }).promise();
                     result = (typeof resp === 'object' && resp !== null) ? resp : fv3SafeParse(resp, null);
                     // A reply that isn't a result object is a failed restore, never "0 items restored"
-                    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Invalid restore response');
+                    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error(fv3I18nOr('invalid-restore-response', 'Invalid restore response'));
                 } catch (err) {
                     console.error('Import Everything error:', err);
-                    swal({ title: 'Error', text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });
+                    swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });
                     return;
                 }
                 if (result.error) {
-                    swal({ title: 'Error', text: result.error, type: 'error' });
+                    swal({ title: fv3I18nOr('error', 'Error'), text: result.error, type: 'error' });
                 } else {
-                    swal({ title: 'Restored', text: (result.restored || []).length + ' items restored.', type: 'success', timer: 2000 });
+                    swal({ title: fv3I18nOr('restored', 'Restored'), text: fv3I18nOr('items-restored', '$1 items restored.', (result.restored || []).length), type: 'success', timer: 2000 });
                     setTimeout(function() { location.reload(); }, 2000);
                 }
             });
         } catch (err) {
-            swal({ title: 'Error', text: 'Invalid JSON file.', type: 'error' });
+            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('invalid-json-file', 'Invalid JSON file.'), type: 'error' });
         }
     };
     reader.readAsText(file);
@@ -808,7 +810,7 @@ const fv3LoadAutostart = async () => {
         $('#fv3-autostart-mode').val(as.mode || 'folder');
         $('#fv3-as-rows').html(ordered.map(n => fv3AsRowHtml(n, waits[n] || 0, true)).join(''));
         $('#fv3-as-off-rows').html(disabled.map(n => fv3AsRowHtml(n, 0, false)).join(''));
-        $('.fv3-as-table input.fv3-as-toggle').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+        $('.fv3-as-table input.fv3-as-toggle').switchButton({ labels_placement: 'right', ...fv3SwitchLabels() });
         fv3AsRenumber();
         fv3AsApplyModeState();
         const toggles = {};
@@ -817,7 +819,7 @@ const fv3LoadAutostart = async () => {
         fv3AsSnapshot = { mode: as.mode || 'folder', sequence: [...ordered], waits: { ...waits }, toggles };
     } catch (e) {
         console.error('[FV3] Failed to load autostart tab:', e);
-        swal({ title: 'Error', text: 'Failed to load autostart data.', type: 'error' });
+        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('autostart-load-failed', 'Failed to load autostart data.'), type: 'error' });
     }
 };
 
@@ -876,11 +878,11 @@ const fv3SubmitAutostart = async () => {
             data: { mode: cur.mode, sequence: JSON.stringify(cur.sequence), waits: JSON.stringify(cur.waits) }
         }).promise();
         await fv3LoadAutostart();
-        swal({ title: 'Saved', text: 'Start order saved and applied.', type: 'success', timer: 1800 });
+        swal({ title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('autostart-saved', 'Start order saved and applied.'), type: 'success', timer: 1800 });
     } catch (e) {
-        var msg = e.responseText || e.statusText || e.message || 'Unknown error';
+        var msg = fv3FailReason(e);
         console.error('[FV3] Failed to save autostart:', msg);
-        swal({ title: 'Error', text: 'Failed to save start order: ' + msg, type: 'error' });
+        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('autostart-save-failed', 'Failed to save start order: $1', msg), type: 'error' });
     }
 };
 
@@ -901,6 +903,15 @@ const fv3IsSettingsDirty = () => {
     return false;
 };
 
+const fv3ConfirmDiscard = (onDiscard) => swal({
+    title: fv3I18nOr('unsaved-changes', 'Unsaved Changes'),
+    text: fv3I18nOr('unsaved-changes-text', 'You have unsaved changes. Discard them?'),
+    type: 'warning',
+    showCancelButton: true,
+    confirmButtonText: fv3I18nOr('discard', 'Discard'),
+    cancelButtonText: fv3I18nOr('stay', 'Stay')
+}, (confirmed) => { if (confirmed === true) onDiscard(); });
+
 window.fv3SwitchTab = (function() {
     var tabs = document.querySelectorAll('.fv3-page-tab');
     var panels = document.querySelectorAll('.fv3-page-panel');
@@ -918,26 +929,15 @@ window.fv3SwitchTab = (function() {
             }
             if (isDirty) {
                 var fromTab = currentTab;
-                swal({
-                    title: 'Unsaved Changes',
-                    text: 'You have unsaved changes. Discard them?',
-                    type: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Discard',
-                    cancelButtonText: 'Stay',
-                    closeOnConfirm: true,
-                    closeOnCancel: true
-                }, function(confirmed) {
-                    if (confirmed === true) {
-                        if (fromTab === 'dashboard' || fromTab === 'defaults') {
-                            fv3CancelSettings();
-                        } else if (fromTab === 'autostart') {
-                            fv3CancelAutostart();
-                        } else if (fromTab === 'css' && window.fv3ResetCssDirty) {
-                            window.fv3ResetCssDirty();
-                        }
-                        switchTab(tabName, true);
+                fv3ConfirmDiscard(function() {
+                    if (fromTab === 'dashboard' || fromTab === 'defaults') {
+                        fv3CancelSettings();
+                    } else if (fromTab === 'autostart') {
+                        fv3CancelAutostart();
+                    } else if (fromTab === 'css' && window.fv3ResetCssDirty) {
+                        window.fv3ResetCssDirty();
                     }
+                    switchTab(tabName, true);
                 });
                 return;
             }
@@ -979,16 +979,7 @@ if (typeof initab === 'function') {
         const settingsDirty = typeof fv3IsSettingsDirty === 'function' && fv3IsSettingsDirty();
         const autostartDirty = typeof fv3IsAutostartDirty === 'function' && fv3IsAutostartDirty();
         if (cssDirty || settingsDirty || autostartDirty) {
-            swal({
-                title: 'Unsaved Changes',
-                text: 'You have unsaved changes. Discard them?',
-                type: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Discard',
-                cancelButtonText: 'Stay'
-            }, function(confirmed) {
-                if (confirmed === true) _origInitab(url);
-            });
+            fv3ConfirmDiscard(() => _origInitab(url));
             return false;
         }
         return _origInitab(url);
@@ -1007,14 +998,5 @@ document.addEventListener('click', function(e) {
     e.preventDefault();
     e.stopPropagation();
     const href = a.getAttribute('href') || '';
-    swal({
-        title: 'Unsaved Changes',
-        text: 'You have unsaved changes. Discard them?',
-        type: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Discard',
-        cancelButtonText: 'Stay'
-    }, function(confirmed) {
-        if (confirmed === true && href) window.location.href = href;
-    });
+    fv3ConfirmDiscard(() => { if (href) window.location.href = href; });
 }, true);

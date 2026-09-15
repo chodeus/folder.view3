@@ -20,7 +20,9 @@
         return s && s !== key ? s : fallback.replace(/\$(\d+)/g, (m, n) => (args[n - 1] !== undefined ? args[n - 1] : m));
     };
     // The server's JSON error when it sent one, else the HTTP status (HTTP/2 carries no status text)
-    window.fv3FailReason = (err) => err?.responseJSON?.error || (err?.status ? 'HTTP ' + err.status : err?.statusText || err?.message || 'Unknown error');
+    window.fv3FailReason = (err) => err?.responseJSON?.error || (err?.status ? 'HTTP ' + err.status : err?.statusText || err?.message || fv3I18nOr('unknown-error', 'Unknown error'));
+    // switchButton labels in the pack's words, upper-cased like the English OFF/ON
+    window.fv3SwitchLabels = () => ({ off_label: fv3I18nOr('off', 'Off').toUpperCase(), on_label: fv3I18nOr('on', 'On').toUpperCase() });
     if(typeof folderi18n === 'undefined' ) {
         folderi18n = () => {};
     }
