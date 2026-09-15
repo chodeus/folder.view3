@@ -3,15 +3,7 @@ name: Language packs
 on:
   push:
     branches: [main, beta]
-    paths:
-      - 'src/folder.view3/usr/local/emhttp/plugins/folder.view3/**'
-      - '.github/scripts/check-langs.py'
-      - '.github/workflows/langs.yml'
   pull_request:
-    paths:
-      - 'src/folder.view3/usr/local/emhttp/plugins/folder.view3/**'
-      - '.github/scripts/check-langs.py'
-      - '.github/workflows/langs.yml'
   workflow_dispatch:
 
 permissions:
