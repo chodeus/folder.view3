@@ -197,7 +197,7 @@ Language packs live in `src/folder.view3/usr/local/emhttp/plugins/folder.view3/l
   python3 .github/scripts/check-langs.py src/folder.view3/usr/local/emhttp/plugins/folder.view3/langs
   ```
 - **Pull requests** — target the `beta` branch, one language per PR. Say whether you are a native speaker and whether any of it was machine- or AI-translated.
-- **New UI text in code** — use `fv3I18nOr('key', 'English text')` in JavaScript or a `data-i18n` attribute in markup, and add the key to all seven packs.
+- **New UI text in code** — use `fv3I18nOr('key', 'English text')` in JavaScript or a `data-i18n` attribute in markup, and add the key to every language pack.
 
 ## Libraries
 
