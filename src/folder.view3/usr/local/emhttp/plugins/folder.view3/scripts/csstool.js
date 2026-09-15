@@ -539,6 +539,7 @@
             del.className = 'fv3-preset-delete';
             del.innerHTML = '<i class="fa fa-trash"></i>';
             del.title = fv3I18nOr('delete-preset', 'Delete preset');
+            del.setAttribute('data-i18n', '[title]delete-preset');
             del.addEventListener('click', function(e) {
                 e.stopPropagation();
                 swal({ title: fv3I18nOr('delete-preset-confirm', 'Delete "$1"?', escapeAttr(preset.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, function(ok) {
@@ -990,9 +991,9 @@
                         ${theme.enabled
                             ? '<button class="fv3-theme-disable">' + i18nSpan('disable', 'Disable') + '</button>'
                             : '<button class="fv3-theme-activate">' + i18nSpan('enable', 'Enable') + '</button>'}
-                        ${repo ? '<button class="fv3-theme-check-update" title="' + escapeAttr(fv3I18nOr('check-for-updates', 'Check for Updates')) + '"><i class="fa fa-refresh"></i></button>' : ''}
-                        <button class="fv3-theme-update" title="${escapeAttr(fv3I18nOr('theme-update-from-github', 'Update from GitHub'))}" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">${escapeAttr(fv3I18nOr('apply-update', 'apply update'))}</span></button>
-                        <button class="fv3-theme-delete" title="${escapeAttr(fv3I18nOr('delete', 'Delete'))}"><i class="fa fa-trash"></i></button>
+                        ${repo ? '<button class="fv3-theme-check-update" title="' + escapeAttr(fv3I18nOr('check-for-updates', 'Check for Updates')) + '" data-i18n="[title]check-for-updates"><i class="fa fa-refresh"></i></button>' : ''}
+                        <button class="fv3-theme-update" title="${escapeAttr(fv3I18nOr('theme-update-from-github', 'Update from GitHub'))}" data-i18n="[title]theme-update-from-github" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">${escapeAttr(fv3I18nOr('apply-update', 'apply update'))}</span></button>
+                        <button class="fv3-theme-delete" title="${escapeAttr(fv3I18nOr('delete', 'Delete'))}" data-i18n="[title]delete"><i class="fa fa-trash"></i></button>
                     </div>`;
                 card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
                     await setThemeEnabled(theme.entry, true);
@@ -1104,7 +1105,7 @@
                             ${theme.enabled
                                 ? '<button class="fv3-theme-disable">' + i18nSpan('disable', 'Disable') + '</button>'
                                 : '<button class="fv3-theme-activate">' + i18nSpan('enable', 'Enable') + '</button>'}
-                            <button class="fv3-theme-delete" title="${escapeAttr(fv3I18nOr('delete', 'Delete'))}"><i class="fa fa-trash"></i></button>
+                            <button class="fv3-theme-delete" title="${escapeAttr(fv3I18nOr('delete', 'Delete'))}" data-i18n="[title]delete"><i class="fa fa-trash"></i></button>
                         </div>`;
                     card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
                         await setThemeEnabled(theme.entry, true);
