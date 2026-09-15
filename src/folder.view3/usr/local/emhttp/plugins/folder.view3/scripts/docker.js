@@ -137,7 +137,7 @@ const createFolders = async () => {
                     foldersDone[id] = folders[id];
                 } catch (e) {
                     console.error(`[FV3] Docker: folder "${folders[id].name}" failed to render:`, e);
-                    fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                    fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', folders[id].name), 'error');
                 }
                 delete folders[id];
                 fv3Debug('createFolders', `Folder ${id} moved to foldersDone. Updated foldersDone:`, {...foldersDone}, "Remaining folders:", {...folders});
@@ -158,7 +158,7 @@ const createFolders = async () => {
             foldersDone[id] = folders[id];
         } catch (e) {
             console.error(`[FV3] Docker: folder "${value.name}" failed to render:`, e);
-            fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+            fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', value.name), 'error');
         }
         delete folders[id];
         fv3Debug('createFolders', `Remaining folder ${id} moved to foldersDone. Updated foldersDone:`, {...foldersDone}, "Remaining folders:", {...folders});
@@ -858,7 +858,7 @@ const actionFolder = async (id, action) => {
 
     fv3Debug('actionFolder', id, `Awaiting ${proms.length} promises.`);
     const settled = await Promise.allSettled(proms);
-    const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
+    const results = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || fv3I18nOr('request-failed', 'Request failed') });
     fv3Debug('actionFolder', id, 'Promises resolved. Results:', results);
 
     errors = results.filter(e => e.success !== true);
@@ -872,7 +872,7 @@ const actionFolder = async (id, action) => {
             text:errorMessages.join('<br>'),
             type:'error',
             html:true,
-            confirmButtonText:'Ok'
+            confirmButtonText: fv3I18nOr('ok', 'Ok')
         }, loadlist);
     } else {
         fv3Debug('actionFolder', id, 'No errors. Reloading list.');
