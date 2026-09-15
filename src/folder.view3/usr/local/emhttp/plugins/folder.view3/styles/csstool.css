@@ -151,6 +151,7 @@
 
 .fv3-theme-import input[type="text"]:focus {
     background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
+    border-bottom-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
 }
 
 .fv3-theme-card {
@@ -382,6 +383,7 @@
 
 .fv3-var-inputs input[type="text"]:focus {
     background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
+    border-bottom-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
 }
 
 .fv3-var-inputs input[type="range"] {
@@ -402,6 +404,7 @@
 
 .fv3-var-inputs input[type="number"]:focus {
     background-color: var(--focus-input-bg-color, rgba(128,128,128,0.08));
+    border-bottom-color: var(--fv3-accent-color, var(--color-orange, #f0a30a));
 }
 
 .fv3-var-reset {
