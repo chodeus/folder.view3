@@ -1412,7 +1412,7 @@
                 });
             },
             done: function() {
-                if (statusCode !== 'failed') this.status('finished');
+                if (statusCode === 'in-progress' || statusCode === 'complete') this.status('finished');
                 var spinner = titleEl.querySelector('.fv3-swal-spinner');
                 if (spinner) spinner.style.display = 'none';
                 if (dotsEl) dotsEl.style.display = 'none';
