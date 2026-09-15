@@ -666,7 +666,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
         </INLINE>
     </FILE>
 
-    <!-- New source file -->
+    <!-- Package archive -->
     <FILE Name="/boot/config/plugins/&name;/&pkgname;.txz" Run="upgradepkg --install-new --reinstall">
         <URL>https://github.com/&github;/releases/download/v&version;/&pkgname;.txz</URL>
         <MD5>&md5;</MD5>
