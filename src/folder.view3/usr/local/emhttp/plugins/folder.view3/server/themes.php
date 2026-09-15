@@ -235,6 +235,8 @@
             $seen[$relPath] = true;
             // A listed file with no download link fails the import like any other file that can't be fetched
             if (!is_string($file['download_url'] ?? null)) { $missing[] = "$relPath (no download link)"; continue; }
+            // The listing is trusted for names, not for where a file comes from: only GitHub's raw host is fetched
+            if (!preg_match('#^https://raw\.githubusercontent\.com/#', $file['download_url'])) { $missing[] = "$relPath (download link is not on raw.githubusercontent.com)"; continue; }
             // One byte past the cap tells a too-large file from one that fits exactly
             $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes + 1);
             if ($css !== false && strlen($css) > $maxCssBytes) {
