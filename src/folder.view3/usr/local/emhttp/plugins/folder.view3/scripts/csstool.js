@@ -1013,10 +1013,12 @@
                     progress.section(fv3I18nOr('updating-item', 'Updating: $1', theme.name));
                     const data = { repo, path };
                     if (branch) data.branch = branch;
+                    let failed = false;
                     try {
                         const result = await postFormJson(API + '/import_theme.php', data);
                         if (result.error) {
                             progress.log(fv3I18nOr('failed-reason', 'Failed: $1', result.error), 'error');
+                            failed = true;
                         } else {
                             result.files.forEach(function(f) { progress.log(f, 'file'); });
                             progress.log(fv3I18nOr('files-updated', '$1 file(s) updated', result.files.length), 'success');
@@ -1024,8 +1026,9 @@
                         }
                     } catch (e) {
                         progress.log(fv3I18nOr('error-reason', 'Error: $1', e.message), 'error');
+                        failed = true;
                     }
-                    progress.status('complete');
+                    progress.status(failed ? 'failed' : 'complete');
                     await progress.done();
                     loadThemes();
                 });

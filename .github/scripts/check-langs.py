@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail when a language pack no longer matches en.json."""
+"""Fail when a language pack no longer matches en.json, or the code uses a key en.json lacks."""
 import json
 import re
 import sys
@@ -8,6 +8,18 @@ from pathlib import Path
 
 PLACEHOLDER = re.compile(r'\$\d+')
 TAG = re.compile(r'</?[A-Za-z][A-Za-z0-9]*')
+MAGIC = re.compile(r'\{\{(.*?)\}\}', re.S)
+PLURAL = re.compile(r'PLURAL:\$\d+(\|[^|{}]*)+')
+# Literal keys only; a key ending in "-" is a prefix the code completes at runtime
+SOURCE_KEYS = [re.compile(p) for p in (
+    r"fv3I18nOr\(\s*'([a-z0-9-]+)'",
+    r"\$\.i18n\(\s*'([a-z0-9-]+)'",
+    r"i18nText\([^,()]+,\s*'([a-z0-9-]+)'",
+    r"i18nSpan\(\s*'([a-z0-9-]+)'",
+    r"key:\s*'([a-z0-9-]+)'",
+    r'data-i18n="(?:\[[a-z]+\])?([a-z0-9-]+)"',
+    r"'\[[a-z]+\]([a-z0-9-]+)'",
+)]
 
 
 def load(path, errors):
@@ -32,11 +44,29 @@ def check_value(name, key, value, source, errors):
         errors.append(f'{name} "{key}": HTML tags differ from en.json')
     if value.count('{{') != value.count('}}'):
         errors.append(f'{name} "{key}": unbalanced {{{{ }}}}')
+    for expr in MAGIC.findall(value):
+        if not PLURAL.fullmatch(expr):
+            errors.append(f'{name} "{key}": "{{{{{expr}}}}}" is not {{{{PLURAL:$n|form|...}}}}')
+
+
+def source_keys(plugin_dir):
+    found = {}
+    files = sorted(plugin_dir.glob('*.page')) + sorted((plugin_dir / 'scripts').glob('*.js')) + [plugin_dir / 'langs' / 'script.php']
+    for f in files:
+        if not f.is_file():
+            continue
+        text = f.read_text(encoding='utf-8')
+        for rx in SOURCE_KEYS:
+            for m in rx.finditer(text):
+                if not m.group(1).endswith('-'):
+                    found.setdefault(m.group(1), f.name)
+    return found
 
 
 def main(langs_dir):
     errors = []
-    packs = {p.name: load(p, errors) for p in sorted(Path(langs_dir).glob('*.json'))}
+    langs = Path(langs_dir)
+    packs = {p.name: load(p, errors) for p in sorted(langs.glob('*.json'))}
     en = packs.get('en.json')
     if not isinstance(en, dict):
         errors.append('en.json: missing or unreadable')
@@ -44,6 +74,9 @@ def main(langs_dir):
     keys = [k for k in en if k != '@metadata']
     for key in keys:
         check_value('en.json', key, en[key], en[key], errors)
+    for key, where in sorted(source_keys(langs.resolve().parent).items()):
+        if key not in en:
+            errors.append(f'{where}: uses "{key}", which is not in en.json')
     for name, pack in packs.items():
         if name == 'en.json' or not isinstance(pack, dict):
             continue
