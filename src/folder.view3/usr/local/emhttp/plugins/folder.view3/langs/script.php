@@ -12,6 +12,9 @@
 <script src="/plugins/folder.view3/scripts/include/jquery.i18n.emitter.js"></script>
 <script src="/plugins/folder.view3/scripts/include/jquery.i18n.emitter.bidi.js"></script>
 <script>
+    // A value as a JavaScript string literal inside an inline on*= handler: the browser decodes HTML entities
+    // before parsing the attribute as JS, so the JSON form is escaped whole and supplies its own quotes
+    window.fv3JsArg = (v) => escapeHtml(JSON.stringify(String(v ?? '')));
     // Shared by every FV3 page: $.i18n returns the key itself until the pack loads, so fall back to English with $n filled in
     window.fv3I18nOr = (key, fallback, ...args) => {
         const s = $.i18n(key, ...args);

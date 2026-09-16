@@ -92,7 +92,10 @@ reviews:
         when replacing content that carries bound event handlers — innerHTML
         rebuilds nodes and silently drops drag-and-drop and context-menu
         handlers. Any dynamic/user text (container/folder/theme names) inserted
-        into the DOM must go through escapeHtml() first.
+        into the DOM must go through escapeHtml() first. A value placed inside an
+        inline on*= handler as a JavaScript string goes through fv3JsArg()
+        (langs/script.php), never '${escapeHtml(v)}': entities are decoded before
+        the attribute is parsed as JS, so a quote in the value breaks out.
 
         RE-RENDER: drag-and-drop and context-menu handlers must survive a
         re-render — re-bind after rebuild or use event delegation on a stable
