@@ -1350,14 +1350,11 @@
         $config = json_decode($json, true);
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($config)) { http_response_code(400); echo 'Invalid JSON'; exit; }
         $config = fv3_sanitize_css_config($config);
-        // Generate CSS file BEFORE object cast (generateCssFile expects arrays)
-        // Generated first so a failed write leaves css-config.json unchanged; files already
-        // written can sit ahead of it until the next successful save
-        if (!generateCssFile($config)) {
-            http_response_code(500);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Could not write the generated CSS files.']);
-            exit;
+        // Rendered from the array form, before the object cast below
+        $files = [];
+        $clear = [];
+        foreach (fv3_render_css_files($config) as $name => $css) {
+            if ($css !== null) { $files["styles/$name"] = $css; } else { $clear[] = "styles/$name"; }
         }
         // Ensure map keys are always serialized as JSON objects (PHP encodes empty arrays as [])
         foreach (['global', 'dashboard', 'docker', 'vm', 'page_presets', 'page_values'] as $mapKey) {
@@ -1365,12 +1362,14 @@
                 $config[$mapKey] = (object)$config[$mapKey];
             }
         }
-        // Atomic write (temp + rename): a short write can't leave css-config.json truncated, and a reader never sees a torn file
+        $files['css-config.json'] = json_encode($config, JSON_PRETTY_PRINT);
+        // The same swap importAll uses, so a failed save can't leave the CSS ahead of css-config.json
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-        if (!fv3_atomic_write("$configDir/css-config.json", json_encode($config, JSON_PRETTY_PRINT))) {
+        $result = fv3_replace_files($configDir, $files, $clear);
+        if (isset($result['error'])) {
             http_response_code(500);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'Could not save the CSS configuration.']);
+            echo json_encode(['error' => $result['error']]);
             exit;
         }
     }
@@ -1442,21 +1441,6 @@
             $out["_fv3-generated.{$scope}.css"] = $hasScope ? $scopeCss : null;
         }
         return $out;
-    }
-
-    // False when a generated file could not be written or removed
-    function generateCssFile(array $config) : bool {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        if (!is_dir($stylesDir)) { @mkdir($stylesDir, 0770, true); }
-        // Every write and removal below lands in styles/, so it must still resolve inside the config folder
-        if (!fv3_path_within($stylesDir, (string)realpath($configDir))) return false;
-        $ok = true;
-        foreach (fv3_render_css_files($config) as $name => $css) {
-            $path = "$stylesDir/$name";
-            $ok = ($css !== null ? fv3_atomic_write($path, $css) : (!file_exists($path) || @unlink($path))) && $ok;
-        }
-        return $ok;
     }
 
     function generateId(int $length = 20) : string {
