@@ -4,21 +4,16 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- Containers that share an image tag no longer copy each other's update state
-- A degraded Docker read can no longer trim your autostart file
-- A folder that refused to delete can now be removed, and a failed delete no longer freezes the page
-- Folder ids are validated and escaped wherever they are rendered
-- A failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused rather than half-installed
-- A theme declined at the external-URL warning is now removed
-- Themes marked disabled are recognised whatever the capitalisation
-- Backup restores and CSS settings now report a failed write
-- The settings page and the CSS Tool's theme labels are translated
-- fix: VM log button works for names with an apostrophe, and the Docker tab keeps live stats if the CPU count request fails (#79)
-- fix: translate the UI text that still showed in English (#76)
-- fix: rounded and pill toggles no longer paint a dark track on light themes, and the CSS Tool's notes and number fields show keyboard focus (#81)
-- fix: a backup restore is all or nothing, and an unreadable autostart file is no longer rewritten as empty (#83)
-- fix: add the Add Folder button once on the Docker and VM tabs (#85)
-- refactor: inline handler arguments go through one fv3JsArg() helper instead of 33 copies of escapeHtml(JSON.stringify()) (#86)
+- A failed backup import is rolled back instead of leaving a half-restored config
+- An unreadable autostart file is left alone, not rewritten as empty
+- A malformed saved order no longer clears your existing order
+- Theme bundles can only write inside the plugin's styles folder
+- The Logs button works for VM names with an apostrophe
+- The Docker tab keeps live stats when the CPU count request fails
+- The Add Folder button is added once on the Docker and VM tabs
+- Rounded and pill toggles no longer paint a dark track on light themes
+- The CSS Tool's notes and number fields show keyboard focus
+- Remaining English UI text now follows your language setting
 
 ## 2026.09.15.1 (beta)
 
