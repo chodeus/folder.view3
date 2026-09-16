@@ -39,6 +39,9 @@ const createFolders = async () => {
         const containersInfo = fv3SafeParse(prom[2], {});
         let order = Object.values(fv3SafeParse(prom[3], {}));
 
+        // Must run before the render loop — every update surface reads ct.info.State.Updated
+        fv3ApplyUpdateStatuses(containersInfo, prom[4]);
+
         fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
         Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
@@ -89,7 +92,7 @@ const createFolders = async () => {
                         foldersDone[id] = folders[id];
                     } catch (e) {
                         console.error(`[FV3] Dashboard: docker folder "${folders[id].name}" failed to render:`, e);
-                        fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                        fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', folders[id].name), 'error');
                     }
                     delete folders[id];
                 }
@@ -103,7 +106,7 @@ const createFolders = async () => {
                 foldersDone[id] = folders[id];
             } catch (e) {
                 console.error(`[FV3] Dashboard: docker folder "${value.name}" failed to render:`, e);
-                fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', value.name), 'error');
             }
             delete folders[id];
         }
@@ -137,22 +140,6 @@ const createFolders = async () => {
 
         globalFolders.docker = foldersDone;
 
-        fv3CheckUpdates().then(statuses => {
-            if (!statuses || !Object.keys(statuses).length) return;
-            fv3Debug('dashboard', 'API update statuses received:', statuses);
-            for (const [folderId, folder] of Object.entries(globalFolders.docker || {})) {
-                if (!folder.containers) continue;
-                // containers stays an array on the dashboard (never replaced like docker.js does)
-                const memberNames = Array.isArray(folder.containers) ? folder.containers : Object.keys(folder.containers);
-                for (const containerName of memberNames) {
-                    if (statuses[containerName] === 'UPDATE_AVAILABLE') {
-                        folder.status.upToDate = false;
-                        break;
-                    }
-                }
-            }
-        });
-
         fv3SyncOrganizer(globalFolders.docker || {});
 
     // Isolate the Docker half so a failure here can't abort the VM render below (issue #47)
@@ -160,7 +147,7 @@ const createFolders = async () => {
         console.error('[FV3] Dashboard: Docker folder rendering failed:', e);
         // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
         document.documentElement.classList.add('fv3-docker-ready');
-        if (!e?.fv3Bannered) fv3ShowBanner('FolderView3: Docker folder rendering failed — see the browser console for details.', 'error');
+        if (!e?.fv3Bannered) fv3ShowBanner(fv3I18nOr('docker-render-failed', 'FolderView3: Docker folder rendering failed — see the browser console for details.'), 'error');
     } }
 
 
@@ -220,7 +207,7 @@ const createFolders = async () => {
                         foldersDone[id] = folders[id];
                     } catch (e) {
                         console.error(`[FV3] Dashboard: VM folder "${folders[id].name}" failed to render:`, e);
-                        fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                        fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', folders[id].name), 'error');
                     }
                     delete folders[id];
                 }
@@ -234,7 +221,7 @@ const createFolders = async () => {
                 foldersDone[id] = folders[id];
             } catch (e) {
                 console.error(`[FV3] Dashboard: VM folder "${value.name}" failed to render:`, e);
-                fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', value.name), 'error');
             }
             delete folders[id];
         }
@@ -268,7 +255,7 @@ const createFolders = async () => {
     } catch (e) {
         console.error('[FV3] Dashboard: VM folder rendering failed:', e);
         document.documentElement.classList.add('fv3-vm-ready');
-        if (!e?.fv3Bannered) fv3ShowBanner('FolderView3: VM folder rendering failed — see the browser console for details.', 'error');
+        if (!e?.fv3Bannered) fv3ShowBanner(fv3I18nOr('vm-render-failed', 'FolderView3: VM folder rendering failed — see the browser console for details.'), 'error');
     } }
 
     folderDebugMode  = false;
@@ -307,7 +294,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
     // Skip containers explicitly assigned to any folder — explicit beats label (issue #55)
     folder.containers = folder.containers.concat(order.filter(el => containersInfo[el]?.Labels?.['folder.view3'] === folder.name && !folder.containers.includes(el) && !(folder.fv3ExplicitMembers || []).includes(el)));
 
-    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${id}" onclick='addDockerFolderContext("${id}")' class="hand docker folder-hand-docker fv3-folder-hand fv3-folder-hand-docker"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img-docker fv3-folder-icon fv3-folder-icon-docker" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker fv3-folder-inner fv3-folder-inner-docker"><span class="folder-appname-docker fv3-folder-appname fv3-folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker fv3-folder-status-icon fv3-folder-status-icon-docker"></i><span class="state folder-state-docker fv3-folder-state fv3-folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage"></div></span><div class="folder-showcase-${id} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
+    const fld = `<div class="folder-showcase-outer-${escapeHtml(id)} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${escapeHtml(id)}" onclick='addDockerFolderContext(${fv3JsArg(id)})' class="hand docker folder-hand-docker fv3-folder-hand fv3-folder-hand-docker"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img-docker fv3-folder-icon fv3-folder-icon-docker" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker fv3-folder-inner fv3-folder-inner-docker"><span class="folder-appname-docker fv3-folder-appname fv3-folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker fv3-folder-status-icon fv3-folder-status-icon-docker"></i><span class="state folder-state-docker fv3-folder-state fv3-folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage"></div></span><div class="folder-showcase-${escapeHtml(id)} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
     if (position === 0) {
         $('tbody#docker_view > tr.updated > td').children().eq(position).before($(fld));
@@ -366,7 +353,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
             newFolder[container].fullId = ct.Id;
             newFolder[container].pause = ct.info.State.Paused;
             newFolder[container].state = ct.info.State.Running;
-            newFolder[container].update = ct.info.State.Updated === false && ct.info.State.manager === 'dockerman';
+            newFolder[container].update = fv3HasUpdate(ct);
             newFolder[container].managed = ct.info.State.manager === 'dockerman';
             newFolder[container].manager = ct.info.State.manager;
 
@@ -523,7 +510,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
         } catch (e) { console.error('[FV3] Invalid regex:', folder.regex, e); }
     }
 
-    const fld = `<div class="folder-showcase-outer-${id} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${id}" onclick='addVMFolderContext("${id}")' class="hand vm folder-hand-vm fv3-folder-hand fv3-folder-hand-vm"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img-vm fv3-folder-icon fv3-folder-icon-vm" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm fv3-folder-inner fv3-folder-inner-vm"><span class="folder-appname-vm fv3-folder-appname fv3-folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm fv3-folder-status-icon fv3-folder-status-icon-vm"></i><span class="state folder-state-vm fv3-folder-state fv3-folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage" style="display:none"></div></span><div class="folder-showcase-${id} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
+    const fld = `<div class="folder-showcase-outer-${escapeHtml(id)} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${escapeHtml(id)}" onclick='addVMFolderContext(${fv3JsArg(id)})' class="hand vm folder-hand-vm fv3-folder-hand fv3-folder-hand-vm"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img-vm fv3-folder-icon fv3-folder-icon-vm" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm fv3-folder-inner fv3-folder-inner-vm"><span class="folder-appname-vm fv3-folder-appname fv3-folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm fv3-folder-status-icon fv3-folder-status-icon-vm"></i><span class="state folder-state-vm fv3-folder-state fv3-folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage" style="display:none"></div></span><div class="folder-showcase-${escapeHtml(id)} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
     if (position === 0) {
         $('tbody#vm_view > tr.updated > td').children().eq(position).before($(fld));
@@ -813,46 +800,10 @@ const expandFolderVM = (id) => {
 };
 
 // Confirm and delete a docker folder
-const rmDockerFolder = (id) => {
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders.docker[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        if (!c) { setTimeout(loadlist); return; }
-        $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'docker', id: id }).promise();
-        loadedFolder = false;
-        setTimeout(loadlist, 500)
-    });
-};
+const rmDockerFolder = (id) => fv3RmFolder('docker', globalFolders.docker, loadlist, id);
 
 // Confirm and delete a vm folder
-const rmVMFolder = (id) => {
-    swal({
-        title: $.i18n('are-you-sure'),
-        text: `${$.i18n('remove-folder')}: ${escapeHtml(globalFolders.vms[id].name)}`,
-        type: 'warning',
-        html: true,
-        showCancelButton: true,
-        confirmButtonText: $.i18n('yes-delete'),
-        cancelButtonText: $.i18n('cancel'),
-        showLoaderOnConfirm: true
-    },
-    async (c) => {
-        if (!c) { setTimeout(loadlist); return; }
-        $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: 'vm', id: id }).promise();
-        loadedFolder = false;
-        setTimeout(loadlist, 500);
-    });
-};
+const rmVMFolder = (id) => fv3RmFolder('vm', globalFolders.vms, loadlist, id);
 
 // Navigate to the docker folder edit page
 const editDockerFolder = (id) => {
@@ -1150,7 +1101,7 @@ const actionFolderDocker = async (id, action) => {
     }
 
     const settled = await Promise.allSettled(proms);
-    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
+    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || fv3I18nOr('request-failed', 'Request failed') });
     errors = proms.filter(e => e.success !== true);
     errors = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
@@ -1160,7 +1111,7 @@ const actionFolderDocker = async (id, action) => {
             text:errors.join('<br>'),
             type:'error',
             html:true,
-            confirmButtonText:'Ok'
+            confirmButtonText: fv3I18nOr('ok', 'Ok')
         }, loadlist);
     }
 
@@ -1436,7 +1387,7 @@ const actionFolderVM = async (id, action) => {
     }
 
     const settled = await Promise.allSettled(proms);
-    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
+    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || fv3I18nOr('request-failed', 'Request failed') });
     errors = proms.filter(e => e.success !== true);
     errors = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
@@ -1446,7 +1397,7 @@ const actionFolderVM = async (id, action) => {
             text:errors.join('<br>'),
             type:'error',
             html:true,
-            confirmButtonText:'Ok'
+            confirmButtonText: fv3I18nOr('ok', 'Ok')
         }, loadlist);
     }
 
@@ -1473,6 +1424,9 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
         dashboardContextGraph = parseInt(s.dashboard_context_graph || '1', 10);
         dashboardContextGraphTime = parseInt(s.dashboard_context_graph_time || '60', 10);
     } catch(e) {}
+}).catch((e) => {
+    console.warn('[FV3] Dashboard settings unavailable, using default layouts:', e);
+    fv3ShowBanner(fv3I18nOr('dashboard-settings-load-failed', 'Could not load Dashboard settings, so the default layouts are shown. Try refreshing the page.'));
 });
 
 let dashboardCpus = 1;
@@ -1580,8 +1534,9 @@ const fv3UpdateInsetBorders = () => {
         document.querySelectorAll('.fv3-layout-inset .folder-showcase-outer[expanded="true"]').forEach(outer => {
             const tab = outer.querySelector(':scope > span.outer');
             const showcase = outer.querySelector('.folder-showcase');
+            if (!tab || !showcase) return;
             const visibleChildren = showcase.querySelectorAll(':scope > span.outer:not([style*="display: none"])');
-            if (!tab || !showcase || visibleChildren.length === 0) return;
+            if (visibleChildren.length === 0) return;
 
             outer.style.border = 'none';
             outer.style.outline = 'none';
@@ -1839,18 +1794,19 @@ window.loadlist = (x) => {
     loadedFolder = false;
     if($('tbody#docker_view').length > 0) {
         folderReq.docker = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load Docker folder data. Try refreshing the page.', 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('docker-folders-load-failed', 'Could not load Docker folder data. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load container details. Try refreshing the page.', 'error'); }).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise()
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
+            fv3CheckUpdates()
         ];
     }
 
     if($('tbody#vm_view').length > 0) {
         folderReq.vm = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load VM folder data. Try refreshing the page.', 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-folders-load-failed', 'Could not load VM folder data. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
         ];
     }

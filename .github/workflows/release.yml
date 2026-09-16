@@ -1,0 +1,43 @@
+name: Release
+
+# Pushes touching plugin files on main/beta refresh that channel's release PR; merging it cuts the release.
+# Needs the RELEASE_TOKEN secret. Mechanics: chodeus-ops unraid-plugin-release.yml.
+
+on:
+  push:
+    branches: [main, beta]
+    paths:
+      - 'src/**'
+      - 'pkg_build.sh'
+      - 'folder.view3.plg'
+      - 'CHANGELOG.md'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'auto = decide from the pushed commit; pr = refresh the release PR; release = cut a release from this branch'
+        type: choice
+        options: [auto, pr, release]
+        default: auto
+      dry_run:
+        description: 'Run everything except pushes, tags and the GitHub release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plg-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-release.yml@142009888448ef52954f652a3f0f1a69e59fdd2a # main
+    with:
+      plg_file: folder.view3.plg
+      stable_branch: main
+      beta_branch: beta
+      mode: ${{ inputs.mode || 'auto' }}
+      dry_run: ${{ inputs.dry_run || false }}
+    secrets:
+      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}

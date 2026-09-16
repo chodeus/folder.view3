@@ -2,7 +2,7 @@
     require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");
     fv3_post_init();
     header('Content-Type: application/json');
-    $raw = $_POST['settings'] ?? '';
+    $raw = fv3_post_string('settings');
     $settings = json_decode($raw, true);
     if (!is_array($settings)) {
         http_response_code(400);

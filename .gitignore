@@ -5,3 +5,6 @@ AGENTS.md
 tests/
 dev/tests/
 .DS_Store
+tmp/
+dist/
+.ops/

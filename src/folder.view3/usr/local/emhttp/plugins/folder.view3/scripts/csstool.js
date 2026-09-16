@@ -168,6 +168,26 @@
         }
     ];
 
+    // Built-in preset names are stored identities; translate them for display only
+    var presetLabelKeys = { 'Default': 'css-preset-default', 'Orange Accent': 'css-preset-orange', 'Blue Accent': 'css-preset-blue', 'Green Accent': 'css-preset-green', 'Muted': 'css-preset-muted' };
+    function presetLabel(name) {
+        return presetLabelKeys[name] ? fv3I18nOr(presetLabelKeys[name], name) : name;
+    }
+
+    var pageLabelKeys = { dashboard: ['css-dashboard-scope', 'Dashboard'], docker: ['css-docker-scope', 'Docker'], vm: ['css-vm-scope', 'VM'], settings: ['settings', 'Settings'] };
+    function pageLabel(page) {
+        return pageLabelKeys[page] ? fv3I18nOr(pageLabelKeys[page][0], pageLabelKeys[page][1]) : page;
+    }
+
+    // Tags the text with its key so the page's late i18n pass fixes it if the pack loads after this render
+    function i18nText(el, key, fallback) {
+        el.textContent = fv3I18nOr(key, fallback);
+        el.setAttribute('data-i18n', key);
+    }
+    function i18nSpan(key, fallback, attrs) {
+        return '<span' + (attrs ? ' ' + attrs : '') + ' data-i18n="' + key + '">' + escapeAttr(fv3I18nOr(key, fallback)) + '</span>';
+    }
+
     function customCssKey(scope) {
         return scope === 'global' ? 'custom_css' : 'custom_css_' + scope;
     }
@@ -175,8 +195,9 @@
     function updateCssLabel() {
         var label = document.getElementById('fv3-css-scope-label');
         if (!label) return;
-        var names = { global: 'Global (all pages)', dashboard: 'Dashboard only', docker: 'Docker only', vm: 'VM only' };
-        label.textContent = names[currentScope] || currentScope;
+        var names = { global: ['css-scope-global-label', 'Global (all pages)'], dashboard: ['dashboard-only', 'Dashboard only'], docker: ['docker-only', 'Docker only'], vm: ['vm-only', 'VM only'] };
+        var name = names[currentScope] || names.global;
+        i18nText(label, name[0], name[1]);
     }
 
     function getVal(varName) {
@@ -220,7 +241,8 @@
         toggleStyles.forEach(function(style) {
             var card = document.createElement('div');
             card.className = 'fv3-toggle-option' + (style.id === current ? ' active' : '');
-            card.title = style.desc;
+            card.title = fv3I18nOr('toggle-style-' + style.id + '-desc', style.desc);
+            card.setAttribute('data-i18n', '[title]toggle-style-' + style.id + '-desc');
 
             var preview = document.createElement('div');
             preview.className = 'fv3-toggle-option-preview';
@@ -229,10 +251,10 @@
                 preview.innerHTML =
                     '<div style="display:inline-flex;align-items:center;gap:4px;margin-right:8px">' +
                     '<div style="width:25px;height:11px;background:#555;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#999;border-radius:2px;position:absolute;left:-1px"></div></div>' +
-                    '<span style="font-size:10px;opacity:0.5">Off</span></div>' +
+                    '<span style="font-size:10px;opacity:0.5">' + escapeAttr(fv3I18nOr('off', 'Off')) + '</span></div>' +
                     '<div style="display:inline-flex;align-items:center;gap:4px">' +
                     '<div style="width:25px;height:11px;background:#486dba;border-radius:2px;position:relative"><div style="width:12px;height:11px;background:#e8e8e8;border-radius:2px;position:absolute;left:14px"></div></div>' +
-                    '<span style="font-size:10px;opacity:0.5">On</span></div>';
+                    '<span style="font-size:10px;opacity:0.5">' + escapeAttr(fv3I18nOr('on', 'On')) + '</span></div>';
             } else {
                 var cls = 'fv3-toggle-preview fv3-toggle-preview-' + style.id;
                 preview.innerHTML =
@@ -241,7 +263,7 @@
             }
             var label = document.createElement('div');
             label.className = 'fv3-toggle-option-label';
-            label.textContent = style.label;
+            i18nText(label, 'toggle-style-' + style.id, style.label);
             card.appendChild(label);
             card.appendChild(preview);
 
@@ -265,7 +287,7 @@
                 el.style.display = 'none';
             });
             if (typeof $ !== 'undefined' && $.fn.switchButton) {
-                $('input.basic-switch').switchButton({ labels_placement: 'right', off_label: 'OFF', on_label: 'ON' });
+                $('input.basic-switch').switchButton({ labels_placement: 'right', ...fv3SwitchLabels() });
                 $('input.basic-switch').each(function() {
                     var bg = $(this).next('.switch-button-background');
                     if (bg.length) bg.toggleClass('checked', this.checked);
@@ -397,7 +419,7 @@
 
             const resetBtn = document.createElement('button');
             resetBtn.className = 'fv3-var-reset';
-            resetBtn.textContent = 'Reset';
+            i18nText(resetBtn, 'reset', 'Reset');
             resetBtn.addEventListener('click', () => {
                 if (cssConfig[currentScope] && !Array.isArray(cssConfig[currentScope])) delete cssConfig[currentScope][varName];
                 document.documentElement.style.removeProperty('--' + varName);
@@ -508,17 +530,19 @@
         header.className = 'fv3-preset-header';
         var name = document.createElement('div');
         name.className = 'fv3-preset-name';
-        name.textContent = preset.name;
+        if (!isCustom && presetLabelKeys[preset.name]) i18nText(name, presetLabelKeys[preset.name], preset.name);
+        else name.textContent = preset.name;
         header.appendChild(name);
 
         if (isCustom) {
             var del = document.createElement('button');
             del.className = 'fv3-preset-delete';
             del.innerHTML = '<i class="fa fa-trash"></i>';
-            del.title = 'Delete preset';
+            del.title = fv3I18nOr('delete-preset', 'Delete preset');
+            del.setAttribute('data-i18n', '[title]delete-preset');
             del.addEventListener('click', function(e) {
                 e.stopPropagation();
-                swal({ title: 'Delete "' + escapeAttr(preset.name) + '"?', type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, function(ok) {
+                swal({ title: fv3I18nOr('delete-preset-confirm', 'Delete "$1"?', escapeAttr(preset.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, function(ok) {
                     if (!ok) return;
                     cssConfig.custom_presets = (cssConfig.custom_presets || []).filter(function(p) { return p.name !== preset.name; });
                     ['dashboard', 'docker', 'vm', 'settings'].forEach(function(pg) {
@@ -563,8 +587,7 @@
             assignedPages.forEach(function(p) {
                 var badge = document.createElement('span');
                 badge.className = 'fv3-preset-badge';
-                var pageLabels = { dashboard: 'Dashboard', docker: 'Docker', vm: 'VM', settings: 'Settings' };
-                badge.textContent = pageLabels[p] || p;
+                badge.textContent = pageLabel(p);
                 badges.appendChild(badge);
             });
             card.appendChild(badges);
@@ -574,22 +597,21 @@
             var relevantPages = getPresetRelevantPages(preset);
             var scopeRow = document.createElement('div');
             scopeRow.className = 'fv3-preset-scope';
-            [['dashboard', 'Dashboard'], ['docker', 'Docker'], ['vm', 'VM'], ['settings', 'Settings']].forEach(function(p) {
-                if (!relevantPages[p[0]]) return;
+            ['dashboard', 'docker', 'vm', 'settings'].forEach(function(p) {
+                if (!relevantPages[p]) return;
                 var label = document.createElement('label');
                 label.className = 'fv3-preset-scope-label';
                 var cb = document.createElement('input');
                 cb.type = 'checkbox';
-                cb.checked = pagePresets[p[0]] === preset.name;
+                cb.checked = pagePresets[p] === preset.name;
                 cb.addEventListener('change', function(e) {
                     e.stopPropagation();
-                    var page = p[0];
+                    var page = p;
                     if (this.checked) {
                         var currentOwner = pagePresets[page];
                         if (currentOwner && currentOwner !== preset.name && currentOwner !== 'Default') {
                             var self = this;
-                            var pgLabels = { dashboard: 'Dashboard', docker: 'Docker', vm: 'VM', settings: 'Settings' };
-                            swal({ title: (pgLabels[page] || page) + ' is using ' + currentOwner, text: 'Switch to ' + preset.name + '?', type: 'warning', showCancelButton: true, confirmButtonText: 'Switch' }, function(ok) {
+                            swal({ title: fv3I18nOr('preset-page-in-use', '$1 is using $2', pageLabel(page), presetLabel(currentOwner)), text: fv3I18nOr('preset-switch-confirm', 'Switch to $1?', presetLabel(preset.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('switch', 'Switch'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, function(ok) {
                                 if (ok) {
                                     assignPresetToPage(preset.name, page);
                                     saveConfig(true);
@@ -611,7 +633,7 @@
                     renderPresets();
                 });
                 label.appendChild(cb);
-                label.appendChild(document.createTextNode(' ' + p[1]));
+                label.appendChild(document.createTextNode(' ' + pageLabel(p)));
                 scopeRow.appendChild(label);
             });
             card.appendChild(scopeRow);
@@ -624,7 +646,7 @@
                 var hasScoped = ['dashboard', 'docker', 'vm'].some(function(s) { return cssConfig[s] && Object.keys(cssConfig[s]).length > 0; });
                 var hasPages = ['dashboard', 'docker', 'vm', 'settings'].some(function(pg) { return cssConfig.page_presets && cssConfig.page_presets[pg]; });
                 if (hasGlobal || hasScoped || hasPages) {
-                    swal({ title: 'Reset to Default?', text: 'This will clear all variable overrides and page preset assignments.', type: 'warning', showCancelButton: true, confirmButtonText: 'Reset' }, function(ok) {
+                    swal({ title: fv3I18nOr('css-reset-default-confirm-title', 'Reset to Default?'), text: fv3I18nOr('css-reset-default-confirm-text', 'This will clear all variable overrides and page preset assignments.'), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('reset', 'Reset'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, function(ok) {
                         if (!ok) return;
                         ['dashboard', 'docker', 'vm', 'settings'].forEach(function(pg) { removePresetFromPage(pg); });
                         cssConfig.global = {};
@@ -755,23 +777,26 @@
             });
             if (resp.ok) {
                 dirty = false;
-                if (!silent) swal({ title: 'Saved', text: 'CSS configuration saved.', type: 'success', timer: 1500 });
+                if (!silent) swal({ title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('css-saved', 'CSS configuration saved.'), type: 'success', timer: 1500 });
             } else {
                 const text = await resp.text();
-                swal({ title: 'Error', text: text || 'Save failed', type: 'error' });
+                let reason = text;
+                try { reason = JSON.parse(text).error || text; } catch (e) {}
+                swal({ title: fv3I18nOr('error', 'Error'), text: reason || fv3I18nOr('save-failed', 'Save failed'), type: 'error' });
             }
         } catch (e) {
-            swal({ title: 'Error', text: 'Network error', type: 'error' });
+            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('network-error', 'Network error'), type: 'error' });
         }
     }
 
     function resetConfig() {
         swal({
-            title: 'Reset to Defaults?',
-            text: 'This will clear all CSS customizations.',
+            title: fv3I18nOr('css-reset-confirm-title', 'Reset to Defaults?'),
+            text: fv3I18nOr('css-reset-confirm-text', 'This will clear all CSS customizations.'),
             type: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Reset'
+            confirmButtonText: fv3I18nOr('reset', 'Reset'),
+            cancelButtonText: fv3I18nOr('cancel', 'Cancel')
         }, (confirmed) => {
             if (!confirmed) return;
             cssConfig = {};
@@ -795,14 +820,15 @@
     }
 
     function savePreset() {
-        var defaultName = (_selectedPreset || 'Custom') + ' Copy';
+        var defaultName = fv3I18nOr('preset-copy-name', '$1 Copy', _selectedPreset ? presetLabel(_selectedPreset) : fv3I18nOr('custom-preset', 'Custom'));
         swal({
-            title: 'Save Preset',
-            text: 'Enter a name for your preset:',
+            title: fv3I18nOr('css-save-preset', 'Save Preset'),
+            text: fv3I18nOr('preset-name-prompt', 'Enter a name for your preset:'),
             type: 'input',
             inputValue: defaultName,
             showCancelButton: true,
-            confirmButtonText: 'Save'
+            confirmButtonText: fv3I18nOr('css-save', 'Save'),
+            cancelButtonText: fv3I18nOr('cancel', 'Cancel')
         }, function(name) {
             if (!name) return;
             var values = {};
@@ -827,7 +853,7 @@
             _selectedPreset = name;
             dirty = true;
             renderPresets();
-            swal({ title: 'Saved', text: 'Preset "' + escapeAttr(name) + '" saved. Click Save to persist.', type: 'success', timer: 2000 });
+            swal({ title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('preset-saved', 'Preset "$1" saved. Click Save to persist.', escapeAttr(name)), type: 'success', timer: 2000 });
         });
     }
 
@@ -847,9 +873,9 @@
                     document.documentElement.style.setProperty('--' + k, v);
                 });
                 const hasUrl = imported.custom_css && /url\s*\(/i.test(imported.custom_css);
-                swal({ title: 'Imported', text: 'Config loaded. Click Save to persist.' + (hasUrl ? '\n\nNote: url() references are kept as-is — verify they point to sources you trust before saving.' : ''), type: hasUrl ? 'warning' : 'info', timer: hasUrl ? 0 : 2000 });
+                swal({ title: fv3I18nOr('imported', 'Imported'), text: fv3I18nOr('css-config-loaded', 'Config loaded. Click Save to persist.') + (hasUrl ? '\n\n' + fv3I18nOr('css-import-url-note', 'Note: url() references are kept as-is — verify they point to sources you trust before saving.') : ''), type: hasUrl ? 'warning' : 'info', timer: hasUrl ? 0 : 2000 });
             } catch (err) {
-                swal({ title: 'Error', text: 'Invalid config file', type: 'error' });
+                swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('invalid-config-file', 'Invalid config file'), type: 'error' });
             }
         };
         reader.readAsText(file);
@@ -868,7 +894,7 @@
                 const encodedPath = subPath ? subPath.split('/').map(encodeURIComponent).join('/') : '';
                 const fetchUrl = (encodedPath ? apiBase + encodedPath : apiBase) + branchRef;
                 const resp = await fetch(fetchUrl, { headers: { 'User-Agent': 'FolderView3' } });
-                if (!resp.ok) { console.warn('[FV3] Update check failed for', theme.name, resp.status); checkEl.innerHTML = '<span style="opacity:0.4">check failed (' + resp.status + ')</span>'; continue; }
+                if (!resp.ok) { console.warn('[FV3] Update check failed for', theme.name, resp.status); checkEl.innerHTML = '<span style="opacity:0.4">' + escapeAttr(fv3I18nOr('update-check-failed', 'check failed ($1)', resp.status)) + '</span>'; continue; }
                 const files = await resp.json();
                 const remoteShas = {};
                 files.filter(f => f.type === 'file' && /\.css$/i.test(f.name)).forEach(f => {
@@ -894,16 +920,16 @@
                 window._fv3ThemeUpdateCache[theme.name] = hasUpdate ? 'update' : 'current';
                 try { localStorage.setItem('fv3_theme_update_cache', JSON.stringify(window._fv3ThemeUpdateCache)); } catch(e) {}
                 if (hasUpdate) {
-                    checkEl.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="apply-update" style="color:#3b82f6">update ready</span></span>';
+                    checkEl.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="update-ready" style="color:#3b82f6">' + escapeAttr(fv3I18nOr('update-ready', 'update ready')) + '</span></span>';
                     const card = checkEl.closest('.fv3-theme-card');
                     const updateBtn = card?.querySelector('.fv3-theme-update');
                     if (updateBtn) updateBtn.style.display = '';
                 } else {
-                    checkEl.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">up-to-date</span></span>';
+                    checkEl.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">' + escapeAttr(fv3I18nOr('up-to-date', 'up-to-date')) + '</span></span>';
                 }
             } catch (e) {
                 console.warn('[FV3] Update check error for', theme.name, e);
-                checkEl.innerHTML = '<span style="opacity:0.4">offline</span>';
+                checkEl.innerHTML = i18nSpan('offline', 'offline', 'style="opacity:0.4"');
             }
             if (checkBtn) { checkBtn.disabled = false; checkBtn.innerHTML = '<i class="fa fa-refresh"></i>'; }
         }
@@ -922,15 +948,15 @@
             defaultCard.className = 'fv3-theme-card' + (!hasActive ? '' : ' fv3-theme-disabled');
             defaultCard.innerHTML = `
                 <div class="fv3-theme-info">
-                    <div class="fv3-theme-name">Default (Plugin CSS only)</div>
-                    <div class="fv3-theme-status">${!hasActive ? 'Active' : 'Click to disable all themes'}</div>
+                    <div class="fv3-theme-name">${i18nSpan('theme-default-name', 'Default (Plugin CSS only)')}</div>
+                    <div class="fv3-theme-status">${!hasActive ? i18nSpan('active', 'Active') : i18nSpan('theme-default-disable-hint', 'Click to disable all themes')}</div>
                 </div>
                 <div class="fv3-theme-actions">
-                    ${hasActive ? '<button class="fv3-theme-activate">Enable</button>' : ''}
+                    ${hasActive ? '<button class="fv3-theme-activate">' + i18nSpan('enable', 'Enable') + '</button>' : ''}
                 </div>`;
             defaultCard.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
                 for (const t of themes.filter(t => t.enabled && t.isDir && t.source)) {
-                    await postForm(API + '/toggle_theme.php', { entry: t.entry, enable: 'false' });
+                    if (!(await setThemeEnabled(t.entry, false))) break;
                 }
                 loadThemes();
             });
@@ -951,11 +977,11 @@
                 card.dataset.entry = theme.entry;
                 card.dataset.themeName = theme.name;
                 card.innerHTML = `
-                    <input type="checkbox" class="fv3-theme-select" title="Select for bulk delete">
+                    <input type="checkbox" class="fv3-theme-select" title="${escapeAttr(fv3I18nOr('theme-select-bulk', 'Select for bulk delete'))}" data-i18n="[title]theme-select-bulk">
                     <div class="fv3-theme-info">
                         <div class="fv3-theme-name">${displayName}</div>
                         <div class="fv3-theme-status">
-                            ${theme.enabled ? '<span class="fv3-theme-active-label">Active</span>' : 'Disabled'}${repoDisplay ? ' — ' + repoDisplay : ''}
+                            ${theme.enabled ? i18nSpan('active', 'Active', 'class="fv3-theme-active-label"') : i18nSpan('disabled', 'Disabled')}${repoDisplay ? ' — ' + repoDisplay : ''}
                         </div>
                         <div class="fv3-theme-update-status">
                             ${repo ? '<span class="fv3-update-check" data-theme="' + escapeAttr(theme.name) + '"></span>' : ''}
@@ -963,43 +989,46 @@
                     </div>
                     <div class="fv3-theme-actions">
                         ${theme.enabled
-                            ? '<button class="fv3-theme-disable">Disable</button>'
-                            : '<button class="fv3-theme-activate">Enable</button>'}
-                        ${repo ? '<button class="fv3-theme-check-update" title="Check for updates"><i class="fa fa-refresh"></i></button>' : ''}
-                        <button class="fv3-theme-update" title="Update from GitHub" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">apply update</span></button>
-                        <button class="fv3-theme-delete" title="Delete"><i class="fa fa-trash"></i></button>
+                            ? '<button class="fv3-theme-disable">' + i18nSpan('disable', 'Disable') + '</button>'
+                            : '<button class="fv3-theme-activate">' + i18nSpan('enable', 'Enable') + '</button>'}
+                        ${repo ? '<button class="fv3-theme-check-update" title="' + escapeAttr(fv3I18nOr('check-for-updates', 'Check for Updates')) + '" data-i18n="[title]check-for-updates"><i class="fa fa-refresh"></i></button>' : ''}
+                        <button class="fv3-theme-update" title="${escapeAttr(fv3I18nOr('theme-update-from-github', 'Update from GitHub'))}" data-i18n="[title]theme-update-from-github" style="display:none"><i class="fa fa-cloud-download"></i> <span data-i18n="apply-update">${escapeAttr(fv3I18nOr('apply-update', 'apply update'))}</span></button>
+                        <button class="fv3-theme-delete" title="${escapeAttr(fv3I18nOr('delete', 'Delete'))}" data-i18n="[title]delete"><i class="fa fa-trash"></i></button>
                     </div>`;
                 card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
-                    await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'true' });
+                    await setThemeEnabled(theme.entry, true);
                     loadThemes();
                 });
                 card.querySelector('.fv3-theme-disable')?.addEventListener('click', async () => {
-                    await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'false' });
+                    await setThemeEnabled(theme.entry, false);
                     loadThemes();
                 });
                 card.querySelector('.fv3-theme-update')?.addEventListener('click', async () => {
                     const repo = theme.source?.repo || '';
                     const path = theme.source?.path || '';
                     const branch = theme.source?.branch || '';
-                    if (!repo) { swal({ title: 'Error', text: 'No source repo recorded. Re-import manually.', type: 'error' }); return; }
-                    var progress = showProgressDialog('Updating Theme');
-                    progress.status('In Progress');
-                    progress.section('Updating: ' + theme.name);
+                    if (!repo) { swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('theme-no-source', 'No source repo recorded. Re-import manually.'), type: 'error' }); return; }
+                    var progress = showProgressDialog(fv3I18nOr('updating-theme-title', 'Updating Theme'));
+                    progress.status('in-progress');
+                    progress.section(fv3I18nOr('updating-item', 'Updating: $1', theme.name));
                     const data = { repo, path };
                     if (branch) data.branch = branch;
+                    let failed = false;
                     try {
                         const result = await postFormJson(API + '/import_theme.php', data);
                         if (result.error) {
-                            progress.log('Failed: ' + result.error, 'error');
+                            progress.log(fv3I18nOr('failed-reason', 'Failed: $1', result.error), 'error');
+                            failed = true;
                         } else {
                             result.files.forEach(function(f) { progress.log(f, 'file'); });
-                            progress.log(result.files.length + ' file(s) updated', 'success');
+                            progress.log(fv3I18nOr('files-updated', '$1 file(s) updated', result.files.length), 'success');
                             if (window._fv3ThemeUpdateCache) { delete window._fv3ThemeUpdateCache[theme.name]; try { localStorage.setItem('fv3_theme_update_cache', JSON.stringify(window._fv3ThemeUpdateCache)); } catch(e) {} }
                         }
                     } catch (e) {
-                        progress.log('Error: ' + e.message, 'error');
+                        progress.log(fv3I18nOr('error-reason', 'Error: $1', e.message), 'error');
+                        failed = true;
                     }
-                    progress.status('Complete');
+                    progress.status(failed ? 'failed' : 'complete');
                     await progress.done();
                     loadThemes();
                 });
@@ -1007,7 +1036,7 @@
                     await checkThemeUpdates([theme], container);
                 });
                 card.querySelector('.fv3-theme-delete')?.addEventListener('click', () => {
-                    swal({ title: 'Delete theme?', text: 'Remove "' + escapeAttr(theme.name) + '" permanently?', type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, async (ok) => {
+                    swal({ title: fv3I18nOr('delete-theme-confirm-title', 'Delete theme?'), text: fv3I18nOr('delete-theme-confirm-text', 'Remove "$1" permanently?', escapeAttr(theme.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, async (ok) => {
                         if (!ok) return;
                         await postForm(API + '/delete_theme.php', { entry: theme.entry });
                         loadThemes();
@@ -1019,39 +1048,39 @@
             if (githubThemes.length > 0) {
                 const btnBar = document.createElement('div');
                 btnBar.className = 'fv3-theme-button-bar';
-                btnBar.innerHTML = '<button class="fv3-theme-check-all"><span data-i18n="check-for-updates">Check for Updates</span></button><button class="fv3-theme-update-all"><span data-i18n="update-all">Update All</span></button>';
+                btnBar.innerHTML = '<button class="fv3-theme-check-all"><span data-i18n="check-for-updates">' + escapeAttr(fv3I18nOr('check-for-updates', 'Check for Updates')) + '</span></button><button class="fv3-theme-update-all"><span data-i18n="update-all">' + escapeAttr(fv3I18nOr('update-all', 'Update All')) + '</span></button>';
                 btnBar.querySelector('.fv3-theme-check-all').addEventListener('click', () => {
                     runThemeUpdateCheck();
                 });
                 btnBar.querySelector('.fv3-theme-update-all').addEventListener('click', async () => {
                     const updatable = githubThemes.filter(t => window._fv3ThemeUpdateCache && window._fv3ThemeUpdateCache[t.name] === 'update');
-                    if (!updatable.length) { swal({ title: 'No updates', text: 'All themes are up-to-date. Run a check first.', type: 'info', timer: 2000 }); return; }
-                    var progress = showProgressDialog('Updating Themes');
+                    if (!updatable.length) { swal({ title: fv3I18nOr('no-updates', 'No updates'), text: fv3I18nOr('no-updates-text', 'All themes are up-to-date. Run a check first.'), type: 'info', timer: 2000 }); return; }
+                    var progress = showProgressDialog(fv3I18nOr('updating-themes-title', 'Updating Themes'));
                     var updated = 0;
-                    progress.status('In Progress');
+                    progress.status('in-progress');
                     for (var i = 0; i < updatable.length; i++) {
                         var t = updatable[i];
-                        progress.section('Updating: ' + t.name + ' (' + (i + 1) + '/' + updatable.length + ')');
+                        progress.section(fv3I18nOr('updating-item-n', 'Updating: $1 ($2/$3)', t.name, i + 1, updatable.length));
                         var data = { repo: t.source.repo, path: t.source.path || '' };
                         if (t.source.branch) data.branch = t.source.branch;
                         try {
                             var result = await postFormJson(API + '/import_theme.php', data);
                             if (result.error) {
-                                progress.log('Failed: ' + result.error, 'error');
+                                progress.log(fv3I18nOr('failed-reason', 'Failed: $1', result.error), 'error');
                             } else {
                                 result.files.forEach(function(f) { progress.log(f, 'file'); });
-                                progress.log(result.files.length + ' file(s) updated', 'success');
+                                progress.log(fv3I18nOr('files-updated', '$1 file(s) updated', result.files.length), 'success');
                                 updated++;
                                 if (window._fv3ThemeUpdateCache) { delete window._fv3ThemeUpdateCache[t.name]; }
                             }
                         } catch (e) {
-                            progress.log('Error: ' + e.message, 'error');
+                            progress.log(fv3I18nOr('error-reason', 'Error: $1', e.message), 'error');
                         }
                     }
                     try { localStorage.setItem('fv3_theme_update_cache', JSON.stringify(window._fv3ThemeUpdateCache || {})); } catch(e) {}
-                    progress.status('Complete');
-                    progress.section('Summary');
-                    progress.log(updated + ' of ' + updatable.length + ' theme(s) updated');
+                    progress.status('complete');
+                    progress.section(fv3I18nOr('summary', 'Summary'));
+                    progress.log(fv3I18nOr('themes-updated-summary', '$1 of $2 theme(s) updated', updated, updatable.length));
                     await progress.done();
                     loadThemes();
                 });
@@ -1062,7 +1091,7 @@
                 const heading = document.createElement('div');
                 heading.className = 'fv3-var-group-heading';
                 heading.style.marginTop = '1.5rem';
-                heading.textContent = 'Manually installed';
+                i18nText(heading, 'themes-manual', 'Manually installed');
                 container.appendChild(heading);
                 manualThemes.forEach(theme => {
                     const card = document.createElement('div');
@@ -1070,27 +1099,27 @@
                     card.dataset.entry = theme.entry;
                     card.dataset.themeName = theme.name;
                     card.innerHTML = `
-                        <input type="checkbox" class="fv3-theme-select" title="Select for bulk delete">
+                        <input type="checkbox" class="fv3-theme-select" title="${escapeAttr(fv3I18nOr('theme-select-bulk', 'Select for bulk delete'))}" data-i18n="[title]theme-select-bulk">
                         <div class="fv3-theme-info">
                             <div class="fv3-theme-name">${escapeAttr(theme.name)}</div>
-                            <div class="fv3-theme-status">${theme.enabled ? '<span class="fv3-theme-active-label">Active</span>' : 'Disabled'} — ${escapeAttr(theme.entry)}</div>
+                            <div class="fv3-theme-status">${theme.enabled ? i18nSpan('active', 'Active', 'class="fv3-theme-active-label"') : i18nSpan('disabled', 'Disabled')} — ${escapeAttr(theme.entry)}</div>
                         </div>
                         <div class="fv3-theme-actions">
                             ${theme.enabled
-                                ? '<button class="fv3-theme-disable">Disable</button>'
-                                : '<button class="fv3-theme-activate">Enable</button>'}
-                            <button class="fv3-theme-delete" title="Delete"><i class="fa fa-trash"></i></button>
+                                ? '<button class="fv3-theme-disable">' + i18nSpan('disable', 'Disable') + '</button>'
+                                : '<button class="fv3-theme-activate">' + i18nSpan('enable', 'Enable') + '</button>'}
+                            <button class="fv3-theme-delete" title="${escapeAttr(fv3I18nOr('delete', 'Delete'))}" data-i18n="[title]delete"><i class="fa fa-trash"></i></button>
                         </div>`;
                     card.querySelector('.fv3-theme-activate')?.addEventListener('click', async () => {
-                        await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'true' });
+                        await setThemeEnabled(theme.entry, true);
                         loadThemes();
                     });
                     card.querySelector('.fv3-theme-disable')?.addEventListener('click', async () => {
-                        await postForm(API + '/toggle_theme.php', { entry: theme.entry, enable: 'false' });
+                        await setThemeEnabled(theme.entry, false);
                         loadThemes();
                     });
                     card.querySelector('.fv3-theme-delete')?.addEventListener('click', () => {
-                        swal({ title: 'Delete theme?', text: 'Remove "' + escapeAttr(theme.name) + '" permanently?', type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, async (ok) => {
+                        swal({ title: fv3I18nOr('delete-theme-confirm-title', 'Delete theme?'), text: fv3I18nOr('delete-theme-confirm-text', 'Remove "$1" permanently?', escapeAttr(theme.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, async (ok) => {
                             if (!ok) return;
                             await postForm(API + '/delete_theme.php', { entry: theme.entry });
                             loadThemes();
@@ -1103,18 +1132,12 @@
             if (allDeletableThemes.length > 0) {
                 const deleteBar = document.createElement('div');
                 deleteBar.className = 'fv3-theme-button-bar';
-                deleteBar.innerHTML = '<button class="fv3-theme-delete-selected" disabled><i class="fa fa-trash"></i> Delete Selected</button>';
-                container.addEventListener('change', (e) => {
-                    if (e.target.classList.contains('fv3-theme-select')) {
-                        const checked = container.querySelectorAll('.fv3-theme-select:checked').length;
-                        deleteBar.querySelector('.fv3-theme-delete-selected').disabled = !checked;
-                    }
-                });
+                deleteBar.innerHTML = '<button class="fv3-theme-delete-selected" disabled><i class="fa fa-trash"></i> ' + i18nSpan('delete-selected', 'Delete Selected') + '</button>';
                 deleteBar.querySelector('.fv3-theme-delete-selected').addEventListener('click', () => {
                     const selected = container.querySelectorAll('.fv3-theme-select:checked');
                     if (!selected.length) return;
                     const names = Array.from(selected).map(cb => cb.closest('.fv3-theme-card').dataset.themeName);
-                    swal({ title: 'Delete ' + selected.length + ' theme(s)?', text: names.join(', '), type: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }, async (ok) => {
+                    swal({ title: fv3I18nOr('delete-themes-confirm', 'Delete $1 theme(s)?', selected.length), text: names.join(', '), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, async (ok) => {
                         if (!ok) return;
                         for (const cb of selected) {
                             const entry = cb.closest('.fv3-theme-card').dataset.entry;
@@ -1132,16 +1155,16 @@
                 container.querySelectorAll('.fv3-update-check[data-theme]').forEach(el => {
                     var status = window._fv3ThemeUpdateCache[el.dataset.theme];
                     if (status === 'update') {
-                        el.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="apply-update" style="color:#3b82f6">update ready</span></span>';
+                        el.innerHTML = '<span class="fv3-update-available"><i class="fa fa-cloud-download" style="color:#3b82f6"></i> <span data-i18n="update-ready" style="color:#3b82f6">' + escapeAttr(fv3I18nOr('update-ready', 'update ready')) + '</span></span>';
                         var updateBtn = el.closest('.fv3-theme-card')?.querySelector('.fv3-theme-update');
                         if (updateBtn) updateBtn.style.display = '';
                     } else if (status === 'current') {
-                        el.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">up-to-date</span></span>';
+                        el.innerHTML = '<span class="fv3-update-current"><i class="fa fa-check" style="color:#4ecca3"></i> <span data-i18n="up-to-date" style="color:#4ecca3">' + escapeAttr(fv3I18nOr('up-to-date', 'up-to-date')) + '</span></span>';
                     }
                 });
             }
         } catch (e) {
-            container.innerHTML = '<p style="opacity:0.5">Failed to load themes.</p>';
+            container.innerHTML = '<p style="opacity:0.5">' + escapeAttr(fv3I18nOr('themes-load-failed', 'Failed to load themes.')) + '</p>';
         }
     }
 
@@ -1185,31 +1208,31 @@
     async function importTheme() {
         const input = document.getElementById('fv3-theme-repo');
         const rawInput = input?.value?.trim();
-        if (!rawInput) { swal({ title: 'Error', text: 'Enter a GitHub repo (owner/repo or owner/repo:branch)', type: 'error' }); return; }
+        if (!rawInput) { swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('theme-repo-required', 'Enter a GitHub repo (owner/repo or owner/repo:branch)'), type: 'error' }); return; }
         const parsed = parseRepoInput(rawInput);
         const repo = parsed.repo;
         const branch = parsed.branch;
         const btn = document.getElementById('fv3-theme-import-btn');
-        if (btn) { btn.disabled = true; btn.textContent = 'Checking repo...'; }
+        if (btn) { btn.disabled = true; btn.textContent = fv3I18nOr('checking-repo', 'Checking repo...'); }
         try {
             var apiUrl = 'https://api.github.com/repos/' + repo + '/contents/';
             if (branch) apiUrl += '?ref=' + encodeURIComponent(branch);
             const resp = await fetch(apiUrl, { headers: { 'User-Agent': 'FolderView3' } });
-            if (!resp.ok) { swal({ title: 'Error', text: 'Could not reach repo. Check the URL.', type: 'error' }); return; }
+            if (!resp.ok) { swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('theme-repo-unreachable', 'Could not reach repo. Check the URL.'), type: 'error' }); return; }
             const contents = await resp.json();
             const dirs = contents.filter(f => f.type === 'dir');
             const rootCss = contents.filter(f => f.type === 'file' && /\.css$/i.test(f.name));
             if (dirs.length > 0 && rootCss.length === 0) {
-                if (btn) { btn.disabled = false; btn.textContent = 'Import from GitHub'; }
+                if (btn) { btn.disabled = false; btn.textContent = fv3I18nOr('css-theme-import', 'Import from GitHub'); }
                 const dirNames = dirs.map(d => d.name);
                 showDirPicker(repo, dirNames, branch);
                 return;
             }
             await doImport(repo, '', branch);
         } catch (e) {
-            swal({ title: 'Error', text: 'Failed to fetch repo: ' + e.message, type: 'error' });
+            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('theme-repo-fetch-failed', 'Failed to fetch repo: $1', e.message), type: 'error' });
         } finally {
-            if (btn) { btn.disabled = false; btn.textContent = 'Import from GitHub'; }
+            if (btn) { btn.disabled = false; btn.textContent = fv3I18nOr('css-theme-import', 'Import from GitHub'); }
         }
     }
 
@@ -1219,7 +1242,7 @@
         const picker = document.createElement('div');
         picker.id = 'fv3-dir-picker';
         picker.className = 'fv3-dir-picker';
-        picker.innerHTML = '<div class="fv3-dir-picker-title">This repo has multiple directories. Select which to import:</div>';
+        picker.innerHTML = '<div class="fv3-dir-picker-title">' + escapeAttr(fv3I18nOr('theme-dir-picker-title', 'This repo has multiple directories. Select which to import:')) + '</div>';
         dirNames.forEach(name => {
             const label = document.createElement('label');
             label.className = 'fv3-dir-picker-option';
@@ -1233,10 +1256,10 @@
         const actions = document.createElement('div');
         actions.className = 'fv3-dir-picker-actions';
         const importBtn = document.createElement('button');
-        importBtn.textContent = 'Import Selected';
+        importBtn.textContent = fv3I18nOr('import-selected', 'Import Selected');
         importBtn.addEventListener('click', async () => {
             const selected = Array.from(picker.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-            if (selected.length === 0) { swal({ title: 'Error', text: 'Select at least one directory.', type: 'error' }); return; }
+            if (selected.length === 0) { swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('theme-dir-required', 'Select at least one directory.'), type: 'error' }); return; }
             picker.remove();
             if (selected.length > 1) {
                 await doBatchImport(repo, selected, branch);
@@ -1245,7 +1268,7 @@
             }
         });
         const cancel = document.createElement('button');
-        cancel.textContent = 'Cancel';
+        cancel.textContent = fv3I18nOr('cancel', 'Cancel');
         cancel.style.opacity = '0.6';
         cancel.addEventListener('click', () => picker.remove());
         actions.appendChild(importBtn);
@@ -1261,56 +1284,59 @@
 
     async function doImport(repo, path, branch) {
         var label = path || repo;
-        var progress = showProgressDialog('Importing Theme');
+        var progress = showProgressDialog(fv3I18nOr('importing-theme-title', 'Importing Theme'));
         var input = document.getElementById('fv3-theme-repo');
 
-        progress.section('Downloading: ' + label);
-        progress.status('In Progress');
+        progress.section(fv3I18nOr('downloading-item', 'Downloading: $1', label));
+        progress.status('in-progress');
         var data = { repo: repo, path: path || '' };
         if (branch) data.branch = branch;
         try {
             var result = await postFormJson(API + '/import_theme.php', data);
             if (result.error) {
-                progress.log('Failed: ' + result.error, 'error');
-                progress.status('Failed');
+                progress.log(fv3I18nOr('failed-reason', 'Failed: $1', result.error), 'error');
+                progress.status('failed');
             } else {
                 if (input) input.value = '';
                 result.files.forEach(function(f) { progress.log(f, 'file'); });
-                progress.log(result.files.length + ' file(s) downloaded', 'success');
+                progress.log(fv3I18nOr('files-downloaded', '$1 file(s) downloaded', result.files.length), 'success');
                 if (!window._fv3ThemeUpdateCache) window._fv3ThemeUpdateCache = {};
                 window._fv3ThemeUpdateCache[result.name] = 'current';
                 try { localStorage.setItem('fv3_theme_update_cache', JSON.stringify(window._fv3ThemeUpdateCache)); } catch(e) {}
                 var urlWarnings = (result.warnings || []).filter(function(w) { return w.type === 'url(' && w.url && !w.url.startsWith('data:'); });
                 if (urlWarnings.length > 0) {
-                    progress.section('External URLs found');
+                    progress.section(fv3I18nOr('theme-external-urls', 'External URLs found'));
                     urlWarnings.forEach(function(w) { progress.log(w.file + ': ' + w.url, 'warning'); });
                     progress.log('');
-                    progress.log('This theme references external URLs. Keep it?');
-                    var keep = await progress.confirm('Keep', 'Delete');
+                    progress.log(fv3I18nOr('theme-external-urls-keep', 'This theme references external URLs. Keep it?'));
+                    var keep = await progress.confirm(fv3I18nOr('keep', 'Keep'), fv3I18nOr('delete', 'Delete'));
                     if (!keep) {
-                        await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
-                        progress.log('Theme deleted.', 'error');
-                        progress.status('Removed');
+                        var del = await postForm(API + '/delete_theme.php', { entry: result.entry });
+                        progress.log(del.ok ? fv3I18nOr('theme-deleted', 'Theme deleted.') : fv3I18nOr('theme-delete-failed', 'Could not delete the theme.'), del.ok ? 'success' : 'error');
+                        progress.status(del.ok ? 'removed' : 'failed');
                     } else {
-                        progress.status('Complete');
+                        progress.status('complete');
                     }
                 } else {
-                    progress.status('Complete');
+                    progress.status('complete');
                 }
             }
         } catch (e) {
-            progress.log('Error: ' + e.message, 'error');
-            progress.status('Failed');
+            progress.log(fv3I18nOr('error-reason', 'Error: $1', e.message), 'error');
+            progress.status('failed');
         }
 
         await progress.done();
         loadThemes();
     }
 
+    // Progress statuses are codes the dialog compares; each code is also its pack key
+    var statusLabels = { 'in-progress': 'In Progress', complete: 'Complete', failed: 'Failed', removed: 'Removed', finished: 'Finished' };
+
     function showProgressDialog(title) {
         var html = '<pre id="fv3ProgressLog" style="text-align:left"></pre><hr>';
         swal({
-            title: escapeAttr(title) + ' - <span id="fv3ProgressTitle">In Progress</span><span class="fv3-swal-spinner">\u21BB</span>',
+            title: escapeAttr(title) + ' - <span id="fv3ProgressTitle">' + escapeAttr(fv3I18nOr('in-progress', 'In Progress')) + '</span><span class="fv3-swal-spinner">\u21BB</span>',
             text: html,
             html: true,
             showConfirmButton: false,
@@ -1329,6 +1355,7 @@
         var confirmBtn = confirmContainer ? confirmContainer.querySelector('.confirm') : null;
         var dotsEl = confirmContainer ? confirmContainer.querySelector('.la-ball-fall') : null;
         var currentSection = null;
+        var statusCode = 'in-progress';
 
         if (confirmBtn) { confirmBtn.style.display = 'none'; confirmBtn.style.backgroundColor = 'transparent'; }
         btnContainer.style.display = 'block';
@@ -1336,10 +1363,11 @@
         if (dotsEl) dotsEl.style.display = 'block';
 
         return {
-            status: function(text) {
-                statusEl.textContent = text || 'In Progress';
+            status: function(code) {
+                statusCode = code || 'in-progress';
+                statusEl.textContent = fv3I18nOr(statusCode, statusLabels[statusCode] || statusCode);
                 var spinner = titleEl.querySelector('.fv3-swal-spinner');
-                if (spinner) spinner.style.display = text === 'Complete' || text === 'Finished' ? 'none' : '';
+                if (spinner) spinner.style.display = statusCode === 'complete' || statusCode === 'finished' ? 'none' : '';
             },
             section: function(title) {
                 var s = document.createElement('fieldset');
@@ -1384,11 +1412,11 @@
                 });
             },
             done: function() {
-                statusEl.textContent = 'Finished';
+                if (statusCode === 'in-progress' || statusCode === 'complete') this.status('finished');
                 var spinner = titleEl.querySelector('.fv3-swal-spinner');
                 if (spinner) spinner.style.display = 'none';
                 if (dotsEl) dotsEl.style.display = 'none';
-                if (confirmBtn) { confirmBtn.textContent = 'Done'; confirmBtn.style.display = ''; }
+                if (confirmBtn) { confirmBtn.textContent = fv3I18nOr('done', 'Done'); confirmBtn.style.display = ''; }
                 return new Promise(function(resolve) {
                     if (confirmBtn) {
                         confirmBtn.addEventListener('click', function() {
@@ -1402,33 +1430,33 @@
     }
 
     async function doBatchImport(repo, paths, branch) {
-        var progress = showProgressDialog('Importing Themes');
+        var progress = showProgressDialog(fv3I18nOr('importing-themes-title', 'Importing Themes'));
         var succeeded = 0;
         var failed = 0;
-        progress.status('In Progress');
+        progress.status('in-progress');
         for (var i = 0; i < paths.length; i++) {
             var path = paths[i];
-            progress.section('Downloading: ' + path + ' (' + (i + 1) + '/' + paths.length + ')');
+            progress.section(fv3I18nOr('downloading-item-n', 'Downloading: $1 ($2/$3)', path, i + 1, paths.length));
             var data = { repo: repo, path: path };
             if (branch) data.branch = branch;
             try {
                 var result = await postFormJson(API + '/import_theme.php', data);
                 if (result.error) {
-                    progress.log('Failed: ' + result.error, 'error');
+                    progress.log(fv3I18nOr('failed-reason', 'Failed: $1', result.error), 'error');
                     failed++;
                 } else {
                     result.files.forEach(function(f) { progress.log(f, 'file'); });
-                    progress.log(result.files.length + ' file(s) downloaded', 'success');
+                    progress.log(fv3I18nOr('files-downloaded', '$1 file(s) downloaded', result.files.length), 'success');
                     if (!window._fv3ThemeUpdateCache) window._fv3ThemeUpdateCache = {};
                     window._fv3ThemeUpdateCache[result.name] = 'current';
                     var urlWarnings = (result.warnings || []).filter(function(w) { return w.type === 'url(' && w.url && !w.url.startsWith('data:'); });
                     if (urlWarnings.length > 0) {
                         urlWarnings.forEach(function(w) { progress.log(w.file + ': ' + w.url, 'warning'); });
-                        progress.log('This theme references external URLs. Keep it?');
-                        var keep = await progress.confirm('Keep', 'Delete');
+                        progress.log(fv3I18nOr('theme-external-urls-keep', 'This theme references external URLs. Keep it?'));
+                        var keep = await progress.confirm(fv3I18nOr('keep', 'Keep'), fv3I18nOr('delete', 'Delete'));
                         if (!keep) {
-                            await postForm(API + '/delete_theme.php', { entry: result.name + '.disabled' });
-                            progress.log('Theme deleted.', 'error');
+                            var del = await postForm(API + '/delete_theme.php', { entry: result.entry });
+                            progress.log(del.ok ? fv3I18nOr('theme-deleted', 'Theme deleted.') : fv3I18nOr('theme-delete-failed', 'Could not delete the theme.'), del.ok ? 'success' : 'error');
                             failed++;
                         } else {
                             succeeded++;
@@ -1438,14 +1466,14 @@
                     }
                 }
             } catch (e) {
-                progress.log('Error: ' + e.message, 'error');
+                progress.log(fv3I18nOr('error-reason', 'Error: $1', e.message), 'error');
                 failed++;
             }
         }
         try { localStorage.setItem('fv3_theme_update_cache', JSON.stringify(window._fv3ThemeUpdateCache || {})); } catch(e) {}
-        progress.status('Finished');
-        progress.section('Summary');
-        progress.log(succeeded + ' imported' + (failed ? ', ' + failed + ' skipped/failed' : ''));
+        progress.status('finished');
+        progress.section(fv3I18nOr('summary', 'Summary'));
+        progress.log(failed ? fv3I18nOr('themes-imported-failed-summary', '$1 imported, $2 skipped/failed', succeeded, failed) : fv3I18nOr('themes-imported-summary', '$1 imported', succeeded));
         await progress.done();
         loadThemes();
     }
@@ -1458,11 +1486,26 @@
         return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
     }
 
+    // A refused or failed toggle shows why instead of passing silently; returns whether it went through
+    async function setThemeEnabled(entry, enable) {
+        let reason;
+        try {
+            const resp = await postForm(API + '/toggle_theme.php', { entry: entry, enable: enable ? 'true' : 'false' });
+            if (resp.ok) return true;
+            reason = 'HTTP ' + resp.status;
+            try { reason = (await resp.json()).error || reason; } catch (e) {}
+        } catch (e) {
+            reason = e.message || fv3I18nOr('network-error', 'Network error');
+        }
+        swal({ title: fv3I18nOr('error', 'Error'), text: enable ? fv3I18nOr('theme-enable-failed', 'Could not enable the theme: $1', reason) : fv3I18nOr('theme-disable-failed', 'Could not disable the theme: $1', reason), type: 'error' });
+        return false;
+    }
+
     async function postFormJson(url, data) {
         try {
             const resp = await postForm(url, data);
             return await resp.json();
-        } catch (e) { return { error: 'Network error' }; }
+        } catch (e) { return { error: fv3I18nOr('network-error', 'Network error') }; }
     }
 
     function init() {
@@ -1512,6 +1555,13 @@
             });
         }
 
+        // Delegated once: loadThemes() rebuilds the cards and the delete bar on every call
+        document.getElementById('fv3-theme-list')?.addEventListener('change', (e) => {
+            if (!e.target.classList.contains('fv3-theme-select')) return;
+            const list = e.currentTarget;
+            const btn = list.querySelector('.fv3-theme-delete-selected');
+            if (btn) btn.disabled = !list.querySelectorAll('.fv3-theme-select:checked').length;
+        });
         document.getElementById('fv3-css-save')?.addEventListener('click', () => saveConfig());
         document.getElementById('fv3-css-reset')?.addEventListener('click', resetConfig);
         document.getElementById('fv3-css-save-preset')?.addEventListener('click', savePreset);
