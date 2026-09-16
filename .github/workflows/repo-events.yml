@@ -1,6 +1,4 @@
-# Drop into .github/workflows/repo-events.yml of ANY repo.
-# Fires Discord for: issue open/close, PR open/close/merge, release publish, discussion.
-# Workflow-failure notifications are handled inline by the failing caller workflow (see caller-docker.yml).
+# Discord notifications for issue, PR, release and discussion events, via the chodeus-ops reusable.
 
 name: Repo events
 
@@ -16,5 +14,7 @@ on:
 
 jobs:
   notify:
+    permissions: {}
     uses: chodeus/chodeus-ops/.github/workflows/repo-events.yml@579feb04e3219248963bd27843298a8c2ea6b2fd # main
-    secrets: inherit
+    secrets:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

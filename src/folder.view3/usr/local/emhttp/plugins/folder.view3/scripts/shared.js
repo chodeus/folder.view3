@@ -299,15 +299,32 @@ window.fv3Incognito = false;
     window.fv3IncognitoPage = 'other';
     var nameMap = {};
     var nameCounter = { container: 0, vm: 0, folder: 0 };
+    var anonLabels = { folder: ['incognito-folder', 'Folder $1'], vm: ['incognito-vm', 'VM $1'], container: ['incognito-container', 'Container $1'] };
 
     function getAnon(realName, type) {
         if (!realName || !realName.trim()) return realName;
         var key = type + ':' + realName;
         if (nameMap[key]) return nameMap[key];
         nameCounter[type] = (nameCounter[type] || 0) + 1;
-        var label = type === 'folder' ? 'Folder' : type === 'vm' ? 'VM' : 'Container';
-        nameMap[key] = label + ' ' + nameCounter[type];
+        var label = anonLabels[type] || anonLabels.container;
+        nameMap[key] = fv3I18nOr(label[0], label[1], nameCounter[type]);
         return nameMap[key];
+    }
+
+    function hiddenLabel() {
+        return fv3I18nOr('incognito-hidden', '[hidden]');
+    }
+
+    // "<publisher>/<anon name>" with the anon name in English or in the pack's words
+    function publisherPrefixRe() {
+        var alts = [];
+        Object.keys(anonLabels).forEach(function(type) {
+            var label = anonLabels[type];
+            [label[1].replace('$1', '\u0001'), fv3I18nOr(label[0], label[1], '\u0001')].forEach(function(l) {
+                alts.push(l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace('\u0001', '\\d+'));
+            });
+        });
+        return new RegExp('([a-z0-9][a-z0-9._-]*)\\/(' + alts.join('|') + ')', 'g');
     }
 
     function scrubText(text, knownNames, type) {
@@ -327,11 +344,13 @@ window.fv3Incognito = false;
     var domainsDirRe = /(\/domains\/)([^\/]+)(\/)/g;
     var stdIface = /^(eth|enp|ens|eno|wl|wlan|br|docker|veth|virbr|vnet|lo|bond|tap|tun)/i;
     var appdataRe = /(\/appdata\/)([^\/\s]+)/g;
-    var publisherPrefixRe = /([a-z0-9][a-z0-9._-]*)\/(Container \d+|VM \d+|Folder \d+)/g;
     var safeTagRe = /^(latest|stable|lts|release|edge|beta|dev|nightly|rc\d*)$/i;
     var statusTextRe = /^(up-to-date|update ready|force update|checking|not available|install|orphan image|update|rebuild ready)$/i;
 
     function scrubTextNodes(el, knownNames, type) {
+        var hidden = hiddenLabel();
+        var hiddenTpl = hidden.replace(/\$/g, '$$$$');
+        var prefixRe = publisherPrefixRe();
         var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
         var textNodes = [];
         var node;
@@ -347,13 +366,13 @@ window.fv3Incognito = false;
                 if (/^fe80/i.test(match) || /^f[cd]/i.test(match)) return match;
                 return 'xxxx:xxxx::xxxx';
             });
-            changed = changed.replace(diskFileRe, '[hidden].$2');
-            changed = changed.replace(domainsDirRe, '$1[hidden]$3');
-            changed = changed.replace(appdataRe, '$1[hidden]');
-            changed = changed.replace(publisherPrefixRe, '[hidden]/$2');
+            changed = changed.replace(diskFileRe, hiddenTpl + '.$2');
+            changed = changed.replace(domainsDirRe, '$1' + hiddenTpl + '$3');
+            changed = changed.replace(appdataRe, '$1' + hiddenTpl);
+            changed = changed.replace(prefixRe, hiddenTpl + '/$2');
             changed = changed.replace(/([a-zA-Z][a-zA-Z0-9_.-]*)(\s*\(xx:xx:xx:xx:xx:xx\))/, function(m, name, rest) {
                 if (stdIface.test(name)) return m;
-                return '[hidden]' + rest;
+                return hidden + rest;
             });
             if (changed !== text) {
                 if (!tn._fv3Original) tn._fv3Original = text;
@@ -422,25 +441,29 @@ window.fv3Incognito = false;
 
         document.querySelectorAll('.Docker_Image, .docker-image, [class*="image-name"]').forEach(function(el) {
             el.setAttribute('data-fv3-real', el.textContent);
-            el.textContent = 'image/hidden';
+            el.textContent = fv3I18nOr('incognito-image-hidden', 'image/hidden');
         });
 
+        // English "By:" and the pack's word for it, as the popup renders it
+        var byLabels = ['By:', fv3I18nOr('by', 'By') + ':'];
         var byWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
         var byNode;
         while (byNode = byWalker.nextNode()) {
-            var byIdx = byNode.nodeValue.indexOf('By:');
-            if (byIdx === -1) continue;
+            var byText = byNode.nodeValue;
+            var byLabel = byLabels.find(function(l) { return byText.indexOf(l) !== -1; });
+            if (!byLabel) continue;
+            var byIdx = byText.indexOf(byLabel);
             var nextSib = byNode.nextSibling;
             if (nextSib && nextSib.nodeType === 1 && nextSib.tagName === 'A') {
                 nextSib.setAttribute('data-fv3-real', nextSib.textContent);
                 nextSib.setAttribute('data-fv3-real-href', nextSib.getAttribute('href') || '');
-                nextSib.textContent = 'registry/image';
+                nextSib.textContent = fv3I18nOr('incognito-registry-image', 'registry/image');
                 nextSib.setAttribute('href', '#');
             } else {
-                var afterBy = byNode.nodeValue.substring(byIdx + 3).trim();
+                var afterBy = byNode.nodeValue.substring(byIdx + byLabel.length).trim();
                 if (afterBy) {
                     byNode._fv3Original = byNode.nodeValue;
-                    byNode.nodeValue = byNode.nodeValue.substring(0, byIdx + 4) + 'registry/image';
+                    byNode.nodeValue = byNode.nodeValue.substring(0, byIdx + byLabel.length + 1) + fv3I18nOr('incognito-registry-image', 'registry/image');
                     if (byNode.parentElement) byNode.parentElement.setAttribute('data-fv3-scrubbed', '');
                 }
             }
@@ -502,7 +525,7 @@ window.fv3Incognito = false;
                 if (prevSib && prevSib.nodeType === 1 && prevSib.tagName === 'I') continue;
                 if (/[a-zA-Z]/.test(tag) && /\d/.test(tag)) {
                     tn._fv3Original = tn.nodeValue;
-                    tn.nodeValue = tn.nodeValue.replace(tag, '[hidden]');
+                    tn.nodeValue = tn.nodeValue.replace(tag, hiddenLabel);
                     cell.setAttribute('data-fv3-scrubbed', 'true');
                 }
             }
@@ -541,7 +564,7 @@ window.fv3Incognito = false;
             if (el.hasAttribute('data-fv3-real')) return;
             el.setAttribute('data-fv3-real', el.textContent);
             el.setAttribute('data-fv3-real-href', el.getAttribute('href') || '');
-            el.textContent = 'registry/image';
+            el.textContent = fv3I18nOr('incognito-registry-image', 'registry/image');
             el.setAttribute('href', '#');
         });
 
@@ -618,7 +641,8 @@ window.fv3Incognito = false;
         var btn = document.createElement('button');
         btn.id = 'fv3-incognito-btn';
         btn.className = 'fv3-incognito-btn' + (fv3Incognito ? ' fv3-incognito-active' : '');
-        btn.title = 'Incognito Mode';
+        btn.title = fv3I18nOr('incognito-mode', 'Incognito Mode');
+        btn.setAttribute('data-i18n', '[title]incognito-mode');
         btn.innerHTML = '<i class="fa fa-eye-slash"></i>';
         btn.addEventListener('click', fv3IncognitoToggle);
         return btn;

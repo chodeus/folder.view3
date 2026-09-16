@@ -13,13 +13,13 @@ else
     SED_I=(sed -i)
     MD5CMD() { md5sum "$1" | awk '{print $1}'; }
     CP_PARENTS() {
-        cp --parents -f $(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json" \)) "$1/"
+        find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json" \) -print0 | xargs -0 -r cp --parents -f -t "$1/"
     }
     MAKE_TAR() { tar --owner=0 --group=0 --no-xattrs -cJf "$1" *; }
 fi
 
 CWD=`pwd`
-tmpdir="$CWD/tmp/tmp.$((RANDOM % 1000000))"
+tmpbase="$CWD/tmp"
 plgfile="$CWD/folder.view3.plg"
 OUT="$CWD/dist"
 
@@ -40,7 +40,11 @@ case "$branch" in
     main|beta) ;;
     *) echo "Warning: unrecognized branch '$branch', pointing pluginURL at main"; branch="main" ;;
 esac
-mkdir -p "$tmpdir" "$OUT"
+mkdir -p "$tmpbase" "$OUT"
+# mktemp, not $RANDOM + mkdir -p: two builds in one clone must never land in the same folder
+tmpdir=$(mktemp -d "$tmpbase/tmp.XXXXXX")
+# set -e can exit anywhere below: drop this build's folder, and tmp/ itself once empty, leaving dist/ to inspect
+trap 'rm -rf -- "$tmpdir"; rmdir "$tmpbase" 2>/dev/null || true' EXIT
 OUT=$(cd "$OUT" && pwd)  # tar runs from the temp dir, so a relative --out would land there
 filename="$OUT/folder.view3-$version-x86_64-1.txz"
 
@@ -50,29 +54,27 @@ CP_PARENTS "$tmpdir"
 # Verify files were copied
 filecount=$(find "$tmpdir" -type f | wc -l | tr -d ' ')
 if [ "$filecount" -lt 10 ]; then
-    echo "ERROR: Only $filecount files copied to temp dir (expected 50+). Aborting."
-    rm -rf "$CWD/tmp"
+    echo "ERROR: Only $filecount files copied to temp dir (expected at least 10). Aborting."
     exit 1
 fi
 
 # Set permissions for Unraid (only in temp dir, not the repo)
-chmod -R 0755 $tmpdir
+chmod -R 0755 "$tmpdir"
 
 # Strip macOS extended attributes and touch all files for cache-busting
-xattr -cr $tmpdir 2>/dev/null || true
-find $tmpdir -type f -exec touch {} +
+xattr -cr "$tmpdir" 2>/dev/null || true
+find "$tmpdir" -type f -exec touch {} +
 
-cd $tmpdir
+cd "$tmpdir"
 MAKE_TAR "$filename"
 
-cd $CWD
+cd "$CWD"
 
 # Verify package is not empty
 pkgsize=$(wc -c < "$filename" | tr -d ' ')
 if [ "$pkgsize" -lt 1000 ]; then
-    echo "ERROR: Package is only ${pkgsize} bytes (expected 50KB+). Aborting."
+    echo "ERROR: Package is only ${pkgsize} bytes (expected at least 1000). Aborting."
     rm -f "$filename"
-    rm -rf "$CWD/tmp"
     exit 1
 fi
 
@@ -97,7 +99,6 @@ if [ "$plg_md5" != "$md5" ]; then
     exit 1
 fi
 
-rm -R $CWD/tmp
 
 echo ""
 echo "Package created: $filename"
