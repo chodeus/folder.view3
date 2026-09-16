@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.09.16.1 (beta)
 
 - A failed backup import is rolled back instead of leaving a half-restored config
 - An unreadable autostart file is left alone, not rewritten as empty
