@@ -43,6 +43,8 @@ esac
 mkdir -p "$tmpbase" "$OUT"
 # mktemp, not $RANDOM + mkdir -p: two builds in one clone must never land in the same folder
 tmpdir=$(mktemp -d "$tmpbase/tmp.XXXXXX")
+# set -e can exit anywhere below; this removes only this build's folder and leaves dist/ for diagnostics
+trap 'rm -rf -- "$tmpdir"; rmdir "$tmpbase" 2>/dev/null || true' EXIT
 OUT=$(cd "$OUT" && pwd)  # tar runs from the temp dir, so a relative --out would land there
 filename="$OUT/folder.view3-$version-x86_64-1.txz"
 
@@ -53,7 +55,6 @@ CP_PARENTS "$tmpdir"
 filecount=$(find "$tmpdir" -type f | wc -l | tr -d ' ')
 if [ "$filecount" -lt 10 ]; then
     echo "ERROR: Only $filecount files copied to temp dir (expected at least 10). Aborting."
-    rm -rf -- "$tmpdir"
     exit 1
 fi
 
@@ -74,7 +75,6 @@ pkgsize=$(wc -c < "$filename" | tr -d ' ')
 if [ "$pkgsize" -lt 1000 ]; then
     echo "ERROR: Package is only ${pkgsize} bytes (expected at least 1000). Aborting."
     rm -f "$filename"
-    rm -rf -- "$tmpdir"
     exit 1
 fi
 
@@ -99,8 +99,6 @@ if [ "$plg_md5" != "$md5" ]; then
     exit 1
 fi
 
-rm -rf -- "$tmpdir"
-rmdir "$CWD/tmp" 2>/dev/null || true
 
 echo ""
 echo "Package created: $filename"
