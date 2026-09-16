@@ -43,7 +43,7 @@ esac
 mkdir -p "$tmpbase" "$OUT"
 # mktemp, not $RANDOM + mkdir -p: two builds in one clone must never land in the same folder
 tmpdir=$(mktemp -d "$tmpbase/tmp.XXXXXX")
-# set -e can exit anywhere below; this removes only this build's folder and leaves dist/ for diagnostics
+# set -e can exit anywhere below: drop this build's folder, and tmp/ itself once empty, leaving dist/ to inspect
 trap 'rm -rf -- "$tmpdir"; rmdir "$tmpbase" 2>/dev/null || true' EXIT
 OUT=$(cd "$OUT" && pwd)  # tar runs from the temp dir, so a relative --out would land there
 filename="$OUT/folder.view3-$version-x86_64-1.txz"
