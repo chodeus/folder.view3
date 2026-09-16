@@ -16,29 +16,6 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-###2026.09.16.1
-- A failed backup import is rolled back instead of leaving a half-restored config
-- An unreadable autostart file is left alone, not rewritten as empty
-- A malformed saved order no longer clears your existing order
-- Theme bundles can only write inside the plugin's styles folder
-- The Logs button works for VM names with an apostrophe
-- The Docker tab keeps live stats when the CPU count request fails
-- The Add Folder button is added once on the Docker and VM tabs
-- Rounded and pill toggles no longer paint a dark track on light themes
-- The CSS Tool's notes and number fields show keyboard focus
-- Remaining English UI text now follows your language setting
-
-###2026.09.15.1
-- Containers that share an image tag no longer copy each other's update state
-- A degraded Docker read can no longer trim your autostart file
-- A folder that refused to delete can now be removed, and a failed delete no longer freezes the page
-- Folder ids are validated and escaped wherever they are rendered
-- A failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused rather than half-installed
-- A theme declined at the external-URL warning is now removed
-- Themes marked disabled are recognised whatever the capitalisation
-- Backup restores and CSS settings now report a failed write
-- The settings page and the CSS Tool's theme labels are translated
-
 ###2026.08.28
 - Containers assigned by a `folder.view3` Docker label (including Compose services) no longer override a folder you picked explicitly, and can't end up in two folders at once
 - The folder editor and Autostart tab now show which folder a container really belongs to, including label and regex matches
@@ -433,6 +410,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - fix: handle IP parse for containers without NetworkMode set.  remove duplicate parsing from previous commit.
 - fix: remove duplicate setting of IP
 - By: mtongnz
+
 
 ###2024.04.30
 - Update es language.
