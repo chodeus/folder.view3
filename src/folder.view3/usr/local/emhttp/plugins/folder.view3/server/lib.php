@@ -816,9 +816,9 @@
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
             exit;
         }
-        // null (create.php) gets a fresh id, and so does an unknown bad id from a folder-map import; a stored bad id,
-        // '' included, is refused, never duplicated
-        if ($id === null || (!fv3_is_folder_id($id) && !array_key_exists($id, $fileData))) {
+        // Only create.php omits the id; importAll() re-keys its own bad ids, so a malformed one here is a bad
+        // request, never a new folder
+        if ($id === null) {
             $id = generateId();
         } elseif (!fv3_is_folder_id($id)) {
             http_response_code(400);
