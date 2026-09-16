@@ -13,9 +13,10 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
 <script>setTimeout(function(){document.documentElement.classList.add('fv3-docker-ready')},8000)</script>
 <script>
     $(document).ready(() => {
+        var $btn = $(`<input type="button" class="fv3-add-folder-btn" onclick="createFolderBtn()" value="Add Folder" data-i18n="[value]add-folder">`);
+        if ($('.js-actions').length) { $btn.prependTo('.js-actions'); } else { $btn.insertBefore('input[value="Add Container"]'); }
+        // script.php calls folderi18n again once the pack loads, so it must only translate
         folderi18n = () => {
-            var $btn = $(`<input type="button" class="fv3-add-folder-btn" onclick="createFolderBtn()" value="Add Folder" data-i18n="[value]add-folder">`);
-            if ($('.js-actions').length) { $btn.prependTo('.js-actions'); } else { $btn.insertBefore('input[value="Add Container"]'); }
             $('body').i18n();
             $('[type="button"]').i18n();
         }
