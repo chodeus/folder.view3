@@ -6,9 +6,9 @@
 
     // Deliberately uncached: readInfo() costs ~17ms, and any cache has to mirror every input it
     // reads (container state, names, autostart, update status, templates) or it serves stale data.
-    $json = json_encode(readInfo($type));
+    // Invalid UTF-8 in one container name or label substitutes that string, so the rest of the page still loads
+    $json = json_encode(readInfo($type), JSON_INVALID_UTF8_SUBSTITUTE);
     if ($json === false) {
-        // invalid UTF-8 in a container name or label — send an empty map rather than a blank body
         fv3_debug_log("read_info: json_encode failed for type $type");
         $json = '{}';
     }
