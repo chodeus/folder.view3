@@ -1363,7 +1363,8 @@
             }
         }
         $files['css-config.json'] = json_encode($config, JSON_PRETTY_PRINT);
-        // The same swap importAll uses, so a failed save can't leave the CSS ahead of css-config.json
+        // Staged together and committed by the swap importAll uses; where a rollback itself fails, the
+        // error names what it could not undo rather than leaving the CSS ahead of css-config.json silently
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $result = fv3_replace_files($configDir, $files, $clear);
         if (isset($result['error'])) {
