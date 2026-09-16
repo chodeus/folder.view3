@@ -1119,11 +1119,12 @@
         $bundle = json_decode($json, true);
         if (!$bundle || !isset($bundle['fv3_export_version'])) return ['error' => 'Invalid FV3 export file'];
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
-        // Confinement gate for EVERY write below: refuse the whole import if the config dir path
-        // resolves through a symlink or doesn't exist.
+        // Every staged write lands under the config folder, so refuse the whole import unless its path
+        // is real: one that resolves through a symlink, or doesn't exist, is not imported into.
         if (realpath($configDir) !== $configDir) {
             return ['error' => 'Plugin config directory failed its confinement check — import aborted'];
         }
+        $shape = null;  // second decode, objects kept, only used to tell an empty [] from an empty {}
         $files = [];  // relative path => content, applied together by fv3_replace_files()
         $clear = [];  // relative paths the bundle says to remove
         foreach (['docker', 'vm', 'settings', 'autostart', 'css_config', 'order_docker', 'order_vm'] as $key) {
@@ -1132,8 +1133,13 @@
             if ($key === 'order_docker' || $key === 'order_vm') {
                 $t = $key === 'order_docker' ? 'docker' : 'vm';
                 // Exactly [] means the source had no snapshot: clear the destination's so it can't position the
-                // imported folders. A bundle without the key leaves the destination alone.
-                if ($data === []) { $clear[] = "order-$t.json"; continue; }
+                // imported folders. A bundle without the key, or a malformed {}, leaves the destination alone.
+                if ($data === []) {
+                    if ($shape === null) { $shape = json_decode($json); }
+                    if (!isset($shape->$key) || !is_array($shape->$key)) { continue; }
+                    $clear[] = "order-$t.json";
+                    continue;
+                }
                 // Same validation as export: a malformed wrapper is corrupt/tampered input and
                 // must not fall through to the clear branch or to a destructive restore.
                 $entries = fv3_validate_order_snapshot($data);
