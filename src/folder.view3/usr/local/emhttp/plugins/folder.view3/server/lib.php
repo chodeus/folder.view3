@@ -1162,7 +1162,7 @@
             foreach ($bundle['custom_styles'] as $relPath => $content) {
                 if (!is_string($content) || !is_string($relPath)) continue;
                 if (!preg_match('/\.css$/i', $relPath) && basename($relPath) !== '.fv3-source') continue;
-                if (preg_match('/\.\./', $relPath)) continue;
+                if (str_contains($relPath, "\0") || preg_match('/\.\./', $relPath)) continue;
                 $files["styles/$relPath"] = $content;
             }
         }
