@@ -19,7 +19,7 @@ else
 fi
 
 CWD=`pwd`
-tmpdir="$CWD/tmp/tmp.$((RANDOM % 1000000))"
+tmpbase="$CWD/tmp"
 plgfile="$CWD/folder.view3.plg"
 OUT="$CWD/dist"
 
@@ -40,7 +40,9 @@ case "$branch" in
     main|beta) ;;
     *) echo "Warning: unrecognized branch '$branch', pointing pluginURL at main"; branch="main" ;;
 esac
-mkdir -p "$tmpdir" "$OUT"
+mkdir -p "$tmpbase" "$OUT"
+# mktemp, not $RANDOM + mkdir -p: two builds in one clone must never land in the same folder
+tmpdir=$(mktemp -d "$tmpbase/tmp.XXXXXX")
 OUT=$(cd "$OUT" && pwd)  # tar runs from the temp dir, so a relative --out would land there
 filename="$OUT/folder.view3-$version-x86_64-1.txz"
 
