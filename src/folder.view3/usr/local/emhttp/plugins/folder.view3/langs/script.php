@@ -1,9 +1,7 @@
 <?php
-    if($_SESSION['locale'] == "") {
-        $loc = 'en'; 
-    } else {
-        $loc = substr($_SESSION['locale'], 0, 2);
-    }
+    $loc = substr($_SESSION['locale'] ?? '', 0, 2);
+    // Only a shipped pack is requested: an unsupported locale would 404 and skip the translate pass that runs once the pack loads
+    if ($loc === '' || !is_file((($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '/usr/local/emhttp') . "/plugins/folder.view3/langs/$loc.json")) { $loc = 'en'; }
 ?>
 <script src="/plugins/folder.view3/scripts/include/CLDRPluralRuleParser.js"></script>
 <script src="/plugins/folder.view3/scripts/include/jquery.i18n.js"></script>
@@ -20,7 +18,9 @@
         return s && s !== key ? s : fallback.replace(/\$(\d+)/g, (m, n) => (args[n - 1] !== undefined ? args[n - 1] : m));
     };
     // The server's JSON error when it sent one, else the HTTP status (HTTP/2 carries no status text)
-    window.fv3FailReason = (err) => err?.responseJSON?.error || (err?.status ? 'HTTP ' + err.status : err?.statusText || err?.message || 'Unknown error');
+    window.fv3FailReason = (err) => err?.responseJSON?.error || (err?.status ? 'HTTP ' + err.status : err?.statusText || err?.message || fv3I18nOr('unknown-error', 'Unknown error'));
+    // switchButton labels in the pack's words, upper-cased like the English OFF/ON
+    window.fv3SwitchLabels = () => ({ off_label: fv3I18nOr('off', 'Off').toUpperCase(), on_label: fv3I18nOr('on', 'On').toUpperCase() });
     if(typeof folderi18n === 'undefined' ) {
         folderi18n = () => {};
     }
