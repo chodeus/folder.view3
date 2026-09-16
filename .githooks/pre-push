@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# pre-push: refuse a push to main or beta whose folder.view3.plg pluginURL names the other
-# branch (a main<->beta merge clobbers it). Setup once per clone: git config core.hooksPath .githooks
-# Override (rare): git push --no-verify
+# pre-push: refuse a main or beta push whose folder.view3.plg pluginURL names the other branch.
+# Setup once per clone: git config core.hooksPath .githooks — override with git push --no-verify.
 
 set -eu
 
