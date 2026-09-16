@@ -100,6 +100,8 @@
         if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
         $path = "$stylesDir/$entry";
         if (!file_exists($path)) { http_response_code(404); exit; }
+        // The generated bundle is written by the plugin, not toggled by hand — same guard as deleteTheme
+        if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }
         // Case-insensitive like custom.php's folder filter, so the listed state matches what actually loads
         $isDisabled = (bool) preg_match('/\.disabled$/i', $entry);
         $moves = [];
