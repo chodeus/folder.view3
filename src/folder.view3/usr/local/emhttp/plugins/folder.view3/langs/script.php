@@ -1,9 +1,7 @@
 <?php
-    if($_SESSION['locale'] == "") {
-        $loc = 'en'; 
-    } else {
-        $loc = substr($_SESSION['locale'], 0, 2);
-    }
+    $loc = substr($_SESSION['locale'] ?? '', 0, 2);
+    // Only a shipped pack is requested: an unsupported locale would 404 and skip the translate pass that runs once the pack loads
+    if ($loc === '' || !is_file((($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '/usr/local/emhttp') . "/plugins/folder.view3/langs/$loc.json")) { $loc = 'en'; }
 ?>
 <script src="/plugins/folder.view3/scripts/include/CLDRPluralRuleParser.js"></script>
 <script src="/plugins/folder.view3/scripts/include/jquery.i18n.js"></script>
