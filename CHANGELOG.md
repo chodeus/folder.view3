@@ -2,6 +2,19 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- A failed backup import is rolled back instead of leaving a half-restored config
+- An unreadable autostart file is left alone, not rewritten as empty
+- A malformed saved order no longer clears your existing order
+- Theme bundles can only write inside the plugin's styles folder
+- The Logs button works for VM names with an apostrophe
+- The Docker tab keeps live stats when the CPU count request fails
+- The Add Folder button is added once on the Docker and VM tabs
+- Rounded and pill toggles no longer paint a dark track on light themes
+- The CSS Tool's notes and number fields show keyboard focus
+- Remaining English UI text now follows your language setting
+
 ## 2026.09.15.1 (beta)
 
 - Containers that share an image tag no longer copy each other's update state
