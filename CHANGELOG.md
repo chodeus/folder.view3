@@ -4,49 +4,23 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: a missing autostart file, a failed encode and a top-level array all fail closed (#92)
-- fix: an unreadable autostart file stops the save and the container read instead of reading as empty (#91)
-- fix: saving CSS settings is all or nothing, the generated bundle can't be toggled, and one bad container name no longer blanks the page (#89)
-- Render the promoted manifest's changelog block for the stable channel (7c16cd2)
-- Keep main's changelog block in the promoted manifest (5bf905d)
-- refactor: inline handler arguments go through one fv3JsArg() helper instead of 33 copies of escapeHtml(JSON.stringify()) (#86)
-- fix: add the Add Folder button once on the Docker and VM tabs (#85)
-- fix: a backup restore is all or nothing, and an unreadable autostart file is no longer rewritten as empty (#83)
-- fix: rounded and pill toggles no longer paint a dark track on light themes, and the CSS Tool's notes and number fields show keyboard focus (#81)
-- fix: translate the UI text that still showed in English (#76)
-- fix: VM log button works for names with an apostrophe, and the Docker tab keeps live stats if the CPU count request fails (#79)
-- fix: stuck folders can be deleted, and a failed delete no longer freezes the page (#75)
-- Test build per pull request via the test-build label (beta) (#73) (fde4de4)
-- Test build per pull request via the test-build label (#72) (5421400)
-- refactor: one owner for stale-autostart pruning (#71)
-- refactor: give the has-an-update predicate one home (#70)
-- fix: resolve container update status per container, not per image (#69)
-- fix(pkg_build): resolve --out before building so a relative path works
 - Containers that share an image tag no longer copy each other's update state
-- A degraded Docker read can no longer trim your autostart file
 - A folder that refused to delete can now be removed, and a failed delete no longer freezes the page
-- Folder ids are validated and escaped wherever they are rendered
-- A failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused rather than half-installed
-- A theme declined at the external-URL warning is now removed
-- Themes marked disabled are recognised whatever the capitalisation
-- Backup restores and CSS settings now report a failed write
-- The settings page and the CSS Tool's theme labels are translated
+- Folder ids are validated and escaped wherever they are rendered, and an update carrying an invalid id is refused
 - A failed backup import is rolled back instead of leaving a half-restored config
-- An unreadable autostart file is left alone, not rewritten as empty
-- A malformed saved order no longer clears your existing order
-- Theme bundles can only write inside the plugin's styles folder
-- The Logs button works for VM names with an apostrophe
-- The Docker tab keeps live stats when the CPU count request fails
-- The Add Folder button is added once on the Docker and VM tabs
-- Rounded and pill toggles no longer paint a dark track on light themes
-- The CSS Tool's notes and number fields show keyboard focus
-- Remaining English UI text now follows your language setting
 - Saving CSS settings is all or nothing
-- The plugin's own generated theme can no longer be switched off by hand
-- A container with an unreadable name no longer blanks the Docker page
-- An autostart file that can't be read stops the save instead of dropping your start delays
-- The theme update check no longer leaves its button spinning when the check fails
+- An autostart file that can't be read, or isn't there, stops the save instead of dropping your start delays
+- A malformed saved order no longer clears your existing order
 - Start delays that aren't whole seconds are refused instead of quietly changed
+- A failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused
+- Theme bundles can only write inside the plugin's styles folder, and the plugin's own generated theme can't be switched off by hand
+- Themes marked disabled are recognised whatever the capitalisation, and a theme declined at the external-URL warning is removed
+- A container with an unreadable name no longer blanks the Docker page
+- The Logs button works for VM names with an apostrophe, and the Docker tab keeps live stats when the CPU count request fails
+- The Add Folder button is added once on the Docker and VM tabs
+- Rounded and pill toggles no longer paint a dark track on light themes, and the CSS Tool's notes and number fields show keyboard focus
+- The theme update check no longer leaves its button spinning when the check fails
+- The interface follows your language setting throughout
 
 ## 2026.09.17.1 (beta)
 
