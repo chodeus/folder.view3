@@ -4,23 +4,13 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- Containers that share an image tag no longer copy each other's update state
-- A folder that refused to delete can now be removed, and a failed delete no longer freezes the page
-- Folder ids are validated and escaped wherever they are rendered, and an update carrying an invalid id is refused
-- A failed backup import is rolled back instead of leaving a half-restored config
-- Saving CSS settings is all or nothing
-- An autostart file that can't be read, or isn't there, stops the save instead of dropping your start delays
-- A malformed saved order no longer clears your existing order
-- Start delays that aren't whole seconds are refused instead of quietly changed
-- A failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused
-- Theme bundles can only write inside the plugin's styles folder, and the plugin's own generated theme can't be switched off by hand
-- Themes marked disabled are recognised whatever the capitalisation, and a theme declined at the external-URL warning is removed
-- A container with an unreadable name no longer blanks the Docker page
-- The Logs button works for VM names with an apostrophe, and the Docker tab keeps live stats when the CPU count request fails
-- The Add Folder button is added once on the Docker and VM tabs
-- Rounded and pill toggles no longer paint a dark track on light themes, and the CSS Tool's notes and number fields show keyboard focus
-- The theme update check no longer leaves its button spinning when the check fails
-- The interface follows your language setting throughout
+- Backup imports, CSS settings and saved orders are all or nothing — a failed save no longer leaves them half-applied or cleared
+- An autostart file that can't be read, or isn't there, stops the save instead of dropping your start delays, and start delays that aren't whole seconds are refused
+- Stuck folders can be removed, a failed delete no longer freezes the page, and folder ids are validated and escaped wherever they are used
+- Theme installs are safer: a failure leaves your current theme untouched, bundles can only write inside the plugin's styles folder, name clashes and oversized or broken files are refused, and the plugin's own generated theme can't be switched off by hand
+- Themes marked disabled are recognised whatever the capitalisation, a theme declined at the external-URL warning is removed, and the update check no longer leaves its button spinning
+- On the Docker and VM pages, containers sharing an image tag no longer copy each other's update state, one unreadable container name no longer blanks the page, the Logs button works for names with an apostrophe, live stats survive a failed CPU count request, and the Add Folder button appears once
+- Rounded and pill toggles no longer paint a dark track on light themes, the CSS Tool's notes and number fields show keyboard focus, and the interface follows your language setting throughout
 
 ## 2026.09.17.1 (beta)
 
