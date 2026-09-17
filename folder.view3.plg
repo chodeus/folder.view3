@@ -16,7 +16,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-###2026.09.17.2
+###2026.09.17
 - Resolved issue with invalid characters in a container name blanking the Docker page
 - Logs button on VMs with apostrophes in the name now works
 - Containers sharing an image tag no longer show each other's update status
