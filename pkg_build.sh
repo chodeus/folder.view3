@@ -13,67 +13,40 @@ else
     SED_I=(sed -i)
     MD5CMD() { md5sum "$1" | awk '{print $1}'; }
     CP_PARENTS() {
-        cp --parents -f $(find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json" \)) "$1/"
+        find . -type f ! \( -iname "pkg_build.sh" -o -iname "sftp-config.json" \) -print0 | xargs -0 -r cp --parents -f -t "$1/"
     }
     MAKE_TAR() { tar --owner=0 --group=0 --no-xattrs -cJf "$1" *; }
 fi
 
 CWD=`pwd`
-tmpdir="$CWD/tmp/tmp.$((RANDOM % 1000000))"
-version=$(date +"%Y.%m.%d")
+tmpbase="$CWD/tmp"
 plgfile="$CWD/folder.view3.plg"
+OUT="$CWD/dist"
 
-# Auto-detect current git branch, with optional flag override
-# Usage: pkg_build.sh [--beta [N] | --develop [N] | --main]
-#   (no flag)    → auto-detect branch from git
-#   --beta [N]   → force beta branch
-#   --develop [N]→ force develop branch
-#   --main       → force main branch (stable)
-GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-SUFFIX_NUM=""
-
-if [ "${1:-}" = "--beta" ]; then
-    branch="beta"
-    if [ -n "${2:-}" ] && [ "${2:-}" -eq "${2:-}" ] 2>/dev/null; then SUFFIX_NUM="$2"; fi
-elif [ "${1:-}" = "--develop" ]; then
-    branch="develop"
-    if [ -n "${2:-}" ] && [ "${2:-}" -eq "${2:-}" ] 2>/dev/null; then SUFFIX_NUM="$2"; fi
-elif [ "${1:-}" = "--main" ]; then
-    branch="main"
-else
-    branch="$GIT_BRANCH"
-fi
-
-# Set version suffix based on branch
-if [ "$branch" = "develop" ] || [ "$branch" = "beta" ]; then
-    if [ -z "$SUFFIX_NUM" ]; then
-        # Auto-increment: find highest existing hotfix number and add 1
-        highest=0
-        for f in $CWD/archive/folder.view3-${version}.*-x86_64-1.txz; do
-            [ -e "$f" ] || continue
-            num=$(echo "$f" | sed 's/.*\.\([0-9]*\)-x86_64-1\.txz/\1/')
-            [ -n "$num" ] && [ "$num" -gt "$highest" ] && highest=$num
-        done
-        SUFFIX_NUM=$((highest + 1))
-    fi
-    version="${version}.${SUFFIX_NUM}"
-elif [ "$branch" != "main" ]; then
-    echo "Warning: unrecognized branch '$branch', defaulting to main"
-    branch="main"
-fi
-
-filename="$CWD/archive/folder.view3-$version-x86_64-1.txz"
-
-# Collision detection for main branch (date-based only)
-if [ "$branch" = "main" ]; then
-    dayversion=$(find "$CWD/archive" -maxdepth 1 -name "folder.view3-$version*-x86_64-1.txz" -type f 2>/dev/null | wc -l | tr -d ' ')
-    if [ "$dayversion" -gt 0 ]; then
-        version="$version.$dayversion"
-        filename="$CWD/archive/folder.view3-$version-x86_64-1.txz"
-    fi
-fi
-
-mkdir -p $tmpdir
+# Usage: pkg_build.sh --version YYYY.MM.DD[.N] [--branch main|beta] [--out DIR]
+# The release workflow owns version numbering; local test builds pass any version explicitly.
+version=""
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --version) version="$2"; shift 2 ;;
+        --branch)  branch="$2";  shift 2 ;;
+        --out)     OUT="$2";     shift 2 ;;
+        *) echo "ERROR: unknown option '$1'"; exit 1 ;;
+    esac
+done
+[ -n "$version" ] || { echo "ERROR: --version is required (e.g. --version 0000.00.00 for a test build)"; exit 1; }
+case "$branch" in
+    main|beta) ;;
+    *) echo "Warning: unrecognized branch '$branch', pointing pluginURL at main"; branch="main" ;;
+esac
+mkdir -p "$tmpbase" "$OUT"
+# mktemp, not $RANDOM + mkdir -p: two builds in one clone must never land in the same folder
+tmpdir=$(mktemp -d "$tmpbase/tmp.XXXXXX")
+# set -e can exit anywhere below: drop this build's folder, and tmp/ itself once empty, leaving dist/ to inspect
+trap 'rm -rf -- "$tmpdir"; rmdir "$tmpbase" 2>/dev/null || true' EXIT
+OUT=$(cd "$OUT" && pwd)  # tar runs from the temp dir, so a relative --out would land there
+filename="$OUT/folder.view3-$version-x86_64-1.txz"
 
 cd "$CWD/src/folder.view3"
 CP_PARENTS "$tmpdir"
@@ -81,29 +54,27 @@ CP_PARENTS "$tmpdir"
 # Verify files were copied
 filecount=$(find "$tmpdir" -type f | wc -l | tr -d ' ')
 if [ "$filecount" -lt 10 ]; then
-    echo "ERROR: Only $filecount files copied to temp dir (expected 50+). Aborting."
-    rm -rf "$CWD/tmp"
+    echo "ERROR: Only $filecount files copied to temp dir (expected at least 10). Aborting."
     exit 1
 fi
 
 # Set permissions for Unraid (only in temp dir, not the repo)
-chmod -R 0755 $tmpdir
+chmod -R 0755 "$tmpdir"
 
 # Strip macOS extended attributes and touch all files for cache-busting
-xattr -cr $tmpdir 2>/dev/null || true
-find $tmpdir -type f -exec touch {} +
+xattr -cr "$tmpdir" 2>/dev/null || true
+find "$tmpdir" -type f -exec touch {} +
 
-cd $tmpdir
+cd "$tmpdir"
 MAKE_TAR "$filename"
 
-cd $CWD
+cd "$CWD"
 
 # Verify package is not empty
 pkgsize=$(wc -c < "$filename" | tr -d ' ')
 if [ "$pkgsize" -lt 1000 ]; then
-    echo "ERROR: Package is only ${pkgsize} bytes (expected 50KB+). Aborting."
+    echo "ERROR: Package is only ${pkgsize} bytes (expected at least 1000). Aborting."
     rm -f "$filename"
-    rm -rf "$CWD/tmp"
     exit 1
 fi
 
@@ -113,9 +84,8 @@ md5=$(MD5CMD "$filename")
 "${SED_I[@]}" "s/<!ENTITY version.*>/<!ENTITY version \"$version\">/" "$plgfile"
 "${SED_I[@]}" "s/<!ENTITY md5.*>/<!ENTITY md5 \"$md5\">/" "$plgfile"
 
-# Update branch references in plg file (URLs use XML entities like &github;)
+# Point pluginURL at this branch (URLs use XML entities like &github;)
 "${SED_I[@]}" 's|&github;/[a-zA-Z]*/&name;.plg|\&github;/'"$branch"'/\&name;.plg|' "$plgfile"
-"${SED_I[@]}" 's|&github;/[a-zA-Z]*/archive/|\&github;/'"$branch"'/archive/|' "$plgfile"
 
 # Verify plg was updated correctly
 plg_version=$(grep 'ENTITY version' "$plgfile" | grep -o '"[^"]*"' | tr -d '"')
@@ -129,7 +99,6 @@ if [ "$plg_md5" != "$md5" ]; then
     exit 1
 fi
 
-rm -R $CWD/tmp
 
 echo ""
 echo "Package created: $filename"

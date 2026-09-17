@@ -33,7 +33,7 @@ Markdown="false"
                     <dd>
                         <img class="img" style="visibility: hidden;">
                         <input type="text" name="name" pattern="[^\x00-\x1F\x7F<>&quot;'\\:]+" value="" required autocomplete="off">
-                        <div id="fv3-name-warning" style="color: #e22828; font-size: 12px; display: none;">20 characters is the recommended maximum — longer names will be truncated/clipped.</div>
+                        <div id="fv3-name-warning" style="color: #e22828; font-size: 12px; display: none;" data-i18n="name-length-warning">20 characters is the recommended maximum — longer names will be truncated/clipped.</div>
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
@@ -113,12 +113,12 @@ Markdown="false"
                     <dt data-i18n="regex">Regex:</dt>
                     <dd>
                         <img class="img" style="visibility: hidden;">
-                        <input type="text" name="regex" oninput="updateRegex(this)" value="" placeholder="e.g. plex.* or ^my-stack-">
+                        <input type="text" name="regex" oninput="updateRegex(this)" value="" placeholder="e.g. plex.* or ^my-stack-" data-i18n="[placeholder]regex-placeholder">
                     </dd>
                 </dl>
                 <blockquote class="inline_help">
                     <p data-i18n="[html]regex-tooltip">
-                        Auto-include containers/VMs whose names match a regular expression pattern. For example, <b>plex.*</b> matches any container starting with 'plex'. Use <b>^my-stack-</b> to match containers from a Docker Compose stack named 'my-stack'. A folder whose pattern is <b>^</b> matches every name, so it acts as a catch-all for containers not placed in or matched by another folder — put it last.
+                        Auto-include containers/VMs whose names match a regular expression pattern. For example, <b>plex</b> matches any container with 'plex' in the name. Use <b>^my-stack-</b> to match containers from a Docker Compose stack named 'my-stack'. A folder whose pattern is <b>^</b> matches every name, so it acts as a catch-all for containers not placed in or matched by another folder — put it last.
                         <br>
                         <a href="https://regex101.com/">Site for testing your regex</a>.
                         <br>
@@ -129,7 +129,7 @@ Markdown="false"
         </details>
 
         <details class="fv3-section" open>
-            <summary id="fv3-preview-summary">Preview</summary>
+            <summary id="fv3-preview-summary"><span data-i18n="folder-preview-settings">Preview</span></summary>
 
             <div class="basic">
                 <dl>

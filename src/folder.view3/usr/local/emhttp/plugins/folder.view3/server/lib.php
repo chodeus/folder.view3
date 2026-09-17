@@ -87,6 +87,27 @@
         return $type;
     }
 
+    // A POST field as a string, else a 400: like type above, an x[]= array must not reach a typed param
+    function fv3_post_string(string $key, string $default = ''): string {
+        $value = $_POST[$key] ?? $default;
+        if (!is_string($value)) {
+            http_response_code(400);
+            exit;
+        }
+        return $value;
+    }
+
+    // For a field whose absence would read as "empty" and wipe saved state: missing is a 400, never a default
+    function fv3_post_required(string $key): string {
+        if (!array_key_exists($key, $_POST)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => "Missing field: $key"]);
+            exit;
+        }
+        return fv3_post_string($key);
+    }
+
     function fv3_security_headers(): void {
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');
@@ -196,7 +217,42 @@
         global $configDir;
         if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $raw = @file_get_contents("$configDir/$type.json");
-        return ($raw !== false) ? $raw : '{}';
+        if ($raw === false) {
+            // Fail the request: a 200 '{}' would be cached client-side over the last good copy
+            http_response_code(500);
+            return json_encode(['error' => "$type.json is unreadable"]);
+        }
+        // Unparseable stays byte-identical so the client's cached-copy fallback still fires
+        $decoded = json_decode($raw, true);
+        if (json_last_error() !== JSON_ERROR_NONE) { return $raw; }
+        // Valid JSON that isn't a folder map fails like an unreadable file
+        if (!is_array($decoded)) {
+            http_response_code(500);
+            return json_encode(['error' => "$type.json does not contain a folder map"]);
+        }
+        $clean = json_encode((object)fv3_normalize_folders($decoded));
+        return $clean !== false ? $clean : $raw;
+    }
+
+    // Fills the fields every reader dereferences so a hand-edited folder can't break a render
+    // or the autostart sync; object fields stay JSON objects. Never writes the file.
+    function fv3_normalize_folders(array $folders): array {
+        $out = [];
+        foreach ($folders as $id => $f) {
+            if (!is_array($f)) { continue; }
+            $f['name'] = is_scalar($f['name'] ?? null) ? (string)$f['name'] : (string)$id;
+            $f['icon'] = is_string($f['icon'] ?? null) ? $f['icon'] : '';
+            $f['regex'] = is_string($f['regex'] ?? null) ? $f['regex'] : '';
+            $f['containers'] = is_array($f['containers'] ?? null) ? array_values($f['containers']) : [];
+            $f['hidden_preview'] = is_array($f['hidden_preview'] ?? null) ? array_values($f['hidden_preview']) : [];
+            $f['actions'] = is_array($f['actions'] ?? null) ? array_values(array_filter($f['actions'], 'is_array')) : [];
+            $f['settings'] = (object)(is_array($f['settings'] ?? null) ? $f['settings'] : []);
+            foreach (['containerImages', 'containerIds'] as $k) {
+                if (array_key_exists($k, $f)) { $f[$k] = (object)(is_array($f[$k]) ? $f[$k] : []); }
+            }
+            $out[$id] = $f;
+        }
+        return $out;
     }
 
     function readUserPrefs(string $type) : string {
@@ -334,6 +390,12 @@
         return $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
     }
 
+    // null when the file cannot be read: a caller that rebuilds the file from these lines must stop, not write []
+    function fv3_read_autostart_lines(string $file): ?array {
+        $lines = @file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        return $lines === false ? null : $lines;
+    }
+
     function readAutostartConfig(): array {
         global $configDir;
         $cfg = fv3_read_json_strict("$configDir/autostart.json");
@@ -384,13 +446,26 @@
             if (count($cleanSeq) >= 500) break;
         }
         $cleanSeq = array_values(array_unique($cleanSeq));
+        // Read before the write: an unreadable autostart file aborts the save rather than reporting
+        // success with the wait edits silently dropped
+        $autoStartFile = fv3_autostart_file();
+        $lines = null;
+        if (!empty($waits)) {
+            if (file_exists($autoStartFile)) {
+                // Zeros still have to reach the loop below: that is how a wait is cleared
+                $lines = fv3_read_autostart_lines($autoStartFile);
+                if ($lines === null) return ['error' => 'Could not read the autostart file — nothing was saved'];
+            } elseif (array_filter($waits, static fn($w) => (int)$w > 0)) {
+                // No file to apply them to; an all-zero map is the empty state and saves normally
+                return ['error' => 'Could not read the autostart file — nothing was saved'];
+            }
+        }
+
         $ok = fv3_atomic_write("$configDir/autostart.json", json_encode(['mode' => $mode, 'sequence' => $cleanSeq], JSON_PRETTY_PRINT));
         if (!$ok) return ['error' => 'Failed to write autostart config'];
 
         // Fold wait edits into the live file — a name only matches a line that already has autostart enabled
-        $autoStartFile = fv3_autostart_file();
-        if (!empty($waits) && file_exists($autoStartFile)) {
-            $lines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        if ($lines !== null) {
             $changed = false;
             foreach ($lines as $i => $line) {
                 $name = explode(' ', $line, 2)[0];
@@ -414,16 +489,12 @@
         $autoStartFile = fv3_autostart_file();
         if (!file_exists($autoStartFile)) return;
         $sequence = readAutostartConfig()['sequence'];
-        $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        $rawLines = fv3_read_autostart_lines($autoStartFile);
+        if ($rawLines === null) { fv3_debug_log("fv3_apply_custom_autostart: $autoStartFile unreadable, not rewriting"); return; }
+        $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
         $autoStartMap = [];
         foreach ($autoStartLines as $line) {
             $autoStartMap[explode(' ', $line, 2)[0]] = $line;
-        }
-        // Same #214/#231 guard as the folder path — a degraded Docker read must not prune entries
-        if ($ctListComplete) {
-            foreach ($autoStartMap as $name => $line) {
-                if (!in_array($name, $allContainerNames)) unset($autoStartMap[$name]);
-            }
         }
         $newAutoStart = [];
         foreach ($sequence as $name) {
@@ -451,6 +522,19 @@
             $names[] = $n;
         }
         return ['names' => $names, 'complete' => $complete];
+    }
+
+    // The one definition of "drop autostart entries whose container is gone". A degraded Docker
+    // read must never prune (#214/#231) — a transient blip would otherwise curtail the file.
+    function fv3_prune_stale_autostart(array $autoStartLines, array $allContainerNames, bool $ctListComplete): array {
+        if (!$ctListComplete) return $autoStartLines;
+        $kept = [];
+        foreach ($autoStartLines as $line) {
+            $name = explode(' ', $line, 2)[0];
+            if (in_array($name, $allContainerNames, true)) { $kept[] = $line; continue; }
+            fv3_debug_log("autostart: dropped stale entry '$name' (container no longer exists)");
+        }
+        return $kept;
     }
 
     // `folder.view3: <name>` label claims keyed by container name — getDockerContainers()
@@ -489,13 +573,10 @@
     }
 
     // Effective membership — explicit > label > regex (issues #46/#55). Single source of
-    // truth shared by syncContainerOrder and read_membership.php (issue #61). Returns null
-    // on a corrupt persisted shape so callers fail closed instead of fataling mid-compute.
-    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): ?array {
-        foreach ($folders as $folder) {
-            if (!is_array($folder) || !is_array($folder['containers'] ?? [])
-                || (isset($folder['name']) && !is_string($folder['name']))) { return null; }
-        }
+    // truth shared by syncContainerOrder and read_membership.php (issue #61).
+    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): array {
+        // One malformed entry is dropped or filled in, not allowed to abort every folder's sync
+        $folders = fv3_normalize_folders($folders);
         $folderNameSet = [];
         foreach ($folders as $folder) {
             if (isset($folder['name'])) { $folderNameSet[$folder['name']] = true; }
@@ -591,11 +672,6 @@
             return;
         }
         $membership = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
-        // Corrupt persisted shapes fail closed before the autostart write, not fatal mid-sync
-        if ($membership === null) {
-            fv3_debug_log("syncContainerOrder: folder entry with invalid containers shape, aborting before write");
-            return;
-        }
         $folderContainers = $membership['containers'];
         $folderNames = $membership['names'];
         $assignedContainers = $membership['assigned'];
@@ -677,19 +753,13 @@
         // Unraid owns it, and writes it only when the user explicitly drag-reorders.
         $autoStartFile = fv3_autostart_file();
         if (file_exists($autoStartFile)) {
-            $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            $rawLines = fv3_read_autostart_lines($autoStartFile);
+            if ($rawLines === null) { fv3_debug_log("syncContainerOrder: $autoStartFile unreadable, not rewriting"); return; }
+            $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
             $autoStartMap = [];
             foreach ($autoStartLines as $line) {
                 $parts = explode(' ', $line, 2);
                 $autoStartMap[$parts[0]] = $line;
-            }
-            if ($ctListComplete) {
-                foreach ($autoStartMap as $name => $line) {
-                    if (!in_array($name, $allContainerNames)) {
-                        fv3_debug_log("syncContainerOrder: removing stale autostart entry '$name' (container no longer exists)");
-                        unset($autoStartMap[$name]);
-                    }
-                }
             }
 
             $newAutoStart = [];
@@ -735,10 +805,9 @@
         return $folders;
     }
 
-    function updateFolder(string $type, string $content, string $id = '') : void {
+    function updateFolder(string $type, string $content, ?string $id = null) : void {
         global $configDir;
-        if(!file_exists("$configDir/$type.json")) { createFile($type); if (empty($id)) $id = generateId(); }
-        if(empty($id)) { $id = generateId(); }
+        if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $decoded = json_decode($content, true);
         // A folder must be an object/array — reject scalars so a full-backup bundle can't pollute $type.json
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
@@ -758,6 +827,16 @@
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
+            exit;
+        }
+        // Only create.php omits the id; importAll() re-keys its own bad ids, so a malformed one here is a bad
+        // request, never a new folder
+        if ($id === null) {
+            $id = generateId();
+        } elseif (!fv3_is_folder_id($id)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Folder id may only contain letters, digits, _ and -']);
             exit;
         }
         $fileData[$id] = $decoded;
@@ -782,8 +861,8 @@
         }
         $changed = false;
         foreach ($updates as $folderId => $patch) {
-            if (!preg_match('/^[A-Za-z0-9+\/=]+$/', $folderId)) continue;
-            if (!isset($fileData[$folderId])) continue;
+            if (!fv3_is_folder_id($folderId)) continue;
+            if (!is_array($fileData[$folderId] ?? null)) continue;
             if (isset($patch['containers']) && is_array($patch['containers'])) {
                 $fileData[$folderId]['containers'] = $patch['containers'];
                 $changed = true;
@@ -820,6 +899,8 @@
             echo json_encode(['error' => "$type.json is unreadable — refusing to delete so the folder config is not wiped"]);
             exit;
         }
+        // Already gone: delete stays idempotent, and there is nothing to rewrite
+        if (!array_key_exists($id, $fileData)) { return; }
         unset($fileData[$id]);
         $path = "$configDir/$type.json";
         fv3_atomic_write($path, json_encode($fileData));
@@ -833,7 +914,8 @@
             fv3_atomic_write($path, '{}');
         }
         $raw = @file_get_contents($path);
-        return ($raw !== false) ? $raw : '{}';
+        // A blank or hand-edited file is answered as '{}': every client parses this body as JSON
+        return ($raw !== false && is_object(json_decode($raw))) ? $raw : '{}';
     }
 
     function updateSettings(string $key, string $value) : void {
@@ -987,224 +1069,8 @@
         @chmod($path, 0660);
     }
 
-    function listThemes() : array {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        if (!is_dir($stylesDir)) return [];
-        $themes = [];
-        foreach (scandir($stylesDir) as $entry) {
-            if ($entry === '.' || $entry === '..') continue;
-            $path = "$stylesDir/$entry";
-            if (!is_dir($path)) {
-                if (preg_match('/^_fv3-generated\./', $entry)) continue;
-                if (!preg_match('/\.css$/', $entry)) continue;
-                $disabled = false;
-                $name = preg_replace('/\.css$/', '', $entry);
-            } else {
-                $disabled = (bool) preg_match('/\.disabled$/', $entry);
-                $name = preg_replace('/\.disabled$/', '', $entry);
-            }
-            $source = null;
-            if (is_dir($path)) {
-                $srcFile = $path . '/.fv3-source';
-                if (file_exists($srcFile)) {
-                    $raw = trim(file_get_contents($srcFile));
-                    $parsed = json_decode($raw, true);
-                    $source = is_array($parsed) ? $parsed : ['repo' => $raw];
-                }
-            }
-            $themes[] = [
-                'name' => $name,
-                'entry' => $entry,
-                'isDir' => is_dir($path),
-                'enabled' => !$disabled,
-                'source' => $source
-            ];
-        }
-        return $themes;
-    }
-
-    function toggleTheme(string $entry, bool $enable, bool $exclusive) : void {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
-        $path = "$stylesDir/$entry";
-        if (!file_exists($path)) { http_response_code(404); exit; }
-        if ($exclusive && $enable) {
-            foreach (scandir($stylesDir) as $e) {
-                if ($e === '.' || $e === '..' || !is_dir("$stylesDir/$e")) continue;
-                if (preg_match('/^_fv3-generated\./', $e)) continue;
-                $ePath = "$stylesDir/$e";
-                if (!preg_match('/\.disabled$/', $e) && $e !== $entry) {
-                    @rename($ePath, $ePath . '.disabled');
-                }
-            }
-        }
-        $isDisabled = (bool) preg_match('/\.disabled$/', $entry);
-        if ($enable && $isDisabled) {
-            $newName = preg_replace('/\.disabled$/', '', $entry);
-            @rename($path, "$stylesDir/$newName");
-        } else if (!$enable && !$isDisabled) {
-            @rename($path, $path . '.disabled');
-        }
-    }
-
-    function importTheme(string $repoUrl, string $subPath = '', string $branch = '') : array {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        $maxCssBytes = 2 * 1024 * 1024;
-        $maxCssFiles = 200;
-        if (!preg_match('#^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$#', $repoUrl)) {
-            return ['error' => 'Invalid repo format. Use owner/repo.'];
-        }
-        $ctx = stream_context_create(['http' => [
-            'header' => "User-Agent: FolderView3\r\n",
-            'timeout' => 15
-        ]]);
-        $refParam = $branch !== '' ? '?ref=' . rawurlencode($branch) : '';
-        $apiBase = "https://api.github.com/repos/$repoUrl/contents/";
-        $fetchPath = ($subPath !== '' ? $apiBase . rawurlencode($subPath) : $apiBase) . $refParam;
-        $raw = @file_get_contents($fetchPath, false, $ctx);
-        if ($raw === false) return ['error' => 'Failed to fetch repo contents.'];
-        $contents = json_decode($raw, true);
-        if (!is_array($contents)) return ['error' => 'Invalid GitHub API response.'];
-        $cssFiles = [];
-        foreach ($contents as $f) {
-            if (!isset($f['name']) || $f['type'] !== 'file') continue;
-            if (preg_match('/\.css$/i', $f['name'])) $cssFiles[] = $f;
-        }
-        if ($subPath === '') {
-            $dirs = array_filter($contents, fn($f) => isset($f['name']) && $f['type'] === 'dir');
-            foreach ($dirs as $dir) {
-                $subRaw = @file_get_contents($apiBase . rawurlencode($dir['name']) . $refParam, false, $ctx);
-                if ($subRaw === false) continue;
-                $subContents = json_decode($subRaw, true);
-                if (!is_array($subContents)) continue;
-                foreach ($subContents as $sf) {
-                    if (isset($sf['name']) && $sf['type'] === 'file' && preg_match('/\.css$/i', $sf['name'])) {
-                        $sf['_subdir'] = $dir['name'];
-                        $cssFiles[] = $sf;
-                    }
-                }
-            }
-        }
-        if (empty($cssFiles)) return ['error' => 'No CSS files found.'];
-        $repoParts = explode('/', $repoUrl);
-        $owner = $repoParts[0];
-        $repoSlug = $repoParts[1];
-        $baseName = $subPath !== '' ? "$owner-$subPath" : "$owner-$repoSlug";
-        if ($branch !== '' && !in_array($branch, ['main', 'master'])) {
-            $baseName .= "-$branch";
-        }
-        $themeName = preg_replace('/[^a-zA-Z0-9._-]/', '-', $baseName);
-        $themeDirEnabled = "$stylesDir/$themeName";
-        $themeDirDisabled = "$stylesDir/$themeName.disabled";
-        $isUpdate = is_dir($themeDirEnabled) || is_dir($themeDirDisabled);
-        if (is_dir($themeDirEnabled)) $themeDir = $themeDirEnabled;
-        elseif (is_dir($themeDirDisabled)) $themeDir = $themeDirDisabled;
-        else $themeDir = $themeDirDisabled;
-        if (is_dir($themeDir)) {
-            $items = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($themeDir, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($items as $item) {
-                if ($item->getFilename() === '.fv3-source') continue;
-                if ($item->isDir()) @rmdir($item->getRealPath());
-                else @unlink($item->getRealPath());
-            }
-        } else {
-            @mkdir($themeDir, 0770, true);
-        }
-        $downloaded = [];
-        $cssFiles = array_slice($cssFiles, 0, $maxCssFiles);
-        foreach ($cssFiles as $file) {
-            if (!isset($file['download_url'])) continue;
-            $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
-            $subdir = $file['_subdir'] ?? '';
-            $targetDir = $themeDir;
-            if ($subdir !== '') {
-                $safeDir = preg_replace('/[^a-zA-Z0-9._-]/', '-', $subdir);
-                $targetDir = "$themeDir/$safeDir";
-                if (!is_dir($targetDir)) @mkdir($targetDir, 0770, true);
-            }
-            $css = @file_get_contents($file['download_url'], false, $ctx, 0, $maxCssBytes);
-            if ($css !== false) {
-                fv3_atomic_write("$targetDir/$safeName", $css);
-                $downloaded[] = ($subdir !== '' ? "$safeDir/" : '') . $safeName;
-            }
-        }
-        if (empty($downloaded)) return ['error' => 'Failed to download any CSS files.'];
-        $warnings = fv3_scan_css_warnings($themeDir, $downloaded);
-        $sourceData = ['repo' => $repoUrl, 'path' => $subPath, 'branch' => $branch, 'files' => []];
-        foreach ($cssFiles as $file) {
-            if (!isset($file['sha'])) continue;
-            $subdir = $file['_subdir'] ?? '';
-            $key = $subdir !== '' ? $subdir . '/' . $file['name'] : $file['name'];
-            $sourceData['files'][$key] = $file['sha'];
-        }
-        $sourceData['updated'] = date('c');
-        fv3_atomic_write("$themeDir/.fv3-source", json_encode($sourceData));
-        $result = ['success' => true, 'name' => $themeName, 'files' => $downloaded, 'is_update' => $isUpdate];
-        if (!empty($warnings)) $result['warnings'] = $warnings;
-        return $result;
-    }
-
-    function fv3_scan_css_warnings(string $baseDir, array $relPaths): array {
-        $warnings = [];
-        $patterns = [
-            'url(' => '/url\s*\(/i',
-            '@import' => '/@import\b/i',
-            'expression(' => '/expression\s*\(/i',
-            'javascript:' => '/javascript\s*:/i'
-        ];
-        foreach ($relPaths as $relPath) {
-            $filePath = "$baseDir/$relPath";
-            if (!file_exists($filePath)) continue;
-            $lines = file($filePath, FILE_IGNORE_NEW_LINES);
-            foreach ($lines as $lineNum => $line) {
-                foreach ($patterns as $label => $regex) {
-                    if (preg_match($regex, $line)) {
-                        $trimmed = trim($line);
-                        if (strlen($trimmed) > 120) $trimmed = substr($trimmed, 0, 120) . '...';
-                        $warning = [
-                            'file' => $relPath,
-                            'line' => $lineNum + 1,
-                            'type' => $label,
-                            'code' => $trimmed
-                        ];
-                        if ($label === 'url(' && preg_match('/url\s*\(\s*["\']?([^"\')\s]+)/i', $line, $urlMatch)) {
-                            $warning['url'] = $urlMatch[1];
-                        }
-                        $warnings[] = $warning;
-                    }
-                }
-            }
-        }
-        return $warnings;
-    }
-
-    function deleteTheme(string $entry) : void {
-        global $configDir;
-        $stylesDir = "$configDir/styles";
-        if (!preg_match('/^[a-zA-Z0-9._-]+$/', $entry) || $entry === '.' || $entry === '..') { http_response_code(400); exit; }
-        $path = "$stylesDir/$entry";
-        if (!file_exists($path)) { http_response_code(404); exit; }
-        if (preg_match('/^_fv3-generated\./', $entry)) { http_response_code(403); exit; }
-        if (is_dir($path)) {
-            $items = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($items as $item) {
-                if ($item->isDir()) { @rmdir($item->getRealPath()); }
-                else { @unlink($item->getRealPath()); }
-            }
-            @rmdir($path);
-        } else {
-            @unlink($path);
-        }
-    }
+    // Theme listing, import, toggle and delete, and the styles/ confinement helpers they share
+    require_once(__DIR__ . '/themes.php');
 
     function exportAll() : array {
         global $configDir;
@@ -1245,6 +1111,7 @@
                 if ($item->isFile() && (preg_match('/\.css$/i', $item->getFilename()) || $item->getFilename() === '.fv3-source')) {
                     if (preg_match('/^_fv3-generated\./', $item->getFilename())) continue;
                     $relPath = substr($item->getRealPath(), strlen(realpath($stylesDir)) + 1);
+                    if (fv3_is_theme_scratch($relPath)) continue;
                     $content = file_get_contents($item->getRealPath());
                     $cssSize += strlen($content);
                     $bundle['custom_styles'][$relPath] = $content;
@@ -1264,96 +1131,143 @@
         if (strlen($json) > 5242880) return ['error' => 'Bundle too large (5MB max)'];
         $bundle = json_decode($json, true);
         if (!$bundle || !isset($bundle['fv3_export_version'])) return ['error' => 'Invalid FV3 export file'];
-        $restored = [];
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
-        // Confinement gate for EVERY write below, not just the snapshot branch: refuse the
-        // whole import if the config dir path resolves through a symlink or doesn't exist.
+        // Every staged write lands under the config folder, so refuse the whole import unless its path
+        // is real: one that resolves through a symlink, or doesn't exist, is not imported into.
         if (realpath($configDir) !== $configDir) {
             return ['error' => 'Plugin config directory failed its confinement check — import aborted'];
         }
+        $shape = null;  // second decode, objects kept, only used to tell an empty [] from an empty {}
+        $files = [];  // relative path => content, applied together by fv3_replace_files()
+        $clear = [];  // relative paths the bundle says to remove
         foreach (['docker', 'vm', 'settings', 'autostart', 'css_config', 'order_docker', 'order_vm'] as $key) {
             if (!isset($bundle[$key]) || !is_array($bundle[$key])) continue;
             $data = $bundle[$key];
             if ($key === 'order_docker' || $key === 'order_vm') {
                 $t = $key === 'order_docker' ? 'docker' : 'vm';
-                $snapFile = fv3_order_snapshot_file($t);
+                // Exactly [] means the source had no snapshot: clear the destination's so it can't position the
+                // imported folders. A bundle without the key, or a malformed {}, leaves the destination alone.
                 if ($data === []) {
-                    // Exactly [] is how export represents "source has no snapshot" — clear any
-                    // pre-existing destination snapshot so it can't position the freshly
-                    // imported folders. A bundle without the key leaves the destination alone.
-                    if (file_exists($snapFile)) {
-                        if (!@unlink($snapFile)) {
-                            // A stale snapshot the bundle said to remove must not survive a "success"
-                            return ['error' => "Could not clear order-$t.json — remove it manually (earlier sections were imported)"];
-                        }
-                        $restored[] = "order-$t.json (cleared)";
-                    }
+                    if ($shape === null) { $shape = json_decode($json); }
+                    if (!isset($shape->$key) || !is_array($shape->$key)) { continue; }
+                    $clear[] = "order-$t.json";
                     continue;
                 }
                 // Same validation as export: a malformed wrapper is corrupt/tampered input and
                 // must not fall through to the clear branch or to a destructive restore.
                 $entries = fv3_validate_order_snapshot($data);
                 if ($entries === null) { continue; }
-                if (saveOrderSnapshot($t, $entries)) {
-                    $restored[] = "order-$t.json";
-                } else {
-                    // Validated entries can only fail on the atomic write itself; the source
-                    // provably had a different snapshot, so drop the stale destination copy
-                    // rather than let it position the imported folders (heal simply disables).
-                    if (file_exists($snapFile) && !@unlink($snapFile)) {
-                        return ['error' => "Could not update order-$t.json — remove it manually (earlier sections were imported)"];
-                    }
-                }
+                $files["order-$t.json"] = json_encode(['fv3_order_version' => 1, 'entries' => $entries], JSON_PRETTY_PRINT);
                 continue;
             }
-            // Folder maps are id => folder — allowlist the id keys so a crafted backup can't
-            // plant a folder id that breaks out of class/onclick attributes at render (XSS).
-            // Alphanumeric ONLY: every generator (folder.view/2/3) strips +/= and never emits
-            // them, and an id containing +/= would break jQuery selectors at render time.
+            // A key outside the id rule could break out of class/onclick markup (XSS): re-key it, keep the folder
             if ($key === 'docker' || $key === 'vm') {
                 $clean = [];
                 foreach ($data as $fid => $folder) {
-                    // (string) not is_string: json_decode gives an all-digit id an int key, which
-                    // the old check dropped — silently discarding that folder and reporting success
-                    $sid = (string)$fid;
-                    if (preg_match('#^[A-Za-z0-9]+$#D', $sid) && is_array($folder)) {
-                        $clean[$sid] = $folder;
-                    }
+                    if (!is_array($folder)) { continue; }
+                    $clean[fv3_is_folder_id($fid) ? (string)$fid : generateId()] = $folder;
                 }
                 // Imported bundles (and folder.view2 exports) can hold one container in two
                 // folders — first folder in bundle order keeps it (issue #62)
                 $data = fv3_dedupe_explicit_members($clean);
             }
-            $filename = $key === 'css_config' ? 'css-config.json' : "$key.json";
-            $path = "$configDir/$filename";
+            // Same validation an interactive save gets, before it is written AND before it is generated
+            if ($key === 'css_config') { $data = fv3_sanitize_css_config($data); $bundle['css_config'] = $data; }
             $flags = JSON_PRETTY_PRINT;
             if (empty($data)) $flags |= JSON_FORCE_OBJECT;
-            fv3_atomic_write($path, json_encode($data, $flags));
-            $restored[] = $filename;
+            $files[$key === 'css_config' ? 'css-config.json' : "$key.json"] = json_encode($data, $flags);
         }
         if (isset($bundle['custom_styles']) && is_array($bundle['custom_styles'])) {
-            $stylesDir = "$configDir/styles";
-            if (!is_dir($stylesDir)) @mkdir($stylesDir, 0770, true);
-            $baseReal = realpath($stylesDir);
             foreach ($bundle['custom_styles'] as $relPath => $content) {
                 if (!is_string($content) || !is_string($relPath)) continue;
                 if (!preg_match('/\.css$/i', $relPath) && basename($relPath) !== '.fv3-source') continue;
-                if (preg_match('/\.\./', $relPath)) continue;
-                $fullPath = "$stylesDir/$relPath";
-                $dir = dirname($fullPath);
-                if (!is_dir($dir)) @mkdir($dir, 0770, true);
-                $dirReal = realpath($dir);
-                if ($dirReal === false || strpos($dirReal, $baseReal) !== 0) continue;
-                fv3_atomic_write($fullPath, $content);
-                $restored[] = "styles/$relPath";
+                if (str_contains($relPath, "\0") || preg_match('/\.\./', $relPath)) continue;
+                $files["styles/$relPath"] = $content;
             }
         }
+        // The generated CSS joins the same swap, so a failed write can't leave it out of step with css-config.json
         if (isset($bundle['css_config']) && is_array($bundle['css_config'])) {
-            generateCssFile($bundle['css_config']);
+            foreach (fv3_render_css_files($bundle['css_config']) as $name => $css) {
+                if ($css !== null) { $files["styles/$name"] = $css; } else { unset($files["styles/$name"]); $clear[] = "styles/$name"; }
+            }
+        }
+        $result = fv3_replace_files($configDir, $files, $clear);
+        if (isset($result['error'])) return $result;
+        $restored = [];
+        foreach ($result['applied'] as $rel => $hadOld) {
+            if (strpos($rel, 'styles/_fv3-generated.') !== 0) $restored[] = isset($files[$rel]) ? $rel : "$rel (cleared)";
         }
         // apply the restored folder layout / autostart mode to the live start order immediately
         syncContainerOrder('docker');
         return ['success' => true, 'restored' => $restored];
+    }
+
+    // Writes $files and removes $clear (paths relative to $baseDir) as one step: staged first, then swapped in with the
+    // old copies set aside, and a failed swap puts them back. styles/ paths are confined to the real styles folder.
+    function fv3_replace_files(string $baseDir, array $files, array $clear): array {
+        $stage = "$baseDir/.fv3-import-" . bin2hex(random_bytes(6));
+        if (!@mkdir($stage, 0770)) return ['error' => 'Could not create a staging folder for the import'];
+        $stageReal = (string)realpath($stage);
+        $discard = function (array $result) use ($stage, $baseDir): array { fv3_remove_tree($stage, $baseDir); return $result; };
+        $baseReal = (string)realpath($baseDir);
+        // Where a path may land: styles/ paths in the real styles folder, which must itself resolve inside $baseDir
+        $baseFor = function (string $rel) use ($baseDir, $baseReal): string {
+            if (strpos($rel, 'styles/') !== 0) return $baseReal;
+            return fv3_path_within("$baseDir/styles", $baseReal) ? (string)realpath("$baseDir/styles") : '';
+        };
+        foreach ($files as $rel => $content) {
+            if (!fv3_mkdir_within(dirname("$stage/$rel"), $stageReal) || !fv3_atomic_write("$stage/$rel", $content)) {
+                return $discard(['error' => "Could not write $rel — nothing was imported"]);
+            }
+        }
+        $applied = [];  // rel => true when its previous copy now sits in $stage/.old
+        $madeDirs = []; // folders the swap created, deepest first, removed again on rollback
+        $move = function (string $rel, bool $hasNew) use ($baseDir, $stage, $stageReal, $baseFor, &$applied, &$madeDirs): bool {
+            $live = "$baseDir/$rel";
+            $old = "$stage/.old/$rel";
+            $made = [];
+            for ($d = dirname($live); $d !== $baseDir && !file_exists($d) && !is_link($d); $d = dirname($d)) { $made[] = $d; }
+            if (strpos($rel, 'styles/') === 0 && !is_dir("$baseDir/styles")) @mkdir("$baseDir/styles", 0770, true);
+            $ok = fv3_mkdir_within(dirname($live), $baseFor($rel));
+            $madeDirs = array_merge($made, $madeDirs);
+            if (!$ok) return false;
+            $exists = file_exists($live) || is_link($live);
+            if ($exists && !(fv3_mkdir_within(dirname($old), $stageReal) && @rename($live, $old))) return false;
+            if ($hasNew && !@rename("$stage/$rel", $live)) {
+                // An old copy that can't go straight back is left to the rollback, which retries and reports it
+                if ($exists && !@rename($old, $live)) $applied[$rel] = true;
+                return false;
+            }
+            $applied[$rel] = $exists;
+            return true;
+        };
+        $rollback = function (string $failed) use ($baseDir, $baseReal, $stage, $discard, $baseFor, &$applied, &$madeDirs): array {
+            $stuck = [];
+            foreach (array_reverse(array_keys($applied)) as $rel) {
+                $live = "$baseDir/$rel";
+                $gone = !$applied[$rel] && !file_exists($live) && !is_link($live);
+                // Re-confined first; a previous copy goes back over the new file, a file that had none is deleted
+                $undone = $gone || (fv3_path_within(dirname($live), $baseFor($rel)) && ($applied[$rel] ? @rename("$stage/.old/$rel", $live) : @unlink($live)));
+                if (!$undone) $stuck[] = $rel;
+            }
+            foreach ($madeDirs as $d) {
+                if (fv3_path_within($d, $baseReal)) @rmdir($d);
+                // A folder still standing is named too, so "nothing was imported" is never claimed over a leftover
+                if (is_dir($d)) $stuck[] = substr($d, strlen($baseDir) + 1) . '/';
+            }
+            if ($stuck) {
+                return ['error' => "Could not replace $failed, and could not undo " . implode(', ', $stuck)
+                    . '; previous copies, where there were any, are in ' . basename($stage) . '/.old'];
+            }
+            return $discard(['error' => "Could not replace $failed — nothing was imported"]);
+        };
+        foreach (array_keys($files) as $rel) {
+            if (!$move($rel, true)) return $rollback($rel);
+        }
+        foreach ($clear as $rel) {
+            if ((file_exists("$baseDir/$rel") || is_link("$baseDir/$rel")) && !$move($rel, false)) return $rollback($rel);
+        }
+        return $discard(['applied' => $applied]);
     }
 
     function readCssConfig() : string {
@@ -1418,11 +1332,9 @@
         ];
     }
 
-    function updateCssConfig(string $json) : void {
-        global $configDir;
-        if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
-        $config = json_decode($json, true);
-        if ($config === null) { http_response_code(400); echo 'Invalid JSON'; exit; }
+    // Allowlisted keys, stripped custom CSS, scalar variable values: the CSS endpoint and a restore
+    // must not disagree about what is storable
+    function fv3_sanitize_css_config(array $config) : array {
         $allowedKeys = ['preset', 'global', 'dashboard', 'docker', 'vm', 'custom_css', 'custom_css_dashboard', 'custom_css_docker', 'custom_css_vm', 'toggle_style', 'custom_presets', 'user_notes', 'page_presets', 'page_values'];
         foreach (array_keys($config) as $k) {
             if (!in_array($k, $allowedKeys, true)) { unset($config[$k]); }
@@ -1442,33 +1354,47 @@
                 }
             }
         }
-        // Generate CSS file BEFORE object cast (generateCssFile expects arrays)
-        generateCssFile($config);
+        return $config;
+    }
+
+    function updateCssConfig(string $json) : void {
+        global $configDir;
+        if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
+        // Decoded plain first: as an assoc array {} and [] are both [], and a top-level array is not a config
+        $shape = json_decode($json);
+        if (json_last_error() !== JSON_ERROR_NONE || !($shape instanceof stdClass)) { http_response_code(400); echo 'Invalid JSON'; exit; }
+        $config = json_decode($json, true);
+        $config = fv3_sanitize_css_config($config);
+        // Rendered from the array form, before the object cast below
+        $files = [];
+        $clear = [];
+        foreach (fv3_render_css_files($config) as $name => $css) {
+            if ($css !== null) { $files["styles/$name"] = $css; } else { $clear[] = "styles/$name"; }
+        }
         // Ensure map keys are always serialized as JSON objects (PHP encodes empty arrays as [])
         foreach (['global', 'dashboard', 'docker', 'vm', 'page_presets', 'page_values'] as $mapKey) {
             if (isset($config[$mapKey]) && is_array($config[$mapKey])) {
                 $config[$mapKey] = (object)$config[$mapKey];
             }
         }
-        $path = "$configDir/css-config.json";
+        // An emptied config must still land as {} — PHP encodes an empty array as []
+        $files['css-config.json'] = json_encode($config ?: new stdClass(), JSON_PRETTY_PRINT);
+        // Staged together and committed by the swap importAll uses; where a rollback itself fails, the
+        // error names what it could not undo rather than leaving the CSS ahead of css-config.json silently
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($config, JSON_PRETTY_PRINT));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
+        $result = fv3_replace_files($configDir, $files, $clear);
+        if (isset($result['error'])) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => $result['error']]);
+            exit;
+        }
     }
 
-    function generateCssFile(array $config) : void {
-        global $configDir;
+    // File names under styles/ => generated CSS, or null where that file must not exist
+    function fv3_render_css_files(array $config) : array {
         $defaults = readCssDefaults();
-        $stylesDir = "$configDir/styles";
-        if (!is_dir($stylesDir)) { @mkdir($stylesDir, 0770, true); }
+        $out = [];
 
         $sanitize = function($varName, $value) use ($defaults) {
             if (!isset($defaults[$varName])) return null;
@@ -1480,8 +1406,7 @@
             return "    --{$safeVar}: {$safeVal};\n";
         };
 
-        // Sanitize custom CSS at the write sink so ALL callers are covered
-        // (updateCssConfig strips too, but importAll writes generated CSS directly).
+        // Sanitized here so both writers are covered (updateCssConfig strips too)
         $sanitizeCustom = function($css) {
             $css = preg_replace('/@import\b/i', '', $css);
             $css = preg_replace('/expression\s*\(/i', '', $css);
@@ -1504,12 +1429,7 @@
             $globalCss .= "\n" . $sanitizeCustom($config['custom_css']) . "\n";
             $hasGlobal = true;
         }
-        $outPath = "$stylesDir/_fv3-generated.docker-vm-dashboard.css";
-        if ($hasGlobal) {
-            fv3_atomic_write($outPath, $globalCss);
-        } else {
-            @unlink($outPath);
-        }
+        $out['_fv3-generated.docker-vm-dashboard.css'] = $hasGlobal ? $globalCss : null;
 
         // Page-scoped variables + custom CSS → per-page files
         foreach (['dashboard', 'docker', 'vm'] as $scope) {
@@ -1535,17 +1455,18 @@
                 $hasScope = true;
             }
 
-            $scopePath = "$stylesDir/_fv3-generated.{$scope}.css";
-            if ($hasScope) {
-                fv3_atomic_write($scopePath, $scopeCss);
-            } else {
-                @unlink($scopePath);
-            }
+            $out["_fv3-generated.{$scope}.css"] = $hasScope ? $scopeCss : null;
         }
+        return $out;
     }
 
     function generateId(int $length = 20) : string {
         return substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes((int)ceil($length * 3 / 4)))), 0, $length);
+    }
+
+    // Ids safe to write and to render into class/selector/onclick markup; int = all-digit JSON key
+    function fv3_is_folder_id($id) : bool {
+        return (is_string($id) || is_int($id)) && preg_match('/^[A-Za-z0-9_-]+$/D', (string)$id) === 1;
     }
 
     function createFile(string $type): void {
@@ -1553,6 +1474,17 @@
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $path = "$configDir/$type.json";
         fv3_atomic_write($path, '{}');
+    }
+
+    // Mirrors DockerContainers.php:82 — ':???' net-ref wins, then Unraid's per-container cache.
+    // Only 'updated' comes from that cache; WebUi/Shell stay live here (the cache holds unresolved [IP]/[PORT:n]).
+    function fv3_container_update_status(array $ct, string $name, array $cache, DockerUpdate $DockerUpdate): ?bool {
+        if (substr($ct['HostConfig']['NetworkMode'] ?? '', -4) === ':???') return false;
+        $entry = $cache[$name] ?? null;
+        if (is_array($entry) && array_key_exists('updated', $entry)) {
+            return $entry['updated'] === 'true' ? true : ($entry['updated'] === 'false' ? false : null);
+        }
+        return $DockerUpdate->getUpdateStatus($ct['info']['Config']['Image']);
     }
 
     function readInfo(string $type): array {
@@ -1572,19 +1504,20 @@
             $cts = $dockerClient->getDockerJSON("/containers/json?all=1");
             if (!is_array($cts)) $cts = [];
             $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
-            $autoStartLines = @file($autoStartFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            // Fail closed: [] here would answer 200 with every container reported as not set to autostart
+            $autoStartLines = fv3_read_autostart_lines($autoStartFile);
+            if ($autoStartLines === null) throw new \RuntimeException("autostart file $autoStartFile is unreadable");
             $autoStart = array_map('var_split', $autoStartLines);
+            $dockerInfoCache = DockerUtil::loadJSON($dockerManPaths['webui-info'] ?? "/usr/local/emhttp/state/plugins/dynamix.docker.manager/docker.json");
+            if (!is_array($dockerInfoCache)) $dockerInfoCache = [];
 
-            // Prune stale autostart entries only on a complete, fully-named container list.
-            // A failed/partial Docker read (empty $cts, or any entry without a name) must NOT prune, or a transient blip wipes/curtails the file.
+            // Only curate the file while FV3 actually manages autostart order
             $ctNames = array_map(function($c) { return ltrim($c['Names'][0] ?? '', '/'); }, $cts);
-            if (readAutostartConfig()['mode'] !== 'off' && !empty($ctNames) && !in_array('', $ctNames, true)) {
-                $cleanedLines = array_filter($autoStartLines, function($line) use ($ctNames) {
-                    return in_array(explode(' ', $line, 2)[0], $ctNames, true);
-                });
+            if (readAutostartConfig()['mode'] !== 'off') {
+                $cleanedLines = fv3_prune_stale_autostart($autoStartLines, $ctNames,
+                    !empty($ctNames) && !in_array('', $ctNames, true));
                 if (count($cleanedLines) < count($autoStartLines)) {
                     file_put_contents($autoStartFile, implode("\n", $cleanedLines) . "\n", LOCK_EX);
-                    fv3_debug_log("readInfo: removed " . (count($autoStartLines) - count($cleanedLines)) . " stale autostart entries");
                     $autoStart = array_map('var_split', $cleanedLines);
                 }
             }
@@ -1624,7 +1557,7 @@
 
                 $ct['info']['State']['Autostart'] = in_array($containerName, $autoStart);
                 $ct['info']['Config']['Image'] = DockerUtil::ensureImageTag($ct['info']['Config']['Image']);
-                $ct['info']['State']['Updated'] = $DockerUpdate->getUpdateStatus($ct['info']['Config']['Image']);
+                $ct['info']['State']['Updated'] = fv3_container_update_status($ct, $containerName, $dockerInfoCache, $DockerUpdate);
                 $ct['info']['State']['manager'] = $ct['Labels']['net.unraid.docker.managed'] ?? false;
                 $ct['shortId'] = substr(str_replace('sha256:', '', $ct['Id']), 0, 12);
                 $ct['shortImageId'] = substr(str_replace('sha256:', '', $ct['ImageID']), 0, 12);

@@ -68,7 +68,7 @@ const createFolders = async () => {
                     foldersDone[id] = folders[id];
                 } catch (e) {
                     console.error(`[FV3] VM: folder "${folders[id].name}" failed to render:`, e);
-                    fv3ShowBanner(`FolderView3: folder "${folders[id].name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+                    fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', folders[id].name), 'error');
                 }
                 delete folders[id];
             }
@@ -82,7 +82,7 @@ const createFolders = async () => {
             foldersDone[id] = folders[id];
         } catch (e) {
             console.error(`[FV3] VM: folder "${value.name}" failed to render:`, e);
-            fv3ShowBanner(`FolderView3: folder "${value.name}" failed to render — check its regex/settings (browser console has details).`, 'error');
+            fv3ShowBanner(fv3I18nOr('folder-render-failed', 'FolderView3: folder "$1" failed to render — check its regex/settings (browser console has details).', value.name), 'error');
         }
         delete folders[id];
     }
@@ -194,7 +194,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
     const totalCols = document.querySelector("#kvm_table > thead > tr").childElementCount;
     const colspan = totalCols - 2;
-    const fld = `<tr parent-id="${id}" class="sortable folder-id-${id} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="vm-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${id}" onclick='addVMFolderContext("${id}")' class="hand folder-hand"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><a class="folder-appname" href="#" onclick='editFolder("${id}")'>${escapeHtml(folder.name)}</a><a class="folder-appname-id">folder-${id}</a><br><i id="load-folder-${id}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${id} folder-dropdown" onclick='dropDownButton("${id}")'><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="folder-autostart"><input class="autostart" type="checkbox" id="folder-${id}-auto" style="display:none"></td></tr>`;
+    const fld = `<tr parent-id="${escapeHtml(id)}" class="sortable folder-id-${escapeHtml(id)} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="vm-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${escapeHtml(id)}" onclick='addVMFolderContext(${fv3JsArg(id)})' class="hand folder-hand"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><a class="folder-appname" href="#" onclick='editFolder(${fv3JsArg(id)})'>${escapeHtml(folder.name)}</a><a class="folder-appname-id">folder-${escapeHtml(id)}</a><br><i id="load-folder-${escapeHtml(id)}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${escapeHtml(id)} folder-dropdown" onclick='dropDownButton(${fv3JsArg(id)})'><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="folder-autostart"><input class="autostart" type="checkbox" id="folder-${escapeHtml(id)}-auto" style="display:none"></td></tr>`;
 
     if (position === 0) {
         $('#kvm_list > tr.sortable').eq(position).before($(fld));
@@ -348,7 +348,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
                     if (!sel.length) {
                         sel = element;
                     }
-                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('log', '${escapeHtml(container)}', '${escapeHtml(ct.logs)}')"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
+                    sel.append($(`<span class="folder-element-custom-btn folder-element-logs"><a href="#" onclick="event.preventDefault(); event.stopPropagation(); openTerminal('log', ${fv3JsArg(container)}, ${fv3JsArg(ct.logs)})"><i class="fa fa-bars" aria-hidden="true"></i></a></span>`));
                 }
 
                 const isVmRunning = ct.state !== 'shutoff';
@@ -456,7 +456,8 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 // Autostart toggle handler: syncs each VM's autostart to the folder's new state.
 const folderAutostart = (el) => {
     const status = el.target.checked;
-    const id = el.target.id.split('-')[1];
+    // Element id is folder-<id>-auto and ids may contain '-', so strip the ends rather than split
+    const id = el.target.id.slice('folder-'.length, -'-auto'.length);
     const containers = $(`tr.folder-${id}-element`);
     for (const container of containers) {
         const el = $(container).children().last();
@@ -518,7 +519,7 @@ const actionFolder = async (id, action) => {
     }
 
     const settled = await Promise.allSettled(proms);
-    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || 'Request failed' });
+    proms = settled.map(s => s.status === 'fulfilled' ? s.value : { success: false, text: (s.reason && (s.reason.statusText || s.reason.message)) || fv3I18nOr('request-failed', 'Request failed') });
     errors = proms.filter(e => e.success !== true);
     const errorMessages = errors.map(e => escapeHtml(e.text || JSON.stringify(e)));
 
@@ -528,7 +529,7 @@ const actionFolder = async (id, action) => {
             text:errorMessages.join('<br>'),
             type:'error',
             html:true,
-            confirmButtonText:'Ok'
+            confirmButtonText: fv3I18nOr('ok', 'Ok')
         }, loadlist);
     }
 
@@ -764,10 +765,10 @@ window.loadlist = (x) => {
         fv3FolderReqPending = true;
         loadedFolder = false;
         folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner('Could not load folder data. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner('Could not load VM details. Try refreshing the page.', 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error')).promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise()
         ];
         Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
     }

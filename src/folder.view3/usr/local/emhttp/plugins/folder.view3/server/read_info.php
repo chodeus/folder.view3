@@ -4,15 +4,23 @@
     header('Content-Type: application/json');
     $type = fv3_validate_type($_GET['type'] ?? '');
 
-    $cacheTtl = 5;
-    $cacheFile = "/tmp/fv3_read_info_{$type}.json";
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTtl) {
-        readfile($cacheFile);
+    // Deliberately uncached: a cache must mirror every input readInfo() reads or it serves stale data
+    // Invalid UTF-8 in one container name or label is substituted so the rest of the page still loads
+    try {
+        $json = json_encode(readInfo($type), JSON_INVALID_UTF8_SUBSTITUTE);
+    } catch (\Throwable $e) {
+        // A 200 carrying a partial map would read as "nothing is set to autostart"
+        fv3_debug_log("read_info: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => 'Could not read the container autostart state']);
         exit;
     }
-
-    $json = json_encode(readInfo($type));
-    @file_put_contents($cacheFile, $json, LOCK_EX);
-    @chmod($cacheFile, 0600);
+    if ($json === false) {
+        // '{}' here is indistinguishable from "this server has no containers"
+        fv3_debug_log("read_info: json_encode failed for type $type");
+        http_response_code(500);
+        echo json_encode(['error' => 'Could not encode the container list']);
+        exit;
+    }
     echo $json;
 ?>

@@ -299,15 +299,32 @@ window.fv3Incognito = false;
     window.fv3IncognitoPage = 'other';
     var nameMap = {};
     var nameCounter = { container: 0, vm: 0, folder: 0 };
+    var anonLabels = { folder: ['incognito-folder', 'Folder $1'], vm: ['incognito-vm', 'VM $1'], container: ['incognito-container', 'Container $1'] };
 
     function getAnon(realName, type) {
         if (!realName || !realName.trim()) return realName;
         var key = type + ':' + realName;
         if (nameMap[key]) return nameMap[key];
         nameCounter[type] = (nameCounter[type] || 0) + 1;
-        var label = type === 'folder' ? 'Folder' : type === 'vm' ? 'VM' : 'Container';
-        nameMap[key] = label + ' ' + nameCounter[type];
+        var label = anonLabels[type] || anonLabels.container;
+        nameMap[key] = fv3I18nOr(label[0], label[1], nameCounter[type]);
         return nameMap[key];
+    }
+
+    function hiddenLabel() {
+        return fv3I18nOr('incognito-hidden', '[hidden]');
+    }
+
+    // "<publisher>/<anon name>" with the anon name in English or in the pack's words
+    function publisherPrefixRe() {
+        var alts = [];
+        Object.keys(anonLabels).forEach(function(type) {
+            var label = anonLabels[type];
+            [label[1].replace('$1', '\u0001'), fv3I18nOr(label[0], label[1], '\u0001')].forEach(function(l) {
+                alts.push(l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace('\u0001', '\\d+'));
+            });
+        });
+        return new RegExp('([a-z0-9][a-z0-9._-]*)\\/(' + alts.join('|') + ')', 'g');
     }
 
     function scrubText(text, knownNames, type) {
@@ -327,11 +344,13 @@ window.fv3Incognito = false;
     var domainsDirRe = /(\/domains\/)([^\/]+)(\/)/g;
     var stdIface = /^(eth|enp|ens|eno|wl|wlan|br|docker|veth|virbr|vnet|lo|bond|tap|tun)/i;
     var appdataRe = /(\/appdata\/)([^\/\s]+)/g;
-    var publisherPrefixRe = /([a-z0-9][a-z0-9._-]*)\/(Container \d+|VM \d+|Folder \d+)/g;
     var safeTagRe = /^(latest|stable|lts|release|edge|beta|dev|nightly|rc\d*)$/i;
     var statusTextRe = /^(up-to-date|update ready|force update|checking|not available|install|orphan image|update|rebuild ready)$/i;
 
     function scrubTextNodes(el, knownNames, type) {
+        var hidden = hiddenLabel();
+        var hiddenTpl = hidden.replace(/\$/g, '$$$$');
+        var prefixRe = publisherPrefixRe();
         var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
         var textNodes = [];
         var node;
@@ -347,13 +366,13 @@ window.fv3Incognito = false;
                 if (/^fe80/i.test(match) || /^f[cd]/i.test(match)) return match;
                 return 'xxxx:xxxx::xxxx';
             });
-            changed = changed.replace(diskFileRe, '[hidden].$2');
-            changed = changed.replace(domainsDirRe, '$1[hidden]$3');
-            changed = changed.replace(appdataRe, '$1[hidden]');
-            changed = changed.replace(publisherPrefixRe, '[hidden]/$2');
+            changed = changed.replace(diskFileRe, hiddenTpl + '.$2');
+            changed = changed.replace(domainsDirRe, '$1' + hiddenTpl + '$3');
+            changed = changed.replace(appdataRe, '$1' + hiddenTpl);
+            changed = changed.replace(prefixRe, hiddenTpl + '/$2');
             changed = changed.replace(/([a-zA-Z][a-zA-Z0-9_.-]*)(\s*\(xx:xx:xx:xx:xx:xx\))/, function(m, name, rest) {
                 if (stdIface.test(name)) return m;
-                return '[hidden]' + rest;
+                return hidden + rest;
             });
             if (changed !== text) {
                 if (!tn._fv3Original) tn._fv3Original = text;
@@ -422,25 +441,29 @@ window.fv3Incognito = false;
 
         document.querySelectorAll('.Docker_Image, .docker-image, [class*="image-name"]').forEach(function(el) {
             el.setAttribute('data-fv3-real', el.textContent);
-            el.textContent = 'image/hidden';
+            el.textContent = fv3I18nOr('incognito-image-hidden', 'image/hidden');
         });
 
+        // English "By:" and the pack's word for it, as the popup renders it
+        var byLabels = ['By:', fv3I18nOr('by', 'By') + ':'];
         var byWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
         var byNode;
         while (byNode = byWalker.nextNode()) {
-            var byIdx = byNode.nodeValue.indexOf('By:');
-            if (byIdx === -1) continue;
+            var byText = byNode.nodeValue;
+            var byLabel = byLabels.find(function(l) { return byText.indexOf(l) !== -1; });
+            if (!byLabel) continue;
+            var byIdx = byText.indexOf(byLabel);
             var nextSib = byNode.nextSibling;
             if (nextSib && nextSib.nodeType === 1 && nextSib.tagName === 'A') {
                 nextSib.setAttribute('data-fv3-real', nextSib.textContent);
                 nextSib.setAttribute('data-fv3-real-href', nextSib.getAttribute('href') || '');
-                nextSib.textContent = 'registry/image';
+                nextSib.textContent = fv3I18nOr('incognito-registry-image', 'registry/image');
                 nextSib.setAttribute('href', '#');
             } else {
-                var afterBy = byNode.nodeValue.substring(byIdx + 3).trim();
+                var afterBy = byNode.nodeValue.substring(byIdx + byLabel.length).trim();
                 if (afterBy) {
                     byNode._fv3Original = byNode.nodeValue;
-                    byNode.nodeValue = byNode.nodeValue.substring(0, byIdx + 4) + 'registry/image';
+                    byNode.nodeValue = byNode.nodeValue.substring(0, byIdx + byLabel.length + 1) + fv3I18nOr('incognito-registry-image', 'registry/image');
                     if (byNode.parentElement) byNode.parentElement.setAttribute('data-fv3-scrubbed', '');
                 }
             }
@@ -502,7 +525,7 @@ window.fv3Incognito = false;
                 if (prevSib && prevSib.nodeType === 1 && prevSib.tagName === 'I') continue;
                 if (/[a-zA-Z]/.test(tag) && /\d/.test(tag)) {
                     tn._fv3Original = tn.nodeValue;
-                    tn.nodeValue = tn.nodeValue.replace(tag, '[hidden]');
+                    tn.nodeValue = tn.nodeValue.replace(tag, hiddenLabel);
                     cell.setAttribute('data-fv3-scrubbed', 'true');
                 }
             }
@@ -541,7 +564,7 @@ window.fv3Incognito = false;
             if (el.hasAttribute('data-fv3-real')) return;
             el.setAttribute('data-fv3-real', el.textContent);
             el.setAttribute('data-fv3-real-href', el.getAttribute('href') || '');
-            el.textContent = 'registry/image';
+            el.textContent = fv3I18nOr('incognito-registry-image', 'registry/image');
             el.setAttribute('href', '#');
         });
 
@@ -618,7 +641,8 @@ window.fv3Incognito = false;
         var btn = document.createElement('button');
         btn.id = 'fv3-incognito-btn';
         btn.className = 'fv3-incognito-btn' + (fv3Incognito ? ' fv3-incognito-active' : '');
-        btn.title = 'Incognito Mode';
+        btn.title = fv3I18nOr('incognito-mode', 'Incognito Mode');
+        btn.setAttribute('data-i18n', '[title]incognito-mode');
         btn.innerHTML = '<i class="fa fa-eye-slash"></i>';
         btn.addEventListener('click', fv3IncognitoToggle);
         return btn;
@@ -688,7 +712,7 @@ window.fv3ShowBanner = (message, level) => {
 };
 
 window.fv3EditFolder = (type, basePath, id) => {
-    location.href = basePath + '?type=' + type + '&id=' + id;
+    location.href = basePath + '?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id);
 };
 
 window.fv3CreateFolderBtn = (type, basePath) => {
@@ -709,7 +733,13 @@ window.fv3RmFolder = (type, globalFolders, loadlist, id) => {
     async (c) => {
         if (!c) { setTimeout(loadlist, 0); return; }
         $('div.spinner.fixed').show('slow');
-        await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
+        try {
+            await $.post('/plugins/folder.view3/server/delete.php', { type: type, id: id }).promise();
+        } catch (e) {
+            $('div.spinner.fixed').hide('slow');
+            fv3ShowBanner(fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', globalFolders[id].name || id, fv3FailReason(e)));
+            return;
+        }
         setTimeout(loadlist, 500);
     });
 };
@@ -748,6 +778,11 @@ window.fv3DropDownButton = (eventPrefix, globalFolders, id, postCallback) => {
     folderEvents.dispatchEvent(new CustomEvent(eventPrefix + '-post-folder-expansion', {detail: { id }}));
     if (postCallback) postCallback();
 };
+
+// One home for "this container has an update to apply" — docker.js, dashboard.js and the
+// advanced preview all gate on it. Only dockerman containers can be updated from the UI.
+window.fv3HasUpdate = (ct) => !!(ct && ct.info && ct.info.State)
+    && ct.info.State.Updated === false && ct.info.State.manager === 'dockerman';
 
 // Allowlist sanitizer: the debug JSON only needs the fields the renderer actually
 // consumes. Dumping the full Docker inspect blob leaked host volume paths (Binds/Mounts),
@@ -1324,12 +1359,12 @@ window.fv3RunUserScript = async (act, prom) => {
         const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
         prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
     }
-    } catch (e) { fv3ShowBanner('Could not run the user script — check the User Scripts plugin is installed and the script exists.'); }
+    } catch (e) { fv3ShowBanner(fv3I18nOr('user-script-failed', 'Could not run the user script — check the User Scripts plugin is installed and the script exists.')); }
 };
 
 // Row separators
 window.fv3UpdateRowSeparators = (folderMap, folderId) => {
-    const ids = folderId ? [folderId] : Object.keys(folderMap);
+    const ids = folderId !== undefined ? [folderId] : Object.keys(folderMap);
     ids.forEach(id => {
         const folder = folderMap[id];
         if (!folder || !folder.settings.preview_row_separator || folder.settings.preview_overflow !== 1) return;
@@ -1400,13 +1435,14 @@ window.fv3ApiAvailable = null;
 window.fv3CpuCores = null;
 window.fv3UnraidTheme = null;
 
-window.fv3DetectApi = async () => {
+window.fv3DetectApi = async (signal) => {
     if (fv3ApiAvailable !== null) return fv3ApiAvailable;
     try {
         const resp = await fetch('/graphql', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
             credentials: 'same-origin',
+            signal: signal,
             body: JSON.stringify({ query: '{ info { os { release } cpu { cores } } }' })
         });
         if (resp.ok) {
@@ -1425,17 +1461,20 @@ window.fv3DetectApi = async () => {
             fv3ApiAvailable = false;
         }
     } catch (e) {
+        // an aborted probe proves nothing — leave fv3ApiAvailable unset so the next call retries
+        if (e && e.name === 'AbortError') return null;
         fv3ApiAvailable = false;
     }
     if (!fv3ApiAvailable) fv3Debug('API', 'GraphQL not available, using PHP fallback');
     return fv3ApiAvailable;
 };
 
-window.fv3GraphQL = async (query, variables) => {
+window.fv3GraphQL = async (query, variables, signal) => {
     const resp = await fetch('/graphql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
         credentials: 'same-origin',
+        signal: signal,
         body: JSON.stringify(variables ? { query: query, variables: variables } : { query: query })
     });
     if (!resp.ok) throw new Error('GraphQL HTTP ' + resp.status);
@@ -1498,7 +1537,7 @@ window.fv3ContainerAction = async (type, id, action) => {
 window.fv3DockerAction = (action, containerId, fullId) => {
     var gqlAction = fv3DockerActionMap[action];
     var phpFallback = () => $.post(window.eventURL || '/update.htm', { action: action, container: containerId }, null, 'json').promise()
-        .fail(() => fv3ShowBanner('Could not ' + action + ' container. Check your server connection.'));
+        .fail(() => fv3ShowBanner(fv3I18nOr('container-action-failed', 'The container action "$1" failed. Check your server connection.', action)));
     if (fv3ApiAvailable && gqlAction && fullId) {
         return fv3GraphQL('mutation($id: PrefixedID!) { docker { ' + gqlAction + '(id: $id) { id } } }', { id: fullId })
             .then(() => { fv3Debug('API', 'Docker', gqlAction, containerId, 'OK'); return { success: true }; })
@@ -1513,7 +1552,7 @@ window.fv3DockerAction = (action, containerId, fullId) => {
 window.fv3VmAction = (action, uuid) => {
     var gqlAction = fv3VmActionMap[action];
     var phpFallback = () => $.post('/plugins/dynamix.vm.manager/include/VMajax.php', { action: action, uuid: uuid }, null, 'json').promise()
-        .fail(() => fv3ShowBanner('Could not ' + action.replace('domain-', '') + ' VM. Check your server connection.'));
+        .fail(() => fv3ShowBanner(fv3I18nOr('vm-action-failed', 'The VM action "$1" failed. Check your server connection.', action.replace('domain-', ''))));
     if (fv3ApiAvailable && gqlAction) {
         return fv3GraphQL('mutation($id: PrefixedID!) { vm { ' + gqlAction + '(id: $id) } }', { id: uuid })
             .then(() => { fv3Debug('API', 'VM', gqlAction, uuid, 'OK'); return { success: true }; })
@@ -1525,22 +1564,58 @@ window.fv3VmAction = (action, uuid) => {
     return phpFallback();
 };
 
-window.fv3CheckUpdates = async () => {
-    if (!await fv3DetectApi()) return {};
-    try {
-        var data = await fv3GraphQL('{ docker { containerUpdateStatuses { name updateStatus } } }');
+// Neither fv3DetectApi nor fv3GraphQL has a timeout, so a hung /graphql would stall the
+// render this feeds. Cap it and fall through to the PHP value instead.
+window.fv3CheckUpdates = async (timeoutMs = 4000) => {
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer;
+    var bail = new Promise(resolve => { timer = setTimeout(() => { if (ctl) ctl.abort(); resolve('__fv3_timeout'); }, timeoutMs); });
+    var work = (async () => {
+        if (!await fv3DetectApi(ctl && ctl.signal)) return {};
+        var data = await fv3GraphQL('{ docker { containerUpdateStatuses { name updateStatus } } }', undefined, ctl && ctl.signal);
         var statuses = data && data.docker && data.docker.containerUpdateStatuses;
         if (!statuses) return {};
         var result = {};
         for (var i = 0; i < statuses.length; i++) {
-            result[statuses[i].name] = statuses[i].updateStatus;
+            // API returns docker-style names ('/plex') — strip the slash to match FV3 names
+            result[(statuses[i].name || '').replace(/^\//, '')] = statuses[i].updateStatus;
         }
         fv3Debug('API', 'Update check complete:', Object.keys(result).length, 'containers');
         return result;
+    })();
+    // the loser of the race is still live — swallow its result so a late reject isn't unhandled
+    work.catch(() => {});
+    try {
+        var won = await Promise.race([work, bail]);
+        if (won === '__fv3_timeout') { fv3DebugWarn('API', 'Update check timed out after', timeoutMs, 'ms — using PHP status'); return {}; }
+        return won;
     } catch (e) {
         fv3Debug('API', 'Update check failed:', e.message);
         return {};
+    } finally {
+        clearTimeout(timer);
     }
+};
+
+// API is authoritative where it has an opinion; UNKNOWN/absent leaves the PHP value
+// (lib.php fv3_container_update_status) intact so non-API installs keep working.
+window.fv3ApplyUpdateStatuses = (containersInfo, statuses) => {
+    if (!containersInfo || !statuses || !Object.keys(statuses).length) return 0;
+    var map = { UPDATE_AVAILABLE: false, REBUILD_READY: false, UP_TO_DATE: true };
+    var applied = 0;
+    Object.keys(containersInfo).forEach(name => {
+        var st = statuses[name];
+        if (!Object.prototype.hasOwnProperty.call(map, st)) return;
+        var ct = containersInfo[name];
+        if (!ct || !ct.info || !ct.info.State) return;
+        if (ct.info.State.Updated !== map[st]) {
+            fv3Debug('API', 'Update status override:', name, ct.info.State.Updated, '->', map[st], `(${st})`);
+        }
+        ct.info.State.Updated = map[st];
+        applied++;
+    });
+    fv3Debug('API', 'Applied API update status to', applied, 'containers');
+    return applied;
 };
 
 // Organizer sync

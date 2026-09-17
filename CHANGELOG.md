@@ -1,39 +1,54 @@
-<?xml version="1.0" standalone="yes"?>
-<!DOCTYPE PLUGIN [
-<!ENTITY name "folder.view3">
-<!ENTITY author "chodeus">
-<!ENTITY github "&author;/&name;">
-<!ENTITY launch "Settings/FolderView3">
-<!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.08.28">
-<!ENTITY md5 "8c16fcd81c312f8d6231c167dc398433">
-<!ENTITY pkgname "&name;-&version;-x86_64-1">
-]>
-
-<PLUGIN name="&name;" author="&author;" version="&version;" launch="&launch;" pluginURL="&pluginURL;" icon="folder-open-o" support="https://forums.unraid.net/topic/197223-plugin-folderview3/" min="7.0.0">
-    <CHANGES>
+# Changelog
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-###2026.08.28
+## 2026.09.16.1 (beta)
+
+- A failed backup import is rolled back instead of leaving a half-restored config
+- An unreadable autostart file is left alone, not rewritten as empty
+- A malformed saved order no longer clears your existing order
+- Theme bundles can only write inside the plugin's styles folder
+- The Logs button works for VM names with an apostrophe
+- The Docker tab keeps live stats when the CPU count request fails
+- The Add Folder button is added once on the Docker and VM tabs
+- Rounded and pill toggles no longer paint a dark track on light themes
+- The CSS Tool's notes and number fields show keyboard focus
+- Remaining English UI text now follows your language setting
+
+## 2026.09.15.1 (beta)
+
+- Containers that share an image tag no longer copy each other's update state
+- A degraded Docker read can no longer trim your autostart file
+- A folder that refused to delete can now be removed, and a failed delete no longer freezes the page
+- Folder ids are validated and escaped wherever they are rendered
+- A failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused rather than half-installed
+- A theme declined at the external-URL warning is now removed
+- Themes marked disabled are recognised whatever the capitalisation
+- Backup restores and CSS settings now report a failed write
+- The settings page and the CSS Tool's theme labels are translated
+
+## 2026.08.28
+
 - Containers assigned by a `folder.view3` Docker label (including Compose services) no longer override a folder you picked explicitly, and can't end up in two folders at once
 - The folder editor and Autostart tab now show which folder a container really belongs to, including label and regex matches
 - Folder and container/VM order is now written into backups, so importing a backup restores your layout
 - Corrupt config files now fail safe instead of silently wiping folders or settings
 - Uninstall now also clears leftover Docker/VM sort-order entries, including ones left by folder.view and folder.view2
 
-###2026.08.14
+## 2026.08.14
+
 - Uninstalling now removes the plugin cleanly after previous version improvements
 - Import Everything now accepts a folder.view2 backup file instead of rejecting it as invalid
 - Container autostart order fixes
 
-###2026.08.01
+## 2026.08.01
+
 - Full integration of a custom container autostart order. Defined in Plugin settings, now giving the option to override folder position order on the Docker page
 - Improved Unraid API integration with native Docker organizer
 - Blocked 'root' from being used as a folder name as this is used by Unraid's Docker organizer
 
-###2026.07.17
+## 2026.07.17
+
 - New "Open WebUI" preview context — clicking a container's icon (or Dashboard tile) opens its WebUI in a new tab (#41)
 - Containers explicitly assigned to a folder can no longer be captured by another folder's regex (#46)
 - A "^" regex folder now works as a catch-all, collecting containers not assigned to or matched by any other folder
@@ -44,20 +59,24 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - A degraded Docker read during a folder save can no longer wipe container autostart settings
 - Failed folder-data loads reveal the native list immediately with a single error banner naming any broken folder
 
-###2026.07.08
+## 2026.07.08
+
 - Autostart and config files can no longer be accidentally wiped or corrupted
 - Security improvements and hardening
 - UI loading, compatibility, error handling/reporting and backup-import improvements
 - Package building and install-script improvements
 
-###2026.06.25
+## 2026.06.25
+
 - Folders imported from folder.view2 now restore container/VM rename-tracking automatically on first load (no need to re-save each folder)
 
-###2026.06.23
+## 2026.06.23
+
 - Reverted the Uptime column behaviour from the previous version
 - Smoothed the folder-expand and view-toggle animations
 
-###2026.06.22
+## 2026.06.22
+
 - More accurate and consistent live CPU/MEM stats
 - Improved Docker table layout, scaling and scroll behaviour (Uptime column now defaults to out of immediate view, scroll to view it)
 - Fixed a Firefox-only phantom horizontal scrollbar on the Docker table
@@ -67,15 +86,18 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Assorted preview and dashboard fixes
 - Enhanced debug logging
 
-###2026.06.13
+## 2026.06.13
+
 - Security hardening for theme management
 - More reliable folder previews and live stats on slow or interrupted connections
 - Assorted preview, dashboard and compatibility fixes
 
-###2026.05.28.1
+## 2026.05.28.1
+
 - Fix VM tab crash when a folder is named the same as a VM (folder vanished and the VM was left out of any folder)
 
-###2026.05.28
+## 2026.05.28
+
 - Restart on a Dashboard docker folder now actually restarts containers
 - Dashboard folder status icon now turns orange pause when every started container is paused, returns to play on resume
 - Same pause-icon aggregation added to Docker tab and VM tab folder rows
@@ -84,36 +106,43 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - VM custom-action "Set Restart" mode now reboots running VMs
 - Folder context menus now hide actions that wouldn't apply to any child (matches Unraid native per-container menu behaviour)
 
-###2026.05.24
+## 2026.05.24
+
 - Updated German translation (thank you kennymc-c, #36)
 
-###2026.05.23
+## 2026.05.23
+
 - New "Orange folder text on update" toggle for folders on the docker and dashboard page
 - Dashboard orange-on-update is now its own pair of global toggles (Settings → Dashboard)
 - Defaults page reorganised into Basic / Preview / Behavior sub-sections matching the Folder editor order
 - Minor changes to folder settings page wording and order
 - Fix: CSS preset accent color no longer overrides orange folder name on update
 
-###2026.05.21
+## 2026.05.21
+
 - Add Advanced Preview popup (CPU/MEM graphs + quick actions) to Docker containers on the Dashboard
 - Add Container/VM status indicator (play/square symbol or greyscale-stopped) for Only icon preview mode
 - Add Delete folder button to the folder editor
 - Defaults page now hides options irrelevant to the chosen Preview mode
 - Various tooltip styling, theme-awareness, and reliability fixes
 
-###2026.05.15
+## 2026.05.15
+
 - Fix Reset Order button (was silently broken by FV3's request interceptor)
 - Folders now sort alphabetically when no manual order is set
 - VM tab Reset Order also fixed
 
-###2026.05.07
+## 2026.05.07
+
 - Fix folder editor failing to load when a container has no Docker labels
 
-###2026.05.02
+## 2026.05.02
+
 - Uptime column now only appears as required
 - Other various fixes/cleanup from this implementation
 
-###2026.04.30
+## 2026.04.30
+
 - Docker table column lock and layout stability fixes
 - Folder-name pill and chevron polish (Firefox border fix, CSS preset alignment, fluid resize)
 - Advanced popup and dashboard toggle consistency
@@ -121,10 +150,12 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Richer debug JSON export for diagnostics
 - Misc bug fixes and cross-plugin robustness
 
-###2026.04.17
+## 2026.04.17
+
 - Minor 7.0.x compatibility fix
 
-###2026.04.14
+## 2026.04.14
+
 - Unraid 7.0.x compatibility fixes
 - Mobile advanced preview and tooltip improvements
 - Atomic file writes and safer JSON handling
@@ -132,10 +163,12 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - CSS cleanup and layout fixes
 - UI polish and bug fixes
 
-###2026.04.09
+## 2026.04.09
+
 - Harden incognito mode: scrub volume paths, image tags, and registry prefixes in expanded rows
 
-###2026.04.08
+## 2026.04.08
+
 - Fix preview clipping hiding containers due to sub-pixel rounding with custom CSS themes
 - Fix row separator false row breaks from sub-pixel rounding
 - Fix dashboard fullwidth panel row detection tolerance
@@ -144,17 +177,21 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Fix incognito mode not hiding container registry/image info in "By:" fields
 - Fix incognito auto-apply racing with folder creation on page load
 
-###2026.04.07
+## 2026.04.07
+
 - Fix preset accent color overriding orange update-available text
 
-###2026.04.06
+## 2026.04.06
+
 - Fix folder settings page toggles showing wrong state on load
 
-###2026.04.05
+## 2026.04.05
+
 - Incognito mode: scrub volume paths, public IPv6, MACs, disk filenames, non-standard interfaces
 - Incognito mode: VM previews now show "VM 1" instead of "Container 1"
 
-###2026.04.04
+## 2026.04.04
+
 - Shared code extraction and CSS consolidation for improved maintainability
 - GraphQL API integration with WebSocket stats and automatic PHP fallback
 - Settings page modernization with folder defaults and full backup/restore
@@ -164,22 +201,28 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - VM detail row positioning fixes in folders
 - Mobile and touch improvements
 
-###2026.04.01
+## 2026.04.01
+
 - Sanitize debug exports
 
-###2026.03.30.2
+## 2026.03.30.2
+
 - Add Folder button relocated next to Add Container/VM
 
-###2026.03.30.1
+## 2026.03.30.1
+
 - Mobile UI improvements
 
-###2026.03.30
+## 2026.03.30
+
 - Fix preview overflow causing table expansion for users with a large number of containers in a folder
 
-###2026.03.28.1
+## 2026.03.28.1
+
 - Mobile: auto-scroll default preview to show hidden containers
 
-###2026.03.28
+## 2026.03.28
+
 - Fix preview divider and wrapper vertical alignment
 - Fix expand mode containers overlapping on page refresh
 - Fix row separator timing on basic/advanced toggle
@@ -188,30 +231,36 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Add expand row separator gap spacing
 - Enhanced mobile UI
 
-###2026.03.27
+## 2026.03.27
+
 - Fix multiple JS bugs
 - Fix preview divider alignment across all overflow modes
 - Smart overflow detection — scroll/expand only applied when content overflows
 - Theme-aware custom action dialog
 - Deduplicate API requests on page load
 
-###2026.03.24
+## 2026.03.24
+
 - Row separator as configurable folder setting
 - Fix containers ejected from folders after rename
 - Preview borders adapt to advanced view row height
 - Mobile device UI improvements
 - Scroll overflow preview centering fix
 
-###2026.03.23.3
+## 2026.03.23.3
+
 - Fix chevron position shift when expanding/collapsing folders
 
-###2026.03.23.2
+## 2026.03.23.2
+
 - Dynamic folder name column width — expands/shrinks to fit folder name
 
-###2026.03.23.1
+## 2026.03.23.1
+
 - More custom CSS support for inset style
 
-###2026.03.23
+## 2026.03.23
+
 - Fix fullwidth panel appearing in wrong row after Started only toggle
 - Fix chevron missing position styles after Started only toggle
 - Fix dashboard fullwidth panel and chevron positioning after Started only toggle
@@ -225,30 +274,37 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Fix fullwidth chevron positioning to match inset layout
 - Restore static chevron positioning for accordion and embossed layouts
 
-###2026.03.21
+## 2026.03.21
+
 - Add Embossed dashboard layout style
 - Add expand/collapse animation option for dashboard layouts
 - Add CSS custom properties for inset and embossed panel theming
 
-###2026.03.20.2
+## 2026.03.20.2
+
 - Inset quick collapse tweak
 
-###2026.03.20.1
+## 2026.03.20.1
+
 - Fix inset panel chevron positioning and SVG border sizing
 
-###2026.03.20
+## 2026.03.20
+
 - Add folder name clipping for inset layout when collapsed
 - Fix fullwidth panel pushing non-folder items to wrong row
 - Add fullwidth panel reflow on window resize
 - Add 20 character warning for folder names to folder settings page
 
-###2026.03.19.2
+## 2026.03.19.2
+
 - Fix fullwidth panel placement for expanded folders on dashboard
 
-###2026.03.19.1
+## 2026.03.19.1
+
 - Fix dashboard settings race condition when switching layouts
 
-###2026.03.19
+## 2026.03.19
+
 - Fix folder name/icon not vertically centered on Docker and VM pages
 - Reorganize dashboard settings with Docker/VM section headings
 - Convert Yes/No settings to Unraid-native On/Off toggle switches
@@ -260,45 +316,54 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Dynamic NAME column width on VM page
 - Inset dashboard style improved
 
-###2026.03.17
+## 2026.03.17
+
 - Add dashboard layout options: Classic, Full-width Panel, Accordion, Inset Panel
 - Allow Unicode characters in folder names (CJK, Cyrillic, etc)
 
-###2026.03.16
+## 2026.03.16
+
 - Fix folder editor tooltips
 - Export now preserves folder order matching Docker/VM container page
 - Add new CSS variables for customizable layout and colors
 - Enhanced security: ID validation, JSON safety, file permissions
 - Lazy-load libvirt to prevent crashes when VM manager unavailable
 
-###2026.03.07
+## 2026.03.07
+
 - Allow custom CSS to override VM row alternating colors
 
-###2026.03.06
+## 2026.03.06
+
 - Fix VM tab row alternating colors with folders
 - Fix Compose Manager compatibility
 
-###2026.03.05
+## 2026.03.05
+
 - Add per-container "Hide Preview" toggle in folder editor
 - Center toggle alignment in folder editor table
 - Restrict drag cursor to container name content
 
-###2026.03.04.1
+## 2026.03.04.1
+
 - Fix cached scripts not refreshing after update
 - Fix action buttons clipped on settings page on mobile
 - Fix VM folder row markup
 - Fix settings page button layout overflow
 
-###2026.03.04
+## 2026.03.04
+
 - Minor security improvements to align with Unraid best practices
 - Fix empty folder showing "3rd Party" label
 - Fix invalid regex pattern in folder name input
 - Note: Clear browser cache and refresh if Docker folders are not visible after update
 
-###2026.02.26
+## 2026.02.26
+
 - Fix folder rendering crash for container names containing CSS special characters (e.g. periods, colons)
 
-###2026.02.24
+## 2026.02.24
+
 - Add Docker Compose and 3rd Party container awareness for folders
 - Fix false orange update text on Compose/3rd Party containers
 - Fix autostart counting and toggle for non-dockerman containers
@@ -310,13 +375,16 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Dashboard folder/container names show orange text when updates available (per folder setting)
 - Sort unsorted containers alphabetically on folder settings page
 
-###2026.02.19
+## 2026.02.19
+
 - Fix container autostart with wait timer being disabled on tab switch
 
-###2026.02.17.1
+## 2026.02.17.1
+
 - Fix folder export triggering Unraid external link warning
 
-###2026.02.17
+## 2026.02.17
+
 - Fix VM folder collapse button not working (hardcoded colspan selector)
 - Fix VM folder crash when regex is invalid
 - Fix VM folder crash when a deleted VM is still in folder config
@@ -324,185 +392,233 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Fix VM folder action error messages showing boolean instead of text
 - Use translated error title for VM folder actions
 
-###2026.02.16.1
+## 2026.02.16.1
+
 - Fix VM folder column alignment and autostart toggle position
 
-###2026.02.16
+## 2026.02.16
+
 - Rebrand from FolderView2 to FolderView3
 - Docker label changed from folder.view2 to folder.view3
 - Fix plugin settings page table alignment
 - Remove deprecated container autostart order indicator
 
-###2026.02.15
+## 2026.02.15
+
 - Fix VM folder image and name missing CSS classes on Dashboard
 
-###2026.02.11
+## 2026.02.11
+
 - Add folder WebUI setting with context menu button
 - Clean stale containers from autostart on page load and folder save
 
-###2026.02.10
+## 2026.02.10
+
 - Fix autostart toggle race condition when toggling folder-level autostart
 - Sync container autostart order to match folder settings layout
 - Fix folders not loading after reordering containers
 - Remove commented-out debug code and stale files
 
-###2026.02.09.1
+## 2026.02.09.1
+
 - Fix dashboard showing wrong containers in folders
 
-###2026.02.09
+## 2026.02.09
+
 - Fix folder autostart toggles showing OFF after plugin update
 - Fix color reset button appearing below color swatch
 - Change new folder defaults to all toggles OFF
 
-###2026.02.08
+## 2026.02.08
+
 - Fix folder name wrapping in basic view
 - Backward-compatible Docker Manager theme CSS for Unraid 6
 
-###2026.02.07
+## 2026.02.07
+
 - Fix VM folder assignment bug
 - Fix CPU/Memory text wrapping in advanced view
 - Translation updates for de, es, it, pl, zh
 
-###2026.02.05
+## 2026.02.05
+
 - Fix archive packaging structure
 
-###2026.02.04
+## 2026.02.04
+
 - Split border and vertical bars into separate color pickers
 - Border/bars color settings now nested under their toggles
 - Fix expanded folder bottom border color
 
-###2026.02.03
+## 2026.02.03
+
 - Fix folder CPU and Memory stats not updating in advanced view
 - Fix Docker Compose containers not grouping into folders
 - Fix Advanced Preview tooltip for all Unraid themes
 - Fix folder settings page layout
 - Remove missing Docker Manager CSS reference
 
-###2025.04.13
+## 2025.04.13
+
 - Fix: Ongoing effort to get new verson to CA, renamed folder.view to folder.view2
 - Fix: Merged Fix broken layout of container preview by @JohannesHo
 
-###2025.02.24
+## 2025.02.24
+
 - Fix: removed old file that cuased folder to show in settings.
 
-###2025.02.22
+## 2025.02.22
+
 - Fix for Unraid v7
 
-###2025.01.11.1
+## 2025.01.11.1
+
 - Fix with issues
 
-###2025.01.11
+## 2025.01.11
+
 - Add Polish translation
 - Fix docker for unraid 7
 
-###2024.10.02
+## 2024.10.02
+
 - Add french translation
 
-###2024.08.11
+## 2024.08.11
+
 - fix: translation
 
-###2024.08.04
+## 2024.08.04
+
 - fix: handle layout when number of overall columns changes by mtongnz
 - Update es.json by elBelgg
 
-###2024.07.28
+## 2024.07.28
+
 - fix: handle non dockerman webui templates
 - fix: handle IP parse for containers without NetworkMode set.  remove duplicate parsing from previous commit.
 - fix: remove duplicate setting of IP
 - By: mtongnz
 
-###2024.04.30
+## 2024.04.30
+
 - Update es language.
 
-###2024.01.22
+## 2024.01.22
+
 - Fix undefined request for docker without icons.
 
-###2024.01.16 and 2024.01.16.1
+## 2024.01.16 and 2024.01.16.1
+
 - Fix for vms.
 
-###2024.01.15
+## 2024.01.15
+
 - Custom action improvements.
 - Remove update and force update buttons for non-dockerman containers.
 - fix: ct info pulls data from template instead of labels.
 - new classes for managed and unmanaged folders.
 - small fix to vms.
 
-###2023.12.03
+## 2023.12.03
+
 - Fixed an issue preventing folders from appearing when a container was before a folder.
 
-###2023.12.01.1
+## 2023.12.01.1
+
 - Fix problem with order not being an array.
 
-###2023.12.01
+## 2023.12.01
+
 - Update German translation.
 
-###2023.11.30
+## 2023.11.30
+
 - Update Chinese translation.
 - Small fix for VMs.
 
-###2023.11.28
+## 2023.11.28
+
 - Ability to change the width of the names in the preview (by libook).
 - Small fix for VMs.
 
-###2023.11.28
+## 2023.11.28
+
 - Minor css addition.
 
-###2023.11.23
+## 2023.11.23
+
 - Add Chinese translation.
 
-###2023.11.04
+## 2023.11.04
+
 - WebUi and shell values are taken from labels if a template is not available.
 - Fixed an issue with tolltipster.
 
-###2023.11.01
+## 2023.11.01
+
 - Update German translation.
 - Updated spanish translation.
 
-###2023.10.31
+## 2023.10.31
+
 - Added the ability to translate the text in the plugins tab.
 - Added the ability to run custom script in the foreground (sync)
 
-###2023.10.21
+## 2023.10.21
+
 - Updated spanish translation.
 
-###2023.10.20.1
+## 2023.10.20.1
+
 - HTML IS NOT A PROGRAMMING LANGUAGE.
 - Browser not detecting p tag as whole block around a translation.
 
-###2023.10.20
+## 2023.10.20
+
 - Fixed translation not always working on chromium based browsers.
 
-###2023.10.19.2
+## 2023.10.19.2
+
 - Updated spanish translation.
 
-###2023.10.19.1
+## 2023.10.19.1
+
 - Added spanish translation.
 
-###2023.10.19
+## 2023.10.19
+
 - Custom action fixes.
 
-###2023.10.09.1
+## 2023.10.09.1
+
 - Update German translation.
 
-###2023.10.09
+## 2023.10.09
+
 - Fixed autostart icon on Gray and Azure themes.
 - Changed autostart order icon.
 
-###2023.10.04
+## 2023.10.04
+
 - Target blan on repo tooltip.
 - Fixed import of folder.
 
-###2023.10.03
+## 2023.10.03
+
 - Fixed issue with tooltip not opening.
 - Fixed issue with too much ports with advanced view.
 
-###2023.09.30.2
+## 2023.09.30.2
+
 - Fixed CSS.
 
-###2023.09.30.1
+## 2023.09.30.1
+
 - Update German translation + fix English typo.
 
-###2023.09.30
+## 2023.09.30
+
 - Added custom events.
 - Updated EN and IT translation for the new version.
 - Changed the custom CSS import method.
@@ -510,35 +626,45 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Bringed VM tab to par with docker functionality where possible.
 - Updated dev guide and templates.
 
-###2023.09.23.1
+## 2023.09.23.1
+
 - Update German translation.
 
-###2023.09.22.1
+## 2023.09.22.1
+
 - Same as 2023.09.22 but also fro wrappers.
 
-###2023.09.22
+## 2023.09.22
+
 - Added classes to describe autostart status (see templates).
 
-###2023.09.21
+## 2023.09.21
+
 - Added Deutsche translation.
 
-###2023.09.20
+## 2023.09.20
+
 - Added autostart class for docker conainers.
 - Reordered shortcut icons on dokcer tab.
 
-###2023.09.17.1
+## 2023.09.17.1
+
 - Same fix of 2023.09.17 but for a specific case.
 
-###2023.09.17
+## 2023.09.17
+
 - Hopefully fixed an issue with template detection and WebUi missing.
 
-###2023.09.15.2
+## 2023.09.15.2
+
 - Fixed an issue with webui template string not being used right
 
-###2023.09.15.1
+## 2023.09.15.1
+
 - Fixed an issue with php global variables
 
-###2023.09.15
+## 2023.09.15
+
 - Added an advanced context menu for the docker preview.
 - Added support for internationalization(i18n).
 - Added a button to open the console in the preview, alongside the button for opening the webui and logs.
@@ -546,66 +672,83 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Added a button in the header to verify the autostart order.
 - Fixed plugin giving error when installing without internet.
 
-###2023.08.20
+## 2023.08.20
+
 - Fixed another issue with expanded folders
 
-###2023.08.19
+## 2023.08.19
+
 - Fixed an issue with expanded folders and update column hidden
 - Hide update column with vms folder
 
-###2023.08.18.1
+## 2023.08.18.1
+
 - Fixed an issue with expanded folders
 
-###2023.08.18
+## 2023.08.18
+
 - Updated template for the custom CSS, now vertical divider is present even for the last element
 - Backend code cleanup
 - Action function reworked
 
-###2023.08.17
+## 2023.08.17
+
 - Added the option to remove the update column
 - Fixed the issue where expanded folder weren't remaining open after an action
 - Update column rework, now it functions exactly how the normal container does
 
-###2023.08.16
+## 2023.08.16
+
 - Updated the link to folder icon in the folder creation/editing page
 
-###2023.08.15
+## 2023.08.15
+
 - Fixed cpu load bars on docker advanced view
 
-###2023.08.11
+## 2023.08.11
+
 - Added a div insite the folder-name td
 
-###2023.08.09.1
+## 2023.08.09.1
+
 - Preview vertical bars now follows the color of the preview border
 
-###2023.08.09
+## 2023.08.09
+
 - Fixed caching problem
 - Expanded folder bottom border now follows the color of the preview border
 
-###2023.08.08
+## 2023.08.08
+
 - CSS fix
 
-###2023.08.07.1
+## 2023.08.07.1
+
 - CSS fix
 
-###2023.08.07
+## 2023.08.07
+
 - Custom CSS in the settings
 - Added custom classed for the folders
 - Added vertical divider in the folder preview
 - Now folder load faster
 - NEW preview method, the list, it groups container/VM by 2
 
-###2023.08.06
+## 2023.08.06
+
 - Fixed a bug in the dasboard
 
-###2023.08.04.1
+## 2023.08.04.1
+
 - Same fix of previous version on VM and Dashboard
 - QoL on docker tab
 
-###2023.08.04
+## 2023.08.04
+
 - Fix a small issue with new containers and iterating over the order
 
-###2023.08.02
+## 2023.08.02
+
 - Renamed the pages to the updated plugin name
 - Added import, export and clear in the settings
 - Folders now remain open when making changes to docker/VM/dashboard, if opened before
@@ -613,131 +756,45 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Now the border setting is visible even when no preview is selected
 - Now the setting reflect the old setting behavior in the docker/Vm pages
 
-###2023.08.01
+## 2023.08.01
+
 - Fixed folder load on the docker tab
 - added ability to enable/disable border on the docker/vm tab
 - added the ability to change the color of the border on the docker/vm tab
 - ability to start, stop, pause, resume, restart, Hibernate and force stop all VMs in a folder
 - rework ability to start, stop, pause, resume, restart, update and force update all containers in a folder
 
-###2023.07.31.1
+## 2023.07.31.1
+
 - hotfix, a call to function was renamed wrongly
 
-###2023.07.31
+## 2023.07.31
+
 - order rework
 - ability to start, stop, pause, resume, restart, update and force update all containers in a folder
 - added a counter of started container when a folder is marked as started
 
-###2023.07.28
+## 2023.07.28
+
 - Fixed am issue where folder were offsetting index on the grabbing
 - A little CSS work, is still really hard
 - UX on the folder creation/edit page
 - debug mode
 - ability to set the folder icon from a docker container or VM
 
-###2023.07.27.1
+## 2023.07.27.1
+
 - Bug fix
 - New container/vm now are counted in the order
 
-###2023.07.27
+## 2023.07.27
+
 - VM now WORK!
 
-###2023.07.26.1
+## 2023.07.26.1
+
 - Bug fix
 
-###2023.07.26
+## 2023.07.26
+
 - Initial Release
-    </CHANGES>
-
-    <FILE Run="/bin/bash">
-        <INLINE>
-            rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null | grep -v '&pkgname;')
-        </INLINE>
-    </FILE>
-
-    <!-- Package archive -->
-    <FILE Name="/boot/config/plugins/&name;/&pkgname;.txz" Run="upgradepkg --install-new --reinstall">
-        <URL>https://github.com/&github;/releases/download/v&version;/&pkgname;.txz</URL>
-        <MD5>&md5;</MD5>
-    </FILE>
-
-    <!-- Post install -->
-    <FILE Run="/bin/bash">
-        <INLINE>
-            for p in /var/log/packages/&name;-*; do
-                [ -e "$p" ] || continue
-                case "$(basename "$p")" in &pkgname;) continue;; esac
-                rm -f "$p"
-            done
-            mkdir -p /boot/config/plugins/&name;/styles
-            mkdir -p /boot/config/plugins/&name;/scripts
-            if [ -f /boot/config/plugins/&name;/version ]; then
-                ACTION="Updated"
-            else
-                ACTION="Installed"
-            fi
-            echo "&version;" > /boot/config/plugins/&name;/version
-            echo ""
-            echo "  ███████╗██╗   ██╗ ██████╗ "
-            echo "  ██╔════╝██║   ██║ ╚════██╗"
-            echo "  █████╗  ██║   ██║  █████╔╝"
-            echo "  ██╔══╝  ╚██╗ ██╔╝  ╚═══██╗"
-            echo "  ██║      ╚████╔╝  ██████╔╝"
-            echo "  ╚═╝      ╚═══╝   ╚═════╝ "
-            echo ""
-            echo "  FolderView3 — $ACTION"
-            echo "  Version: &version;"
-            echo ""
-            echo "  ──────────────────────────────────────────────────"
-            echo ""
-            if [ "$ACTION" = "Updated" ]; then
-                echo "  ⚠  If the Docker / VM / Dashboard page doesn't display"
-                echo "     correctly after this update, HARD-REFRESH your browser"
-                echo "     (Ctrl/Cmd+Shift+R) — and clear its cache if needed —"
-                echo "     before submitting a debug .json."
-                echo ""
-            fi
-            echo "  Organize your Docker containers and VMs into"
-            echo "  collapsible, drag-and-drop folders on the Docker,"
-            echo "  VM, and Dashboard tabs. Features real-time stats,"
-            echo "  custom themes, and a built-in CSS editor."
-            echo ""
-            echo "  Maintained by:"
-            echo "    2026-present  chodeus (folder.view3)"
-            echo "    2025          VladoPortos (folder.view2)"
-            echo "    2023-2024     scolcipitato (folder.view)"
-            echo ""
-            echo "  GitHub:  github.com/chodeus/folder.view3"
-            echo "  Issues:  github.com/chodeus/folder.view3/issues"
-            echo "  Support: forums.unraid.net/topic/197223"
-            echo ""
-        </INLINE>
-    </FILE>
-
-    <!-- Remove the plugin -->
-    <FILE Run="/bin/bash" Method="remove">
-        <INLINE>
-            # Match the installed DB entry by glob — the package name carries an
-            # -x86_64-1 suffix, and it may not be the version this .plg is at.
-            for p in /var/log/packages/&name;-*; do
-                [ -e "$p" ] || continue
-                removepkg "$(basename "$p")"
-            done
-            rm -rf &plugdir;
-            rm -rf /boot/config/plugins/&name;
-            # Folder rows persist phantom 'folder-ID' entries into the stock
-            # sort prefs via UserPrefs.php — strip them and renumber on the way out.
-            for f in /boot/config/plugins/dockerMan/userprefs.cfg /boot/config/plugins/dynamix.vm.manager/userprefs.cfg; do
-                [ -f "$f" ] || continue
-                # RT (gawk, guaranteed on Unraid) keeps each line terminator as-is,
-                # incl. a missing final newline.
-                if awk -F'"' 'BEGIN{RS="\r\n|\n|\r"; n=0} $0 ~ /^[0-9]+="[^"]*"$/ { v=$2; if (v ~ /^folder-[A-Za-z0-9]+$/) if (length(v) >= 20) if (v ~ /[A-Z]/) if (v ~ /[a-z]/) next; printf "%d=\"%s\"%s", n, v, RT; n++; next } { printf "%s%s", $0, RT }' "$f" > "$f.fv3clean"; then
-                    mv "$f.fv3clean" "$f"
-                else
-                    rm -f "$f.fv3clean"
-                fi
-            done
-        </INLINE>
-    </FILE>
-
-</PLUGIN>

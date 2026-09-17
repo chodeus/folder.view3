@@ -3,8 +3,13 @@
 language: "en-US"
 
 reviews:
-  profile: "chill"
+  # assertive, with the "**" rule keeping style nits out
+  profile: "assertive"
   request_changes_workflow: false
+  pre_merge_checks:
+    # off: the 80% docstring-coverage warning contradicts the one-line-docstring rule under "**"
+    docstrings:
+      mode: "off"
 
   auto_review:
     enabled: true
@@ -14,9 +19,8 @@ reviews:
     base_branches:
       - "^beta$"   # anchored — base_branches are regex; unanchored could match feature/beta etc.
 
-  # Exclude vendored libraries, release artifacts, images, and the dev/ scratch
-  # tree so review focuses on hand-written plugin source. CI already validates
-  # the .plg (xmllint) and PHP syntax (php -l); don't re-lint those here.
+  # Vendored libraries, release artifacts, images and dev/ are excluded so review stays on
+  # hand-written source; CI already runs xmllint on the .plg and php -l, so those aren't re-linted.
   path_filters:
     - "!archive/**"
     - "!screenshots/**"
@@ -88,7 +92,10 @@ reviews:
         when replacing content that carries bound event handlers — innerHTML
         rebuilds nodes and silently drops drag-and-drop and context-menu
         handlers. Any dynamic/user text (container/folder/theme names) inserted
-        into the DOM must go through escapeHtml() first.
+        into the DOM must go through escapeHtml() first. A value placed inside an
+        inline on*= handler as a JavaScript string goes through fv3JsArg()
+        (langs/script.php), never '${escapeHtml(v)}': entities are decoded before
+        the attribute is parsed as JS, so a quote in the value breaks out.
 
         RE-RENDER: drag-and-drop and context-menu handlers must survive a
         re-render — re-bind after rebuild or use event delegation on a stable
@@ -152,27 +159,73 @@ reviews:
         remove and any inline JS/CSS injection must not fight Unraid's native UI
         or create autostart / DOM-ordering conflicts on page load; <CHANGES>
         entries present for the shipped version.
+    - path: ".github/workflows/**"
+      instructions: |
+        CI and the release-PR automation:
+        - ci.yml gates are php -l on every PHP file, xmllint on the .plg, the
+          plg_release.py check (CHANGELOG.md must render to the committed
+          CHANGES block, pluginURL must name the branch, the manifest md5 must
+          match the served package), and a test build. Flag any of them made
+          non-blocking or reduced to a warning.
+        - release.yml is a thin caller of chodeus-ops' unraid-plugin-release
+          reusable: it must keep passing RELEASE_TOKEN, keep beta_branch: beta,
+          keep the paths filter (CHANGELOG.md included, or release-PR merges
+          never trigger) and the plg-release concurrency group.
+        - Enumerate allowed states positively (== 'success' || == 'skipped'),
+          never by negation; pin third-party actions by commit SHA; never
+          interpolate untrusted input (PR title, branch name) into `run:`.
+    - path: "{pkg_build.sh,.githooks/**}"
+      instructions: |
+        Packaging and pre-push scripts:
+        - pkg_build.sh's guards must stay: filecount >= 10, package >= 1000
+          bytes, and the post-sed re-read that fails when the .plg version or
+          md5 does not match what was built. Its rm -rf / chmod -R / sed -i
+          must only touch tmp/, dist/ and folder.view3.plg. The version comes
+          from --version (the release workflow owns numbering); never
+          reintroduce date or archive-glob versioning here.
+        - .githooks/pre-push must fail closed: an unreadable .plg or a
+          pluginURL that does not name the branch being pushed is a rejection.
+    - path: "**"
+      instructions: |-
+        Applies to every file, whatever the language:
+        - Comments are navigational or instructional only and capped at 1-2 lines:
+          what a non-obvious block does, or the gotcha it guards. No why/history
+          essays, no before/after narrative, no restating the code, no section
+          banners. Docstrings: one line unless the signature genuinely cannot
+          carry it. Never ask for a docstring to be added; a missing docstring
+          is not a finding.
+        - The 1-2 line cap wins even inside an already heavily-commented file —
+          matching local density is not licence to exceed it.
+        - A comment, docstring, help text, column header, log message or UI label
+          that disagrees with what the code does is a correctness finding, not a
+          stale-comment nit: report it and say which side is wrong.
+        - Do not flag stylistic preferences that are consistent across the file
+          (naming, quoting, import order, formatting, line length). Report
+          correctness, security, data-loss and the classes named above.
 
   tools:
     # Secret scanning across the whole tree — always on.
     gitleaks:
       enabled: true
-    # semgrep OFF: CodeRabbit only runs Semgrep when the repo has a committed
-    # config and ships no community rules, so enabling it without a semgrep.yaml
-    # is inert. Add a committed PHP ruleset later if SAST is wanted.
-    # phpstan OFF: emhttp plugins have no Composer/autoloader and rely on
-    # global $var + Unraid-provided functions from auto_prepend, so phpstan
-    # floods with false "undefined symbol" noise. CI's `php -l` covers syntax;
-    # semantic PHP risks are covered by AI review + path_instructions.
+    # semgrep OFF: CodeRabbit only runs it against a committed config and ships no community
+    # rules, so without a semgrep.yaml the switch is inert.
+    # phpstan OFF: emhttp plugins have no autoloader and rely on Unraid globals, so it floods
+    # with false undefined-symbol noise; php -l in CI covers syntax, path_instructions the rest.
     phpstan:
       enabled: false
-    # biome/eslint OFF: vanilla jQuery with no JS lint config and many injected
-    # globals ($, jQuery, Unraid page globals) — a config-less run is mostly
-    # no-undef noise that would also fight the repo's formatting. DOM-safety and
-    # correctness are enforced via the JS path_instructions instead.
+    # phpmd/phpcs OFF for the same reason: no ruleset, no PSR conformance, and
+    # emhttp globals read as undefined — style/complexity noise, not defects.
+    phpmd:
+      enabled: false
+    phpcs:
+      enabled: false
+    # biome/eslint/oxc OFF: vanilla jQuery with injected page globals and no lint config is
+    # mostly no-undef noise that fights the repo's formatting; the JS path_instructions cover it.
     biome:
       enabled: false
     eslint:
+      enabled: false
+    oxc:
       enabled: false
     # markdownlint OFF: docs/changelogs only; not worth the review noise.
     markdownlint:
