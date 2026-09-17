@@ -964,6 +964,8 @@
         $rules = fv3_settings_rules();
         if (!is_scalar($value)) return null;
         $value = (string)$value;
+        // Invalid UTF-8 would make json_encode() fail at write time — refuse it at the boundary instead
+        if (preg_match('//u', $value) !== 1) return null;
         if (isset($rules['enum'][$key])) {
             return in_array($value, $rules['enum'][$key], true) ? ['store' => $value] : null;
         }
@@ -979,22 +981,26 @@
         return null;
     }
 
-    // Every write to settings.json goes through here: one lock, one decode, one encode
+    // Every write to settings.json goes through here: writers serialise on a lock file, and the live
+    // file is only ever replaced whole, so a failed encode or a short write leaves the previous copy intact
     function fv3_write_settings(callable $apply): void {
         global $configDir;
         $path = "$configDir/settings.json";
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        $raw = stream_get_contents($fp);
-        $data = $apply(fv3_decode_settings_or_abort($fp, $raw));
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($data));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
+        // A separate lock file: the rename below gives settings.json a new inode, so a lock on it would not serialise
+        $lock = fopen("$path.lock", 'c');
+        if (!$lock) { http_response_code(500); exit; }
+        flock($lock, LOCK_EX);
+        $raw = file_exists($path) ? @file_get_contents($path) : '';
+        $data = $apply(fv3_decode_settings_or_abort($lock, $raw));
+        $ok = fv3_atomic_write($path, json_encode($data));
+        flock($lock, LOCK_UN);
+        fclose($lock);
+        if (!$ok) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not write settings.json — the previous settings are unchanged']);
+            exit;
+        }
     }
 
     function updateSettings(string $key, string $value) : void {
@@ -1006,13 +1012,24 @@
         });
     }
 
-    // A batch skips what it cannot accept rather than refusing the whole save
+    // All or nothing: one refused entry fails the whole batch before anything is written, as the single endpoint does
     function updateSettingsBatch(array $settings) : void {
-        fv3_write_settings(function (array $data) use ($settings): array {
-            foreach ($settings as $key => $value) {
-                $key = (string)$key;
-                $verdict = fv3_sanitize_setting($key, $value);
-                if ($verdict === null) continue;
+        $verdicts = [];
+        $refused = [];
+        foreach ($settings as $key => $value) {
+            $key = (string)$key;
+            $verdict = fv3_sanitize_setting($key, $value);
+            if ($verdict === null) { $refused[] = $key; continue; }
+            $verdicts[$key] = $verdict;
+        }
+        if ($refused) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Invalid setting: ' . implode(', ', $refused)]);
+            exit;
+        }
+        fv3_write_settings(function (array $data) use ($verdicts): array {
+            foreach ($verdicts as $key => $verdict) {
                 if (isset($verdict['clear'])) { unset($data[$key]); } else { $data[$key] = $verdict['store']; }
             }
             return $data;
