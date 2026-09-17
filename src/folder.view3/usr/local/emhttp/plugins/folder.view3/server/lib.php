@@ -450,8 +450,9 @@
         // success with the wait edits silently dropped
         $autoStartFile = fv3_autostart_file();
         $lines = null;
-        if (!empty($waits) && file_exists($autoStartFile)) {
-            $lines = fv3_read_autostart_lines($autoStartFile);
+        if (!empty($waits)) {
+            // Missing counts as unreadable: waits that cannot be applied must not be reported as saved
+            $lines = file_exists($autoStartFile) ? fv3_read_autostart_lines($autoStartFile) : null;
             if ($lines === null) return ['error' => 'Could not read the autostart file — nothing was saved'];
         }
 
@@ -1354,8 +1355,10 @@
     function updateCssConfig(string $json) : void {
         global $configDir;
         if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
+        // Decoded plain first: as an assoc array {} and [] are both [], and a top-level array is not a config
+        $shape = json_decode($json);
+        if (json_last_error() !== JSON_ERROR_NONE || !($shape instanceof stdClass)) { http_response_code(400); echo 'Invalid JSON'; exit; }
         $config = json_decode($json, true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($config)) { http_response_code(400); echo 'Invalid JSON'; exit; }
         $config = fv3_sanitize_css_config($config);
         // Rendered from the array form, before the object cast below
         $files = [];
