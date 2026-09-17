@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.08.28">
-<!ENTITY md5 "8c16fcd81c312f8d6231c167dc398433">
+<!ENTITY version "2026.09.17.2">
+<!ENTITY md5 "8424e3bbbb5d6d1bcabcaf2d3867b3d1">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,24 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.09.17.2
+- Resolved issue with invalid characters in a container name blanking the Docker page
+- Logs button on VMs with apostrophes in the name now works
+- Containers sharing an image tag no longer show each other's update status
+- Live CPU and memory stats now keep running if the CPU count request fails
+- Add Folder button no longer duplicates when the page re-translates
+- Folders that refused to delete can now be removed without freezing the page
+- Failed backup imports are now rolled back instead of leaving folders half-restored
+- Saving CSS settings now writes the stylesheet and the settings together, or neither
+- Resolved issue where an unreadable or missing autostart file silently discarded start delays
+- Start delays are now validated instead of being clamped or misread
+- Folder ids are now escaped wherever they are written into the page
+- Theme bundles can no longer write outside the plugin's styles folder, and the generated theme can't be switched off by hand
+- Failed theme installs now leave the current theme in place, and declined themes are removed instead of left behind
+- Theme folders are now recognised as disabled whatever the capitalisation, and the update check no longer leaves its button spinning
+- Rounded and pill toggles no longer paint a dark track on light themes, and CSS Tool notes and number fields show a visible keyboard focus
+- Remaining English text now follows your language setting
 
 ###2026.08.28
 - Containers assigned by a `folder.view3` Docker label (including Compose services) no longer override a folder you picked explicitly, and can't end up in two folders at once
