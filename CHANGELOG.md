@@ -4,14 +4,18 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- **Data safety** — backup imports, CSS settings and saved orders are all or nothing; a failed write no longer leaves them half-applied or cleared
-- **Data safety** — an autostart file that can't be read, or isn't there, stops the save instead of silently dropping your start delays
-- **Input validation** — folder ids and start delays are checked before use, and invalid values are refused rather than quietly corrected
-- **Security** — theme bundles can only write inside the plugin's styles folder, folder ids are escaped everywhere they are rendered, and the plugin's own generated theme can't be switched off by hand
-- **Reliability** — a failed theme install leaves your current theme untouched, and name clashes, oversized files and broken links are refused
-- **Usability** — stuck folders can be deleted, a failed delete no longer freezes the page, disabled themes are recognised whatever the capitalisation, and the theme update check can't leave a button spinning
-- **Docker and VM pages** — containers sharing an image tag no longer copy each other's update state, one unreadable container name no longer blanks the page, the Logs button works for names with an apostrophe, live stats survive a failed CPU count request, and Add Folder appears once
-- **Appearance and language** — rounded and pill toggles no longer paint a dark track on light themes, the CSS Tool's notes and number fields show keyboard focus, and the interface follows your language setting throughout
+- **Data safety** — a failed backup import is now rolled back instead of leaving your folders half-restored, and saving CSS settings no longer writes the stylesheet without the settings that describe it
+- **Data safety** — if the autostart file can't be read, or isn't there, the save stops and says so, instead of reporting success while quietly discarding your start delays
+- **Input validation** — start delays must now be whole seconds within range; a value like 9999 was silently clamped to 3600, and a non-numeric value became a 1 second delay
+- **Security** — folder ids are escaped wherever they are written into the page, theme bundles can only write inside the plugin's styles folder, and the plugin's own generated theme can no longer be switched off by hand
+- **Reliability** — a failed theme install leaves your current theme in place; name clashes, oversized files and broken download links are refused before anything is replaced
+- **Docker page** — a container whose name contains invalid characters no longer blanks the entire page; the offending name is substituted and every other container still renders
+- **Docker page** — two containers built from the same image tag no longer share one update status, so "update ready" shows only on the one that needs it
+- **Docker page** — live CPU and memory stats keep running when the CPU-count request fails, instead of never starting at all
+- **VM page** — the Logs button now works for VMs whose name contains an apostrophe; for a name like "Bob's PC" it previously did nothing
+- **Usability** — the Add Folder button appears once instead of gaining a copy each time the page re-translates, and a folder that refused to delete can be removed without freezing the page
+- **Themes** — a theme folder is recognised as disabled whatever the capitalisation, a theme declined at the external-URL warning is removed rather than left behind, and the update check no longer leaves its button spinning after a failed check
+- **Appearance and language** — rounded and pill toggles no longer paint a dark track on light themes, the CSS Tool's notes and number fields show a visible keyboard focus, and the remaining English text follows your language setting
 
 ## 2026.09.17.1 (beta)
 
