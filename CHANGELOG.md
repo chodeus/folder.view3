@@ -2,6 +2,34 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Resolved issue with invalid characters in a container name blanking the Docker page
+- Logs button on VMs with apostrophes in the name now works
+- Containers sharing an image tag no longer show each other's update status
+- Live CPU and memory stats now keep running if the CPU count request fails
+- Add Folder button no longer duplicates when the page re-translates
+- Folders that refused to delete can now be removed without freezing the page
+- Failed backup imports are now rolled back instead of leaving folders half-restored
+- Saving CSS settings now writes the stylesheet and the settings together, or neither
+- Resolved issue where an unreadable or missing autostart file silently discarded start delays
+- Start delays are now validated instead of being clamped or misread
+- Folder ids are now escaped wherever they are written into the page
+- Theme bundles can no longer write outside the plugin's styles folder, and the generated theme can't be switched off by hand
+- Failed theme installs now leave the current theme in place, and declined themes are removed instead of left behind
+- Theme folders are now recognised as disabled whatever the capitalisation, and the update check no longer leaves its button spinning
+- Rounded and pill toggles no longer paint a dark track on light themes, and CSS Tool notes and number fields show a visible keyboard focus
+- Remaining English text now follows your language setting
+
+## 2026.09.17.1 (beta)
+
+- Saving CSS settings is all or nothing
+- The plugin's own generated theme can no longer be switched off by hand
+- A container with an unreadable name no longer blanks the Docker page
+- An autostart file that can't be read stops the save instead of dropping your start delays
+- The theme update check no longer leaves its button spinning when the check fails
+- Start delays that aren't whole seconds are refused instead of quietly changed
+
 ## 2026.09.16.1 (beta)
 
 - A failed backup import is rolled back instead of leaving a half-restored config
