@@ -2,6 +2,23 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- A failed backup import is rolled back instead of leaving a half-restored config
+- An unreadable autostart file is left alone, not rewritten as empty
+- A malformed saved order no longer clears your existing order
+- Theme bundles can only write inside the plugin's styles folder
+- The Logs button works for VM names with an apostrophe
+- The Docker tab keeps live stats when the CPU count request fails
+- The Add Folder button is added once on the Docker and VM tabs
+- Rounded and pill toggles no longer paint a dark track on light themes
+- The CSS Tool's notes and number fields show keyboard focus
+- Remaining English UI text now follows your language setting
+- fix: saving CSS settings is all or nothing, the generated bundle can't be toggled, and one bad container name no longer blanks the page (#89)
+- fix: an unreadable autostart file stops the save and the container read instead of reading as empty (#91)
+- fix: a missing autostart file, a failed encode and a top-level array all fail closed (#92)
+- fix: a wait value that is not an integer is refused instead of cast
+
 ## 2026.09.16.1 (beta)
 
 - A failed backup import is rolled back instead of leaving a half-restored config
