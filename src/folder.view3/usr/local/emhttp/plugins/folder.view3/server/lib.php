@@ -451,9 +451,14 @@
         $autoStartFile = fv3_autostart_file();
         $lines = null;
         if (!empty($waits)) {
-            // Missing counts as unreadable: waits that cannot be applied must not be reported as saved
-            $lines = file_exists($autoStartFile) ? fv3_read_autostart_lines($autoStartFile) : null;
-            if ($lines === null) return ['error' => 'Could not read the autostart file — nothing was saved'];
+            if (file_exists($autoStartFile)) {
+                // Zeros still have to reach the loop below: that is how a wait is cleared
+                $lines = fv3_read_autostart_lines($autoStartFile);
+                if ($lines === null) return ['error' => 'Could not read the autostart file — nothing was saved'];
+            } elseif (array_filter($waits, static fn($w) => (int)$w > 0)) {
+                // No file to apply them to; an all-zero map is the empty state and saves normally
+                return ['error' => 'Could not read the autostart file — nothing was saved'];
+            }
         }
 
         $ok = fv3_atomic_write("$configDir/autostart.json", json_encode(['mode' => $mode, 'sequence' => $cleanSeq], JSON_PRETTY_PRINT));
@@ -1372,7 +1377,8 @@
                 $config[$mapKey] = (object)$config[$mapKey];
             }
         }
-        $files['css-config.json'] = json_encode($config, JSON_PRETTY_PRINT);
+        // An emptied config must still land as {} — PHP encodes an empty array as []
+        $files['css-config.json'] = json_encode($config ?: new stdClass(), JSON_PRETTY_PRINT);
         // Staged together and committed by the swap importAll uses; where a rollback itself fails, the
         // error names what it could not undo rather than leaving the CSS ahead of css-config.json silently
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
