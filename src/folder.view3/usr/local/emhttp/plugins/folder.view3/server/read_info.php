@@ -16,8 +16,11 @@
         exit;
     }
     if ($json === false) {
+        // '{}' here is indistinguishable from "this server has no containers"
         fv3_debug_log("read_info: json_encode failed for type $type");
-        $json = '{}';
+        http_response_code(500);
+        echo json_encode(['error' => 'Could not encode the container list']);
+        exit;
     }
     echo $json;
 ?>

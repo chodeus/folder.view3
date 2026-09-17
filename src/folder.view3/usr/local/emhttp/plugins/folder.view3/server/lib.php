@@ -450,9 +450,15 @@
         // success with the wait edits silently dropped
         $autoStartFile = fv3_autostart_file();
         $lines = null;
-        if (!empty($waits) && file_exists($autoStartFile)) {
-            $lines = fv3_read_autostart_lines($autoStartFile);
-            if ($lines === null) return ['error' => 'Could not read the autostart file — nothing was saved'];
+        if (!empty($waits)) {
+            if (file_exists($autoStartFile)) {
+                // Zeros still have to reach the loop below: that is how a wait is cleared
+                $lines = fv3_read_autostart_lines($autoStartFile);
+                if ($lines === null) return ['error' => 'Could not read the autostart file — nothing was saved'];
+            } elseif (array_filter($waits, static fn($w) => (int)$w > 0)) {
+                // No file to apply them to; an all-zero map is the empty state and saves normally
+                return ['error' => 'Could not read the autostart file — nothing was saved'];
+            }
         }
 
         $ok = fv3_atomic_write("$configDir/autostart.json", json_encode(['mode' => $mode, 'sequence' => $cleanSeq], JSON_PRETTY_PRINT));
@@ -1354,8 +1360,10 @@
     function updateCssConfig(string $json) : void {
         global $configDir;
         if (strlen($json) > 51200) { http_response_code(400); echo 'Config too large'; exit; }
+        // Decoded plain first: as an assoc array {} and [] are both [], and a top-level array is not a config
+        $shape = json_decode($json);
+        if (json_last_error() !== JSON_ERROR_NONE || !($shape instanceof stdClass)) { http_response_code(400); echo 'Invalid JSON'; exit; }
         $config = json_decode($json, true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($config)) { http_response_code(400); echo 'Invalid JSON'; exit; }
         $config = fv3_sanitize_css_config($config);
         // Rendered from the array form, before the object cast below
         $files = [];
@@ -1369,7 +1377,8 @@
                 $config[$mapKey] = (object)$config[$mapKey];
             }
         }
-        $files['css-config.json'] = json_encode($config, JSON_PRETTY_PRINT);
+        // An emptied config must still land as {} — PHP encodes an empty array as []
+        $files['css-config.json'] = json_encode($config ?: new stdClass(), JSON_PRETTY_PRINT);
         // Staged together and committed by the swap importAll uses; where a rollback itself fails, the
         // error names what it could not undo rather than leaving the CSS ahead of css-config.json silently
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
