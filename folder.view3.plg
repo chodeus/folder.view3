@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.09.16.1">
-<!ENTITY md5 "1c8868e982797b25062da580ed01623d">
+<!ENTITY version "2026.09.17.1">
+<!ENTITY md5 "81e4f737e61e57290f9d8fb7e179e51f">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,14 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.09.17.1
+- Saving CSS settings is all or nothing
+- The plugin's own generated theme can no longer be switched off by hand
+- A container with an unreadable name no longer blanks the Docker page
+- An autostart file that can't be read stops the save instead of dropping your start delays
+- The theme update check no longer leaves its button spinning when the check fails
+- Start delays that aren't whole seconds are refused instead of quietly changed
 
 ###2026.09.16.1
 - A failed backup import is rolled back instead of leaving a half-restored config

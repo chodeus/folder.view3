@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.09.17.1 (beta)
 
 - Saving CSS settings is all or nothing
 - The plugin's own generated theme can no longer be switched off by hand
