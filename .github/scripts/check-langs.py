@@ -84,7 +84,10 @@ def main(langs_dir):
         if key not in en:
             errors.append(f'{where}: uses "{key}", which is not in en.json')
     for name, pack in packs.items():
-        if name == 'en.json' or not isinstance(pack, dict):
+        if name == 'en.json':
+            continue
+        if not isinstance(pack, dict):
+            errors.append(f'{name}: root must be a JSON object')
             continue
         meta = pack.get('@metadata')
         if not isinstance(meta, dict) or meta.get('locale') != name[:-5]:

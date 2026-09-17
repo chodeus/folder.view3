@@ -446,13 +446,20 @@
             if (count($cleanSeq) >= 500) break;
         }
         $cleanSeq = array_values(array_unique($cleanSeq));
+        // Read before the write: an unreadable autostart file aborts the save rather than reporting
+        // success with the wait edits silently dropped
+        $autoStartFile = fv3_autostart_file();
+        $lines = null;
+        if (!empty($waits) && file_exists($autoStartFile)) {
+            $lines = fv3_read_autostart_lines($autoStartFile);
+            if ($lines === null) return ['error' => 'Could not read the autostart file — nothing was saved'];
+        }
+
         $ok = fv3_atomic_write("$configDir/autostart.json", json_encode(['mode' => $mode, 'sequence' => $cleanSeq], JSON_PRETTY_PRINT));
         if (!$ok) return ['error' => 'Failed to write autostart config'];
 
         // Fold wait edits into the live file — a name only matches a line that already has autostart enabled
-        $autoStartFile = fv3_autostart_file();
-        if (!empty($waits) && file_exists($autoStartFile)) {
-            $lines = fv3_read_autostart_lines($autoStartFile) ?? [];
+        if ($lines !== null) {
             $changed = false;
             foreach ($lines as $i => $line) {
                 $name = explode(' ', $line, 2)[0];
@@ -1488,7 +1495,9 @@
             $cts = $dockerClient->getDockerJSON("/containers/json?all=1");
             if (!is_array($cts)) $cts = [];
             $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
-            $autoStartLines = fv3_read_autostart_lines($autoStartFile) ?? [];
+            // Fail closed: [] here would answer 200 with every container reported as not set to autostart
+            $autoStartLines = fv3_read_autostart_lines($autoStartFile);
+            if ($autoStartLines === null) throw new \RuntimeException("autostart file $autoStartFile is unreadable");
             $autoStart = array_map('var_split', $autoStartLines);
             $dockerInfoCache = DockerUtil::loadJSON($dockerManPaths['webui-info'] ?? "/usr/local/emhttp/state/plugins/dynamix.docker.manager/docker.json");
             if (!is_array($dockerInfoCache)) $dockerInfoCache = [];

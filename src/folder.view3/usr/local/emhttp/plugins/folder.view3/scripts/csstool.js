@@ -930,8 +930,10 @@
             } catch (e) {
                 console.warn('[FV3] Update check error for', theme.name, e);
                 checkEl.innerHTML = i18nSpan('offline', 'offline', 'style="opacity:0.4"');
+            } finally {
+                // finally, not after the catch: the non-OK branch continues and would skip the reset
+                if (checkBtn) { checkBtn.disabled = false; checkBtn.innerHTML = '<i class="fa fa-refresh"></i>'; }
             }
-            if (checkBtn) { checkBtn.disabled = false; checkBtn.innerHTML = '<i class="fa fa-refresh"></i>'; }
         }
     }
 

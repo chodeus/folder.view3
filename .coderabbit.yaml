@@ -3,7 +3,7 @@
 language: "en-US"
 
 reviews:
-  # assertive: chill passed a diff clean that assertive flagged with two Major findings (2026-09-03); the "**" rule keeps style nits out
+  # assertive, with the "**" rule keeping style nits out
   profile: "assertive"
   request_changes_workflow: false
   pre_merge_checks:
