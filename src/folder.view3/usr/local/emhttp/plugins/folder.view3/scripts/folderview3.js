@@ -274,7 +274,7 @@ const showBatchErrors = (failed, many, one = null, extra = '') => {
     const text = failed.length === 1 && one
         ? fv3I18nOr(one.key, one.text, failed[0].label, failed[0].reason)
         : fv3I18nOr(many.key, many.text, failed.map(f => f.label).join(', '));
-    swal({ title: fv3I18nOr('error', 'Error'), text: extra ? text + '\n' + extra : text, type: 'error' });
+    fv3SwalError(extra ? text + '\n' + extra : text, 'SETTINGS');
     return true;
 };
 
@@ -484,7 +484,7 @@ const fv3SubmitSettings = async (quiet = false) => {
     } catch (e) {
         var msg = fv3FailReason(e);
         console.error('Failed to save settings:', msg);
-        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('save-settings-failed', 'Failed to save settings: $1', msg), type: 'error' });
+        fv3SwalError(fv3I18nOr('save-settings-failed', 'Failed to save settings: $1', msg), 'SETTINGS');
         return false;
     }
 };
@@ -570,7 +570,7 @@ const fv3ExportAll = async () => {
         const data = await resp.json();
         if (!resp.ok || data.error) {
             // Never save an aborted export as a backup file
-            swal({ title: fv3I18nOr('export-failed-title', 'Export Failed'), text: data.error || fv3I18nOr('server-returned-status', 'Server returned $1', resp.status), type: 'error' });
+            fv3SwalError(data.error || fv3I18nOr('server-returned-status', 'Server returned $1', resp.status), 'SETTINGS', fv3I18nOr('export-failed-title', 'Export Failed'));
             return;
         }
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -583,7 +583,7 @@ const fv3ExportAll = async () => {
             swal({ title: fv3I18nOr('partial-export', 'Partial Export'), text: data.css_skipped_reason || fv3I18nOr('css-skipped-export', 'Custom CSS files were too large and were excluded. Export them manually via File Manager.'), type: 'warning' });
         }
     } catch (e) {
-        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('export-failed', 'Export failed: $1', e.message), type: 'error' });
+        fv3SwalError(fv3I18nOr('export-failed', 'Export failed: $1', e.message), 'SETTINGS');
     }
 };
 window.fv3ExportAll = fv3ExportAll;
@@ -594,7 +594,7 @@ const fv3ImportFolderExport = async (content, type) => {
     try {
         await fv3ImportFolderMap(content, type);
     } catch (err) {
-        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });
+        fv3SwalError(fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), 'SETTINGS');
     }
 };
 
@@ -657,11 +657,11 @@ $('#fv3-import-all').on('change', function() {
                     if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error(fv3I18nOr('invalid-restore-response', 'Invalid restore response'));
                 } catch (err) {
                     console.error('Import Everything error:', err);
-                    swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), type: 'error' });
+                    fv3SwalError(fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), 'SETTINGS');
                     return;
                 }
                 if (result.error) {
-                    swal({ title: fv3I18nOr('error', 'Error'), text: result.error, type: 'error' });
+                    fv3SwalError(result.error, 'SETTINGS');
                 } else {
                     swal({ title: fv3I18nOr('restored', 'Restored'), text: fv3I18nOr('items-restored', '$1 items restored.', (result.restored || []).length), type: 'success', timer: 2000 });
                     setTimeout(function() { location.reload(); }, 2000);
@@ -882,7 +882,7 @@ const fv3SubmitAutostart = async () => {
     } catch (e) {
         var msg = fv3FailReason(e);
         console.error('[FV3] Failed to save autostart:', msg);
-        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('autostart-save-failed', 'Failed to save start order: $1', msg), type: 'error' });
+        fv3SwalError(fv3I18nOr('autostart-save-failed', 'Failed to save start order: $1', msg), 'SETTINGS');
     }
 };
 

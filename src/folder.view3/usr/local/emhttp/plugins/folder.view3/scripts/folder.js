@@ -529,7 +529,7 @@ const submitForm = async (e) => {
             await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
         }
     } catch (err) {
-        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), type: 'error' });
+        fv3SwalError(fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), 'FOLDER-EDIT');
         return false;
     }
 
@@ -581,7 +581,7 @@ const deleteFolderBtn = () => {
             loc.pop();
             location.href = loc.join('/');
         } catch (err) {
-            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), type: 'error' });
+            fv3SwalError(fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), 'FOLDER-EDIT');
         }
     });
 };
