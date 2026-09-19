@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.09.17.1">
-<!ENTITY md5 "81e4f737e61e57290f9d8fb7e179e51f">
+<!ENTITY version "2026.09.20.1">
+<!ENTITY md5 "bc79ca82fa4251857320c98e26c48e3e">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,12 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.09.20
+- Folder information now loads successfully when the Docker autostart configuration file is missing.
+
+###2026.09.20.1
+- Folder information now loads successfully when the Docker autostart configuration file is missing.
 
 ###2026.09.17
 - Resolved issue with invalid characters in a container name blanking the Docker page
