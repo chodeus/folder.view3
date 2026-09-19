@@ -2,6 +2,10 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## 2026.09.20
+
+- Folder information now loads successfully when the Docker autostart configuration file is missing.
+
 ## 2026.09.20.1 (beta)
 
 - Folder information now loads successfully when the Docker autostart configuration file is missing.
