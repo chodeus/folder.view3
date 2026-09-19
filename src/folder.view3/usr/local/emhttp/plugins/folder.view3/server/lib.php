@@ -1504,9 +1504,8 @@
             $cts = $dockerClient->getDockerJSON("/containers/json?all=1");
             if (!is_array($cts)) $cts = [];
             $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
-            // Missing is the normal state before Docker's first start, or when nothing is set to
-            // autostart — the same distinction updateAutostartConfig/fv3_apply_custom_autostart/
-            // syncContainerOrder already make. Only a file that exists but can't be read fails closed.
+            // Missing is the normal state (no autostart set yet); only an existing-but-unreadable
+            // file fails closed.
             if (file_exists($autoStartFile)) {
                 $autoStartLines = fv3_read_autostart_lines($autoStartFile);
                 if ($autoStartLines === null) throw new \RuntimeException("autostart file $autoStartFile is unreadable");
