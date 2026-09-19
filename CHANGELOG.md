@@ -4,7 +4,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: a missing autostart file no longer blanks the Docker tab and folder editor (#98)
+- Folder information now loads successfully when the Docker autostart configuration file is missing.
 
 ## 2026.09.17
 
