@@ -384,3 +384,17 @@ window.fv3BindDebugSwalButton = (id, source) => {
         });
     });
 };
+
+// Convenience wrapper for the common "error swal with a debug-download action" shape used at
+// every error site — one call instead of repeating the swal(...) + bind boilerplate.
+let _fv3SwalErrorSeq = 0;
+window.fv3SwalError = (text, source, title) => {
+    const id = 'fv3-dbg-swal-' + (++_fv3SwalErrorSeq);
+    swal({
+        title: title || fv3I18nOr('error', 'Error'),
+        text: text + fv3DebugSwalButtonHtml(id),
+        type: 'error',
+        html: true
+    });
+    fv3BindDebugSwalButton(id, source);
+};

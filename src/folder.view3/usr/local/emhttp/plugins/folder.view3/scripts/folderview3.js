@@ -78,13 +78,7 @@ const populateTable = async () => {
         ]);
     } catch (e) {
         console.error('[FV3] Failed to load folder data:', e);
-        swal({
-            title: fv3I18nOr('error', 'Error'),
-            text: fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.') + (window.fv3DebugSwalButtonHtml ? fv3DebugSwalButtonHtml('fv3-dbg-populate') : ''),
-            type: 'error',
-            html: true
-        });
-        if (window.fv3BindDebugSwalButton) fv3BindDebugSwalButton('fv3-dbg-populate', 'SETTINGS');
+        fv3SwalError(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'SETTINGS');
         return;
     }
     const dockerData = fv3SafeParse(proms[0], {});
@@ -825,13 +819,7 @@ const fv3LoadAutostart = async () => {
         fv3AsSnapshot = { mode: as.mode || 'folder', sequence: [...ordered], waits: { ...waits }, toggles };
     } catch (e) {
         console.error('[FV3] Failed to load autostart tab:', e);
-        swal({
-            title: fv3I18nOr('error', 'Error'),
-            text: fv3I18nOr('autostart-load-failed', 'Failed to load autostart data.') + (window.fv3DebugSwalButtonHtml ? fv3DebugSwalButtonHtml('fv3-dbg-autostart') : ''),
-            type: 'error',
-            html: true
-        });
-        if (window.fv3BindDebugSwalButton) fv3BindDebugSwalButton('fv3-dbg-autostart', 'SETTINGS');
+        fv3SwalError(fv3I18nOr('autostart-load-failed', 'Failed to load autostart data.'), 'SETTINGS');
     }
 };
 

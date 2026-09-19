@@ -39,15 +39,7 @@ const folderId = new URLSearchParams(location.search).get('id');
 const isEdit = folderId !== null;
 // Save stays blocked until setup finishes: a rejected load (either mode) must not overwrite a folder with a half-built form
 let fv3FolderLoaded = false;
-const fv3LoadFailedAlert = () => {
-    swal({
-        title: fv3I18nOr('error', 'Error'),
-        text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.') + (window.fv3DebugSwalButtonHtml ? fv3DebugSwalButtonHtml('fv3-dbg-load') : ''),
-        type: 'error',
-        html: true
-    });
-    if (window.fv3BindDebugSwalButton) fv3BindDebugSwalButton('fv3-dbg-load', 'FOLDER-EDIT');
-};
+const fv3LoadFailedAlert = () => fv3SwalError(fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), 'FOLDER-EDIT');
 
 const rgbToHex = (rgb) => {
     const m = rgb.match(/\d+/g);
@@ -114,13 +106,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     if (isEdit) {
         const currFolder = folders[folderId];
         if (!currFolder) {
-            swal({
-                title: fv3I18nOr('error', 'Error'),
-                text: fv3I18nOr('folder-not-found', 'This folder no longer exists.') + (window.fv3DebugSwalButtonHtml ? fv3DebugSwalButtonHtml('fv3-dbg-notfound') : ''),
-                type: 'error',
-                html: true
-            });
-            if (window.fv3BindDebugSwalButton) fv3BindDebugSwalButton('fv3-dbg-notfound', 'FOLDER-EDIT');
+            fv3SwalError(fv3I18nOr('folder-not-found', 'This folder no longer exists.'), 'FOLDER-EDIT');
             return;
         }
         delete folders[folderId];
