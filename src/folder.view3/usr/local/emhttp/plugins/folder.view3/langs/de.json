@@ -153,6 +153,7 @@
     "folder-load-failed": "Der Ordner konnte nicht geladen werden, daher ist Speichern deaktiviert. Lade die Seite neu und versuche es erneut.",
     "folder-not-found": "Dieser Ordner existiert nicht mehr.",
     "folder-data-load-failed": "Ordnerdaten konnten nicht geladen werden. Bitte lade die Seite neu.",
+    "download-debug-info": "Debug-Informationen herunterladen",
     "importing-folders": "Ordner werden importiert…",
     "import-failed": "Import fehlgeschlagen: $1",
     "folder-order-load-failed": "Die Ordnerreihenfolge konnte nicht geladen werden. Lade die Seite neu.",

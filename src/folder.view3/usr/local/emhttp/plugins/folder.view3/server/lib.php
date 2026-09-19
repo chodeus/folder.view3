@@ -53,6 +53,7 @@
         if (!is_array($data)) {
             flock($fp, LOCK_UN);
             fclose($fp);
+            fv3_error_log('settings-decode', 'settings.json is unreadable or corrupt');
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'settings.json is unreadable — refusing to save so other settings are not reset']);
@@ -76,6 +77,54 @@
     if (FV3_DEBUG_MODE && isset($_GET['type']) && basename($_SERVER['SCRIPT_NAME']) === 'read_info.php') {
         @file_put_contents($fv3_debug_log_file, "--- FolderView3 lib.php readInfo Start ---\n");
     }
+
+    // Masks secret-shaped query values so a logged URL or message never carries a live credential.
+    function fv3_redact(string $s): string {
+        return preg_replace('/((?:token|api[_-]?key|key|secret|password|passwd|pass|auth)=)[^&\s"\']+/i', '$1[redacted]', $s);
+    }
+
+    // Always-on (unlike fv3_debug_log, gated behind /tmp/fv3_debug_enabled): every endpoint
+    // error lands here so a report never depends on debug mode having been armed in advance.
+    function fv3_error_log(string $context, string $message): void {
+        global $configDir;
+        if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
+        $path = "$configDir/error.log";
+        // Cap growth: keep only the tail before appending, rather than parsing/rotating.
+        if (@filesize($path) > 262144) {
+            $tail = @file_get_contents($path);
+            if ($tail !== false) { @file_put_contents($path, substr($tail, -153600)); }
+        }
+        $line = '[' . date('Y-m-d H:i:s') . "] $context: " . fv3_redact($message) . "\n";
+        @file_put_contents($path, $line, FILE_APPEND | LOCK_EX);
+        @chmod($path, 0600);
+    }
+
+    // Tail for read_error_log.php — already redacted at write time; the cap here is just to
+    // keep the download light, not a security boundary.
+    function fv3_read_error_log_tail(): string {
+        global $configDir;
+        $path = "$configDir/error.log";
+        $raw = @file_get_contents($path);
+        if ($raw === false) return '';
+        $lines = explode("\n", trim($raw));
+        return implode("\n", array_slice($lines, -200));
+    }
+
+    // Safety net for anything not already caught explicitly. Logs, then answers the same
+    // generic JSON 500 shape every other endpoint uses — an uncaught exception must still
+    // surface to the client as a failure, not a blank 200 a caller's fv3SafeParse masks.
+    set_exception_handler(function(\Throwable $e) {
+        fv3_error_log('uncaught', get_class($e) . ': ' . $e->getMessage() . ' at ' . basename($e->getFile()) . ':' . $e->getLine());
+        if (!headers_sent()) { http_response_code(500); header('Content-Type: application/json'); }
+        echo json_encode(['error' => 'Internal error']);
+    });
+    // Non-fatal PHP errors (warnings/notices) don't terminate the request, so only log —
+    // changing the response here would be wrong for something execution continues past.
+    set_error_handler(function(int $severity, string $message, string $file, int $line): bool {
+        if (!(error_reporting() & $severity)) return false;
+        fv3_error_log('php-error', "$message at " . basename($file) . ":$line");
+        return false;
+    });
 
     function fv3_validate_type($type): string {
         // Untyped on purpose: a crafted type[]=x request reaches every endpoint as an
@@ -219,6 +268,7 @@
         $raw = @file_get_contents("$configDir/$type.json");
         if ($raw === false) {
             // Fail the request: a 200 '{}' would be cached client-side over the last good copy
+            fv3_error_log('readFolder', "$type.json is unreadable");
             http_response_code(500);
             return json_encode(['error' => "$type.json is unreadable"]);
         }
@@ -227,6 +277,7 @@
         if (json_last_error() !== JSON_ERROR_NONE) { return $raw; }
         // Valid JSON that isn't a folder map fails like an unreadable file
         if (!is_array($decoded)) {
+            fv3_error_log('readFolder', "$type.json does not contain a folder map");
             http_response_code(500);
             return json_encode(['error' => "$type.json does not contain a folder map"]);
         }
@@ -824,6 +875,7 @@
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
             // Corrupt config must fail closed — merging onto empty would wipe every other folder
+            fv3_error_log('updateFolder', "$type.json is unreadable, refusing to save");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
@@ -854,6 +906,7 @@
         // corrupt-as-empty read must abort rather than persist a pruned file
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
+            fv3_error_log('updateFolderIds', "$type.json is unreadable, refusing to save");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
@@ -894,6 +947,7 @@
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
             // Corrupt config must fail closed — writing the fallback would wipe every folder
+            fv3_error_log('deleteFolder', "$type.json is unreadable, refusing to delete");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to delete so the folder config is not wiped"]);
@@ -963,7 +1017,7 @@
         }
         $path = "$configDir/settings.json";
         $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
+        if (!$fp) { fv3_error_log('updateSettings', "could not open $path"); http_response_code(500); exit; }
         flock($fp, LOCK_EX);
         $raw = stream_get_contents($fp);
         $data = fv3_decode_settings_or_abort($fp, $raw);
@@ -1015,7 +1069,7 @@
         $freeform = ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width', 'default_context_graph_time', 'dashboard_context_graph_time'];
         $path = "$configDir/settings.json";
         $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
+        if (!$fp) { fv3_error_log('updateSettingsBatch', "could not open $path"); http_response_code(500); exit; }
         flock($fp, LOCK_EX);
         $raw = stream_get_contents($fp);
         $data = fv3_decode_settings_or_abort($fp, $raw);
@@ -1055,7 +1109,7 @@
         $value = preg_replace('/[<>"\'\\\\]/', '', $value);
         $path = "$configDir/settings.json";
         $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
+        if (!$fp) { fv3_error_log('updateSettingsFreeform', "could not open $path"); http_response_code(500); exit; }
         flock($fp, LOCK_EX);
         $raw = stream_get_contents($fp);
         $data = fv3_decode_settings_or_abort($fp, $raw);
@@ -1384,6 +1438,7 @@
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $result = fv3_replace_files($configDir, $files, $clear);
         if (isset($result['error'])) {
+            fv3_error_log('updateCssConfig', $result['error']);
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => $result['error']]);

@@ -11,6 +11,7 @@
     } catch (\Throwable $e) {
         // A 200 carrying a partial map would read as "nothing is set to autostart"
         fv3_debug_log("read_info: " . $e->getMessage());
+        fv3_error_log('read_info', "type=$type: " . get_class($e) . ': ' . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Could not read the container autostart state']);
         exit;
@@ -18,6 +19,7 @@
     if ($json === false) {
         // '{}' here is indistinguishable from "this server has no containers"
         fv3_debug_log("read_info: json_encode failed for type $type");
+        fv3_error_log('read_info', "type=$type: json_encode failed");
         http_response_code(500);
         echo json_encode(['error' => 'Could not encode the container list']);
         exit;

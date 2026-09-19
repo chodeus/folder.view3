@@ -3,6 +3,7 @@
     function fv3_scan_styles(string $stylesDir): array {
         $entries = @scandir($stylesDir);
         if ($entries === false) {
+            fv3_error_log('fv3_scan_styles', "$stylesDir could not be read");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'The styles folder could not be read.']);
@@ -139,6 +140,7 @@
             header('Content-Type: application/json');
             $error = 'Could not rename: ' . implode(', ', $blocked);
             if ($stuck) $error .= '. Could not restore: ' . implode(', ', $stuck);
+            fv3_error_log('toggleTheme', $error);
             echo json_encode(['error' => $error]);
             exit;
         }
@@ -340,6 +342,7 @@
             $removed = is_dir($path) ? fv3_remove_tree($path, $baseReal) : @unlink($path);
         }
         if (!$removed) {
+            fv3_error_log('deleteTheme', "could not remove $path");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'Some theme files could not be removed.']);

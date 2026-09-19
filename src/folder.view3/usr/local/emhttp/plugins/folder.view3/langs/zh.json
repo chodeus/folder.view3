@@ -153,6 +153,7 @@
     "folder-load-failed": "无法加载此文件夹，因此已禁用保存。请刷新页面后重试。",
     "folder-not-found": "此文件夹已不存在。",
     "folder-data-load-failed": "无法加载文件夹数据。请刷新页面。",
+    "download-debug-info": "下载调试信息",
     "importing-folders": "正在导入文件夹…",
     "import-failed": "导入失败：$1",
     "folder-order-load-failed": "无法加载文件夹顺序。请刷新页面。",

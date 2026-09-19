@@ -8,7 +8,7 @@
     if (file_exists($autoStartFile)) {
         $lines = fv3_read_autostart_lines($autoStartFile);
         // Unreadable is an error, not "nothing autostarts"
-        if ($lines === null) { http_response_code(500); echo json_encode(['error' => 'The autostart file could not be read']); exit; }
+        if ($lines === null) { fv3_error_log('read_autostart', "$autoStartFile is unreadable"); http_response_code(500); echo json_encode(['error' => 'The autostart file could not be read']); exit; }
         foreach ($lines as $line) {
             $parts = explode(' ', $line, 2);
             $entries[] = ['name' => $parts[0], 'wait' => isset($parts[1]) ? (int)trim($parts[1]) : 0];
