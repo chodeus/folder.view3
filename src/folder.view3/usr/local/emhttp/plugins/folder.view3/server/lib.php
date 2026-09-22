@@ -50,7 +50,8 @@
         // either as an empty file, or the next save resets every other setting.
         if (is_string($raw) && trim($raw) === '') return [];
         $data = is_string($raw) ? json_decode($raw, true) : null;
-        if (!is_array($data)) {
+        // A JSON list is not a settings map either: merging into one keeps its entries as junk keys
+        if (!is_array($data) || ($data !== [] && array_is_list($data))) {
             flock($fp, LOCK_UN);
             fclose($fp);
             http_response_code(500);
@@ -908,165 +909,157 @@
 
     function readSettings() : string {
         global $configDir;
-        $path = "$configDir/settings.json";
-        if(!file_exists($path)) {
-            if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-            fv3_atomic_write($path, '{}');
+        $raw = @file_get_contents("$configDir/settings.json");
+        $data = $raw !== false ? json_decode($raw, true) : null;
+        // A missing, blank, hand-edited or list-shaped file is answered as '{}'; only the locked writers create the file
+        if (!is_array($data) || ($data !== [] && array_is_list($data))) return '{}';
+        return json_encode(fv3_normalize_settings($data), JSON_FORCE_OBJECT);
+    }
+
+    // The one place that knows which settings exist and what each accepts
+    function fv3_settings_rules(): array {
+        return [
+            'enum' => [
+                'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+                'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+                'dashboard_animation'            => ['yes', 'no'],
+                'dashboard_docker_expand_toggle' => ['yes', 'no'],
+                'dashboard_docker_greyscale'     => ['yes', 'no'],
+                'dashboard_docker_folder_label'  => ['yes', 'no'],
+                'dashboard_vm_expand_toggle'     => ['yes', 'no'],
+                'dashboard_vm_greyscale'         => ['yes', 'no'],
+                'dashboard_vm_folder_label'      => ['yes', 'no'],
+                'dashboard_context'              => ['0', '1', '2', '3'],
+                'dashboard_context_trigger'      => ['0', '1'],
+                'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
+                'default_preview'          => ['0', '1', '2', '3', '4'],
+                'default_preview_hover'    => ['yes', 'no'],
+                'default_preview_status'   => ['none', 'symbol', 'grayscale'],
+                'default_preview_grayscale'=> ['yes', 'no'],
+                'default_preview_webui'    => ['yes', 'no'],
+                'default_preview_logs'     => ['yes', 'no'],
+                'default_preview_console'  => ['yes', 'no'],
+                'default_preview_update'   => ['yes', 'no'],
+                'default_preview_update_folder'      => ['yes', 'no'],
+                'dashboard_update_container'         => ['yes', 'no'],
+                'dashboard_update_folder'            => ['yes', 'no'],
+                'default_preview_vertical_bars' => ['yes', 'no'],
+                'default_preview_border'   => ['yes', 'no'],
+                'default_row_separator'    => ['yes', 'no'],
+                'default_overflow'         => ['default', 'scroll', 'expand'],
+                'default_context'          => ['0', '1', '2', '3'],
+                'default_context_trigger'  => ['0', '1'],
+                'default_context_graph'    => ['0', '1', '2', '3', '4'],
+                'default_update_column'    => ['yes', 'no']
+            ],
+            'digits' => ['default_context_graph_time', 'dashboard_context_graph_time'],
+            'text'   => ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width'],
+        ];
+    }
+
+    // One verdict for one key: ['store' => v] to save, ['clear' => true] to remove, null to refuse
+    function fv3_sanitize_setting(string $key, $value): ?array {
+        $rules = fv3_settings_rules();
+        if (!is_scalar($value)) return null;
+        $value = (string)$value;
+        // Invalid UTF-8 would make json_encode() fail at write time — refuse it at the boundary instead
+        if (preg_match('//u', $value) !== 1) return null;
+        if (isset($rules['enum'][$key])) {
+            return in_array($value, $rules['enum'][$key], true) ? ['store' => $value] : null;
         }
-        $raw = @file_get_contents($path);
-        // A blank or hand-edited file is answered as '{}': every client parses this body as JSON
-        return ($raw !== false && is_object(json_decode($raw))) ? $raw : '{}';
+        if (in_array($key, $rules['digits'], true)) {
+            $value = preg_replace('/[^0-9]/', '', $value);
+            return $value === '' ? ['clear' => true] : ['store' => $value];
+        }
+        if (in_array($key, $rules['text'], true)) {
+            if (strlen($value) > 50) return null;
+            $value = preg_replace('/[<>"\'\\\\]/', '', $value);
+            return $value === '' ? ['clear' => true] : ['store' => $value];
+        }
+        return null;
+    }
+
+    // The map every reader and writer sees: entries the rules refuse are dropped, the rest sanitised
+    function fv3_normalize_settings(array $data): array {
+        $clean = [];
+        foreach ($data as $k => $v) {
+            $verdict = fv3_sanitize_setting((string)$k, $v);
+            if ($verdict !== null && isset($verdict['store'])) $clean[(string)$k] = $verdict['store'];
+        }
+        return $clean;
+    }
+
+    // Serialises every settings.json writer, imports included. A separate lock file: replacing
+    // settings.json gives it a new inode, so a lock on the file itself would stop serialising
+    function fv3_settings_lock() {
+        global $configDir;
+        if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
+        $lock = @fopen("$configDir/settings.json.lock", 'c');
+        if (!$lock) return null;
+        if (!flock($lock, LOCK_EX)) { fclose($lock); return null; }
+        return $lock;
+    }
+
+    function fv3_settings_unlock($lock): void {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+
+    // Every interactive write to settings.json goes through here: the live file is only ever
+    // replaced whole, so a failed encode or a short write leaves the previous copy intact
+    function fv3_write_settings(callable $apply): void {
+        global $configDir;
+        $path = "$configDir/settings.json";
+        $lock = fv3_settings_lock();
+        if (!$lock) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not lock settings.json — nothing was saved']);
+            exit;
+        }
+        $raw = file_exists($path) ? @file_get_contents($path) : '';
+        $data = $apply(fv3_normalize_settings(fv3_decode_settings_or_abort($lock, $raw)));
+        $ok = fv3_atomic_write($path, json_encode($data));
+        fv3_settings_unlock($lock);
+        if (!$ok) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not write settings.json — the previous settings are unchanged']);
+            exit;
+        }
     }
 
     function updateSettings(string $key, string $value) : void {
-        global $configDir;
-        $allowed = [
-            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
-            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
-            'dashboard_animation'            => ['yes', 'no'],
-            'dashboard_docker_expand_toggle' => ['yes', 'no'],
-            'dashboard_docker_greyscale'     => ['yes', 'no'],
-            'dashboard_docker_folder_label'  => ['yes', 'no'],
-            'dashboard_vm_expand_toggle'     => ['yes', 'no'],
-            'dashboard_vm_greyscale'         => ['yes', 'no'],
-            'dashboard_vm_folder_label'      => ['yes', 'no'],
-            'dashboard_context'              => ['0', '1', '2', '3'],
-            'dashboard_context_trigger'      => ['0', '1'],
-            'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
-            'default_preview'          => ['0', '1', '2', '3', '4'],
-            'default_preview_hover'    => ['yes', 'no'],
-            'default_preview_status'   => ['none', 'symbol', 'grayscale'],
-            'default_preview_grayscale'=> ['yes', 'no'],
-            'default_preview_webui'    => ['yes', 'no'],
-            'default_preview_logs'     => ['yes', 'no'],
-            'default_preview_console'  => ['yes', 'no'],
-            'default_preview_update'   => ['yes', 'no'],
-            'default_preview_update_folder'      => ['yes', 'no'],
-            'dashboard_update_container'         => ['yes', 'no'],
-            'dashboard_update_folder'            => ['yes', 'no'],
-            'default_preview_vertical_bars' => ['yes', 'no'],
-            'default_preview_border'   => ['yes', 'no'],
-            'default_row_separator'    => ['yes', 'no'],
-            'default_overflow'         => ['default', 'scroll', 'expand'],
-            'default_context'          => ['0', '1', '2', '3'],
-            'default_context_trigger'  => ['0', '1'],
-            'default_context_graph'    => ['0', '1', '2', '3', '4'],
-            'default_update_column'    => ['yes', 'no']
-        ];
-        $freeformUpdate = ['default_context_graph_time', 'dashboard_context_graph_time'];
-        if (in_array($key, $freeformUpdate, true)) {
-            $value = preg_replace('/[^0-9]/', '', $value);
-            if ($value === '') { http_response_code(400); exit; }
-        } elseif (!isset($allowed[$key]) || !in_array($value, $allowed[$key], true)) {
-            http_response_code(400);
-            exit;
-        }
-        $path = "$configDir/settings.json";
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        $raw = stream_get_contents($fp);
-        $data = fv3_decode_settings_or_abort($fp, $raw);
-        $data[$key] = $value;
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($data));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
+        $verdict = fv3_sanitize_setting($key, $value);
+        if ($verdict === null) { http_response_code(400); exit; }
+        fv3_write_settings(function (array $data) use ($key, $verdict): array {
+            if (isset($verdict['clear'])) { unset($data[$key]); } else { $data[$key] = $verdict['store']; }
+            return $data;
+        });
     }
 
+    // All or nothing: one refused entry fails the whole batch before anything is written, as the single endpoint does
     function updateSettingsBatch(array $settings) : void {
-        global $configDir;
-        $allowed = [
-            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
-            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
-            'dashboard_animation'            => ['yes', 'no'],
-            'dashboard_docker_expand_toggle' => ['yes', 'no'],
-            'dashboard_docker_greyscale'     => ['yes', 'no'],
-            'dashboard_docker_folder_label'  => ['yes', 'no'],
-            'dashboard_vm_expand_toggle'     => ['yes', 'no'],
-            'dashboard_vm_greyscale'         => ['yes', 'no'],
-            'dashboard_vm_folder_label'      => ['yes', 'no'],
-            'dashboard_context'              => ['0', '1', '2', '3'],
-            'dashboard_context_trigger'      => ['0', '1'],
-            'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
-            'default_preview'          => ['0', '1', '2', '3', '4'],
-            'default_preview_hover'    => ['yes', 'no'],
-            'default_preview_status'   => ['none', 'symbol', 'grayscale'],
-            'default_preview_grayscale'=> ['yes', 'no'],
-            'default_preview_webui'    => ['yes', 'no'],
-            'default_preview_logs'     => ['yes', 'no'],
-            'default_preview_console'  => ['yes', 'no'],
-            'default_preview_update'   => ['yes', 'no'],
-            'default_preview_update_folder'      => ['yes', 'no'],
-            'dashboard_update_container'         => ['yes', 'no'],
-            'dashboard_update_folder'            => ['yes', 'no'],
-            'default_preview_vertical_bars' => ['yes', 'no'],
-            'default_preview_border'   => ['yes', 'no'],
-            'default_row_separator'    => ['yes', 'no'],
-            'default_overflow'         => ['default', 'scroll', 'expand'],
-            'default_context'          => ['0', '1', '2', '3'],
-            'default_context_trigger'  => ['0', '1'],
-            'default_context_graph'    => ['0', '1', '2', '3', '4'],
-            'default_update_column'    => ['yes', 'no']
-        ];
-        $freeform = ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width', 'default_context_graph_time', 'dashboard_context_graph_time'];
-        $path = "$configDir/settings.json";
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        $raw = stream_get_contents($fp);
-        $data = fv3_decode_settings_or_abort($fp, $raw);
+        $verdicts = [];
+        $refused = [];
         foreach ($settings as $key => $value) {
             $key = (string)$key;
-            $value = (string)$value;
-            if (isset($allowed[$key])) {
-                if (in_array($value, $allowed[$key], true)) $data[$key] = $value;
-            } elseif (in_array($key, $freeform, true)) {
-                if (strlen($value) > 50) continue;
-                $value = preg_replace('/[<>"\'\\\\]/', '', $value);
-                if ($value === '') { unset($data[$key]); } else { $data[$key] = $value; }
-            }
+            $verdict = fv3_sanitize_setting($key, $value);
+            if ($verdict === null) { $refused[] = $key; continue; }
+            $verdicts[$key] = $verdict;
         }
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($data));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
-    }
-
-    function updateSettingsFreeform(string $key, string $value) : void {
-        global $configDir;
-        $allowedFreeform = [
-            'default_vertical_bars_color',
-            'default_border_color',
-            'default_separator_color',
-            'default_preview_text_width'
-        ];
-        if (!in_array($key, $allowedFreeform, true)) {
+        if ($refused) {
             http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Invalid setting: ' . implode(', ', $refused)]);
             exit;
         }
-        if (strlen($value) > 50) { http_response_code(400); exit; }
-        $value = preg_replace('/[<>"\'\\\\]/', '', $value);
-        $path = "$configDir/settings.json";
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        $raw = stream_get_contents($fp);
-        $data = fv3_decode_settings_or_abort($fp, $raw);
-        if ($value === '') { unset($data[$key]); } else { $data[$key] = $value; }
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($data));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
+        fv3_write_settings(function (array $data) use ($verdicts): array {
+            foreach ($verdicts as $key => $verdict) {
+                if (isset($verdict['clear'])) { unset($data[$key]); } else { $data[$key] = $verdict['store']; }
+            }
+            return $data;
+        });
     }
 
     // Theme listing, import, toggle and delete, and the styles/ confinement helpers they share
@@ -1173,6 +1166,12 @@
             }
             // Same validation an interactive save gets, before it is written AND before it is generated
             if ($key === 'css_config') { $data = fv3_sanitize_css_config($data); $bundle['css_config'] = $data; }
+            // Same rules as an interactive save: unknown keys, bad values and non-scalars never reach settings.json
+            if ($key === 'settings') {
+                // A JSON list is not a settings map: leave the destination alone, as a malformed order snapshot does
+                if ($data !== [] && array_is_list($data)) continue;
+                $data = fv3_normalize_settings($data);
+            }
             $flags = JSON_PRETTY_PRINT;
             if (empty($data)) $flags |= JSON_FORCE_OBJECT;
             $files[$key === 'css_config' ? 'css-config.json' : "$key.json"] = json_encode($data, $flags);
@@ -1191,7 +1190,14 @@
                 if ($css !== null) { $files["styles/$name"] = $css; } else { unset($files["styles/$name"]); $clear[] = "styles/$name"; }
             }
         }
+        // An interactive save must not interleave with the swap, so it waits on the same lock
+        $lock = null;
+        if (isset($files['settings.json'])) {
+            $lock = fv3_settings_lock();
+            if (!$lock) return ['error' => 'Could not lock settings.json — nothing was imported'];
+        }
         $result = fv3_replace_files($configDir, $files, $clear);
+        if ($lock) fv3_settings_unlock($lock);
         if (isset($result['error'])) return $result;
         $restored = [];
         foreach ($result['applied'] as $rel => $hadOld) {
