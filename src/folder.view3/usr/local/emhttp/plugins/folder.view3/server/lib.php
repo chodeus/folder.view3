@@ -1110,6 +1110,7 @@
         $path = "$configDir/settings.json";
         $lock = fv3_settings_lock();
         if (!$lock) {
+            fv3_error_log('fv3_write_settings', 'could not lock settings.json');
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'Could not lock settings.json — nothing was saved']);
@@ -1120,6 +1121,7 @@
         $ok = fv3_atomic_write($path, json_encode($data));
         fv3_settings_unlock($lock);
         if (!$ok) {
+            fv3_error_log('fv3_write_settings', 'could not write settings.json');
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'Could not write settings.json — the previous settings are unchanged']);
