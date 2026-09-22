@@ -316,11 +316,15 @@ window.fv3DebugPayloads = {};
 window.fv3DebugSource = null;
 window.fv3CaptureDebug = async (source) => {
     source = source || window.fv3DebugSource || 'UNKNOWN';
-    const stored = window.fv3DebugPayloads[source];
-    let payload;
-    if (stored) {
-        try { payload = JSON.parse(stored); } catch (_) { payload = { rawBody: stored }; }
-    } else {
+    // A page stores one payload under its own name, or one per section under "<source>-<section>" —
+    // the dashboard renders Docker and VM separately, so its report carries both, each under its key
+    const keys = Object.keys(window.fv3DebugPayloads).filter((k) => k === source || k.indexOf(source + '-') === 0);
+    let payload = {};
+    for (const k of keys) {
+        const stored = window.fv3DebugPayloads[k];
+        try { payload[k] = JSON.parse(stored); } catch (_) { payload[k] = { rawBody: stored }; }
+    }
+    if (!keys.length) {
         // The tabs keep their folder map in a script-scoped `let`, so it is read by name, not off window
         let live = {};
         try { live = (typeof globalFolders !== 'undefined' && globalFolders) || window.globalFolders || {}; } catch (_) {}
