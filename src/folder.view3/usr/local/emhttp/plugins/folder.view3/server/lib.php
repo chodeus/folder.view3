@@ -95,6 +95,12 @@
     // error lands here so a report never depends on debug mode having been armed in advance.
     function fv3_error_log(string $context, string $message): void {
         global $configDir;
+        static $seen = [];
+        $entry = "$context: " . fv3_redact($message);
+        // The log lives on the flash: an entry is written once per request, and a repeat of the
+        // previous line at most once a minute
+        if (isset($seen[$entry])) return;
+        $seen[$entry] = true;
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $path = "$configDir/error.log";
         // Every call inside is @-suppressed: a warning here would re-enter the error handler
@@ -102,8 +108,14 @@
         if (!$fp) return;
         if (@flock($fp, LOCK_EX)) {
             $st = @fstat($fp);
+            $size = is_array($st) ? (int)$st['size'] : 0;
+            if ($size > 0 && fv3_error_log_repeats($fp, $size, $entry)) {
+                @flock($fp, LOCK_UN);
+                @fclose($fp);
+                return;
+            }
             // Cap growth under the same lock as the append, keeping the newest ~150KB from a line boundary
-            if (is_array($st) && $st['size'] > 262144) {
+            if ($size > 262144) {
                 $all = @stream_get_contents($fp, -1, 0);
                 $tail = is_string($all) ? substr($all, -153600) : '';
                 $nl = strpos($tail, "\n");
@@ -113,12 +125,24 @@
                 @fwrite($fp, $tail);
             }
             @fseek($fp, 0, SEEK_END);
-            @fwrite($fp, '[' . date('Y-m-d H:i:s') . "] $context: " . fv3_redact($message) . "\n");
+            @fwrite($fp, '[' . date('Y-m-d H:i:s') . "] $entry\n");
             @fflush($fp);
             @flock($fp, LOCK_UN);
         }
         @fclose($fp);
         @chmod($path, 0600);
+    }
+
+    // True when the same entry was written within the last minute (the newest ~2KB of the log is checked)
+    function fv3_error_log_repeats($fp, int $size, string $entry): bool {
+        $chunk = min($size, 2048);
+        if (@fseek($fp, -$chunk, SEEK_END) !== 0) return false;
+        $tail = @stream_get_contents($fp);
+        if (!is_string($tail)) return false;
+        foreach (explode("\n", $tail) as $line) {
+            if (preg_match('/^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\] (.*)$/', $line, $m) && $m[2] === $entry && (time() - (int)strtotime($m[1])) < 60) return true;
+        }
+        return false;
     }
 
     // Tail for read_error_log.php: '' when there is no log yet, null when one exists but cannot be read

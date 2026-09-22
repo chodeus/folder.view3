@@ -504,10 +504,12 @@ window.fv3ShowBanner = (message, level) => {
         dl.className = 'fv3-banner-debug-link';
         dl.textContent = (window.fv3I18nOr && fv3I18nOr('download-debug-info', 'Download Debug Info')) || 'Download Debug Info';
         dl.style.cssText = 'margin-left:12px;text-decoration:underline;cursor:pointer;';
+        var label = dl.textContent, busy = false;
         dl.onclick = function() {
-            var orig = dl.textContent;
+            if (busy) return;
+            busy = true;
             dl.textContent = '...';
-            window.fv3CaptureDebug(window.fv3DebugSource).catch(function(e) { fv3Error('banner-debug-link', e); }).finally(function() { dl.textContent = orig; });
+            window.fv3CaptureDebug(window.fv3DebugSource).catch(function(e) { fv3Error('banner-debug-link', e); }).finally(function() { dl.textContent = label; busy = false; });
         };
         banner.appendChild(dl);
     }
