@@ -4,16 +4,15 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- settings: the existing map passes the shared rules on every read and write
-- settings: readSettings() no longer creates settings.json
-- settings: check the lock result, hold the lock across an import swap, and refuse a list-shaped settings.json
-- settings: refuse invalid UTF-8, replace settings.json whole, and fail a batch as a unit
-- refactor: one sanitizer decides every settings write, imports included
-- review: guard the banner link while a capture runs, and bound the error log's flash writes
-- review: escape the error dialog, record rejected fetches, widen and centralise redaction, lock the log rotation
-- feat: wire the debug-download action onto every server/network-driven error
-- refactor: one fv3SwalError() helper instead of repeating the debug-button boilerplate
-- feat: error-linked debug logging across every page
+- Every error dialog and banner now has a Download Debug Info button
+- Failed requests are captured even when debug mode was never armed
+- Server-side errors are kept in a size-capped error.log that the debug download includes
+- Debug downloads and the error log redact tokens, passwords and other secrets
+- One set of rules now validates settings from the settings page, a backup restore and the existing settings file
+- A backup can no longer persist unknown keys or invalid settings values
+- Saving settings can no longer truncate settings.json
+- One invalid value in a settings save now refuses the whole save
+- A settings file that is not a settings map is refused rather than merged into
 
 ## 2026.09.20
 
