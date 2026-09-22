@@ -910,8 +910,10 @@
     function readSettings() : string {
         global $configDir;
         $raw = @file_get_contents("$configDir/settings.json");
-        // A missing, blank or hand-edited file is answered as '{}'; only the locked writers create the file
-        return ($raw !== false && is_object(json_decode($raw))) ? $raw : '{}';
+        $data = $raw !== false ? json_decode($raw, true) : null;
+        // A missing, blank, hand-edited or list-shaped file is answered as '{}'; only the locked writers create the file
+        if (!is_array($data) || ($data !== [] && array_is_list($data))) return '{}';
+        return json_encode(fv3_normalize_settings($data), JSON_FORCE_OBJECT);
     }
 
     // The one place that knows which settings exist and what each accepts
@@ -977,6 +979,16 @@
         return null;
     }
 
+    // The map every reader and writer sees: entries the rules refuse are dropped, the rest sanitised
+    function fv3_normalize_settings(array $data): array {
+        $clean = [];
+        foreach ($data as $k => $v) {
+            $verdict = fv3_sanitize_setting((string)$k, $v);
+            if ($verdict !== null && isset($verdict['store'])) $clean[(string)$k] = $verdict['store'];
+        }
+        return $clean;
+    }
+
     // Serialises every settings.json writer, imports included. A separate lock file: replacing
     // settings.json gives it a new inode, so a lock on the file itself would stop serialising
     function fv3_settings_lock() {
@@ -1006,7 +1018,7 @@
             exit;
         }
         $raw = file_exists($path) ? @file_get_contents($path) : '';
-        $data = $apply(fv3_decode_settings_or_abort($lock, $raw));
+        $data = $apply(fv3_normalize_settings(fv3_decode_settings_or_abort($lock, $raw)));
         $ok = fv3_atomic_write($path, json_encode($data));
         fv3_settings_unlock($lock);
         if (!$ok) {
@@ -1158,12 +1170,7 @@
             if ($key === 'settings') {
                 // A JSON list is not a settings map: leave the destination alone, as a malformed order snapshot does
                 if ($data !== [] && array_is_list($data)) continue;
-                $clean = [];
-                foreach ($data as $k => $v) {
-                    $verdict = fv3_sanitize_setting((string)$k, $v);
-                    if ($verdict !== null && isset($verdict['store'])) $clean[(string)$k] = $verdict['store'];
-                }
-                $data = $clean;
+                $data = fv3_normalize_settings($data);
             }
             $flags = JSON_PRETTY_PRINT;
             if (empty($data)) $flags |= JSON_FORCE_OBJECT;
