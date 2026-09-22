@@ -19,6 +19,7 @@
     }
     $folders = fv3_read_json_strict("$configDir/docker.json");
     if ($folders === null) {
+        fv3_error_log('read_membership', 'docker.json is unreadable');
         http_response_code(500);
         echo json_encode(['error' => 'docker.json is unreadable']);
         exit;

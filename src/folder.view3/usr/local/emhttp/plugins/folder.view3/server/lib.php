@@ -54,6 +54,7 @@
         if (!is_array($data) || ($data !== [] && array_is_list($data))) {
             flock($fp, LOCK_UN);
             fclose($fp);
+            fv3_error_log('settings-decode', 'settings.json is unreadable or corrupt');
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'settings.json is unreadable — refusing to save so other settings are not reset']);
@@ -77,6 +78,98 @@
     if (FV3_DEBUG_MODE && isset($_GET['type']) && basename($_SERVER['SCRIPT_NAME']) === 'read_info.php') {
         @file_put_contents($fv3_debug_log_file, "--- FolderView3 lib.php readInfo Start ---\n");
     }
+
+    // Masks secret-shaped values in query, JSON, header and URL-userinfo form. Mirrors fv3RedactString()
+    // in scripts/debug.js — keep the two pattern lists identical.
+    function fv3_redact(string $s): string {
+        $rules = [
+            '/((?:token|api[_-]?key|key|secret|password|passwd|pass|auth|authorization|credential)=)[^&\s"\'\\\\]+/i' => '$1[redacted]',
+            '/("[^"\\\\]*(?:token|api[_-]?key|secret|password|passwd|authorization|credential|private[_-]?key|access[_-]?key)[^"\\\\]*"\s*:\s*")(?:[^"\\\\]|\\\\.)*(")/i' => '$1[redacted]$2',
+            '/((?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*:\s*)[^\r\n"\'\\\\]+/i' => '$1[redacted]',
+            '#(://)[^/\s@"\'\\\\]+@#' => '$1[redacted]@',
+        ];
+        foreach ($rules as $re => $to) { $r = preg_replace($re, $to, $s); if ($r !== null) $s = $r; }
+        return $s;
+    }
+
+    // Always-on (unlike fv3_debug_log, gated behind /tmp/fv3_debug_enabled): every endpoint
+    // error lands here so a report never depends on debug mode having been armed in advance.
+    function fv3_error_log(string $context, string $message): void {
+        global $configDir;
+        static $seen = [];
+        $entry = "$context: " . fv3_redact($message);
+        // The log lives on the flash: an entry is written once per request, and a repeat of the
+        // previous line at most once a minute
+        if (isset($seen[$entry])) return;
+        $seen[$entry] = true;
+        if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
+        $path = "$configDir/error.log";
+        // Every call inside is @-suppressed: a warning here would re-enter the error handler
+        $fp = @fopen($path, 'c+');
+        if (!$fp) return;
+        if (@flock($fp, LOCK_EX)) {
+            $st = @fstat($fp);
+            $size = is_array($st) ? (int)$st['size'] : 0;
+            if ($size > 0 && fv3_error_log_repeats($fp, $size, $entry)) {
+                @flock($fp, LOCK_UN);
+                @fclose($fp);
+                return;
+            }
+            // Cap growth under the same lock as the append, keeping the newest ~150KB from a line boundary
+            if ($size > 262144) {
+                $all = @stream_get_contents($fp, -1, 0);
+                $tail = is_string($all) ? substr($all, -153600) : '';
+                $nl = strpos($tail, "\n");
+                if ($nl !== false) $tail = substr($tail, $nl + 1);
+                @ftruncate($fp, 0);
+                @rewind($fp);
+                @fwrite($fp, $tail);
+            }
+            @fseek($fp, 0, SEEK_END);
+            @fwrite($fp, '[' . date('Y-m-d H:i:s') . "] $entry\n");
+            @fflush($fp);
+            @flock($fp, LOCK_UN);
+        }
+        @fclose($fp);
+        @chmod($path, 0600);
+    }
+
+    // True when the same entry was written within the last minute (the newest ~2KB of the log is checked)
+    function fv3_error_log_repeats($fp, int $size, string $entry): bool {
+        $chunk = min($size, 2048);
+        if (@fseek($fp, -$chunk, SEEK_END) !== 0) return false;
+        $tail = @stream_get_contents($fp);
+        if (!is_string($tail)) return false;
+        foreach (explode("\n", $tail) as $line) {
+            if (preg_match('/^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\] (.*)$/', $line, $m) && $m[2] === $entry && (time() - (int)strtotime($m[1])) < 60) return true;
+        }
+        return false;
+    }
+
+    // Tail for read_error_log.php: '' when there is no log yet, null when one exists but cannot be read
+    function fv3_read_error_log_tail(): ?string {
+        global $configDir;
+        $path = "$configDir/error.log";
+        if (!file_exists($path)) return '';
+        $raw = @file_get_contents($path);
+        if ($raw === false) return null;
+        $lines = explode("\n", trim($raw));
+        return implode("\n", array_slice($lines, -200));
+    }
+
+    // Safety net for anything not caught explicitly: log, then answer the generic JSON 500 so the
+    // client sees a failure rather than a blank 200 that fv3SafeParse would mask
+    set_exception_handler(function(\Throwable $e) {
+        fv3_error_log('uncaught', get_class($e) . ': ' . $e->getMessage() . ' at ' . basename($e->getFile()) . ':' . $e->getLine());
+        if (!headers_sent()) { http_response_code(500); header('Content-Type: application/json'); }
+        echo json_encode(['error' => 'Internal error']);
+    });
+    // Non-fatal PHP errors don't end the request, so only log them; deprecations are noise, not failures
+    set_error_handler(function(int $severity, string $message, string $file, int $line): bool {
+        if (!(error_reporting() & $severity) || ($severity & (E_DEPRECATED | E_USER_DEPRECATED))) return false;
+        fv3_error_log('php-error', "$message at " . basename($file) . ":$line");
+        return false;
+    });
 
     function fv3_validate_type($type): string {
         // Untyped on purpose: a crafted type[]=x request reaches every endpoint as an
@@ -220,6 +313,7 @@
         $raw = @file_get_contents("$configDir/$type.json");
         if ($raw === false) {
             // Fail the request: a 200 '{}' would be cached client-side over the last good copy
+            fv3_error_log('readFolder', "$type.json is unreadable");
             http_response_code(500);
             return json_encode(['error' => "$type.json is unreadable"]);
         }
@@ -228,6 +322,7 @@
         if (json_last_error() !== JSON_ERROR_NONE) { return $raw; }
         // Valid JSON that isn't a folder map fails like an unreadable file
         if (!is_array($decoded)) {
+            fv3_error_log('readFolder', "$type.json does not contain a folder map");
             http_response_code(500);
             return json_encode(['error' => "$type.json does not contain a folder map"]);
         }
@@ -825,6 +920,7 @@
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
             // Corrupt config must fail closed — merging onto empty would wipe every other folder
+            fv3_error_log('updateFolder', "$type.json is unreadable, refusing to save");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
@@ -855,6 +951,7 @@
         // corrupt-as-empty read must abort rather than persist a pruned file
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
+            fv3_error_log('updateFolderIds', "$type.json is unreadable, refusing to save");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
@@ -895,6 +992,7 @@
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
             // Corrupt config must fail closed — writing the fallback would wipe every folder
+            fv3_error_log('deleteFolder', "$type.json is unreadable, refusing to delete");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to delete so the folder config is not wiped"]);
@@ -1390,6 +1488,7 @@
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $result = fv3_replace_files($configDir, $files, $clear);
         if (isset($result['error'])) {
+            fv3_error_log('updateCssConfig', $result['error']);
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => $result['error']]);

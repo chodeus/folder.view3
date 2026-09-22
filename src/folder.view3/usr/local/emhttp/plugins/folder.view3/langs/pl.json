@@ -153,6 +153,7 @@
     "folder-load-failed": "Nie można wczytać folderu, więc zapisywanie jest wyłączone. Odśwież stronę i spróbuj ponownie.",
     "folder-not-found": "Ten folder już nie istnieje.",
     "folder-data-load-failed": "Nie można wczytać danych folderów. Odśwież stronę.",
+    "download-debug-info": "Pobierz informacje debugowania",
     "importing-folders": "Importowanie folderów…",
     "import-failed": "Import nie powiódł się: $1",
     "folder-order-load-failed": "Nie można wczytać kolejności folderów. Odśwież stronę.",

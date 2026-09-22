@@ -153,6 +153,7 @@
     "folder-load-failed": "This folder could not be loaded, so saving is disabled. Reload the page and try again.",
     "folder-not-found": "This folder no longer exists.",
     "folder-data-load-failed": "Could not load folder data. Try refreshing the page.",
+    "download-debug-info": "Download Debug Info",
     "importing-folders": "Importing folders…",
     "import-failed": "Import failed: $1",
     "folder-order-load-failed": "Could not load folder order. Try refreshing the page.",

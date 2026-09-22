@@ -660,6 +660,7 @@ Markdown="false"
     </form>
 </div>
 
+<script src="<?php autov('/plugins/folder.view3/scripts/debug.js')?>"></script>
 <script src="<?php autov('/plugins/folder.view3/scripts/folder.js')?>" defer></script>
 
 <div class="dialogCustomAction" style="display:none"></div>

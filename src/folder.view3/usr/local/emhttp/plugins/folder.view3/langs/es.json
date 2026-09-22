@@ -153,6 +153,7 @@
     "folder-load-failed": "No se pudo cargar la carpeta, así que guardar está desactivado. Recarga la página e inténtalo de nuevo.",
     "folder-not-found": "Esta carpeta ya no existe.",
     "folder-data-load-failed": "No se pudieron cargar los datos de las carpetas. Recarga la página.",
+    "download-debug-info": "Descargar información de depuración",
     "importing-folders": "Importando carpetas…",
     "import-failed": "Error al importar: $1",
     "folder-order-load-failed": "No se pudo cargar el orden de las carpetas. Recarga la página.",

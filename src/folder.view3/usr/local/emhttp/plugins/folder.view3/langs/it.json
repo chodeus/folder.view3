@@ -153,6 +153,7 @@
     "folder-load-failed": "Impossibile caricare la cartella, quindi il salvataggio è disattivato. Ricarica la pagina e riprova.",
     "folder-not-found": "Questa cartella non esiste più.",
     "folder-data-load-failed": "Impossibile caricare i dati delle cartelle. Ricarica la pagina.",
+    "download-debug-info": "Scarica informazioni di debug",
     "importing-folders": "Importazione delle cartelle…",
     "import-failed": "Importazione non riuscita: $1",
     "folder-order-load-failed": "Impossibile caricare l'ordine delle cartelle. Ricarica la pagina.",

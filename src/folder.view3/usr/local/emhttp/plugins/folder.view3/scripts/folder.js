@@ -39,7 +39,7 @@ const folderId = new URLSearchParams(location.search).get('id');
 const isEdit = folderId !== null;
 // Save stays blocked until setup finishes: a rejected load (either mode) must not overwrite a folder with a half-built form
 let fv3FolderLoaded = false;
-const fv3LoadFailedAlert = () => swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), type: 'error' });
+const fv3LoadFailedAlert = () => fv3SwalError(fv3I18nOr('folder-load-failed', 'This folder could not be loaded, so saving is disabled. Reload the page and try again.'), 'FOLDER-EDIT');
 
 const rgbToHex = (rgb) => {
     const m = rgb.match(/\d+/g);
@@ -106,7 +106,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     if (isEdit) {
         const currFolder = folders[folderId];
         if (!currFolder) {
-            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('folder-not-found', 'This folder no longer exists.'), type: 'error' });
+            fv3SwalError(fv3I18nOr('folder-not-found', 'This folder no longer exists.'), 'FOLDER-EDIT');
             return;
         }
         delete folders[folderId];
@@ -529,7 +529,7 @@ const submitForm = async (e) => {
             await $.post('/plugins/folder.view3/server/create.php', { type: type, content: JSON.stringify(folder) });
         }
     } catch (err) {
-        swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), type: 'error' });
+        fv3SwalError(fv3I18nOr('save-folder-failed', 'Could not save the folder: $1', fv3FailReason(err)), 'FOLDER-EDIT');
         return false;
     }
 
@@ -581,7 +581,7 @@ const deleteFolderBtn = () => {
             loc.pop();
             location.href = loc.join('/');
         } catch (err) {
-            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), type: 'error' });
+            fv3SwalError(fv3I18nOr('delete-folder-failed', 'Could not delete folder "$1": $2', folderName, fv3FailReason(err)), 'FOLDER-EDIT');
         }
     });
 };

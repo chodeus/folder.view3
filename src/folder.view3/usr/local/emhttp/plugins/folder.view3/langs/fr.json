@@ -153,6 +153,7 @@
     "folder-load-failed": "Le dossier n'a pas pu être chargé, l'enregistrement est donc désactivé. Rechargez la page et réessayez.",
     "folder-not-found": "Ce dossier n'existe plus.",
     "folder-data-load-failed": "Impossible de charger les données des dossiers. Rechargez la page.",
+    "download-debug-info": "Télécharger les infos de débogage",
     "importing-folders": "Importation des dossiers…",
     "import-failed": "Échec de l'importation : $1",
     "folder-order-load-failed": "Impossible de charger l'ordre des dossiers. Rechargez la page.",
