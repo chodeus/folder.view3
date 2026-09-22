@@ -115,9 +115,8 @@ body[data-fv3-unraid="modern"] div.title {
     flex-shrink: 0;
 }
 
-/* Only an error banner carries the link, and it will not shrink, so a banner too narrow for both
-   gives the message its own row. The gap spaces them on one row and leaves them flush when wrapped.
-   Not behind a breakpoint: what runs out is the banner's width, not the viewport's. */
+/* The link will not shrink, so a too-narrow banner gives the message its own row.
+   No breakpoint: what runs out is the banner's width, not the viewport's. */
 .fv3-banner-error {
     flex-wrap: wrap;
     column-gap: 12px;
