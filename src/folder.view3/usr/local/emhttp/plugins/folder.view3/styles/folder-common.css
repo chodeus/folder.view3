@@ -109,11 +109,18 @@ body[data-fv3-unraid="modern"] div.title {
 }
 
 .fv3-banner-debug-link {
-    margin-left: 12px;
     text-decoration: underline;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
+}
+
+/* Only an error banner carries the link, and it will not shrink, so a banner too narrow for both
+   gives the message its own row. The gap spaces them on one row and leaves them flush when wrapped.
+   Not behind a breakpoint: what runs out is the banner's width, not the viewport's. */
+.fv3-banner-error {
+    flex-wrap: wrap;
+    column-gap: 12px;
 }
 
 /* --- General Folder Styles --- */
