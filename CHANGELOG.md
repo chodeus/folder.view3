@@ -2,6 +2,19 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- settings: the existing map passes the shared rules on every read and write
+- settings: readSettings() no longer creates settings.json
+- settings: check the lock result, hold the lock across an import swap, and refuse a list-shaped settings.json
+- settings: refuse invalid UTF-8, replace settings.json whole, and fail a batch as a unit
+- refactor: one sanitizer decides every settings write, imports included
+- review: guard the banner link while a capture runs, and bound the error log's flash writes
+- review: escape the error dialog, record rejected fetches, widen and centralise redaction, lock the log rotation
+- feat: wire the debug-download action onto every server/network-driven error
+- refactor: one fv3SwalError() helper instead of repeating the debug-button boilerplate
+- feat: error-linked debug logging across every page
+
 ## 2026.09.20
 
 - Folder information now loads successfully when the Docker autostart configuration file is missing.
