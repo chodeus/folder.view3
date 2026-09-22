@@ -909,13 +909,8 @@
 
     function readSettings() : string {
         global $configDir;
-        $path = "$configDir/settings.json";
-        if(!file_exists($path)) {
-            if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-            fv3_atomic_write($path, '{}');
-        }
-        $raw = @file_get_contents($path);
-        // A blank or hand-edited file is answered as '{}': every client parses this body as JSON
+        $raw = @file_get_contents("$configDir/settings.json");
+        // A missing, blank or hand-edited file is answered as '{}'; only the locked writers create the file
         return ($raw !== false && is_object(json_decode($raw))) ? $raw : '{}';
     }
 
