@@ -2,6 +2,18 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Every error dialog and banner now has a Download Debug Info button
+- Failed requests are captured even when debug mode was never armed
+- Server-side errors are kept in a size-capped error.log that the debug download includes
+- Debug downloads and the error log redact tokens, passwords and other secrets
+- One set of rules now validates settings from the settings page, a backup restore and the existing settings file
+- A backup can no longer persist unknown keys or invalid settings values
+- Saving settings can no longer truncate settings.json
+- One invalid value in a settings save now refuses the whole save
+- A settings file that is not a settings map is refused rather than merged into
+
 ## 2026.09.20
 
 - Folder information now loads successfully when the Docker autostart configuration file is missing.
