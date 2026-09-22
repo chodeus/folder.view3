@@ -1508,9 +1508,14 @@
             $cts = $dockerClient->getDockerJSON("/containers/json?all=1");
             if (!is_array($cts)) $cts = [];
             $autoStartFile = $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
-            // Fail closed: [] here would answer 200 with every container reported as not set to autostart
-            $autoStartLines = fv3_read_autostart_lines($autoStartFile);
-            if ($autoStartLines === null) throw new \RuntimeException("autostart file $autoStartFile is unreadable");
+            // Missing is the normal state (no autostart set yet); only an existing-but-unreadable
+            // file fails closed.
+            if (file_exists($autoStartFile)) {
+                $autoStartLines = fv3_read_autostart_lines($autoStartFile);
+                if ($autoStartLines === null) throw new \RuntimeException("autostart file $autoStartFile is unreadable");
+            } else {
+                $autoStartLines = [];
+            }
             $autoStart = array_map('var_split', $autoStartLines);
             $dockerInfoCache = DockerUtil::loadJSON($dockerManPaths['webui-info'] ?? "/usr/local/emhttp/state/plugins/dynamix.docker.manager/docker.json");
             if (!is_array($dockerInfoCache)) $dockerInfoCache = [];
