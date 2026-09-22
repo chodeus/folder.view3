@@ -50,7 +50,8 @@
         // either as an empty file, or the next save resets every other setting.
         if (is_string($raw) && trim($raw) === '') return [];
         $data = is_string($raw) ? json_decode($raw, true) : null;
-        if (!is_array($data)) {
+        // A JSON list is not a settings map either: merging into one keeps its entries as junk keys
+        if (!is_array($data) || ($data !== [] && array_is_list($data))) {
             flock($fp, LOCK_UN);
             fclose($fp);
             http_response_code(500);
@@ -981,20 +982,38 @@
         return null;
     }
 
-    // Every write to settings.json goes through here: writers serialise on a lock file, and the live
-    // file is only ever replaced whole, so a failed encode or a short write leaves the previous copy intact
+    // Serialises every settings.json writer, imports included. A separate lock file: replacing
+    // settings.json gives it a new inode, so a lock on the file itself would stop serialising
+    function fv3_settings_lock() {
+        global $configDir;
+        if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
+        $lock = @fopen("$configDir/settings.json.lock", 'c');
+        if (!$lock) return null;
+        if (!flock($lock, LOCK_EX)) { fclose($lock); return null; }
+        return $lock;
+    }
+
+    function fv3_settings_unlock($lock): void {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+
+    // Every interactive write to settings.json goes through here: the live file is only ever
+    // replaced whole, so a failed encode or a short write leaves the previous copy intact
     function fv3_write_settings(callable $apply): void {
         global $configDir;
         $path = "$configDir/settings.json";
-        // A separate lock file: the rename below gives settings.json a new inode, so a lock on it would not serialise
-        $lock = fopen("$path.lock", 'c');
-        if (!$lock) { http_response_code(500); exit; }
-        flock($lock, LOCK_EX);
+        $lock = fv3_settings_lock();
+        if (!$lock) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not lock settings.json — nothing was saved']);
+            exit;
+        }
         $raw = file_exists($path) ? @file_get_contents($path) : '';
         $data = $apply(fv3_decode_settings_or_abort($lock, $raw));
         $ok = fv3_atomic_write($path, json_encode($data));
-        flock($lock, LOCK_UN);
-        fclose($lock);
+        fv3_settings_unlock($lock);
         if (!$ok) {
             http_response_code(500);
             header('Content-Type: application/json');
@@ -1142,6 +1161,8 @@
             if ($key === 'css_config') { $data = fv3_sanitize_css_config($data); $bundle['css_config'] = $data; }
             // Same rules as an interactive save: unknown keys, bad values and non-scalars never reach settings.json
             if ($key === 'settings') {
+                // A JSON list is not a settings map: leave the destination alone, as a malformed order snapshot does
+                if ($data !== [] && array_is_list($data)) continue;
                 $clean = [];
                 foreach ($data as $k => $v) {
                     $verdict = fv3_sanitize_setting((string)$k, $v);
@@ -1167,7 +1188,14 @@
                 if ($css !== null) { $files["styles/$name"] = $css; } else { unset($files["styles/$name"]); $clear[] = "styles/$name"; }
             }
         }
+        // An interactive save must not interleave with the swap, so it waits on the same lock
+        $lock = null;
+        if (isset($files['settings.json'])) {
+            $lock = fv3_settings_lock();
+            if (!$lock) return ['error' => 'Could not lock settings.json — nothing was imported'];
+        }
         $result = fv3_replace_files($configDir, $files, $clear);
+        if ($lock) fv3_settings_unlock($lock);
         if (isset($result['error'])) return $result;
         $restored = [];
         foreach ($result['applied'] as $rel => $hadOld) {
