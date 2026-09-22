@@ -1294,7 +1294,7 @@
         $lock = null;
         if (isset($files['settings.json'])) {
             $lock = fv3_settings_lock();
-            if (!$lock) { fv3_error_log('importAll', 'could not lock settings.json'); return ['error' => 'Could not lock settings.json — nothing was imported']; }
+            if (!$lock) return ['error' => 'Could not lock settings.json — nothing was imported'];
         }
         $result = fv3_replace_files($configDir, $files, $clear);
         if ($lock) fv3_settings_unlock($lock);
