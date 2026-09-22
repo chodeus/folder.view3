@@ -291,22 +291,14 @@ window.fv3CollectCssDebug = async () => {
     return { cssConfig, themes, loadedCss, customScripts };
 };
 
+// Saves `data` plus a fresh env() as folder.view3-<source>-<local time>-<theme>.json
 window.fv3DownloadDebugJSON = (source, data) => {
-    let filename, body;
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
-    const themeTag = window.fv3UnraidTheme || 'theme-unknown';
-    if (typeof data === 'string' && /\.json$/i.test(source)) {
-        const parsed = (() => { try { return JSON.parse(data); } catch (_) { return { rawBody: data }; } })();
-        parsed.env = window.fv3CollectEnv();
-        body = JSON.stringify(parsed, null, 2);
-        filename = source.replace(/\.json$/i, `-${ts}-${themeTag}.json`);
-    } else {
-        const payload = Object.assign({ env: window.fv3CollectEnv() }, data);
-        body = JSON.stringify(payload, null, 2);
-        filename = `folder.view3-${source}-${ts}-${themeTag}.json`;
-    }
+    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    const ts = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
+    const themeTag = window.fv3UnraidTheme || (document.documentElement.className.match(/\bTheme--([a-z]+)\b/) || [])[1] || 'theme-unknown';
+    const filename = `folder.view3-${source}-${ts}-${themeTag}.json`;
     // One redaction pass over the whole report: this is the only export path, so every captured surface is covered
-    body = fv3RedactString(body);
+    const body = fv3RedactString(JSON.stringify(Object.assign({}, data, { env: window.fv3CollectEnv() }), null, 2));
     const blob = new Blob([body], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const el = document.createElement('a');
@@ -329,7 +321,10 @@ window.fv3CaptureDebug = async (source) => {
     if (stored) {
         try { payload = JSON.parse(stored); } catch (_) { payload = { rawBody: stored }; }
     } else {
-        payload = { _note: 'no stored payload for ' + source + '; arm debug (type fv3debug) and reload for full data', folders: window.globalFolders || {} };
+        // The tabs keep their folder map in a script-scoped `let`, so it is read by name, not off window
+        let live = {};
+        try { live = (typeof globalFolders !== 'undefined' && globalFolders) || window.globalFolders || {}; } catch (_) {}
+        payload = { _note: 'no stored payload for ' + source + '; arm debug (type fv3debug) and reload for full data', folders: live };
     }
     try {
         const res = await fetch('/plugins/folder.view3/server/read_error_log.php', { credentials: 'same-origin' });
@@ -338,7 +333,7 @@ window.fv3CaptureDebug = async (source) => {
     } catch (e) {
         payload.serverErrorLog = '_fetchError: ' + String(e);
     }
-    fv3DownloadDebugJSON('debug-' + source + '.json', JSON.stringify(payload));
+    fv3DownloadDebugJSON('debug-' + source, payload);
     return true;
 };
 
@@ -353,7 +348,9 @@ window.fv3BindDebugSwalButton = (id, source) => {
     if (!btn || btn._fv3Bound) return;
     btn._fv3Bound = true;
     const label = btn.textContent;
-    btn.addEventListener('click', () => {
+    // stopPropagation keeps SweetAlert's modal-level handler from closing the dialog on this button
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         btn.disabled = true;
         btn.textContent = '...';
         fv3CaptureDebug(source).catch((e) => fv3Error('debug-swal-btn', e)).finally(() => {

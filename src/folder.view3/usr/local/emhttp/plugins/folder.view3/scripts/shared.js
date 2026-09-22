@@ -503,7 +503,6 @@ window.fv3ShowBanner = (message, level) => {
         var dl = document.createElement('span');
         dl.className = 'fv3-banner-debug-link';
         dl.textContent = (window.fv3I18nOr && fv3I18nOr('download-debug-info', 'Download Debug Info')) || 'Download Debug Info';
-        dl.style.cssText = 'margin-left:12px;text-decoration:underline;cursor:pointer;';
         var label = dl.textContent, busy = false;
         dl.onclick = function() {
             if (busy) return;
