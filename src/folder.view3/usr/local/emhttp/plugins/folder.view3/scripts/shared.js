@@ -1,8 +1,6 @@
 // FolderView3 shared utilities for Docker, VM, and Dashboard pages
 
-// Debug system (FV3_DEBUG, fv3Trace/fv3Debug, the capture pill, fv3CaptureDebug, etc.) now
-// lives in debug.js, loaded by every page including the folder editor and settings — it used
-// to be defined here, which meant only the Docker/VM/Dashboard tabs had it.
+// The debug system (FV3_DEBUG, fv3Trace, the capture pill, fv3CaptureDebug) lives in debug.js, loaded before this file.
 
 if (window.fv3UnraidLegacy) fv3Debug('Init', 'Unraid legacy mode (pre-7.2)');
 
@@ -1074,9 +1072,7 @@ window.fv3CollectEnv = () => {
     };
 };
 
-// fv3CollectCssDebug/fv3DownloadDebugJSON/fv3CaptureDebug now live in debug.js (loaded before
-// this file) — this richer fv3CollectEnv() above overwrites debug.js's minimal page-agnostic
-// one, since debug.js is loaded first on this page.
+// debug.js owns the capture helpers; the fuller fv3CollectEnv() above replaces its page-agnostic one.
 
 window.fv3RunUserScript = async (act, prom) => {
     const args = act.script_args || '';

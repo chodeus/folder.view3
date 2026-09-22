@@ -78,9 +78,17 @@
         @file_put_contents($fv3_debug_log_file, "--- FolderView3 lib.php readInfo Start ---\n");
     }
 
-    // Masks secret-shaped query values so a logged URL or message never carries a live credential.
+    // Masks secret-shaped values in query, JSON, header and URL-userinfo form. Mirrors fv3RedactString()
+    // in scripts/debug.js — keep the two pattern lists identical.
     function fv3_redact(string $s): string {
-        return preg_replace('/((?:token|api[_-]?key|key|secret|password|passwd|pass|auth)=)[^&\s"\']+/i', '$1[redacted]', $s);
+        $rules = [
+            '/((?:token|api[_-]?key|key|secret|password|passwd|pass|auth|authorization|credential)=)[^&\s"\'\\\\]+/i' => '$1[redacted]',
+            '/("[^"\\\\]*(?:token|api[_-]?key|secret|password|passwd|authorization|credential|private[_-]?key|access[_-]?key)[^"\\\\]*"\s*:\s*")(?:[^"\\\\]|\\\\.)*(")/i' => '$1[redacted]$2',
+            '/((?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*:\s*)[^\r\n"\'\\\\]+/i' => '$1[redacted]',
+            '#(://)[^/\s@"\'\\\\]+@#' => '$1[redacted]@',
+        ];
+        foreach ($rules as $re => $to) { $r = preg_replace($re, $to, $s); if ($r !== null) $s = $r; }
+        return $s;
     }
 
     // Always-on (unlike fv3_debug_log, gated behind /tmp/fv3_debug_enabled): every endpoint
@@ -89,39 +97,51 @@
         global $configDir;
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $path = "$configDir/error.log";
-        // Cap growth: keep only the tail before appending, rather than parsing/rotating.
-        if (@filesize($path) > 262144) {
-            $tail = @file_get_contents($path);
-            if ($tail !== false) { @file_put_contents($path, substr($tail, -153600)); }
+        // Every call inside is @-suppressed: a warning here would re-enter the error handler
+        $fp = @fopen($path, 'c+');
+        if (!$fp) return;
+        if (@flock($fp, LOCK_EX)) {
+            $st = @fstat($fp);
+            // Cap growth under the same lock as the append, keeping the newest ~150KB from a line boundary
+            if (is_array($st) && $st['size'] > 262144) {
+                $all = @stream_get_contents($fp, -1, 0);
+                $tail = is_string($all) ? substr($all, -153600) : '';
+                $nl = strpos($tail, "\n");
+                if ($nl !== false) $tail = substr($tail, $nl + 1);
+                @ftruncate($fp, 0);
+                @rewind($fp);
+                @fwrite($fp, $tail);
+            }
+            @fseek($fp, 0, SEEK_END);
+            @fwrite($fp, '[' . date('Y-m-d H:i:s') . "] $context: " . fv3_redact($message) . "\n");
+            @fflush($fp);
+            @flock($fp, LOCK_UN);
         }
-        $line = '[' . date('Y-m-d H:i:s') . "] $context: " . fv3_redact($message) . "\n";
-        @file_put_contents($path, $line, FILE_APPEND | LOCK_EX);
+        @fclose($fp);
         @chmod($path, 0600);
     }
 
-    // Tail for read_error_log.php — already redacted at write time; the cap here is just to
-    // keep the download light, not a security boundary.
-    function fv3_read_error_log_tail(): string {
+    // Tail for read_error_log.php: '' when there is no log yet, null when one exists but cannot be read
+    function fv3_read_error_log_tail(): ?string {
         global $configDir;
         $path = "$configDir/error.log";
+        if (!file_exists($path)) return '';
         $raw = @file_get_contents($path);
-        if ($raw === false) return '';
+        if ($raw === false) return null;
         $lines = explode("\n", trim($raw));
         return implode("\n", array_slice($lines, -200));
     }
 
-    // Safety net for anything not already caught explicitly. Logs, then answers the same
-    // generic JSON 500 shape every other endpoint uses — an uncaught exception must still
-    // surface to the client as a failure, not a blank 200 a caller's fv3SafeParse masks.
+    // Safety net for anything not caught explicitly: log, then answer the generic JSON 500 so the
+    // client sees a failure rather than a blank 200 that fv3SafeParse would mask
     set_exception_handler(function(\Throwable $e) {
         fv3_error_log('uncaught', get_class($e) . ': ' . $e->getMessage() . ' at ' . basename($e->getFile()) . ':' . $e->getLine());
         if (!headers_sent()) { http_response_code(500); header('Content-Type: application/json'); }
         echo json_encode(['error' => 'Internal error']);
     });
-    // Non-fatal PHP errors (warnings/notices) don't terminate the request, so only log —
-    // changing the response here would be wrong for something execution continues past.
+    // Non-fatal PHP errors don't end the request, so only log them; deprecations are noise, not failures
     set_error_handler(function(int $severity, string $message, string $file, int $line): bool {
-        if (!(error_reporting() & $severity)) return false;
+        if (!(error_reporting() & $severity) || ($severity & (E_DEPRECATED | E_USER_DEPRECATED))) return false;
         fv3_error_log('php-error', "$message at " . basename($file) . ":$line");
         return false;
     });
@@ -1017,7 +1037,7 @@
         }
         $path = "$configDir/settings.json";
         $fp = fopen($path, 'c+');
-        if (!$fp) { fv3_error_log('updateSettings', "could not open $path"); http_response_code(500); exit; }
+        if (!$fp) { http_response_code(500); exit; }
         flock($fp, LOCK_EX);
         $raw = stream_get_contents($fp);
         $data = fv3_decode_settings_or_abort($fp, $raw);
@@ -1069,7 +1089,7 @@
         $freeform = ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width', 'default_context_graph_time', 'dashboard_context_graph_time'];
         $path = "$configDir/settings.json";
         $fp = fopen($path, 'c+');
-        if (!$fp) { fv3_error_log('updateSettingsBatch', "could not open $path"); http_response_code(500); exit; }
+        if (!$fp) { http_response_code(500); exit; }
         flock($fp, LOCK_EX);
         $raw = stream_get_contents($fp);
         $data = fv3_decode_settings_or_abort($fp, $raw);
@@ -1109,7 +1129,7 @@
         $value = preg_replace('/[<>"\'\\\\]/', '', $value);
         $path = "$configDir/settings.json";
         $fp = fopen($path, 'c+');
-        if (!$fp) { fv3_error_log('updateSettingsFreeform', "could not open $path"); http_response_code(500); exit; }
+        if (!$fp) { http_response_code(500); exit; }
         flock($fp, LOCK_EX);
         $raw = stream_get_contents($fp);
         $data = fv3_decode_settings_or_abort($fp, $raw);

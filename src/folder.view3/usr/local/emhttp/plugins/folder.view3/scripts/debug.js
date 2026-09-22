@@ -1,15 +1,20 @@
-// FolderView3 debug system — loaded by every page (Docker/VM/Dashboard tabs, the folder
-// editor, and settings) so an error anywhere has the same capture available. Extracted from
-// shared.js, which previously only loaded on the Docker/VM/Dashboard tabs.
+// FolderView3 debug system, loaded by every page (tabs, folder editor, settings) ahead of the page script.
 
-// Debug system
 window.FV3_DEBUG = (() => { try { return localStorage.getItem('fv3-debug') === 'true'; } catch (e) { return false; } })();
 
-// Timestamped ring buffer. A single post-hoc snapshot can't reveal a load-order race
-// (e.g. the column width-fix measuring before remote icons load); the ordered timeline can.
-// Records only while debug mode is armed, and starts at script init so the early render
-// sequence is retained even when a capture is triggered late. Existing fv3Debug seam calls
-// (createFolders entry/exit, WidthFix, etc.) flow through here automatically.
+// Masks secret-shaped values in query, JSON, header and URL-userinfo form. Mirrors fv3_redact()
+// in server/lib.php — keep the two pattern lists identical.
+window.fv3RedactString = function(s) {
+    try {
+        return String(s)
+            .replace(/((?:token|api[_-]?key|key|secret|password|passwd|pass|auth|authorization|credential)=)[^&\s"'\\]+/gi, '$1[redacted]')
+            .replace(/("[^"\\]*(?:token|api[_-]?key|secret|password|passwd|authorization|credential|private[_-]?key|access[_-]?key)[^"\\]*"\s*:\s*")(?:[^"\\]|\\.)*(")/gi, '$1[redacted]$2')
+            .replace(/((?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*:\s*)[^\r\n"'\\]+/gi, '$1[redacted]')
+            .replace(/(:\/\/)[^\/\s@"'\\]+@/g, '$1[redacted]@');
+    } catch (_) { return String(s); }
+};
+
+// Timestamped trace ring buffer: records only while debug mode is armed, from script init on.
 window.FV3_TRACE_MAX = 600;
 window.fv3TraceBuffer = [];
 window.fv3Trace = function(level, context) {
@@ -20,11 +25,11 @@ window.fv3Trace = function(level, context) {
             t: Math.round((typeof performance !== 'undefined' && performance.now ? performance.now() : 0) * 10) / 10,
             level: level,
             ctx: context,
-            msg: rest.map(function(a) {
+            msg: fv3RedactString(rest.map(function(a) {
                 if (a instanceof Error) return a.message;
                 if (a && typeof a === 'object') { try { return JSON.stringify(a); } catch (_) { return String(a); } }
                 return String(a);
-            }).join(' ').slice(0, 500)
+            }).join(' ')).slice(0, 500)
         });
         if (window.fv3TraceBuffer.length > window.FV3_TRACE_MAX) window.fv3TraceBuffer.shift();
     } catch (_) {}
@@ -46,10 +51,7 @@ window.fv3Error = function(context, error) {
     console.error('[FV3 ERROR] ' + context + ':', error);
 };
 
-// Eviction-proof render milestones — keyed by name so verbose per-container trace spam can
-// never push out the high-level page-load timeline (folderReq resolved, createFolders
-// start/end, width-fix runs, fonts ready, first stat). Each entry keeps {first,last,count}
-// in performance.now() ms, so repeated marks (e.g. width-fix on resize) stay compact.
+// Render milestones keyed by name so trace spam can't evict them: {first,last,count} in performance.now() ms.
 window.fv3Milestones = {};
 window.fv3Mark = function(name) {
     if (!window.FV3_DEBUG) return;
@@ -96,17 +98,11 @@ try {
     }
 } catch (_) {}
 
-// Capture uncaught page errors into the trace buffer — a JS error during load (from FV3,
-// Unraid, or another plugin) can abort table setup and leave the layout half-built. Only
-// the already-armed FV3_DEBUG gates whether fv3Trace records; the listeners are cheap.
+// Uncaught page errors and rejections go into the trace buffer (recorded only while FV3_DEBUG is armed).
 try {
     window.addEventListener('error', function(e) {
         var msg = (e && e.message) || 'error';
-        // Benign: Chrome fires this when a ResizeObserver callback triggers a resize within the
-        // same delivery cycle. Our fluid pill / preview-expand / clip observers do exactly that
-        // while the layout settles under async icon loads — it is self-limiting (not an
-        // exception) and converges in a few hundred ms. Recording each one as an error floods
-        // the trace and masks real failures, so count it for visibility instead of logging it.
+        // Chrome's benign "ResizeObserver loop" notice is counted, not traced, so it can't flood the buffer
         if (/ResizeObserver loop/i.test(msg)) { window._fv3ROLoopCount = (window._fv3ROLoopCount || 0) + 1; return; }
         window.fv3Trace('error', 'window.onerror', msg, (e && e.filename ? e.filename.split('/').pop() : '') + ':' + (e && e.lineno));
     });
@@ -116,10 +112,7 @@ try {
     });
 } catch (_) {}
 
-// Tap console.warn/error so NON-fatal messages logged by Unraid or another plugin (not just
-// uncaught exceptions) land in the trace buffer — these can reveal why the layout half-builds
-// on one box but not another. Only installed when debug is already armed, so production console
-// is left completely untouched; the original console function is always still called.
+// Tap console.warn/error into the trace buffer, only when debug is already armed; the original still runs.
 if (window.FV3_DEBUG) {
     try {
         ['warn', 'error'].forEach(function(level) {
@@ -154,9 +147,7 @@ if (window.FV3_DEBUG) {
     });
 })();
 
-// Capture pill — only exists in the DOM while debug mode is armed (zero footprint for
-// normal users). Centered so it can't be missed; draggable so it can be moved off the data;
-// click downloads a snapshot of the CURRENT rendered state via fv3CaptureDebug.
+// Capture pill: exists only while debug mode is armed; drag to move, click to download a snapshot.
 window.fv3SetDebugPill = function(on) {
     var id = 'fv3-debug-pill';
     var existing = document.getElementById(id);
@@ -210,17 +201,8 @@ if (window.FV3_DEBUG) {
     else document.addEventListener('DOMContentLoaded', function() { window.fv3SetDebugPill(true); });
 }
 
-// Masks secret-shaped query values client-side, mirroring server/lib.php's fv3_redact() —
-// applied to anything this file captures automatically (failed-request URLs/bodies).
-window.fv3RedactString = function(s) {
-    try { return String(s).replace(/((?:token|api[_-]?key|key|secret|password|passwd|pass|auth)=)[^&\s"']+/gi, '$1[redacted]'); }
-    catch (_) { return String(s); }
-};
-
-// Always-active failed-request buffer — unlike everything above, NOT gated behind FV3_DEBUG.
-// Without this, a "Download Debug Info" action on an error alert has nothing real to show the
-// first time a user ever hits an error, because the trace buffer above only records once
-// debug mode has already been armed and the page reloaded.
+// Always-active failed-request buffer, NOT gated on FV3_DEBUG: an error dialog's download must
+// carry the failed request the first time a user ever hits an error.
 window.FV3_FAILURE_MAX = 20;
 window.fv3FailureBuffer = [];
 window.fv3RecordFailure = function(method, url, status, statusText, body) {
@@ -251,20 +233,23 @@ if (typeof $ !== 'undefined' && $(document).ajaxError) {
     window.fetch = function(input, init) {
         var url = typeof input === 'string' ? input : (input && input.url) || '';
         var isPlugin = url.includes('/plugins/folder.view3/');
+        var method = (init && init.method) || (input && input.method) || 'GET';
         return origFetch.apply(this, arguments).then(function(res) {
             if (isPlugin && !res.ok) {
                 res.clone().text().then(function(body) {
-                    fv3RecordFailure((init && init.method) || 'GET', url, res.status, res.statusText, body);
+                    fv3RecordFailure(method, url, res.status, res.statusText, body);
                 }).catch(function() {});
             }
             return res;
+        }, function(err) {
+            // A network failure or abort never yields a Response, so it is recorded as status 0
+            if (isPlugin) fv3RecordFailure(method, url, 0, (err && err.message) || String(err), '');
+            throw err;
         });
     };
 })();
 
-// Minimal, page-agnostic environment snapshot — available even where shared.js (and its
-// richer, Docker/VM-table-shaped fv3CollectEnv) isn't loaded, i.e. the folder editor and
-// settings page. shared.js overwrites this with a fuller version on the three tab pages.
+// Page-agnostic env snapshot for the folder editor and settings page; shared.js replaces it on the tabs.
 window.fv3CollectEnv = () => ({
     capturedAt: new Date().toISOString(),
     viewport: { innerWidth: window.innerWidth, innerHeight: window.innerHeight, devicePixelRatio: window.devicePixelRatio },
@@ -286,9 +271,7 @@ window.fv3CollectCssDebug = async () => {
             return { _fetchError: e && e.statusText ? e.statusText : String(e) };
         }
     };
-    // Fetch the actual contents of the generated + custom CSS loaded from /boot/config —
-    // a bad generated rule or a community custom-CSS override is otherwise invisible (we only
-    // had the stylesheet URLs). Built-in plugin CSS is skipped (it lives in the repo).
+    // Fetch the generated + custom CSS served from /boot/config; built-in plugin CSS lives in the repo and is skipped
     const safeText = async (url) => {
         try { return String(await $.get(url).promise()).slice(0, 6000); }
         catch (e) { return '_fetchError: ' + (e && e.statusText ? e.statusText : String(e)); }
@@ -322,6 +305,8 @@ window.fv3DownloadDebugJSON = (source, data) => {
         body = JSON.stringify(payload, null, 2);
         filename = `folder.view3-${source}-${ts}-${themeTag}.json`;
     }
+    // One redaction pass over the whole report: this is the only export path, so every captured surface is covered
+    body = fv3RedactString(body);
     const blob = new Blob([body], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const el = document.createElement('a');
@@ -334,11 +319,7 @@ window.fv3DownloadDebugJSON = (source, data) => {
     URL.revokeObjectURL(url);
 };
 
-// On-demand capture. Each page stashes its data payload (folders/orders/containersInfo/css)
-// keyed by source as it renders; fv3CaptureDebug then downloads it with a FRESH env() — so
-// the rendered-layout block reflects the state at click time (post-render, post-interaction),
-// fixing the old bug where env was captured before folders/the width-fix existed. Also folds
-// in the server-side error log tail, so a report closes the loop without needing SSH access.
+// On-demand capture: the page's stashed payload, a FRESH env() at click time, and the server error-log tail.
 window.fv3DebugPayloads = {};
 window.fv3DebugSource = null;
 window.fv3CaptureDebug = async (source) => {
@@ -353,7 +334,7 @@ window.fv3CaptureDebug = async (source) => {
     try {
         const res = await fetch('/plugins/folder.view3/server/read_error_log.php', { credentials: 'same-origin' });
         const j = await res.json();
-        payload.serverErrorLog = j && typeof j.log === 'string' ? j.log : '';
+        payload.serverErrorLog = j && typeof j.log === 'string' ? j.log : '_fetchError: ' + ((j && j.error) || ('HTTP ' + res.status));
     } catch (e) {
         payload.serverErrorLog = '_fetchError: ' + String(e);
     }
@@ -361,14 +342,11 @@ window.fv3CaptureDebug = async (source) => {
     return true;
 };
 
-// Embeds a "Download Debug Info" action inside a swal error dialog's `text` (html: true).
-// SweetAlert 1.x's shared modal silently drops an inline onclick inside `text` — the button
-// exists but never fires — so this deliberately has NO onclick attribute. The caller must
-// call fv3BindDebugSwalButton() right after swal() returns; the button already exists in the
-// DOM synchronously at that point, no setTimeout needed.
+// Debug button markup for a swal `text` (html: true). No inline onclick — SweetAlert 1.x's modal swallows
+// it; bind with fv3BindDebugSwalButton() right after swal() returns (the button exists synchronously).
 window.fv3DebugSwalButtonHtml = (id) => {
     const label = (window.fv3I18nOr && fv3I18nOr('download-debug-info', 'Download Debug Info')) || 'Download Debug Info';
-    return `<div style="margin-top:14px"><button type="button" id="${id}" class="fv3-debug-swal-btn">${label}</button></div>`;
+    return `<div style="margin-top:14px"><button type="button" id="${id}" class="fv3-debug-swal-btn">${escapeHtml(label)}</button></div>`;
 };
 window.fv3BindDebugSwalButton = (id, source) => {
     const btn = document.getElementById(id);
@@ -385,14 +363,13 @@ window.fv3BindDebugSwalButton = (id, source) => {
     });
 };
 
-// Convenience wrapper for the common "error swal with a debug-download action" shape used at
-// every error site — one call instead of repeating the swal(...) + bind boilerplate.
+// Error swal with a debug-download action. The dialog renders as HTML, so the dynamic text and title are escaped
 let _fv3SwalErrorSeq = 0;
 window.fv3SwalError = (text, source, title) => {
     const id = 'fv3-dbg-swal-' + (++_fv3SwalErrorSeq);
     swal({
-        title: title || fv3I18nOr('error', 'Error'),
-        text: text + fv3DebugSwalButtonHtml(id),
+        title: escapeHtml(title || fv3I18nOr('error', 'Error')),
+        text: escapeHtml(String(text ?? '')).replace(/\n/g, '<br>') + fv3DebugSwalButtonHtml(id),
         type: 'error',
         html: true
     });
