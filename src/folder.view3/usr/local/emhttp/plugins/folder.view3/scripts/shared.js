@@ -512,8 +512,11 @@ window.fv3ShowBanner = (message, level) => {
         };
         banner.appendChild(dl);
     }
-    var target = document.getElementById('docker_list') || document.getElementById('vm_list') || document.querySelector('.dashboard_vm') || document.body;
-    target.parentNode.insertBefore(banner, target);
+    // The lists are table BODIES: a banner put there lays out in an anonymous cell and shrinks
+    // to fit, so sit above the table itself — same id pair injectToggle() uses
+    var list = document.querySelector('table#docker_containers, table#kvm_table');
+    var host = list ? list.parentNode : (document.querySelector('div.content') || document.body);
+    host.insertBefore(banner, list || host.firstChild);
     fv3Error('Banner', message);
 };
 
