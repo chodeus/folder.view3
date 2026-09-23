@@ -84,13 +84,14 @@
         for ($i = 0; $i < $n; $i++) {
             $c = $regex[$i];
             if ($c === '\\') {
-                if (!preg_match('/\G\\\\(?:[dDwWsSbBtnrf.*+?()\[\]{}|^$\\\\\/-]|x[0-9A-Fa-f]{2})/', $regex, $m, 0, $i)) return false;
+                if (!preg_match('/\G\\\\(?:[dDwWsSbBtnrf.*+?()\[\]{}|^$\\\\-]|x[0-9A-Fa-f]{2})/', $regex, $m, 0, $i)) return false;
                 $i += strlen($m[0]) - 1;
                 $quantifiable = true;
             } elseif ($c === '[') {
                 // A bare [ inside a class is refused: PCRE reads [[:digit:]] as a POSIX class, JS as literals
                 // \S is refused inside a class: fv3_foreign_regex_as_js() cannot negate within one
-                if (!preg_match('/\G\[\^?(?:\\\\(?:[dDwWstnrf\\\\\]\[\^\/.-]|x[0-9A-Fa-f]{2})|[^\\\\\]\[])+\]/', $regex, $m, 0, $i)) return false;
+                if (!preg_match('/\G\[\^?(?:\\\\(?:[dDwWstnrf\\\\\]\[\^.-]|x[0-9A-Fa-f]{2})|[^\\\\\]\[])+\]/', $regex, $m, 0, $i)) return false;
+                if (!fv3_foreign_class_ranges_ok(substr($m[0], 1, -1))) return false;
                 $i += strlen($m[0]) - 1;
                 $quantifiable = true;
             } elseif ($c === '(') {
@@ -122,6 +123,18 @@
             }
         }
         return !$groups;
+    }
+
+    // A range with a class escape at either end, like [\s-z], is literal in JS but a compile error in PCRE
+    function fv3_foreign_class_ranges_ok(string $body): bool {
+        if (($body[0] ?? '') === '^') $body = substr($body, 1);
+        preg_match_all('/\\\\(?:x[0-9A-Fa-f]{2}|.)|./s', $body, $t);
+        $t = $t[0];
+        foreach ($t as $k => $tok) {
+            if ($tok !== '-' || $k === 0 || $k === count($t) - 1) continue;
+            if (preg_match('/^\\\\[dDwWsS]$/', $t[$k - 1]) || preg_match('/^\\\\[dDwWsS]$/', $t[$k + 1])) return false;
+        }
+        return true;
     }
 
     // JS's \s set. PCRE's \s without Unicode classes stops at ASCII; \x0B, since PCRE's \v is a whole class
@@ -156,17 +169,18 @@
         return $out;
     }
 
-    // $capped receives how many entries the member cap discarded, so the preview can report them
-    function fv3_foreign_members($value, ?int &$capped = null): array {
+    // $capped: distinct usable names past the member cap; $invalid: entries that are not a usable name at all
+    function fv3_foreign_members($value, ?int &$capped = null, ?int &$invalid = null): array {
         $capped = 0;
-        if (!is_array($value)) return [];
+        $invalid = 0;
+        if (!is_array($value)) { $invalid = $value === null ? 0 : 1; return []; }
         $out = [];
-        $seen = 0;
+        $over = [];
         foreach ($value as $name) {
-            $seen++;
             $name = fv3_foreign_clean_string($name, 255);
-            if ($name !== null && $name !== '' && !in_array($name, $out, true)) $out[] = $name;
-            if (count($out) >= FV3_FOREIGN_MAX_MEMBERS) { $capped = count($value) - $seen; break; }
+            if ($name === null || $name === '') { $invalid++; continue; }
+            if (in_array($name, $out, true) || isset($over[$name])) continue;
+            if (count($out) < FV3_FOREIGN_MAX_MEMBERS) { $out[] = $name; } else { $over[$name] = true; $capped++; }
         }
         return $out;
     }
@@ -192,8 +206,8 @@
             $modes = $act['modes'] ?? null;
             if (!is_array($targets) || !is_int($action) || $action < 0 || $action > 2) return null;
             if ($action !== 2 && (!is_int($modes) || $modes < 0 || $modes > ($action === 0 ? 1 : 3))) return null;
-            $targets = fv3_foreign_members($targets);
-            if (!$targets || array_diff($targets, $members)) return null;
+            $targets = fv3_foreign_members($targets, $capped, $bad);
+            if ($bad || $capped || !$targets || array_diff($targets, $members)) return null;
             return ['name' => $name, 'type' => 0, 'script_icon' => $icon, 'conatiners' => $targets, 'action' => $action, 'modes' => is_int($modes) ? $modes : 0];
         }
         if ($type === 1) {
@@ -203,7 +217,9 @@
             $args = $act['script_args'] ?? '';
             if (!is_string($script) || !preg_match('/^[A-Za-z0-9 ._()-]{1,128}$/D', $script) || trim($script, '. ') === '') return null;
             if (!is_string($args) || strlen($args) > 256 || preg_match('/[\x00-\x1F\x7F&#%?]/', $args)) return null;
-            return ['name' => $name, 'type' => 1, 'script_icon' => $icon, 'script' => $script, 'script_args' => $args, 'script_sync' => ($act['script_sync'] ?? false) === true];
+            $sync = $act['script_sync'] ?? false;
+            if (!is_bool($sync)) return null;
+            return ['name' => $name, 'type' => 1, 'script_icon' => $icon, 'script' => $script, 'script_args' => $args, 'script_sync' => $sync];
         }
         return null;
     }
@@ -252,27 +268,30 @@
         return ['error' => 'unsupported'];
     }
 
-    // A root and its merged descendants: [members, hidden_preview, identities by member, child action count,
-    // members dropped by the cap]
+    // A root and its merged descendants' members, hidden entries and identities, plus what the preview counts
     function fv3_foreign_collect_group(array $folders, string $rootId, array $childIds): array {
         $members = [];
         $hidden = [];
         $identities = [];
         $childActions = 0;
         $droppedMembers = 0;
-        $capped = 0;
+        $invalid = 0;
         foreach (array_merge([$rootId], $childIds) as $gid) {
             $g = $folders[$gid];
-            $members = array_merge($members, fv3_foreign_members($g['containers'] ?? [], $capped));
+            $members = array_merge($members, fv3_foreign_members($g['containers'] ?? null, $capped, $bad));
             $droppedMembers += $capped;
-            $hidden = array_merge($hidden, fv3_foreign_members($g['hiddenPreviewMembers'] ?? ($g['hidden_preview'] ?? [])));
+            $invalid += $bad;
+            $hidden = array_merge($hidden, fv3_foreign_members($g['hiddenPreviewMembers'] ?? ($g['hidden_preview'] ?? null), $capped, $bad));
+            $invalid += $bad;
             $ids = is_array($g['memberIdentities'] ?? null) ? $g['memberIdentities'] : [];
+            $invalid += count($ids) - count(array_filter($ids, 'is_array'));
             $identities += array_filter($ids, 'is_array');
             if ($gid !== $rootId && is_array($g['actions'] ?? null)) $childActions += count($g['actions']);
         }
         $unique = array_values(array_unique($members));
         $kept = array_slice($unique, 0, FV3_FOREIGN_MAX_MEMBERS);
-        return [$kept, $hidden, $identities, $childActions, $droppedMembers + (count($unique) - count($kept))];
+        return ['members' => $kept, 'hidden' => $hidden, 'identities' => $identities, 'child_actions' => $childActions,
+                'dropped_members' => $droppedMembers + count($unique) - count($kept), 'invalid' => $invalid];
     }
 
     // Each folder's top-level ancestor; a missing parent or a loop makes the folder its own root
@@ -283,8 +302,9 @@
             $cur = (string)$id;
             while (true) {
                 $seen[$cur] = true;
-                $parent = $folders[$cur]['parentId'] ?? '';
-                $parent = is_scalar($parent) ? (string)$parent : '';
+                $parent = $folders[$cur]['parentId'] ?? null;
+                if ($parent !== null && !is_scalar($parent)) { $broken[$cur] = true; break; }
+                $parent = (string)$parent;
                 if ($parent === '') break;
                 if (isset($seen[$parent])) { $broken[(string)$id] = true; $cur = (string)$id; break; }
                 if (!is_array($folders[$parent] ?? null)) { $broken[$cur] = true; break; }
@@ -311,10 +331,12 @@
         $out = [];
         $rules = fv3_foreign_setting_rules();
         foreach ($types as $type => $folders) {
+            $entries = count($folders);
             $folders = array_filter($folders, 'is_array');
             if (count($folders) > FV3_FOREIGN_MAX_FOLDERS) return ['error' => 'too-many-folders'];
             $r = ['folders' => [], 'merged_children' => 0, 'broken_parents' => 0, 'dropped_settings' => 0, 'dropped_keys' => 0,
-                  'dropped_actions' => 0, 'child_actions' => 0, 'dropped_icons' => 0, 'dropped_regex' => 0, 'renamed' => 0, 'members_kept_elsewhere' => 0, 'dropped_members' => 0];
+                  'dropped_actions' => 0, 'child_actions' => 0, 'dropped_icons' => 0, 'dropped_regex' => 0, 'renamed' => 0, 'members_kept_elsewhere' => 0, 'dropped_members' => 0,
+                  'dropped_invalid' => $entries - count($folders)];
             $broken = [];
             $roots = fv3_foreign_roots($folders, $broken);
             $r['broken_parents'] = count($broken);  // keyed by folder id: a shared bad ancestor counts once
@@ -335,11 +357,12 @@
             $owned = [];
             foreach ($existing[$type] ?? [] as $f) {
                 foreach ((is_array($f['containers'] ?? null) ? $f['containers'] : []) as $ct) {
-                    if (is_string($ct)) $owned[$ct] = true;
+                    if (is_string($ct) || is_int($ct)) $owned[(string)$ct] = true;
                 }
             }
+            // An all-digit name comes back as an int wherever PHP used it as an array key
             foreach ($alsoOwned[$type] ?? [] as $ct) {
-                if (is_string($ct)) $owned[$ct] = true;
+                if (is_string($ct) || is_int($ct)) $owned[(string)$ct] = true;
             }
 
             $converted = [];
@@ -348,10 +371,18 @@
                 if ($id !== $root) continue;
                 $src = $folders[$id];
                 $r['dropped_keys'] += count(array_diff(array_keys($src), $known));
+                // A merged child's members, hidden entries and identities move up; its regex and unknown fields go
+                foreach ($childrenOf[$id] ?? [] as $cid) {
+                    $child = $folders[$cid];
+                    $r['dropped_keys'] += count(array_diff(array_keys($child), $known));
+                    if (($child['regex'] ?? null) !== null && ($child['regex'] ?? '') !== '') $r['dropped_regex']++;
+                }
 
-                [$members, $hidden, $identities, $childActions, $droppedMembers] = fv3_foreign_collect_group($folders, $id, $childrenOf[$id] ?? []);
-                $r['child_actions'] += $childActions;
-                $r['dropped_members'] += $droppedMembers;
+                $group = fv3_foreign_collect_group($folders, $id, $childrenOf[$id] ?? []);
+                [$members, $hidden, $identities] = [$group['members'], $group['hidden'], $group['identities']];
+                $r['child_actions'] += $group['child_actions'];
+                $r['dropped_members'] += $group['dropped_members'];
+                $r['dropped_invalid'] += $group['invalid'];
                 $before = count($members);
                 $members = array_values(array_filter($members, static fn($m) => !isset($owned[$m])));
                 $r['members_kept_elsewhere'] += $before - count($members);
@@ -367,8 +398,9 @@
                 if ($candidate !== $name || $unnamed) $r['renamed']++;
                 $taken[strtolower($candidate)] = true;
 
-                $icon = fv3_foreign_icon($src['icon'] ?? '');
-                if ($icon === '' && is_string($src['icon'] ?? null) && trim($src['icon']) !== '') $r['dropped_icons']++;
+                $suppliedIcon = $src['icon'] ?? null;
+                $icon = fv3_foreign_icon($suppliedIcon ?? '');
+                if ($icon === '' && $suppliedIcon !== null && !(is_string($suppliedIcon) && trim($suppliedIcon) === '')) $r['dropped_icons']++;
 
                 $suppliedRegex = $src['regex'] ?? null;
                 $regex = is_string($src['regex'] ?? null) && strlen($src['regex']) <= 1024 ? $src['regex'] : '';
@@ -381,6 +413,7 @@
                 if ($regex !== '' && !fv3_foreign_regex_js_safe($regex)) { $regex = ''; $r['dropped_regex']++; }
 
                 $settings = [];
+                if (($src['settings'] ?? null) !== null && !is_array($src['settings'])) $r['dropped_settings']++;
                 foreach ((is_array($src['settings'] ?? null) ? $src['settings'] : []) as $k => $v) {
                     if (!isset($rules[$k])) { $r['dropped_settings']++; continue; }
                     [$value, $ok] = fv3_foreign_setting_value($rules[$k], $v);
@@ -406,7 +439,7 @@
                     $ident = $identities[$m] ?? null;
                     $value = $type === 'docker' ? ($ident['image'] ?? null) : ($ident['uuid'] ?? null);
                     $value = fv3_foreign_clean_string($value, 512);
-                    if ($value !== null && $value !== '') $idMap[$m] = $value;
+                    if ($value !== null && $value !== '') { $idMap[$m] = $value; } elseif ($ident !== null) { $r['dropped_invalid']++; }
                 }
                 $folder[$idKey] = (object)$idMap;
                 $converted[] = $folder;
@@ -429,17 +462,17 @@
         // into and written back, so conversion and the swap can never see different maps
         $existing = [];
         $maps = [];
+        $unreadable = [];
         foreach (['docker', 'vm'] as $t) {
             $path = "$configDir/$t.json";
             $rawMap = file_exists($path) ? @file_get_contents($path) : '';
-            // Corrupt config fails closed, as in updateFolder: merging onto empty would wipe it
-            if ($rawMap === false) return ['error' => 'config-unreadable'];
+            if ($rawMap === false) { $unreadable[$t] = true; $existing[$t] = []; continue; }
             if (trim((string)$rawMap) === '') { $existing[$t] = []; $maps[$t] = new stdClass(); continue; }
             $existing[$t] = json_decode((string)$rawMap, true);
             $maps[$t] = json_decode((string)$rawMap);
             // deleteFolder() json_encodes the map, so removing the last folder leaves [] — the empty map, as settings reads it
             if ($maps[$t] === []) $maps[$t] = new stdClass();
-            if (!is_array($existing[$t]) || !$maps[$t] instanceof stdClass) return ['error' => 'config-unreadable'];
+            if (!is_array($existing[$t]) || !$maps[$t] instanceof stdClass) { $unreadable[$t] = true; $existing[$t] = []; }
         }
         // Read Docker before converting, but only refuse if the bundle turns out to hold Docker
         // folders — a VM-only import must not depend on the Docker service being up
@@ -458,6 +491,11 @@
         }
         $converted = fv3_convert_foreign_bundle($raw, $type, $existing, $alsoOwned);
         if (isset($converted['error'])) return $converted;
+        // Corrupt config fails closed, as in updateFolder: merging onto empty would wipe it. Only the types this
+        // import writes must be readable, so a damaged vm.json does not block a Docker-only import.
+        foreach ($unreadable as $t => $_) {
+            if (!empty($converted['folders'][$t])) return ['error' => 'config-unreadable'];
+        }
         if ($membershipUnavailable && !empty($converted['folders']['docker'])) return ['error' => 'membership-unavailable'];
         if ($vmMembershipUnavailable && !empty($converted['folders']['vm'])) return ['error' => 'vm-membership-unavailable'];
         if (!array_filter($converted['folders'])) return ['error' => 'no-folders'];
@@ -532,7 +570,7 @@
                 if (!isset($explicit[$vm]) && @preg_match($re, $subject) === 1) $held[$vm] = true;
             }
         }
-        return array_keys($held);
+        return array_map('strval', array_keys($held));  // PHP makes an all-digit key an int
     }
 
     // Containers an existing folder already holds through a label or regex — explicit containers[]
@@ -541,7 +579,11 @@
         if (!$folders) return [];
         $client = new DockerClient();
         $names = fv3_read_container_names($client);
-        if (!$names['complete']) return null;
+        if (!$names['complete']) {
+            // fv3_read_container_names() reads zero containers as incomplete; the raw list tells none from a failure
+            $raw = $client->getDockerJSON('/containers/json?all=1');
+            return (is_array($raw) && !$raw) ? [] : null;
+        }
         $labels = fv3_read_container_labels($client, $names['names']);
         if ($labels === null) return null;
         return fv3_compute_folder_membership($folders, $names['names'], $labels)['assigned'];

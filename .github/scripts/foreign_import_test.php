@@ -167,7 +167,7 @@ check('action targeting a non-Latin-1 VM name rejected', $vmAct === null);
 $rx = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => [], 'regex' => 'a\\/b(']]];
 $rr = fv3_convert_foreign_bundle($rx, 'docker');
 check('an uncompilable regex is dropped and counted', $rr['folders']['docker'][0]['regex'] === '' && $rr['report']['types']['docker']['dropped_regex'] === 1, $rr['report']['types']['docker']);
-$mk = static fn(array $folder) => ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => []] + $folder]];
+$mk = static fn(array $folder) => ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => $folder + ['name' => 'R', 'containers' => []]]];
 $long = fv3_convert_foreign_bundle($mk(['regex' => str_repeat('a', 1025)]), 'docker');
 check('an over-long regex is left out and counted', $long['folders']['docker'][0]['regex'] === '' && $long['report']['types']['docker']['dropped_regex'] === 1, $long['report']['types']['docker']);
 $nonStr = fv3_convert_foreign_bundle($mk(['regex' => 42]), 'docker');
@@ -180,6 +180,17 @@ check('actions past the cap are counted as left out', $capA['report']['types']['
 $manyMembers = array_map(static fn($i) => "ct-$i", range(1, FV3_FOREIGN_MAX_MEMBERS + 7));
 $capM = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => $manyMembers]]], 'docker');
 check('members past the cap are counted as left out', $capM['report']['types']['docker']['dropped_members'] === 7, $capM['report']['types']['docker']['dropped_members']);
+
+// A merged child keeps only its members; what it loses must reach the preview
+$nest = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => [
+    'p' => ['name' => 'P', 'containers' => []],
+    'c' => ['name' => 'C', 'containers' => ['x'], 'parentId' => 'p', 'regex' => '^app', 'weird' => 1],
+]];
+$nr = fv3_convert_foreign_bundle($nest, 'docker')['report']['types']['docker'];
+check('a merged child\'s regex is counted as left out', $nr['merged_children'] === 1 && $nr['dropped_regex'] === 1, $nr);
+check('a merged child\'s unknown fields are counted as left out', $nr['dropped_keys'] === 1, $nr);
+$nest['folders']['c']['regex'] = '';
+check('a merged child with no regex counts none', fv3_convert_foreign_bundle($nest, 'docker')['report']['types']['docker']['dropped_regex'] === 0);
 
 $jsOnly = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => [], 'regex' => '(?i)tool']]];
 $jr = fv3_convert_foreign_bundle($jsOnly, 'docker');
@@ -340,6 +351,67 @@ vmUp(['vm-one', 'vm-two', 'vm-lab']);
 check('regex refused: \S inside a class', !fv3_foreign_regex_js_safe('[a\S]'));
 check('regex kept: \s inside a class', fv3_foreign_regex_js_safe('[\s-]'));
 check('a pattern outside the allowlist is not rewritten', fv3_foreign_regex_as_js('(?i)a') === null);
+
+// ---- Independent audit, 2026-09-24: one case per defect ----
+$one = static fn(array $folder, string $t = 'docker') => fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => $t, 'mode' => 'full', 'folders' => ['a' => $folder + ['name' => 'A', 'containers' => []]]], $t)['report']['types'][$t];
+// Real backups must not look malformed
+foreach (['backup-docker.json', 'backup-vm.json', 'environment.json', 'export-full-docker.json', 'export-full-vm.json', 'export-single-docker.json', 'export-single-vm.json', 'rollback.json'] as $fx) {
+    foreach (fv3_convert_foreign_bundle(corpus($fx), null)['report']['types'] ?? [] as $t => $rep) {
+        check("$fx $t reports no malformed entries", $rep['dropped_invalid'] === 0, $rep['dropped_invalid']);
+    }
+}
+// 1: an all-digit VM name held by a regex stays protected
+resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^\d+$']])]);
+vmUp(['123', 'vm-one']);
+$r = importForeignBundle(json_encode(['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'folders' => ['i' => ['name' => 'Imp', 'containers' => ['123']]]]), 'vm', true);
+$digits = array_merge(...array_column(array_filter(json_decode(file_get_contents("$configDir/vm.json"), true), static fn($f) => $f['name'] !== 'Holder'), 'containers'));
+check('an all-digit VM name held by a regex is not claimed', !in_array('123', $digits, true) && ($r['report']['types']['vm']['members_kept_elsewhere'] ?? null) === 1, [$digits, $r['report']['types']['vm'] ?? $r]);
+vmUp(['vm-one', 'vm-two', 'vm-lab']);
+// 1b: the same int-key trap on Docker, where a label holds the container
+resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => []]])]);
+dockerUp(['123'], ['123' => 'Existing']);
+importForeignBundle(json_encode(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['i' => ['name' => 'Imp', 'containers' => ['123']]]]), 'docker', true);
+$dDigits = array_merge(...array_column(array_filter(json_decode(file_get_contents("$configDir/docker.json"), true), static fn($f) => $f['name'] !== 'Existing'), 'containers'));
+check('an all-digit container held by a label is not claimed', !in_array('123', $dDigits, true), $dDigits);
+dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
+// 4: Docker running with no containers is an empty list, not an outage
+resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => ['gone']]])]);
+dockerUp([]);
+$r = importForeignBundle($json, 'docker', true);
+check('a Docker import works when Docker has no containers', !empty($r['success']), $r);
+dockerDown();
+check('a Docker outage still refuses', (importForeignBundle($json, 'docker', true)['error'] ?? null) === 'membership-unavailable');
+dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
+// 6: a class escape at a range end cannot compile in PCRE, so it is refused; at the class edge it is fine
+foreach (['[\s-z]', '[a-\s]', '[\d-z]', '[a-\w]', '[^\s-z]'] as $bad) check("regex refused: $bad", !fv3_foreign_regex_js_safe($bad));
+foreach (['[\s-]', '[-\s]', '[\w-]', '[^\s-]', '[a\-\s]'] as $good) check("regex kept: $good", fv3_foreign_regex_js_safe($good));
+// 8: an icon that is too big or not a string is left out and counted
+check('an oversize icon is counted', $one(['icon' => 'data:image/png;base64,' . str_repeat('A', 9000)])['dropped_icons'] === 1);
+check('a non-string icon is counted', $one(['icon' => 42])['dropped_icons'] === 1);
+check('a blank icon counts none', $one(['icon' => '  '])['dropped_icons'] === 0);
+// 9: the member cap counts only names that would have been kept
+$full = array_map(static fn($i) => "c$i", range(1, FV3_FOREIGN_MAX_MEMBERS));
+check('duplicates past the cap are not counted as dropped', $one(['containers' => array_merge($full, ['c1', 'c2'])])['dropped_members'] === 0);
+check('distinct names past the cap are counted once each', $one(['containers' => array_merge($full, ['x1', 'x2', 'x1', "bad\tname"])])['dropped_members'] === 2);
+// 10: every silent drop reaches a count
+check('unusable member entries are counted as malformed', $one(['containers' => ['ok', 42, "bad\tname", str_repeat('x', 300), null]])['dropped_invalid'] === 4);
+check('settings that are not a map are counted', $one(['settings' => 'x'])['dropped_settings'] === 1);
+$nonArray = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['a' => ['name' => 'A', 'containers' => []], 'b' => 'junk']], 'docker')['report']['types']['docker'];
+check('a folder entry that is not an object is counted as malformed', $nonArray['dropped_invalid'] === 1, $nonArray);
+$badParent = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['a' => ['name' => 'A', 'containers' => []], 'b' => ['name' => 'B', 'containers' => [], 'parentId' => ['x']]]], 'docker')['report']['types']['docker'];
+check('a non-scalar parent counts as a broken parent', $badParent['broken_parents'] === 1, $badParent);
+check('an action with an unusable target is left out, not trimmed', $one(['containers' => ['m'], 'actions' => [['name' => 'n', 'type' => 0, 'script_icon' => '', 'conatiners' => ['m', 42], 'action' => 2]]])['dropped_actions'] === 1);
+check('an action whose sync flag is not a boolean is left out', $one(['actions' => [['name' => 'n', 'type' => 1, 'script_icon' => '', 'script' => 'ok', 'script_args' => '', 'script_sync' => 'true']]])['dropped_actions'] === 1);
+check('an unusable identity is counted as malformed', $one(['containers' => ['m'], 'memberIdentities' => ['m' => ['image' => str_repeat('i', 600)]]])['dropped_invalid'] === 1);
+// 11: \/ can never survive the server-side build, so the allowlist no longer claims it
+check('regex refused: a\/b', !fv3_foreign_regex_js_safe('a\/b'));
+check('regex kept: a/b', fv3_foreign_regex_js_safe('a/b'));
+// minor: a damaged config for the other type does not block an import
+resetConfig(['vm.json' => '{corrupt', 'docker.json' => json_encode($keep)]);
+$r = importForeignBundle($json, 'docker', true);
+check('a corrupt vm.json does not block a Docker import', !empty($r['success']) && file_get_contents("$configDir/vm.json") === '{corrupt', $r);
+resetConfig(['docker.json' => '{corrupt']);
+check('a corrupt docker.json still blocks a Docker import', (importForeignBundle($json, 'docker', true)['error'] ?? null) === 'config-unreadable');
 
 // Every counter the report carries must have a preview line, or the user is never told about it
 $previewJs = file_get_contents("$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/folderview3.js");
