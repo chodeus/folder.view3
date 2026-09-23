@@ -2,6 +2,14 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Error banners now span the width above the list and appear correctly on the VMs and Dashboard pages
+- Error banner text no longer squeezes beside the download link, and the error dialog stays open after a download
+- Debug downloads are now named for the plugin, stamped in your local time, and record the theme in use
+- Debug downloads now include the Dashboard's VM section, and your folders even when debug mode was never armed
+- Refused settings saves and backup restores are now recorded in the error log
+
 ## 2026.09.22.1 (beta)
 
 - Every error dialog and banner now has a Download Debug Info button
