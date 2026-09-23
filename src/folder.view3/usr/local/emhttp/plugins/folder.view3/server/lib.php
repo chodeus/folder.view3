@@ -1164,6 +1164,7 @@
 
     // Theme listing, import, toggle and delete, and the styles/ confinement helpers they share
     require_once(__DIR__ . '/themes.php');
+    require_once(__DIR__ . '/lib.foreign_import.php');
 
     function exportAll() : array {
         global $configDir;

@@ -210,6 +210,7 @@ const importDocker = () => {
                 swal({ title: fv3I18nOr('wrong-import', 'Wrong import'), text: fv3I18nOr('wrong-import-docker', 'This is a full backup bundle — use "Import Everything" to restore it, or select a Docker folders export here.'), type: 'error' });
                 return;
             }
+            if (fv3IsForeignBundle(content)) { await fv3ImportForeignBundle(readerEvent.target.result, 'docker'); return; }
             await fv3ImportFolderMap(content, 'docker');
         }
     }
@@ -244,6 +245,7 @@ const importVm = () => {
                 swal({ title: fv3I18nOr('wrong-import', 'Wrong import'), text: fv3I18nOr('wrong-import-vm', 'This is a full backup bundle — use "Import Everything" to restore it, or select a VM folders export here.'), type: 'error' });
                 return;
             }
+            if (fv3IsForeignBundle(content)) { await fv3ImportForeignBundle(readerEvent.target.result, 'vm'); return; }
             await fv3ImportFolderMap(content, 'vm');
         }
     }
@@ -598,6 +600,102 @@ const fv3ImportFolderExport = async (content, type) => {
     }
 };
 
+// Routing only — the server decides what it accepts (lib.foreign_import.php fv3_foreign_detect keys on the same fields)
+const fv3IsForeignBundle = (o) => !!o && typeof o === 'object' && !Array.isArray(o)
+    && ('schemaVersion' in o || 'rollbackSchemaVersion' in o || 'kind' in o);
+
+const fv3ForeignError = (code) => ({
+    'newer-version': () => fv3I18nOr('foreign-error-newer-version', 'This backup was made by a newer FolderView Plus format that this version of FolderView3 cannot read yet.'),
+    'no-version': () => fv3I18nOr('foreign-error-no-version', 'This backup has no valid format version.'),
+    'unsupported': () => fv3I18nOr('foreign-error-unsupported', 'This kind of backup file is not supported.'),
+    'no-type': () => fv3I18nOr('foreign-error-no-type', 'This backup does not say whether it holds Docker or VM folders.'),
+    'no-folders': () => fv3I18nOr('foreign-error-no-folders', 'This backup holds no folders.'),
+    'no-docker-folders': () => fv3I18nOr('foreign-error-no-docker-folders', 'This backup holds no Docker folders.'),
+    'no-vm-folders': () => fv3I18nOr('foreign-error-no-vm-folders', 'This backup holds no VM folders.'),
+    'too-many-folders': () => fv3I18nOr('foreign-error-too-many-folders', 'This backup holds too many folders.'),
+    'too-large': () => fv3I18nOr('foreign-error-too-large', 'This backup is too large (5 MB max).'),
+    'config-unreadable': () => fv3I18nOr('foreign-error-config-unreadable', 'The current folder config could not be read, so nothing was imported.'),
+    'write-failed': () => fv3I18nOr('foreign-error-write-failed', 'The folders could not be saved, so nothing was imported.'),
+}[code] || (() => fv3I18nOr('foreign-error-unsupported', 'This kind of backup file is not supported.')))();
+
+const fv3ForeignPreviewHtml = (report) => {
+    const lines = [];
+    const notes = [];
+    for (const [type, r] of Object.entries(report.types || {})) {
+        const names = r.folders.map(f => f.name);
+        if (!names.length) continue;
+        const shown = names.slice(0, 12).map(escapeHtml).join(', ') + (names.length > 12 ? ', …' : '');
+        const head = type === 'docker'
+            ? fv3I18nOr('foreign-preview-docker', '$1 Docker folders will be added:', names.length)
+            : fv3I18nOr('foreign-preview-vm', '$1 VM folders will be added:', names.length);
+        lines.push(`<p><b>${escapeHtml(head)}</b><br>${shown}</p>`);
+        const counts = [
+            [r.merged_children, 'foreign-note-merged', '$1 nested folders merged into their top-level folder (their own settings are not kept)'],
+            [r.broken_parents, 'foreign-note-broken-parents', '$1 folders had a missing or looping parent and were kept as top-level'],
+            [r.renamed, 'foreign-note-renamed', '$1 folders renamed because the name is already in use'],
+            [r.members_kept_elsewhere, 'foreign-note-members-kept', '$1 containers or VMs already in another folder stay there'],
+            [r.dropped_settings, 'foreign-note-settings', '$1 settings that FolderView3 does not have left out'],
+            [r.dropped_keys, 'foreign-note-fields', '$1 other folder fields left out'],
+            [r.dropped_actions, 'foreign-note-actions', '$1 custom actions left out because FolderView3 cannot run them as they are'],
+            [r.child_actions, 'foreign-note-child-actions', '$1 custom actions from nested folders left out'],
+            [r.dropped_icons, 'foreign-note-icons', '$1 icons left out because the address is not an image link'],
+            [r.dropped_regex, 'foreign-note-regex', '$1 folder regexes left out because FolderView3 cannot read them'],
+        ];
+        for (const [n, key, text] of counts) if (n > 0) notes.push(fv3I18nOr(key, text, n));
+    }
+    for (const section of report.skipped_sections || []) {
+        if (section === 'prefs') notes.push(fv3I18nOr('foreign-note-prefs', 'Plugin preferences are not imported'));
+        if (section === 'themes') notes.push(fv3I18nOr('foreign-note-themes', 'Themes are not imported'));
+        if (section === 'docker') notes.push(fv3I18nOr('foreign-note-other-docker', 'Docker folders in this file were not imported — use Import Docker'));
+        if (section === 'vm') notes.push(fv3I18nOr('foreign-note-other-vm', 'VM folders in this file were not imported — use Import VM'));
+    }
+    if (notes.length) lines.push(`<ul style="text-align:left">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`);
+    lines.push(`<p>${escapeHtml(fv3I18nOr('foreign-preview-merge', 'Existing folders are kept; nothing is overwritten.'))}</p>`);
+    return lines.join('');
+};
+
+const fv3PostForeign = async (text, type, action) => {
+    const resp = await $.post('/plugins/folder.view3/server/import_foreign.php', { bundle: text, type, action }).promise();
+    const result = (typeof resp === 'object' && resp !== null) ? resp : fv3SafeParse(resp, null);
+    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error(fv3I18nOr('invalid-restore-response', 'Invalid restore response'));
+    return result;
+};
+
+// type is 'docker' | 'vm' from the per-type buttons, '' from Import Everything (every type in the file)
+const fv3ImportForeignBundle = async (text, type) => {
+    let preview;
+    try {
+        preview = await fv3PostForeign(text, type, 'preview');
+    } catch (err) {
+        fv3SwalError(fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), 'SETTINGS');
+        return;
+    }
+    if (preview.error) { fv3SwalError(fv3ForeignError(preview.error), 'SETTINGS'); return; }
+    swal({
+        title: escapeHtml(fv3I18nOr('foreign-preview-title', 'Import FolderView Plus backup?')),
+        text: fv3ForeignPreviewHtml(preview.report),
+        html: true,
+        type: 'info',
+        showCancelButton: true,
+        confirmButtonText: fv3I18nOr('import', 'Import'),
+        cancelButtonText: fv3I18nOr('cancel', 'Cancel'),
+        ...swalLoaderOpts
+    }, async (confirmed) => {
+        if (!confirmed) return;
+        let result;
+        try {
+            result = await fv3PostForeign(text, type, 'apply');
+        } catch (err) {
+            fv3SwalError(fv3I18nOr('import-failed', 'Import failed: $1', fv3FailReason(err)), 'SETTINGS');
+            return;
+        }
+        if (result.error) { fv3SwalError(fv3ForeignError(result.error), 'SETTINGS'); return; }
+        const added = Object.values(result.report.types).reduce((n, r) => n + r.folders.length, 0);
+        populateTable();
+        swal({ title: fv3I18nOr('foreign-imported-title', 'Imported'), text: fv3I18nOr('foreign-imported', '$1 folders imported.', added), type: 'success' });
+    });
+};
+
 $('#fv3-import-all-btn').on('click', () => $('#fv3-import-all').click());
 $('#fv3-import-all').on('change', function() {
     const file = this.files[0];
@@ -607,6 +705,7 @@ $('#fv3-import-all').on('change', function() {
     reader.onload = async (e) => {
         try {
             const parsed = JSON.parse(e.target.result);
+            if (fv3IsForeignBundle(parsed)) { fv3ImportForeignBundle(e.target.result, ''); return; }
             if (!parsed.fv3_export_version) {
                 // folder.view2 exports land here — take them rather than dead-ending the user.
                 const count = fv3CountFolderExport(parsed);
