@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.09.22.1">
-<!ENTITY md5 "3482b81cef058813ff62b71bdf0a3dae">
+<!ENTITY version "2026.09.23.1">
+<!ENTITY md5 "b8d5484ed0d0e76435e15a7660ad4375">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,13 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.09.23.1
+- Error banners now span the width above the list and appear correctly on the VMs and Dashboard pages
+- Error banner text no longer squeezes beside the download link, and the error dialog stays open after a download
+- Debug downloads are now named for the plugin, stamped in your local time, and record the theme in use
+- Debug downloads now include the Dashboard's VM section, and your folders even when debug mode was never armed
+- Refused settings saves and backup restores are now recorded in the error log
 
 ###2026.09.22.1
 - Every error dialog and banner now has a Download Debug Info button

@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.09.23.1 (beta)
 
 - Error banners now span the width above the list and appear correctly on the VMs and Dashboard pages
 - Error banner text no longer squeezes beside the download link, and the error dialog stays open after a download
