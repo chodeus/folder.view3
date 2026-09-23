@@ -437,6 +437,8 @@
             if (trim((string)$rawMap) === '') { $existing[$t] = []; $maps[$t] = new stdClass(); continue; }
             $existing[$t] = json_decode((string)$rawMap, true);
             $maps[$t] = json_decode((string)$rawMap);
+            // deleteFolder() json_encodes the map, so removing the last folder leaves [] — the empty map, as settings reads it
+            if ($maps[$t] === []) $maps[$t] = new stdClass();
             if (!is_array($existing[$t]) || !$maps[$t] instanceof stdClass) return ['error' => 'config-unreadable'];
         }
         // Read Docker before converting, but only refuse if the bundle turns out to hold Docker

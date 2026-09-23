@@ -243,6 +243,14 @@ check('corrupt config fails closed and is left as is', ($r['error'] ?? null) ===
 resetConfig(['docker.json' => '[{"name":"x"}]']);
 $r = importForeignBundle($json, 'docker', true);
 check('a list-shaped config is refused and left as is', ($r['error'] ?? null) === 'config-unreadable' && file_get_contents("$configDir/docker.json") === '[{"name":"x"}]', $r);
+foreach (['docker.json', 'vm.json'] as $emptied) {
+    // What deleteFolder() leaves after the last folder goes
+    resetConfig([$emptied => '[]']);
+    $isVm = $emptied === 'vm.json';
+    $r = importForeignBundle(file_get_contents("$fv3tCorpus/" . ($isVm ? 'backup-vm.json' : 'backup-docker.json')), $isVm ? 'vm' : 'docker', true);
+    $written = file_get_contents("$configDir/$emptied");
+    check("an emptied $emptied ([]) imports into a fresh map", !empty($r['success']) && str_starts_with($written, '{') && count(json_decode($written, true)) > 0, $r);
+}
 resetConfig(['docker.json' => '']);
 $r = importForeignBundle($json, 'docker', true);
 check('an empty config file imports into a fresh map', !empty($r['success']) && count(json_decode(file_get_contents("$configDir/docker.json"), true)) === 3, $r);
