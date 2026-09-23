@@ -409,6 +409,7 @@
     "foreign-note-child-actions": "$1 {{PLURAL:$1|acción personalizada|acciones personalizadas}} de carpetas anidadas {{PLURAL:$1|omitida|omitidas}}",
     "foreign-note-icons": "$1 {{PLURAL:$1|icono omitido|iconos omitidos}} porque la dirección no es un enlace de imagen",
     "foreign-note-regex": "$1 {{PLURAL:$1|regex de carpeta omitida|regex de carpeta omitidas}} porque FolderView3 no puede leerlas",
+    "foreign-note-members-dropped": "$1 miembros de carpeta omitidos porque la carpeta contiene más de los que FolderView3 conserva",
     "foreign-note-prefs": "Las preferencias del plugin no se importan",
     "foreign-note-themes": "Los temas no se importan",
     "foreign-note-other-docker": "Las carpetas de Docker de este archivo no se importaron — use Importar Docker",

@@ -409,6 +409,7 @@
     "foreign-note-child-actions": "$1 {{PLURAL:$1|action personnalisée|actions personnalisées}} de dossiers imbriqués {{PLURAL:$1|ignorée|ignorées}}",
     "foreign-note-icons": "$1 {{PLURAL:$1|icône ignorée|icônes ignorées}} car l’adresse n’est pas un lien d’image",
     "foreign-note-regex": "$1 {{PLURAL:$1|regex de dossier ignorée|regex de dossier ignorées}} car FolderView3 ne peut pas les lire",
+    "foreign-note-members-dropped": "$1 membres de dossier laissés de côté car le dossier en contient plus que FolderView3 n’en garde",
     "foreign-note-prefs": "Les préférences du plugin ne sont pas importées",
     "foreign-note-themes": "Les thèmes ne sont pas importés",
     "foreign-note-other-docker": "Les dossiers Docker de ce fichier n’ont pas été importés — utilisez Importer Docker",

@@ -642,6 +642,7 @@ const fv3ForeignPreviewHtml = (report) => {
             [r.child_actions, 'foreign-note-child-actions', '$1 custom actions from nested folders left out'],
             [r.dropped_icons, 'foreign-note-icons', '$1 icons left out because the address is not an image link'],
             [r.dropped_regex, 'foreign-note-regex', '$1 folder regexes left out because FolderView3 cannot read them'],
+            [r.dropped_members, 'foreign-note-members-dropped', '$1 folder members left out because the folder holds more than FolderView3 keeps'],
         ];
         for (const [n, key, text] of counts) if (n > 0) notes.push(fv3I18nOr(key, text, n));
     }

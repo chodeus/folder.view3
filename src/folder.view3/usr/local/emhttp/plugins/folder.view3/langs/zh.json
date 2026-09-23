@@ -409,6 +409,7 @@
     "foreign-note-child-actions": "已省略 $1 个来自嵌套文件夹的自定义操作",
     "foreign-note-icons": "已省略 $1 个图标，因为其地址不是图片链接",
     "foreign-note-regex": "已省略 $1 个 FolderView3 无法读取的文件夹正则表达式",
+    "foreign-note-members-dropped": "已省略 $1 个文件夹成员，因为该文件夹包含的数量超过 FolderView3 保留的上限",
     "foreign-note-prefs": "不导入插件偏好设置",
     "foreign-note-themes": "不导入主题",
     "foreign-note-other-docker": "此文件中的 Docker 文件夹未导入 — 请使用“导入 Docker”",

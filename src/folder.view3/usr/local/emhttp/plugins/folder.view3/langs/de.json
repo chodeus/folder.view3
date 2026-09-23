@@ -409,6 +409,7 @@
     "foreign-note-child-actions": "$1 {{PLURAL:$1|benutzerdefinierte Aktion|benutzerdefinierte Aktionen}} aus verschachtelten Ordnern ausgelassen",
     "foreign-note-icons": "$1 {{PLURAL:$1|Symbol|Symbole}} ausgelassen, weil die Adresse kein Bildlink ist",
     "foreign-note-regex": "$1 {{PLURAL:$1|Ordner-Regex|Ordner-Regexe}} ausgelassen, weil FolderView3 sie nicht lesen kann",
+    "foreign-note-members-dropped": "$1 Ordnermitglieder ausgelassen, weil der Ordner mehr enthält, als FolderView3 übernimmt",
     "foreign-note-prefs": "Plugin-Einstellungen werden nicht importiert",
     "foreign-note-themes": "Designs werden nicht importiert",
     "foreign-note-other-docker": "Docker-Ordner in dieser Datei wurden nicht importiert — Docker importieren verwenden",

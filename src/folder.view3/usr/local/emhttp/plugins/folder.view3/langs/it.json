@@ -409,6 +409,7 @@
     "foreign-note-child-actions": "$1 {{PLURAL:$1|azione personalizzata|azioni personalizzate}} da cartelle annidate {{PLURAL:$1|omessa|omesse}}",
     "foreign-note-icons": "$1 {{PLURAL:$1|icona omessa|icone omesse}} perché l’indirizzo non è un link a un’immagine",
     "foreign-note-regex": "$1 {{PLURAL:$1|regex di cartella omessa|regex di cartella omesse}} perché FolderView3 non può leggerle",
+    "foreign-note-members-dropped": "$1 membri della cartella esclusi perché la cartella ne contiene più di quanti FolderView3 ne mantenga",
     "foreign-note-prefs": "Le preferenze del plugin non vengono importate",
     "foreign-note-themes": "I temi non vengono importati",
     "foreign-note-other-docker": "Le cartelle Docker di questo file non sono state importate — usa Importa Docker",

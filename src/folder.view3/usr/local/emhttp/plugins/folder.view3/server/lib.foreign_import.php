@@ -91,13 +91,17 @@
         return true;
     }
 
-    function fv3_foreign_members($value): array {
+    // $capped receives how many entries the member cap discarded, so the preview can report them
+    function fv3_foreign_members($value, ?int &$capped = null): array {
+        $capped = 0;
         if (!is_array($value)) return [];
         $out = [];
+        $seen = 0;
         foreach ($value as $name) {
+            $seen++;
             $name = fv3_foreign_clean_string($name, 255);
             if ($name !== null && $name !== '' && !in_array($name, $out, true)) $out[] = $name;
-            if (count($out) >= FV3_FOREIGN_MAX_MEMBERS) break;
+            if (count($out) >= FV3_FOREIGN_MAX_MEMBERS) { $capped = count($value) - $seen; break; }
         }
         return $out;
     }
@@ -189,15 +193,20 @@
         $hidden = [];
         $identities = [];
         $childActions = 0;
+        $droppedMembers = 0;
+        $capped = 0;
         foreach (array_merge([$rootId], $childIds) as $gid) {
             $g = $folders[$gid];
-            $members = array_merge($members, fv3_foreign_members($g['containers'] ?? []));
+            $members = array_merge($members, fv3_foreign_members($g['containers'] ?? [], $capped));
+            $droppedMembers += $capped;
             $hidden = array_merge($hidden, fv3_foreign_members($g['hiddenPreviewMembers'] ?? ($g['hidden_preview'] ?? [])));
             $ids = is_array($g['memberIdentities'] ?? null) ? $g['memberIdentities'] : [];
             $identities += array_filter($ids, 'is_array');
             if ($gid !== $rootId && is_array($g['actions'] ?? null)) $childActions += count($g['actions']);
         }
-        return [array_slice(array_values(array_unique($members)), 0, FV3_FOREIGN_MAX_MEMBERS), $hidden, $identities, $childActions];
+        $unique = array_values(array_unique($members));
+        $kept = array_slice($unique, 0, FV3_FOREIGN_MAX_MEMBERS);
+        return [$kept, $hidden, $identities, $childActions, $droppedMembers + (count($unique) - count($kept))];
     }
 
     // Each folder's top-level ancestor; a missing parent or a loop makes the folder its own root
@@ -239,7 +248,7 @@
             $folders = array_filter($folders, 'is_array');
             if (count($folders) > FV3_FOREIGN_MAX_FOLDERS) return ['error' => 'too-many-folders'];
             $r = ['folders' => [], 'merged_children' => 0, 'broken_parents' => 0, 'dropped_settings' => 0, 'dropped_keys' => 0,
-                  'dropped_actions' => 0, 'child_actions' => 0, 'dropped_icons' => 0, 'dropped_regex' => 0, 'renamed' => 0, 'members_kept_elsewhere' => 0];
+                  'dropped_actions' => 0, 'child_actions' => 0, 'dropped_icons' => 0, 'dropped_regex' => 0, 'renamed' => 0, 'members_kept_elsewhere' => 0, 'dropped_members' => 0];
             $broken = [];
             $roots = fv3_foreign_roots($folders, $broken);
             $r['broken_parents'] = count($broken);  // keyed by folder id: a shared bad ancestor counts once
@@ -274,8 +283,9 @@
                 $src = $folders[$id];
                 $r['dropped_keys'] += count(array_diff(array_keys($src), $known));
 
-                [$members, $hidden, $identities, $childActions] = fv3_foreign_collect_group($folders, $id, $childrenOf[$id] ?? []);
+                [$members, $hidden, $identities, $childActions, $droppedMembers] = fv3_foreign_collect_group($folders, $id, $childrenOf[$id] ?? []);
                 $r['child_actions'] += $childActions;
+                $r['dropped_members'] += $droppedMembers;
                 $before = count($members);
                 $members = array_values(array_filter($members, static fn($m) => !isset($owned[$m])));
                 $r['members_kept_elsewhere'] += $before - count($members);
@@ -294,7 +304,10 @@
                 $icon = fv3_foreign_icon($src['icon'] ?? '');
                 if ($icon === '' && is_string($src['icon'] ?? null) && trim($src['icon']) !== '') $r['dropped_icons']++;
 
+                $suppliedRegex = is_string($src['regex'] ?? null) ? $src['regex'] : ($src['regex'] ?? null);
                 $regex = is_string($src['regex'] ?? null) && strlen($src['regex']) <= 1024 ? $src['regex'] : '';
+                // A regex present but refused on type or length is left out as much as one that will not compile
+                if ($regex === '' && $suppliedRegex !== null && $suppliedRegex !== '') $r['dropped_regex']++;
                 // Same pattern build as syncContainerOrder in lib.php; a regex it can't compile would match nothing
                 if ($regex !== '' && @preg_match('/' . str_replace('/', '\/', $regex) . '/', '') === false) { $regex = ''; $r['dropped_regex']++; }
                 // The renderers hand the stored pattern to JS new RegExp(), so one PHP alone accepts
@@ -309,7 +322,9 @@
                 }
 
                 $actions = [];
-                foreach (array_slice(is_array($src['actions'] ?? null) ? $src['actions'] : [], 0, FV3_FOREIGN_MAX_ACTIONS) as $act) {
+                $srcActions = is_array($src['actions'] ?? null) ? $src['actions'] : [];
+                $r['dropped_actions'] += max(0, count($srcActions) - FV3_FOREIGN_MAX_ACTIONS);
+                foreach (array_slice($srcActions, 0, FV3_FOREIGN_MAX_ACTIONS) as $act) {
                     $clean = fv3_foreign_action($act, $members);
                     if ($clean === null) { $r['dropped_actions']++; } else { $actions[] = $clean; }
                 }
@@ -337,17 +352,6 @@
         return ['folders' => $out, 'report' => $report];
     }
 
-    // Containers an existing folder already holds through a label or regex — explicit containers[]
-    // alone does not show those. null means Docker could not be read, so the caller must refuse.
-    function fv3_effective_docker_members(array $folders): ?array {
-        if (!$folders) return [];
-        $client = new DockerClient();
-        $names = fv3_read_container_names($client);
-        if (!$names['complete']) return null;
-        $labels = fv3_read_container_labels($client, $names['names']);
-        if ($labels === null) return null;
-        return fv3_compute_folder_membership($folders, $names['names'], $labels)['assigned'];
-    }
 
     // Preview ($apply false) or merge the converted folders into docker.json / vm.json in one swap
     function importForeignBundle(string $json, ?string $type, bool $apply): array {
@@ -410,5 +414,17 @@
             return ['error' => 'write-failed'];
         }
         return ['success' => true, 'report' => $converted['report']];
+    }
+
+    // Containers an existing folder already holds through a label or regex — explicit containers[]
+    // alone does not show those. null means Docker could not be read, so the caller must refuse.
+    function fv3_effective_docker_members(array $folders): ?array {
+        if (!$folders) return [];
+        $client = new DockerClient();
+        $names = fv3_read_container_names($client);
+        if (!$names['complete']) return null;
+        $labels = fv3_read_container_labels($client, $names['names']);
+        if ($labels === null) return null;
+        return fv3_compute_folder_membership($folders, $names['names'], $labels)['assigned'];
     }
 ?>

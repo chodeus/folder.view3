@@ -409,6 +409,7 @@
     "foreign-note-child-actions": "Pominięto $1 {{PLURAL:$1|akcję własną|akcje własne|akcji własnych}} z folderów zagnieżdżonych",
     "foreign-note-icons": "Pominięto $1 {{PLURAL:$1|ikonę|ikony|ikon}}, bo adres nie jest linkiem do obrazu",
     "foreign-note-regex": "Pominięto $1 {{PLURAL:$1|regex folderu|regexy folderów|regexów folderów}}, bo FolderView3 nie może ich odczytać",
+    "foreign-note-members-dropped": "$1 członków folderu pominięto, ponieważ folder zawiera ich więcej, niż zachowuje FolderView3",
     "foreign-note-prefs": "Preferencje wtyczki nie są importowane",
     "foreign-note-themes": "Motywy nie są importowane",
     "foreign-note-other-docker": "Foldery Docker z tego pliku nie zostały zaimportowane — użyj Importuj Docker",
