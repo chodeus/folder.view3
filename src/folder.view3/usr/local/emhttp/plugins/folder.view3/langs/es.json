@@ -394,6 +394,7 @@
     "foreign-error-too-large": "Esta copia es demasiado grande (máx. 5 MB).",
     "foreign-error-config-unreadable": "No se pudo leer la configuración actual de carpetas, así que no se importó nada.",
     "foreign-error-membership-unavailable": "FolderView3 no pudo leer el servicio de Docker, así que no sabe qué contenedores contienen ya tus carpetas. Vuelve a intentar la importación cuando Docker esté en marcha.",
+    "foreign-error-vm-membership-unavailable": "FolderView3 no pudo leer la lista de VM, así que no sabe qué VM contienen ya tus carpetas. Vuelve a intentar la importación cuando el servicio de VM esté en marcha.",
     "foreign-error-write-failed": "No se pudieron guardar las carpetas, así que no se importó nada.",
     "foreign-error-write-partial": "Algunas carpetas no se pudieron guardar ni deshacer, así que la importación puede estar incompleta. Consulta el registro de errores del plugin para ver los archivos que quedaron.",
     "foreign-preview-title": "¿Importar copia de FolderView Plus?",

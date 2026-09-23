@@ -394,6 +394,7 @@
     "foreign-error-too-large": "Diese Sicherung ist zu groß (max. 5 MB).",
     "foreign-error-config-unreadable": "Die aktuelle Ordnerkonfiguration konnte nicht gelesen werden, daher wurde nichts importiert.",
     "foreign-error-membership-unavailable": "FolderView3 konnte den Docker-Dienst nicht lesen und kann daher nicht feststellen, welche Container Ihre Ordner bereits enthalten. Versuchen Sie den Import erneut, sobald Docker läuft.",
+    "foreign-error-vm-membership-unavailable": "FolderView3 konnte die VM-Liste nicht lesen und kann daher nicht feststellen, welche VMs Ihre Ordner bereits enthalten. Versuchen Sie den Import erneut, sobald der VM-Dienst läuft.",
     "foreign-error-write-failed": "Die Ordner konnten nicht gespeichert werden, daher wurde nichts importiert.",
     "foreign-error-write-partial": "Einige Ordner konnten weder gespeichert noch zurückgenommen werden, daher ist der Import möglicherweise unvollständig. Im Fehlerprotokoll des Plugins stehen die zurückgebliebenen Dateien.",
     "foreign-preview-title": "FolderView-Plus-Sicherung importieren?",

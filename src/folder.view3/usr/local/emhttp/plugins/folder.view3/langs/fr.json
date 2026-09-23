@@ -394,6 +394,7 @@
     "foreign-error-too-large": "Cette sauvegarde est trop volumineuse (5 Mo max).",
     "foreign-error-config-unreadable": "La configuration actuelle des dossiers est illisible, rien n’a donc été importé.",
     "foreign-error-membership-unavailable": "FolderView3 n’a pas pu lire le service Docker et ne sait donc pas quels conteneurs vos dossiers contiennent déjà. Relancez l’import une fois Docker démarré.",
+    "foreign-error-vm-membership-unavailable": "FolderView3 n’a pas pu lire la liste des VM et ne sait donc pas quelles VM vos dossiers contiennent déjà. Relancez l’import une fois le service de VM démarré.",
     "foreign-error-write-failed": "Les dossiers n’ont pas pu être enregistrés, rien n’a donc été importé.",
     "foreign-error-write-partial": "Certains dossiers n’ont pu être ni enregistrés ni annulés, l’import est donc peut-être incomplet. Le journal d’erreurs du plugin indique les fichiers laissés en place.",
     "foreign-preview-title": "Importer la sauvegarde FolderView Plus ?",

@@ -10,6 +10,12 @@ foreach (['webGui/include/Helpers.php' => '<?php', 'plugins/dynamix.docker.manag
     file_put_contents("$fv3tTmp/docroot/$rel", $src);
 }
 $_SERVER['DOCUMENT_ROOT'] = "$fv3tTmp/docroot";
+// libvirt stub: lib.php loads libvirt_helpers.php if present, and vmUp()/vmDown() drive its answers
+@mkdir("$fv3tTmp/docroot/plugins/dynamix.vm.manager/include", 0777, true);
+file_put_contents("$fv3tTmp/docroot/plugins/dynamix.vm.manager/include/libvirt_helpers.php", '<?php class Libvirt { public function connect() { return $GLOBALS["fv3tVmUp"]; } public function get_domains() { return $GLOBALS["fv3tVmUp"] ? $GLOBALS["fv3tVmNames"] : false; } }');
+function vmUp(array $names = []): void { $GLOBALS['fv3tVmUp'] = true; $GLOBALS['fv3tVmNames'] = $names; unset($GLOBALS['lv']); }
+function vmDown(): void { $GLOBALS['fv3tVmUp'] = false; unset($GLOBALS['lv']); }
+vmUp(['vm-one', 'vm-two', 'vm-lab']);
 // Drives the DockerClient stub above: dockerUp() for a healthy read, dockerDown() for an outage
 function dockerUp(array $names = [], array $labels = []): void {
     $GLOBALS['fv3tDockerContainers'] = array_map(static fn($n) => ['Name' => $n], $names);
@@ -177,6 +183,15 @@ check('members past the cap are counted as left out', $capM['report']['types']['
 $jsOnly = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => [], 'regex' => '(?i)tool']]];
 $jr = fv3_convert_foreign_bundle($jsOnly, 'docker');
 check('a regex only PHP can run is dropped and counted', $jr['folders']['docker'][0]['regex'] === '' && $jr['report']['types']['docker']['dropped_regex'] === 1, $jr['report']['types']['docker']);
+// Every construct raised in review or found by differential fuzzing against JS new RegExp()
+foreach (['(?P<n>a)', '(?P<n>a)(?P=n)', '(?|(a)|(b))', '(?<n>a)(?&n)', '(*UTF8)a', '\x{41}', '\e', '\o{101}', '\N', '\X', '\v',
+          '[[:digit:]]', '(?<=a)*', '(?=a)+', 'a{2}{3}', '(a)\1', '\A', '(?i)a', 'a*+', '\p{L}'] as $bad) {
+    check("regex refused: $bad", !fv3_foreign_regex_js_safe($bad));
+}
+foreach (['tool', '^app-(alpha|beta)$', '[0-9]+', 'app-\w+', '(?:ab)+', 'a{2,3}', '.*plex.*', '^(?!test).*', '(?<=app-)x',
+          'home[- ]?assistant', '[^/]+$', '\bplex\b', '\x41', 'a+?', '^vm-[A-Za-z0-9_-]+'] as $good) {
+    check("regex kept: $good", fv3_foreign_regex_js_safe($good));
+}
 $bothOk = $jsOnly; $bothOk['folders']['r']['regex'] = '^app-(alpha|beta)$';
 $br = fv3_convert_foreign_bundle($bothOk, 'docker');
 check('a regex both engines run is kept', $br['folders']['docker'][0]['regex'] === '^app-(alpha|beta)$' && $br['report']['types']['docker']['dropped_regex'] === 0, $br['report']['types']['docker']);
@@ -253,6 +268,29 @@ check('the refused import left the config alone', array_keys(json_decode(file_ge
 $r = importForeignBundle(file_get_contents("$fv3tCorpus/backup-vm.json"), 'vm', true);
 check('a VM import still works while Docker is down', !empty($r['success']), $r);
 dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
+
+// VM membership: an existing folder can hold a VM through its regex, which vm.js lets an explicit entry override
+$vmBundle = file_get_contents("$fv3tCorpus/backup-vm.json");
+resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^vm-lab$']])]);
+vmUp(['vm-one', 'vm-two', 'vm-lab']);
+$r = importForeignBundle($vmBundle, 'vm', true);
+$afterVm = json_decode(file_get_contents("$configDir/vm.json"), true);
+$importedVms = array_merge(...array_column(array_filter($afterVm, static fn($f) => $f['name'] !== 'Holder'), 'containers'));
+check('a VM held by a regex is not claimed by an import', !empty($r['success']) && !in_array('vm-lab', $importedVms, true), $importedVms);
+check('the regex-held VM is reported as kept elsewhere', ($r['report']['types']['vm']['members_kept_elsewhere'] ?? null) === 1, $r['report']['types']['vm'] ?? $r);
+
+resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^vm-lab$']])]);
+vmDown();
+$r = importForeignBundle($vmBundle, 'vm', true);
+check('a VM import is refused when libvirt cannot be read', ($r['error'] ?? null) === 'vm-membership-unavailable', $r);
+check('the refused VM import left the config alone', array_keys(json_decode(file_get_contents("$configDir/vm.json"), true)) === ['hold']);
+resetConfig(['vm.json' => json_encode(['plain' => ['name' => 'Plain', 'containers' => ['vm-one']]])]);
+$r = importForeignBundle($vmBundle, 'vm', true);
+check('a VM import needs no libvirt read when no existing folder uses a regex', !empty($r['success']), $r);
+resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => ['app-alpha']]])]);
+$r = importForeignBundle($json, 'docker', true);
+check('a Docker import does not depend on libvirt', !empty($r['success']), $r);
+vmUp(['vm-one', 'vm-two', 'vm-lab']);
 
 exec('rm -rf ' . escapeshellarg($fv3tTmp));
 echo $fv3tFailed ? "\n$fv3tFailed FAILED\n" : "\nall passed\n";

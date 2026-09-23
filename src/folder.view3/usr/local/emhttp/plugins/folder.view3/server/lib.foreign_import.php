@@ -73,22 +73,52 @@
         return '';
     }
 
-    // PCRE constructs that JS `new RegExp(pattern)` (no flags, as the renderers call it) rejects or
-    // reads differently. Conservative: a pattern using one is dropped rather than stored half-working.
+    // An allowlist, not a blocklist: every token must mean the same in PCRE and in the flag-less
+    // JS new RegExp() the renderers use. Anything unlisted is refused, so no new construct slips in.
     function fv3_foreign_regex_js_safe(string $regex): bool {
-        $unsupported = [
-            '/\(\?[a-zA-Z]+[):]/',   // inline flags: (?i) and (?i:...)
-            '/\(\?[>#(]/',           // atomic group, comment, conditional
-            '/\(\?[0-9+-]/',         // subroutine call
-            '/\(\?R\)/',             // recursion
-            '/[*+?}]\+/',            // possessive quantifier
-            '/\\\\[AzZhHRKGgQEC]/',  // PCRE-only escapes
-            '/\\\\p\{/i',            // needs the u flag, which the renderers do not pass
-        ];
-        foreach ($unsupported as $re) {
-            if (preg_match($re, $regex)) return false;
+        $n = strlen($regex);
+        $groups = [];           // one entry per open group: true for a lookaround, which JS will not quantify
+        $quantifiable = false;  // whether the previous token can take a quantifier
+        for ($i = 0; $i < $n; $i++) {
+            $c = $regex[$i];
+            if ($c === '\\') {
+                if (!preg_match('/\G\\\\(?:[dDwWsSbBtnrf.*+?()\[\]{}|^$\\\\\/-]|x[0-9A-Fa-f]{2})/', $regex, $m, 0, $i)) return false;
+                $i += strlen($m[0]) - 1;
+                $quantifiable = true;
+            } elseif ($c === '[') {
+                // A bare [ inside a class is refused: PCRE reads [[:digit:]] as a POSIX class, JS as literals
+                if (!preg_match('/\G\[\^?(?:\\\\(?:[dDwWsStnrf\\\\\]\[\^\/.-]|x[0-9A-Fa-f]{2})|[^\\\\\]\[])+\]/', $regex, $m, 0, $i)) return false;
+                $i += strlen($m[0]) - 1;
+                $quantifiable = true;
+            } elseif ($c === '(') {
+                preg_match('/\G\((?:\?(?:[:=!]|<[=!]))?/', $regex, $m, 0, $i);
+                // A "(?" the shared openers did not consume is a named group, flag, verb or subroutine
+                if ($m[0] === '(' && ($regex[$i + 1] ?? '') === '?') return false;
+                $groups[] = in_array($m[0], ['(?=', '(?!', '(?<=', '(?<!'], true);
+                $i += strlen($m[0]) - 1;
+                $quantifiable = false;
+            } elseif ($c === ')') {
+                if (!$groups) return false;
+                $quantifiable = !array_pop($groups);
+            } elseif ($c === '*' || $c === '+' || $c === '?' || $c === '{') {
+                if (!$quantifiable) return false;
+                if ($c === '{') {
+                    if (!preg_match('/\G\{\d{1,4}(?:,\d{0,4})?\}/', $regex, $m, 0, $i)) return false;
+                    $i += strlen($m[0]) - 1;
+                }
+                // lazy ? is shared; a possessive + or a second quantifier is not
+                if (($regex[$i + 1] ?? '') === '?') $i++;
+                if (in_array($regex[$i + 1] ?? '', ['+', '*', '?', '{'], true)) return false;
+                $quantifiable = false;
+            } elseif ($c === '|') {
+                $quantifiable = false;
+            } elseif ($c === '^' || $c === '$') {
+                $quantifiable = false;
+            } else {
+                $quantifiable = true;  // . and any literal character
+            }
         }
-        return true;
+        return !$groups;
     }
 
     // $capped receives how many entries the member cap discarded, so the preview can report them
@@ -377,14 +407,21 @@
         // folders — a VM-only import must not depend on the Docker service being up
         $alsoOwned = [];
         $membershipUnavailable = false;
+        $vmMembershipUnavailable = false;
         if ($type !== 'vm') {
             $effective = fv3_effective_docker_members($existing['docker'] ?? []);
             if ($effective === null) $membershipUnavailable = true;
             else $alsoOwned['docker'] = $effective;
         }
+        if ($type !== 'docker') {
+            $effective = fv3_effective_vm_members($existing['vm'] ?? []);
+            if ($effective === null) $vmMembershipUnavailable = true;
+            else $alsoOwned['vm'] = $effective;
+        }
         $converted = fv3_convert_foreign_bundle($raw, $type, $existing, $alsoOwned);
         if (isset($converted['error'])) return $converted;
         if ($membershipUnavailable && !empty($converted['folders']['docker'])) return ['error' => 'membership-unavailable'];
+        if ($vmMembershipUnavailable && !empty($converted['folders']['vm'])) return ['error' => 'vm-membership-unavailable'];
         if (!array_filter($converted['folders'])) return ['error' => 'no-folders'];
         if (!$apply) return ['report' => $converted['report']];
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
@@ -414,6 +451,40 @@
             return ['error' => 'write-failed'];
         }
         return ['success' => true, 'report' => $converted['report']];
+    }
+
+    // VM names from libvirt. null = unreadable, which readInfo() cannot signal: it returns [] for both
+    function fv3_read_vm_names(): ?array {
+        if (!fv3_require_libvirt_helpers()) return null;
+        try {
+            global $lv;
+            if (!isset($lv)) { $lv = new Libvirt(); if (!$lv->connect()) return null; }
+            $vms = $lv->get_domains();
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return is_array($vms) ? array_values(array_filter($vms, 'is_string')) : null;
+    }
+
+    // VMs an existing folder holds through its regex. vm.js lets an explicit entry in any folder beat a
+    // regex match, so an imported explicit member would take one. null = libvirt could not be read.
+    function fv3_effective_vm_members(array $folders): ?array {
+        $regexFolders = array_filter($folders, static fn($f) => is_array($f) && is_string($f['regex'] ?? null) && trim($f['regex']) !== '');
+        if (!$regexFolders) return [];
+        $names = fv3_read_vm_names();
+        if ($names === null) return null;
+        $explicit = [];
+        foreach ($folders as $f) {
+            foreach ((is_array($f['containers'] ?? null) ? $f['containers'] : []) as $c) { if (is_string($c)) $explicit[$c] = true; }
+        }
+        $held = [];
+        foreach ($regexFolders as $f) {
+            $re = '/' . str_replace('/', '\/', $f['regex']) . '/';
+            foreach ($names as $vm) {
+                if (!isset($explicit[$vm]) && @preg_match($re, $vm) === 1) $held[$vm] = true;
+            }
+        }
+        return array_keys($held);
     }
 
     // Containers an existing folder already holds through a label or regex — explicit containers[]
