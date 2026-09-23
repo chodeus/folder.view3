@@ -12,7 +12,8 @@ foreach (['webGui/include/Helpers.php' => '<?php', 'plugins/dynamix.docker.manag
 $_SERVER['DOCUMENT_ROOT'] = "$fv3tTmp/docroot";
 // libvirt stub: lib.php loads libvirt_helpers.php if present, and vmUp()/vmDown() drive its answers
 @mkdir("$fv3tTmp/docroot/plugins/dynamix.vm.manager/include", 0777, true);
-file_put_contents("$fv3tTmp/docroot/plugins/dynamix.vm.manager/include/libvirt_helpers.php", '<?php class Libvirt { public function connect() { return $GLOBALS["fv3tVmUp"]; } public function get_domains() { return $GLOBALS["fv3tVmUp"] ? $GLOBALS["fv3tVmNames"] : false; } }');
+// get_domains() mirrors Unraid's `return $tmp ?: $this->_set_last_error();`, so an empty list comes back false
+file_put_contents("$fv3tTmp/docroot/plugins/dynamix.vm.manager/include/libvirt_helpers.php", '<?php class Libvirt { public function connect() { return $GLOBALS["fv3tVmUp"]; } public function get_domains() { $t = $GLOBALS["fv3tVmUp"] ? $GLOBALS["fv3tVmNames"] : false; return $t ?: false; } public function get_domain_count() { return $GLOBALS["fv3tVmUp"] ? ["total" => count($GLOBALS["fv3tVmNames"]), "active" => 0, "inactive" => count($GLOBALS["fv3tVmNames"])] : false; } }');
 function vmUp(array $names = []): void { $GLOBALS['fv3tVmUp'] = true; $GLOBALS['fv3tVmNames'] = $names; unset($GLOBALS['lv']); }
 function vmDown(): void { $GLOBALS['fv3tVmUp'] = false; unset($GLOBALS['lv']); }
 vmUp(['vm-one', 'vm-two', 'vm-lab']);
@@ -291,6 +292,46 @@ resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'con
 $r = importForeignBundle($json, 'docker', true);
 check('a Docker import does not depend on libvirt', !empty($r['success']), $r);
 vmUp(['vm-one', 'vm-two', 'vm-lab']);
+
+// A connected libvirt with no VMs is an empty list, not an outage
+resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^vm-lab$']])]);
+vmUp([]);
+$r = importForeignBundle($vmBundle, 'vm', true);
+check('a VM import works when libvirt is up with no VMs', !empty($r['success']), $r);
+
+// VM names can be non-ASCII: the page counts characters, so the server must too
+$cjkName = 'Windows 11 家庭版';
+$cjkBundle = json_encode(['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'folders' => ['i' => ['name' => 'Imported', 'containers' => [$cjkName]]]]);
+resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^Windows 11 .{3}$']])]);
+vmUp([$cjkName]);
+$r = importForeignBundle($cjkBundle, 'vm', true);
+$afterCjk = json_decode(file_get_contents("$configDir/vm.json"), true);
+$cjkImported = array_merge(...array_column(array_filter($afterCjk, static fn($f) => $f['name'] !== 'Holder'), 'containers'));
+check('a non-ASCII VM a regex holds by character count is not claimed', !in_array($cjkName, $cjkImported, true), $cjkImported);
+vmUp(['vm-one', 'vm-two', 'vm-lab']);
+foreach (['家+', '[家]', '^.{3}$', 'Windows 11 家庭版'] as $good) check("regex kept: $good", fv3_foreign_regex_js_safe($good));
+foreach (["😀+", "a😀", "\xff", "a\xc3("] as $bad) check('regex refused: ' . bin2hex($bad), !fv3_foreign_regex_js_safe($bad));
+
+// The page's regex engine reads . \s and characters past U+FFFF differently from PCRE; the server must follow it
+$vmCase = static function (string $vmName, string $regex): bool {
+    $bundle = json_encode(['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'folders' => ['i' => ['name' => 'Imported', 'containers' => [$vmName]]]]);
+    resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => $regex]])]);
+    vmUp([$vmName]);
+    importForeignBundle($bundle, 'vm', true);
+    $after = json_decode(file_get_contents($GLOBALS['configDir'] . '/vm.json'), true);
+    return !in_array($vmName, array_merge(...array_column(array_filter($after, static fn($f) => $f['name'] !== 'Holder'), 'containers')), true);
+};
+check('an ideographic space counts as \s, as on the page', $vmCase("Windows 11\u{3000}家庭版", '^Windows 11\s'));
+check('a no-break space counts as \s, as on the page', $vmCase("vm\u{A0}one", '^vm\sone$'));
+// Import rejects control characters in member names, so \r is checked on the evaluator directly
+vmUp(["vm\rx"]);
+check('\r does not match ., as on the page', !in_array("vm\rx", fv3_effective_vm_members([['name' => 'H', 'containers' => [], 'regex' => '^vm.x$']]), true));
+check('a character past U+FFFF is two units, as on the page', $vmCase('vm😀', '^vm.{2}$'));
+check('a CJK character is not \\w, as on the page', !$vmCase('家', '^\\w$'));
+vmUp(['vm-one', 'vm-two', 'vm-lab']);
+check('regex refused: \S inside a class', !fv3_foreign_regex_js_safe('[a\S]'));
+check('regex kept: \s inside a class', fv3_foreign_regex_js_safe('[\s-]'));
+check('a pattern outside the allowlist is not rewritten', fv3_foreign_regex_as_js('(?i)a') === null);
 
 // Every counter the report carries must have a preview line, or the user is never told about it
 $previewJs = file_get_contents("$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/folderview3.js");

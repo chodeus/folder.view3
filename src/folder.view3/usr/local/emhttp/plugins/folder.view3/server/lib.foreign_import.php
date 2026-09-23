@@ -76,6 +76,8 @@
     // An allowlist, not a blocklist: every token must mean the same in PCRE and in the flag-less
     // JS new RegExp() the renderers use. Anything unlisted is refused, so no new construct slips in.
     function fv3_foreign_regex_js_safe(string $regex): bool {
+        // Valid UTF-8, nothing above U+FFFF: JS splits those into two code units, PCRE's /u does not
+        if (@preg_match('//u', $regex) !== 1 || preg_match('/[\x{10000}-\x{10FFFF}]/u', $regex)) return false;
         $n = strlen($regex);
         $groups = [];           // one entry per open group: true for a lookaround, which JS will not quantify
         $quantifiable = false;  // whether the previous token can take a quantifier
@@ -87,7 +89,8 @@
                 $quantifiable = true;
             } elseif ($c === '[') {
                 // A bare [ inside a class is refused: PCRE reads [[:digit:]] as a POSIX class, JS as literals
-                if (!preg_match('/\G\[\^?(?:\\\\(?:[dDwWsStnrf\\\\\]\[\^\/.-]|x[0-9A-Fa-f]{2})|[^\\\\\]\[])+\]/', $regex, $m, 0, $i)) return false;
+                // \S is refused inside a class: fv3_foreign_regex_as_js() cannot negate within one
+                if (!preg_match('/\G\[\^?(?:\\\\(?:[dDwWstnrf\\\\\]\[\^\/.-]|x[0-9A-Fa-f]{2})|[^\\\\\]\[])+\]/', $regex, $m, 0, $i)) return false;
                 $i += strlen($m[0]) - 1;
                 $quantifiable = true;
             } elseif ($c === '(') {
@@ -119,6 +122,38 @@
             }
         }
         return !$groups;
+    }
+
+    // JS's \s set. PCRE's \s without Unicode classes stops at ASCII; \x0B, since PCRE's \v is a whole class
+    const FV3_FOREIGN_JS_SPACE = '\t\n\x0B\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
+
+    // An allowlisted pattern rewritten so PCRE's (*UTF) mode reads . \s \S as flag-less JS does; null otherwise
+    function fv3_foreign_regex_as_js(string $regex): ?string {
+        if (!fv3_foreign_regex_js_safe($regex)) return null;
+        $out = '';
+        $inClass = false;
+        for ($i = 0, $n = strlen($regex); $i < $n; $i++) {
+            $c = $regex[$i];
+            if ($c === '\\') {
+                $next = $regex[$i + 1];
+                if ($next === 's') { $out .= $inClass ? FV3_FOREIGN_JS_SPACE : '[' . FV3_FOREIGN_JS_SPACE . ']'; $i++; continue; }
+                if ($next === 'S') { $out .= '[^' . FV3_FOREIGN_JS_SPACE . ']'; $i++; continue; }
+                $len = $next === 'x' ? 4 : 2;
+                $out .= substr($regex, $i, $len);
+                $i += $len - 1;
+            } elseif (!$inClass && $c === '[') {
+                $inClass = true;
+                $out .= $c;
+            } elseif ($inClass && $c === ']') {
+                $inClass = false;
+                $out .= $c;
+            } elseif (!$inClass && $c === '.') {
+                $out .= '[^\n\r\x{2028}\x{2029}]';  // JS . stops at \r and the line separators too
+            } else {
+                $out .= $c;
+            }
+        }
+        return $out;
     }
 
     // $capped receives how many entries the member cap discarded, so the preview can report them
@@ -461,6 +496,11 @@
             global $lv;
             if (!isset($lv)) { $lv = new Libvirt(); if (!$lv->connect()) return null; }
             $vms = $lv->get_domains();
+            // get_domains() returns false for an empty list as well as a failure; the counts call does not
+            if ($vms === false) {
+                $counts = $lv->get_domain_count();
+                return (is_array($counts) && ($counts['total'] ?? null) === 0) ? [] : null;
+            }
         } catch (\Throwable $e) {
             return null;
         }
@@ -478,11 +518,16 @@
         foreach ($folders as $f) {
             foreach ((is_array($f['containers'] ?? null) ? $f['containers'] : []) as $c) { if (is_string($c)) $explicit[$c] = true; }
         }
+        // JS counts a character past U+FFFF as two code units; two private-use stand-ins do the same here
+        $subjects = [];
+        foreach ($names as $vm) $subjects[$vm] = preg_replace('/[\x{10000}-\x{10FFFF}]/u', "\u{E000}\u{E000}", $vm) ?? $vm;
         $held = [];
         foreach ($regexFolders as $f) {
-            $re = '/' . str_replace('/', '\/', $f['regex']) . '/';
-            foreach ($names as $vm) {
-                if (!isset($explicit[$vm]) && @preg_match($re, $vm) === 1) $held[$vm] = true;
+            // (*UTF) matches per character with ASCII-only \w \b \d, as the page does; /D keeps $ at the very end.
+            // A pattern outside the allowlist cannot be rewritten exactly, so it is read as written.
+            $re = '/(*UTF)' . str_replace('/', '\/', fv3_foreign_regex_as_js($f['regex']) ?? $f['regex']) . '/D';
+            foreach ($subjects as $vm => $subject) {
+                if (!isset($explicit[$vm]) && @preg_match($re, $subject) === 1) $held[$vm] = true;
             }
         }
         return array_keys($held);
