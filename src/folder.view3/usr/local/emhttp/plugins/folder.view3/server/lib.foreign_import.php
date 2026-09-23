@@ -202,7 +202,19 @@
     }
 
     // $existing: [type => folder map already on disk], used only for name clashes and member ownership
-    function fv3_convert_foreign_bundle(array $raw, ?string $onlyType, array $existing = []): array {
+    // Containers an existing folder already holds through a label or regex — explicit containers[]
+    // alone does not show those. null means Docker could not be read, so the caller must refuse.
+    function fv3_effective_docker_members(array $folders): ?array {
+        if (!$folders) return [];
+        $client = new DockerClient();
+        $names = fv3_read_container_names($client);
+        if (!$names['complete']) return null;
+        $labels = fv3_read_container_labels($client, $names['names']);
+        if ($labels === null) return null;
+        return fv3_compute_folder_membership($folders, $names['names'], $labels)['assigned'];
+    }
+
+    function fv3_convert_foreign_bundle(array $raw, ?string $onlyType, array $existing = [], array $alsoOwned = []): array {
         $detected = fv3_foreign_detect($raw);
         if (isset($detected['error'])) return $detected;
         $types = $detected['types'];
@@ -236,11 +248,16 @@
             foreach ($existing[$type] ?? [] as $f) {
                 if (is_array($f) && is_string($f['name'] ?? null)) $taken[strtolower($f['name'])] = true;
             }
+            // Explicit members plus anything held by a label or regex: an explicit import entry
+            // outranks both in fv3_compute_folder_membership(), so it would take the container
             $owned = [];
             foreach ($existing[$type] ?? [] as $f) {
                 foreach ((is_array($f['containers'] ?? null) ? $f['containers'] : []) as $ct) {
                     if (is_string($ct)) $owned[$ct] = true;
                 }
+            }
+            foreach ($alsoOwned[$type] ?? [] as $ct) {
+                if (is_string($ct)) $owned[$ct] = true;
             }
 
             $converted = [];
@@ -322,8 +339,18 @@
             // Corrupt config fails closed, as in updateFolder: merging onto empty would wipe it
             if ($existing[$t] === null) return ['error' => 'config-unreadable'];
         }
-        $converted = fv3_convert_foreign_bundle($raw, $type, $existing);
+        // Read Docker before converting, but only refuse if the bundle turns out to hold Docker
+        // folders — a VM-only import must not depend on the Docker service being up
+        $alsoOwned = [];
+        $membershipUnavailable = false;
+        if ($type !== 'vm') {
+            $effective = fv3_effective_docker_members($existing['docker'] ?? []);
+            if ($effective === null) $membershipUnavailable = true;
+            else $alsoOwned['docker'] = $effective;
+        }
+        $converted = fv3_convert_foreign_bundle($raw, $type, $existing, $alsoOwned);
         if (isset($converted['error'])) return $converted;
+        if ($membershipUnavailable && !empty($converted['folders']['docker'])) return ['error' => 'membership-unavailable'];
         if (!array_filter($converted['folders'])) return ['error' => 'no-folders'];
         if (!$apply) return ['report' => $converted['report']];
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);

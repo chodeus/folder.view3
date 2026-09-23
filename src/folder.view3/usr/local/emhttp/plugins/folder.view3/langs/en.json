@@ -393,6 +393,7 @@
     "foreign-error-too-many-folders": "This backup holds too many folders.",
     "foreign-error-too-large": "This backup is too large (5 MB max).",
     "foreign-error-config-unreadable": "The current folder config could not be read, so nothing was imported.",
+    "foreign-error-membership-unavailable": "FolderView3 could not read the Docker service, so it cannot tell which containers your folders already hold. Try the import again once Docker is running.",
     "foreign-error-write-failed": "The folders could not be saved, so nothing was imported.",
     "foreign-error-write-partial": "Some folders could not be saved and could not be undone, so the import may be incomplete. Check the plugin error log for the files left behind.",
     "foreign-preview-title": "Import FolderView Plus backup?",

@@ -5,11 +5,18 @@ $fv3tCorpus = $argv[1] ?? dirname(__DIR__) . '/fixtures/folderview-plus';
 $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-foreign-test-' . bin2hex(random_bytes(4));
 
 // lib.php requires these two Unraid host files at load time
-foreach (['webGui/include/Helpers.php' => '<?php', 'plugins/dynamix.docker.manager/include/DockerClient.php' => '<?php class DockerClient {} class DockerUpdate {}'] as $rel => $src) {
+foreach (['webGui/include/Helpers.php' => '<?php', 'plugins/dynamix.docker.manager/include/DockerClient.php' => '<?php class DockerUpdate {} class DockerClient { public function getDockerContainers() { return $GLOBALS["fv3tDockerContainers"]; } public function getDockerJSON($path) { return $GLOBALS["fv3tDockerJSON"]; } }'] as $rel => $src) {
     @mkdir(dirname("$fv3tTmp/docroot/$rel"), 0777, true);
     file_put_contents("$fv3tTmp/docroot/$rel", $src);
 }
 $_SERVER['DOCUMENT_ROOT'] = "$fv3tTmp/docroot";
+// Drives the DockerClient stub above: dockerUp() for a healthy read, dockerDown() for an outage
+function dockerUp(array $names = [], array $labels = []): void {
+    $GLOBALS['fv3tDockerContainers'] = array_map(static fn($n) => ['Name' => $n], $names);
+    $GLOBALS['fv3tDockerJSON'] = array_map(static fn($n) => ['Names' => ['/' . $n], 'Labels' => isset($labels[$n]) ? ['folder.view3' => $labels[$n]] : []], $names);
+}
+function dockerDown(): void { $GLOBALS['fv3tDockerContainers'] = null; $GLOBALS['fv3tDockerJSON'] = null; }
+dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta', 'dup', 'x']);
 require "$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/server/lib.php";
 $configDir = "$fv3tTmp/config";
 mkdir($configDir);
@@ -209,6 +216,23 @@ $emptyEnv['types']['docker']['folders'] = [];
 check('a file with no folders for the chosen type is refused at preview', (importForeignBundle(json_encode($emptyEnv), 'docker', false)['error'] ?? null) === 'no-folders');
 check('oversized bundle refused', (importForeignBundle(str_repeat(' ', FV3_FOREIGN_MAX_BYTES + 1), null, false)['error'] ?? null) === 'too-large');
 check('JSON list refused', (importForeignBundle('[1,2]', null, false)['error'] ?? null) === 'unsupported');
+
+// Effective membership: an existing folder can hold a container through a label, not just containers[]
+resetConfig(['docker.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => []]])]);
+dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta'], ['app-alpha' => 'Holder']);
+$r = importForeignBundle($json, 'docker', true);
+$afterLbl = json_decode(file_get_contents("$configDir/docker.json"), true);
+$importedMembers = array_merge(...array_column(array_filter($afterLbl, static fn($f) => $f['name'] !== 'Holder'), 'containers'));
+check('a container held by a label is not claimed by an import', !empty($r['success']) && !in_array('app-alpha', $importedMembers, true), $importedMembers);
+
+resetConfig(['docker.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => []]])]);
+dockerDown();
+$r = importForeignBundle($json, 'docker', true);
+check('a Docker import is refused when Docker cannot be read', ($r['error'] ?? null) === 'membership-unavailable', $r);
+check('the refused import left the config alone', array_keys(json_decode(file_get_contents("$configDir/docker.json"), true)) === ['hold']);
+$r = importForeignBundle(file_get_contents("$fv3tCorpus/backup-vm.json"), 'vm', true);
+check('a VM import still works while Docker is down', !empty($r['success']), $r);
+dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
 
 exec('rm -rf ' . escapeshellarg($fv3tTmp));
 echo $fv3tFailed ? "\n$fv3tFailed FAILED\n" : "\nall passed\n";
