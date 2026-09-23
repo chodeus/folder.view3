@@ -579,11 +579,8 @@
         if (!$folders) return [];
         $client = new DockerClient();
         $names = fv3_read_container_names($client);
-        if (!$names['complete']) {
-            // fv3_read_container_names() reads zero containers as incomplete; the raw list tells none from a failure
-            $raw = $client->getDockerJSON('/containers/json?all=1');
-            return (is_array($raw) && !$raw) ? [] : null;
-        }
+        // DockerClient returns [] when it cannot reach the socket, so an empty list cannot be told from an outage
+        if (!$names['complete']) return null;
         $labels = fv3_read_container_labels($client, $names['names']);
         if ($labels === null) return null;
         return fv3_compute_folder_membership($folders, $names['names'], $labels)['assigned'];

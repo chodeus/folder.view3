@@ -22,7 +22,8 @@ function dockerUp(array $names = [], array $labels = []): void {
     $GLOBALS['fv3tDockerContainers'] = array_map(static fn($n) => ['Name' => $n], $names);
     $GLOBALS['fv3tDockerJSON'] = array_map(static fn($n) => ['Names' => ['/' . $n], 'Labels' => isset($labels[$n]) ? ['folder.view3' => $labels[$n]] : []], $names);
 }
-function dockerDown(): void { $GLOBALS['fv3tDockerContainers'] = null; $GLOBALS['fv3tDockerJSON'] = null; }
+// Unraid's getDockerJSON() returns [] when it cannot open the socket, so an outage looks like no containers
+function dockerDown(): void { $GLOBALS['fv3tDockerContainers'] = []; $GLOBALS['fv3tDockerJSON'] = []; }
 dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta', 'dup', 'x']);
 require "$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/server/lib.php";
 $configDir = "$fv3tTmp/config";
@@ -374,13 +375,14 @@ importForeignBundle(json_encode(['schemaVersion' => 1, 'type' => 'docker', 'mode
 $dDigits = array_merge(...array_column(array_filter(json_decode(file_get_contents("$configDir/docker.json"), true), static fn($f) => $f['name'] !== 'Existing'), 'containers'));
 check('an all-digit container held by a label is not claimed', !in_array('123', $dDigits, true), $dDigits);
 dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
-// 4: Docker running with no containers is an empty list, not an outage
+// 4: the client cannot tell no containers from an outage, so with existing Docker folders both refuse
 resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => ['gone']]])]);
-dockerUp([]);
-$r = importForeignBundle($json, 'docker', true);
-check('a Docker import works when Docker has no containers', !empty($r['success']), $r);
 dockerDown();
-check('a Docker outage still refuses', (importForeignBundle($json, 'docker', true)['error'] ?? null) === 'membership-unavailable');
+check('a Docker outage refuses the import', (importForeignBundle($json, 'docker', true)['error'] ?? null) === 'membership-unavailable');
+dockerUp([]);
+check('an empty container list refuses too, since it may be an outage', (importForeignBundle($json, 'docker', true)['error'] ?? null) === 'membership-unavailable');
+resetConfig();
+check('with no existing Docker folders, Docker is never read', !empty(importForeignBundle($json, 'docker', true)['success']));
 dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
 // 6: a class escape at a range end cannot compile in PCRE, so it is refused; at the class edge it is fine
 foreach (['[\s-z]', '[a-\s]', '[\d-z]', '[a-\w]', '[^\s-z]'] as $bad) check("regex refused: $bad", !fv3_foreign_regex_js_safe($bad));

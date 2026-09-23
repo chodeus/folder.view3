@@ -400,7 +400,7 @@
     "foreign-preview-title": "Zaimportować kopię zapasową FolderView Plus?",
     "foreign-preview-docker": "Do dodania: $1 {{PLURAL:$1|folder|foldery|folderów}} Docker:",
     "foreign-preview-vm": "Do dodania: $1 {{PLURAL:$1|folder|foldery|folderów}} VM:",
-    "foreign-note-merged": "Scalono $1 {{PLURAL:$1|zagnieżdżony folder|zagnieżdżone foldery|zagnieżdżonych folderów}} z folderem najwyższego poziomu (ich własna nazwa, ikona i ustawienia nie są zachowywane)",
+    "foreign-note-merged": "Scalono $1 {{PLURAL:$1|zagnieżdżony folder|zagnieżdżone foldery|zagnieżdżonych folderów}} z folderem najwyższego poziomu ({{PLURAL:$1|jego|ich|ich}} własna nazwa, ikona i ustawienia nie są zachowywane)",
     "foreign-note-broken-parents": "$1 {{PLURAL:$1|folder miał|foldery miały|folderów miało}} brakujący, nieprawidłowy lub zapętlony folder nadrzędny i {{PLURAL:$1|pozostaje|pozostają|pozostaje}} na najwyższym poziomie",
     "foreign-note-renamed": "Zmieniono nazwę $1 {{PLURAL:$1|folderu|folderów|folderów}}, bo nazwy brakowało, była nieprawidłowa lub jest już zajęta",
     "foreign-note-members-kept": "$1 {{PLURAL:$1|kontener lub VM już w innym folderze pozostaje|kontenery lub VM już w innym folderze pozostają|kontenerów lub VM już w innym folderze pozostaje}} tam",
