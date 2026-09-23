@@ -331,10 +331,14 @@
         $files = [];
         foreach ($converted['folders'] as $t => $folders) {
             if (!$folders) continue;
-            $map = $existing[$t];
+            // Written from an object decode so existing folders go back byte-for-byte: the assoc copy
+            // above would turn their empty {} settings/containerImages into []
+            $map = json_decode((string)@file_get_contents("$configDir/$t.json"));
+            if (!$map) $map = new stdClass();
+            if (!$map instanceof stdClass) return ['error' => 'config-unreadable'];
             foreach ($folders as $folder) {
-                do { $id = generateId(); } while (isset($map[$id]));
-                $map[$id] = $folder;
+                do { $id = generateId(); } while (property_exists($map, $id));
+                $map->$id = $folder;
             }
             // No fv3_dedupe_explicit_members here: the converter already skips claimed members, and a
             // whole-map pass would strip members from existing folders that happen to share one

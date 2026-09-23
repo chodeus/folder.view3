@@ -182,6 +182,12 @@ $after2 = json_decode(file_get_contents("$configDir/docker.json"), true);
 check('existing folders that already share a member are left as they were', $after2['one'] === $shared['one'] && $after2['two'] === $shared['two'], [$after2['one'], $after2['two']]);
 resetConfig(['docker.json' => json_encode($keep)]);
 importForeignBundle($json, 'docker', true);
+resetConfig(['docker.json' => '{"keep":{"name":"Keep","containers":["x"],"settings":{},"containerImages":{}}}']);
+importForeignBundle($json, 'docker', true);
+$raw = json_decode(file_get_contents("$configDir/docker.json"));
+check('existing empty objects stay {} on disk', $raw->keep->settings instanceof stdClass && $raw->keep->containerImages instanceof stdClass, $raw->keep);
+resetConfig(['docker.json' => json_encode($keep)]);
+importForeignBundle($json, 'docker', true);
 check('Docker import leaves vm.json alone', !file_exists("$configDir/vm.json"));
 check('no staging folder left behind', !glob("$configDir/.fv3-import-*"));
 
