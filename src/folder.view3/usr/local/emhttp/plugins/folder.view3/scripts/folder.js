@@ -156,7 +156,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         hiddenPreview = currFolder.hidden_preview || [];
 
         currFolder.actions?.forEach((e, i) => {
-            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}"><span>${escapeHtml(e.name)} </span><button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(e))}"></div>`);
+            $('.custom-action-wrapper').append(`<div class="custom-action-n-${i}"><span>${escapeHtml(e.name)} </span><button onclick="return customAction(${i});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${i});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${escapeHtml(JSON.stringify(e))}"></div>`);
         });
 
 
@@ -463,7 +463,7 @@ const submitForm = async (e) => {
         swal({ title: fv3I18nOr('reserved-name', 'Reserved Name'), text: fv3I18nOr('reserved-name-root', "'root' is reserved by Unraid's Docker organizer — please pick another folder name."), type: 'error' });
         return;
     }
-    const actions = $('input[name*="custom_action"]').map((i, e) => fv3SafeParse(atob($(e).val()), {})).get();
+    const actions = $('input[name*="custom_action"]').map((i, e) => fv3SafeParse($(e).val(), {})).get();
     const folder = {
         name: e.name.value.toString(),
         icon: e.icon.value.toString(),
@@ -603,7 +603,7 @@ const customAction = (action = undefined) => {
         script_icon: ''
     }
     if(action !== undefined) {
-        config = fv3SafeParse(atob($('input[name*="custom_action"]').map((i, e) => $(e).val()).get()[action]), {});
+        config = fv3SafeParse($('input[name*="custom_action"]').map((i, e) => $(e).val()).get()[action], {});
     }
     const selectCt = $('.action-subject [name="action_elements"]');
     selectCt.children().remove();
@@ -668,10 +668,10 @@ const customAction = (action = undefined) => {
             cfg.script_sync = that.find('[name="action_script_sync"]').prop("checked");
         }
         if(action !== undefined) {
-            $(`.custom-action-n-${action} > input[type="hidden"]`).val(btoa(JSON.stringify(cfg)));
+            $(`.custom-action-n-${action} > input[type="hidden"]`).val(JSON.stringify(cfg));
             $(`.custom-action-n-${action} > span`).text(cfg.name + ' ');
         } else {
-            $('.custom-action-wrapper').append(`<div class="custom-action-n-${(action !== undefined) ? action : customNumber}"><span>${escapeHtml(cfg.name)} </span><button onclick="return customAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${btoa(JSON.stringify(cfg))}"></div>`);
+            $('.custom-action-wrapper').append(`<div class="custom-action-n-${(action !== undefined) ? action : customNumber}"><span>${escapeHtml(cfg.name)} </span><button onclick="return customAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-pencil" aria-hidden="true"></i></button><button onclick="return rCcustomAction(${(action !== undefined) ? action : customNumber});"><i class="fa fa-trash" aria-hidden="true"></i></button><input type="hidden" name="custom_action[]" value="${escapeHtml(JSON.stringify(cfg))}"></div>`);
         }
         $(this).dialog("close");
     };
