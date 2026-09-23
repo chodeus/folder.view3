@@ -1079,7 +1079,8 @@ window.fv3CollectEnv = () => {
 // debug.js owns the capture helpers; the fuller fv3CollectEnv() above replaces its page-agnostic one.
 
 window.fv3RunUserScript = async (act, prom) => {
-    const args = act.script_args || '';
+    // Spliced into a query string, so PHP would read a raw + as a space and a raw & as a separator
+    const args = encodeURIComponent(act.script_args || '');
     try {
     if(act.script_sync) {
         let scriptVariables = {};

@@ -1,0 +1,71 @@
+{
+    "schemaVersion": 1,
+    "pluginVersion": "2026.09.17.03",
+    "exportedAt": "2026-09-23T07:25:23.265Z",
+    "type": "vm",
+    "mode": "full",
+    "folders": {
+        "P9uBmb0sBVs01D6sG2oh": {
+            "name": "Virtual Machines",
+            "containers": [
+                "vm-one",
+                "vm-two"
+            ],
+            "memberIdentities": {
+                "vm-one": {
+                    "kind": "vm",
+                    "uuid": "11111111-2222-3333-4444-555555555555"
+                }
+            },
+            "settings": {
+                "preview": 1,
+                "context": 1,
+                "webui_profiles": [],
+                "preview_overflow": "default",
+                "previewOverflow": "default",
+                "preview_row_separator": false,
+                "previewRowSeparator": false,
+                "preview_row_separator_color": "#afa89e",
+                "child_folder_order": [],
+                "childFolderOrder": []
+            },
+            "icon": "",
+            "regex": "",
+            "hiddenPreviewMembers": [],
+            "parentId": "",
+            "actions": [],
+            "createdAt": "2026-09-23T07:25:23+00:00",
+            "updatedAt": "2026-09-23T07:25:23+00:00"
+        },
+        "fHmSNj6b2KRizPQFafz": {
+            "name": "Lab",
+            "containers": [
+                "vm-lab"
+            ],
+            "memberIdentities": {
+                "vm-lab": {
+                    "kind": "vm",
+                    "uuid": "66666666-7777-8888-9999-000000000000"
+                }
+            },
+            "settings": {
+                "preview": 2,
+                "webui_profiles": [],
+                "preview_overflow": "default",
+                "previewOverflow": "default",
+                "preview_row_separator": false,
+                "previewRowSeparator": false,
+                "preview_row_separator_color": "#afa89e",
+                "child_folder_order": [],
+                "childFolderOrder": []
+            },
+            "icon": "",
+            "regex": "",
+            "hiddenPreviewMembers": [],
+            "parentId": "P9uBmb0sBVs01D6sG2oh",
+            "actions": [],
+            "createdAt": "2026-09-23T07:25:23+00:00",
+            "updatedAt": "2026-09-23T07:25:23+00:00"
+        }
+    }
+}

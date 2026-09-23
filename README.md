@@ -66,6 +66,21 @@ https://raw.githubusercontent.com/chodeus/folder.view3/beta/folder.view3.plg
 3. Uninstall old plugin, install this fork
 4. Import exported files, restore custom CSS
 
+### Importing from FolderView Plus
+
+FolderView3 reads FolderView Plus exports and backups: the per-type export, a single-folder export, the
+scheduled/manual backups in `config/plugins/folderview.plus/backups/`, and the environment and rollback snapshots.
+
+The import is for moving to FolderView3, so it expects FolderView3 to have no folders yet. Only one FolderView
+plugin should be installed at a time; remove the old one before installing FolderView3 and importing.
+
+- Use **Import Docker** or **Import VM** for a per-type file, or **Import Everything** to take every type in the file.
+- A preview lists the folders and summarises what will be left out before anything is saved. Existing folders
+  are kept; a folder whose name is taken is imported as `Name (imported)`.
+- Nested folders are merged into their top-level folder, since FolderView3 has no nesting.
+- Settings FolderView3 doesn't have, plugin preferences, themes, and custom actions it can't run safely are left out.
+- A backup from a newer FolderView Plus format is refused rather than guessed at.
+
 ## Getting Started
 
 After installation, an **Add Folder** button appears at the bottom of the Docker and VM tabs.
