@@ -162,9 +162,9 @@ foreach (['..' => ['script' => '..'], 'slash' => ['script' => 'a/b'], 'ampersand
     check("action rejected: $label", $act($bad) === null);
 }
 
-check('action text above U+00FF rejected (folder.js btoa)', $act(['name' => '重启']) === null && $act(['name' => 'Restart — all']) === null && $act(['script_args' => 'é']) !== null);
+check('action text above U+00FF kept', ($act(['name' => '重启'])['name'] ?? null) === '重启' && $act(['name' => 'Restart — all']) !== null && $act(['script_args' => 'é']) !== null);
 $vmAct = fv3_foreign_action(['name' => 'n', 'type' => 0, 'script_icon' => '', 'conatiners' => ['Windows 11 家庭版'], 'action' => 2], ['Windows 11 家庭版']);
-check('action targeting a non-Latin-1 VM name rejected', $vmAct === null);
+check('action targeting a non-Latin-1 VM name kept', ($vmAct['conatiners'] ?? null) === ['Windows 11 家庭版']);
 
 $rx = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => [], 'regex' => 'a\\/b(']]];
 $rr = fv3_convert_foreign_bundle($rx, 'docker');

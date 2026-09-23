@@ -139,14 +139,6 @@
 
     // Keeps an action only if folder.view3 can run it as-is against this folder's own members
     function fv3_foreign_action($act, array $members): ?array {
-        $clean = fv3_foreign_action_fields($act, $members);
-        // folder.js loads saved actions through btoa(), which throws above U+00FF and locks the folder editor
-        if ($clean === null) return null;
-        $encoded = json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        return ($encoded !== false && !preg_match('/[^\x{00}-\x{FF}]/u', $encoded)) ? $clean : null;
-    }
-
-    function fv3_foreign_action_fields($act, array $members): ?array {
         if (!is_array($act)) return null;
         $name = fv3_foreign_clean_string($act['name'] ?? null, 100);
         $icon = $act['script_icon'] ?? '';
