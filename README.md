@@ -72,7 +72,7 @@ FolderView3 reads FolderView Plus exports and backups: the per-type export, a si
 scheduled/manual backups in `config/plugins/folderview.plus/backups/`, and the environment and rollback snapshots.
 
 - Use **Import Docker** or **Import VM** for a per-type file, or **Import Everything** to take every type in the file.
-- A preview lists the folders and everything that will be left out before anything is saved. Existing folders
+- A preview lists the folders and summarises what will be left out before anything is saved. Existing folders
   are kept; a folder whose name is taken is imported as `Name (imported)`.
 - Nested folders are merged into their top-level folder, since FolderView3 has no nesting.
 - Settings FolderView3 doesn't have, plugin preferences, themes, and custom actions it can't run safely are left out.

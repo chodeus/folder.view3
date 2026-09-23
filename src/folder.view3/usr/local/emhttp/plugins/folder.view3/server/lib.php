@@ -1363,8 +1363,9 @@
                 if (is_dir($d)) $stuck[] = substr($d, strlen($baseDir) + 1) . '/';
             }
             if ($stuck) {
+                // `partial` lets a caller that maps errors to fixed codes keep this case distinct
                 return ['error' => "Could not replace $failed, and could not undo " . implode(', ', $stuck)
-                    . '; previous copies, where there were any, are in ' . basename($stage) . '/.old'];
+                    . '; previous copies, where there were any, are in ' . basename($stage) . '/.old', 'partial' => true];
             }
             return $discard(['error' => "Could not replace $failed — nothing was imported"]);
         };

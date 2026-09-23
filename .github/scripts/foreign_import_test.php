@@ -197,6 +197,12 @@ check('environment import writes both files', !empty($r['success']) && count(jso
 resetConfig(['docker.json' => '{corrupt']);
 $r = importForeignBundle($json, 'docker', true);
 check('corrupt config fails closed and is left as is', ($r['error'] ?? null) === 'config-unreadable' && file_get_contents("$configDir/docker.json") === '{corrupt');
+resetConfig(['docker.json' => '[{"name":"x"}]']);
+$r = importForeignBundle($json, 'docker', true);
+check('a list-shaped config is refused and left as is', ($r['error'] ?? null) === 'config-unreadable' && file_get_contents("$configDir/docker.json") === '[{"name":"x"}]', $r);
+resetConfig(['docker.json' => '']);
+$r = importForeignBundle($json, 'docker', true);
+check('an empty config file imports into a fresh map', !empty($r['success']) && count(json_decode(file_get_contents("$configDir/docker.json"), true)) === 3, $r);
 resetConfig();
 $emptyEnv = corpus('environment.json');
 $emptyEnv['types']['docker']['folders'] = [];

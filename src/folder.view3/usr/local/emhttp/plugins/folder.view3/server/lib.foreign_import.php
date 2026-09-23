@@ -333,8 +333,12 @@
             if (!$folders) continue;
             // Written from an object decode so existing folders go back byte-for-byte: the assoc copy
             // above would turn their empty {} settings/containerImages into []
-            $map = json_decode((string)@file_get_contents("$configDir/$t.json"));
-            if (!$map) $map = new stdClass();
+            // Absent or empty is a legitimate empty map; a failed read or bad JSON must not become
+            // one, or the swap below would replace every existing folder with just the imported set
+            $path = "$configDir/$t.json";
+            $rawMap = file_exists($path) ? @file_get_contents($path) : '';
+            if ($rawMap === false) return ['error' => 'config-unreadable'];
+            $map = trim((string)$rawMap) === '' ? new stdClass() : json_decode((string)$rawMap);
             if (!$map instanceof stdClass) return ['error' => 'config-unreadable'];
             foreach ($folders as $folder) {
                 do { $id = generateId(); } while (property_exists($map, $id));
@@ -349,6 +353,9 @@
         $result = fv3_replace_files($configDir, $files, []);
         if (isset($result['error'])) {
             fv3_error_log('importForeignBundle', $result['error']);
+            // A rollback that could not undo everything leaves copies behind, so it must not be
+            // reported as "nothing was imported"; the log line names the files
+            if (!empty($result['partial'])) return ['error' => 'write-partial'];
             return ['error' => 'write-failed'];
         }
         return ['success' => true, 'report' => $converted['report']];
