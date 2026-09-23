@@ -304,7 +304,7 @@
                 $icon = fv3_foreign_icon($src['icon'] ?? '');
                 if ($icon === '' && is_string($src['icon'] ?? null) && trim($src['icon']) !== '') $r['dropped_icons']++;
 
-                $suppliedRegex = is_string($src['regex'] ?? null) ? $src['regex'] : ($src['regex'] ?? null);
+                $suppliedRegex = $src['regex'] ?? null;
                 $regex = is_string($src['regex'] ?? null) && strlen($src['regex']) <= 1024 ? $src['regex'] : '';
                 // A regex present but refused on type or length is left out as much as one that will not compile
                 if ($regex === '' && $suppliedRegex !== null && $suppliedRegex !== '') $r['dropped_regex']++;
