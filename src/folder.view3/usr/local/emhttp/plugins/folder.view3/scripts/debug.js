@@ -350,8 +350,8 @@ window.fv3DebugSwalButtonHtml = (id) => {
 window.fv3BindDebugSwalButton = (id, source) => {
     let btn = document.getElementById(id);
     if (!btn || btn._fv3Bound) return;
-    // SweetAlert binds its close handler to each BUTTON on the element itself, so stopPropagation
-    // never reaches it — replacing the node drops that listener and keeps the markup and styling
+    // SweetAlert binds its own close handler to this BUTTON, and stopPropagation cannot stop a
+    // listener on the same node — replace the node to drop it, keeping tag, id, class and label
     const fresh = btn.cloneNode(true);
     btn.replaceWith(fresh);
     btn = fresh;
