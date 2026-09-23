@@ -2,6 +2,16 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- debug: let the error banner wrap instead of squeezing the message
+- debug: put the dashboard's VM half in the report
+- import: drop the duplicate lock-failure log line
+- debug: name every report, keep the dialog open, and fill the folder map
+- import: log a refused restore
+- settings: log the lock and write failures of the shared settings writer
+- banner: anchor above the table, not inside it
+
 ## 2026.09.22.1 (beta)
 
 - Every error dialog and banner now has a Download Debug Info button
