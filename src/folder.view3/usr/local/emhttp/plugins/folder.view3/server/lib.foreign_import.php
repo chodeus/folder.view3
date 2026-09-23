@@ -73,6 +73,24 @@
         return '';
     }
 
+    // PCRE constructs that JS `new RegExp(pattern)` (no flags, as the renderers call it) rejects or
+    // reads differently. Conservative: a pattern using one is dropped rather than stored half-working.
+    function fv3_foreign_regex_js_safe(string $regex): bool {
+        $unsupported = [
+            '/\(\?[a-zA-Z]+[):]/',   // inline flags: (?i) and (?i:...)
+            '/\(\?[>#(]/',           // atomic group, comment, conditional
+            '/\(\?[0-9+-]/',         // subroutine call
+            '/\(\?R\)/',             // recursion
+            '/[*+?}]\+/',            // possessive quantifier
+            '/\\\\[AzZhHRKGgQEC]/',  // PCRE-only escapes
+            '/\\\\p\{/i',            // needs the u flag, which the renderers do not pass
+        ];
+        foreach ($unsupported as $re) {
+            if (preg_match($re, $regex)) return false;
+        }
+        return true;
+    }
+
     function fv3_foreign_members($value): array {
         if (!is_array($value)) return [];
         $out = [];
@@ -110,7 +128,8 @@
             return ['name' => $name, 'type' => 0, 'script_icon' => $icon, 'conatiners' => $targets, 'action' => $action, 'modes' => is_int($modes) ? $modes : 0];
         }
         if ($type === 1) {
-            // Spliced unencoded into a user.scripts path and a logging.htm query — see shared.js fv3RunUserScript
+            // The script name is spliced into a user.scripts path unencoded; args are encoded by
+            // shared.js fv3RunUserScript, and stay restricted here because the source is untrusted
             $script = $act['script'] ?? null;
             $args = $act['script_args'] ?? '';
             if (!is_string($script) || !preg_match('/^[A-Za-z0-9 ._()-]{1,128}$/D', $script) || trim($script, '. ') === '') return null;
@@ -202,18 +221,6 @@
     }
 
     // $existing: [type => folder map already on disk], used only for name clashes and member ownership
-    // Containers an existing folder already holds through a label or regex — explicit containers[]
-    // alone does not show those. null means Docker could not be read, so the caller must refuse.
-    function fv3_effective_docker_members(array $folders): ?array {
-        if (!$folders) return [];
-        $client = new DockerClient();
-        $names = fv3_read_container_names($client);
-        if (!$names['complete']) return null;
-        $labels = fv3_read_container_labels($client, $names['names']);
-        if ($labels === null) return null;
-        return fv3_compute_folder_membership($folders, $names['names'], $labels)['assigned'];
-    }
-
     function fv3_convert_foreign_bundle(array $raw, ?string $onlyType, array $existing = [], array $alsoOwned = []): array {
         $detected = fv3_foreign_detect($raw);
         if (isset($detected['error'])) return $detected;
@@ -290,6 +297,9 @@
                 $regex = is_string($src['regex'] ?? null) && strlen($src['regex']) <= 1024 ? $src['regex'] : '';
                 // Same pattern build as syncContainerOrder in lib.php; a regex it can't compile would match nothing
                 if ($regex !== '' && @preg_match('/' . str_replace('/', '\/', $regex) . '/', '') === false) { $regex = ''; $r['dropped_regex']++; }
+                // The renderers hand the stored pattern to JS new RegExp(), so one PHP alone accepts
+                // would place members the page then cannot show — see fv3_foreign_regex_js_safe()
+                if ($regex !== '' && !fv3_foreign_regex_js_safe($regex)) { $regex = ''; $r['dropped_regex']++; }
 
                 $settings = [];
                 foreach ((is_array($src['settings'] ?? null) ? $src['settings'] : []) as $k => $v) {
@@ -327,17 +337,37 @@
         return ['folders' => $out, 'report' => $report];
     }
 
+    // Containers an existing folder already holds through a label or regex — explicit containers[]
+    // alone does not show those. null means Docker could not be read, so the caller must refuse.
+    function fv3_effective_docker_members(array $folders): ?array {
+        if (!$folders) return [];
+        $client = new DockerClient();
+        $names = fv3_read_container_names($client);
+        if (!$names['complete']) return null;
+        $labels = fv3_read_container_labels($client, $names['names']);
+        if ($labels === null) return null;
+        return fv3_compute_folder_membership($folders, $names['names'], $labels)['assigned'];
+    }
+
     // Preview ($apply false) or merge the converted folders into docker.json / vm.json in one swap
     function importForeignBundle(string $json, ?string $type, bool $apply): array {
         global $configDir;
         if (strlen($json) > FV3_FOREIGN_MAX_BYTES) return ['error' => 'too-large'];
         $raw = json_decode($json, true);
         if (!is_array($raw) || array_is_list($raw)) return ['error' => 'unsupported'];
+        // One read per type feeds both halves: the assoc copy converts, the object copy is merged
+        // into and written back, so conversion and the swap can never see different maps
         $existing = [];
+        $maps = [];
         foreach (['docker', 'vm'] as $t) {
-            $existing[$t] = fv3_read_json_strict("$configDir/$t.json");
+            $path = "$configDir/$t.json";
+            $rawMap = file_exists($path) ? @file_get_contents($path) : '';
             // Corrupt config fails closed, as in updateFolder: merging onto empty would wipe it
-            if ($existing[$t] === null) return ['error' => 'config-unreadable'];
+            if ($rawMap === false) return ['error' => 'config-unreadable'];
+            if (trim((string)$rawMap) === '') { $existing[$t] = []; $maps[$t] = new stdClass(); continue; }
+            $existing[$t] = json_decode((string)$rawMap, true);
+            $maps[$t] = json_decode((string)$rawMap);
+            if (!is_array($existing[$t]) || !$maps[$t] instanceof stdClass) return ['error' => 'config-unreadable'];
         }
         // Read Docker before converting, but only refuse if the bundle turns out to hold Docker
         // folders — a VM-only import must not depend on the Docker service being up
@@ -358,15 +388,9 @@
         $files = [];
         foreach ($converted['folders'] as $t => $folders) {
             if (!$folders) continue;
-            // Written from an object decode so existing folders go back byte-for-byte: the assoc copy
-            // above would turn their empty {} settings/containerImages into []
-            // Absent or empty is a legitimate empty map; a failed read or bad JSON must not become
-            // one, or the swap below would replace every existing folder with just the imported set
-            $path = "$configDir/$t.json";
-            $rawMap = file_exists($path) ? @file_get_contents($path) : '';
-            if ($rawMap === false) return ['error' => 'config-unreadable'];
-            $map = trim((string)$rawMap) === '' ? new stdClass() : json_decode((string)$rawMap);
-            if (!$map instanceof stdClass) return ['error' => 'config-unreadable'];
+            // The object copy from the single read above: the assoc one would turn an existing
+            // folder's empty {} settings/containerImages into []
+            $map = $maps[$t];
             foreach ($folders as $folder) {
                 do { $id = generateId(); } while (property_exists($map, $id));
                 $map->$id = $folder;

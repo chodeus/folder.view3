@@ -160,6 +160,12 @@ check('action targeting a non-Latin-1 VM name rejected', $vmAct === null);
 $rx = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => [], 'regex' => 'a\\/b(']]];
 $rr = fv3_convert_foreign_bundle($rx, 'docker');
 check('an uncompilable regex is dropped and counted', $rr['folders']['docker'][0]['regex'] === '' && $rr['report']['types']['docker']['dropped_regex'] === 1, $rr['report']['types']['docker']);
+$jsOnly = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => [], 'regex' => '(?i)tool']]];
+$jr = fv3_convert_foreign_bundle($jsOnly, 'docker');
+check('a regex only PHP can run is dropped and counted', $jr['folders']['docker'][0]['regex'] === '' && $jr['report']['types']['docker']['dropped_regex'] === 1, $jr['report']['types']['docker']);
+$bothOk = $jsOnly; $bothOk['folders']['r']['regex'] = '^app-(alpha|beta)$';
+$br = fv3_convert_foreign_bundle($bothOk, 'docker');
+check('a regex both engines run is kept', $br['folders']['docker'][0]['regex'] === '^app-(alpha|beta)$' && $br['report']['types']['docker']['dropped_regex'] === 0, $br['report']['types']['docker']);
 check('an unnamed folder counts as renamed', fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['u' => ['name' => '', 'containers' => []]]], 'docker')['report']['types']['docker']['renamed'] === 1);
 
 // Clashes with what is already on disk
