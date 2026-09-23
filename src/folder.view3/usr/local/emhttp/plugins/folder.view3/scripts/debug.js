@@ -348,13 +348,16 @@ window.fv3DebugSwalButtonHtml = (id) => {
     return `<div style="margin-top:14px"><button type="button" id="${id}" class="fv3-debug-swal-btn">${escapeHtml(label)}</button></div>`;
 };
 window.fv3BindDebugSwalButton = (id, source) => {
-    const btn = document.getElementById(id);
+    let btn = document.getElementById(id);
     if (!btn || btn._fv3Bound) return;
+    // SweetAlert binds its own close handler to this BUTTON, and stopPropagation cannot stop a
+    // listener on the same node — replace the node to drop it, keeping tag, id, class and label
+    const fresh = btn.cloneNode(true);
+    btn.replaceWith(fresh);
+    btn = fresh;
     btn._fv3Bound = true;
     const label = btn.textContent;
-    // stopPropagation keeps SweetAlert's modal-level handler from closing the dialog on this button
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
+    btn.addEventListener('click', () => {
         btn.disabled = true;
         btn.textContent = '...';
         fv3CaptureDebug(source).catch((e) => fv3Error('debug-swal-btn', e)).finally(() => {
