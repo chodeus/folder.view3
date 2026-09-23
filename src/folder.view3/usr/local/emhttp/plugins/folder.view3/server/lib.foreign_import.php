@@ -217,7 +217,8 @@
         return ['error' => 'unsupported'];
     }
 
-    // A root and its merged descendants: [members, hidden_preview, identities by member, child action count]
+    // A root and its merged descendants: [members, hidden_preview, identities by member, child action count,
+    // members dropped by the cap]
     function fv3_foreign_collect_group(array $folders, string $rootId, array $childIds): array {
         $members = [];
         $hidden = [];

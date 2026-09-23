@@ -635,14 +635,14 @@ const fv3ForeignPreviewHtml = (report) => {
         const counts = [
             [r.merged_children, 'foreign-note-merged', '$1 nested folders merged into their top-level folder (their own settings are not kept)'],
             [r.broken_parents, 'foreign-note-broken-parents', '$1 folders had a missing or looping parent and were kept as top-level'],
-            [r.renamed, 'foreign-note-renamed', '$1 folders renamed because the name is already in use'],
+            [r.renamed, 'foreign-note-renamed', '$1 folders renamed because the name was missing or already in use'],
             [r.members_kept_elsewhere, 'foreign-note-members-kept', '$1 containers or VMs already in another folder stay there'],
-            [r.dropped_settings, 'foreign-note-settings', '$1 settings that FolderView3 does not have left out'],
+            [r.dropped_settings, 'foreign-note-settings', '$1 settings left out because FolderView3 does not have them or the value is not valid'],
             [r.dropped_keys, 'foreign-note-fields', '$1 other folder fields left out'],
-            [r.dropped_actions, 'foreign-note-actions', '$1 custom actions left out because FolderView3 cannot run them as they are'],
+            [r.dropped_actions, 'foreign-note-actions', '$1 custom actions left out because FolderView3 cannot run them as they are, or the folder has more than FolderView3 keeps'],
             [r.child_actions, 'foreign-note-child-actions', '$1 custom actions from nested folders left out'],
             [r.dropped_icons, 'foreign-note-icons', '$1 icons left out because the address is not an image link'],
-            [r.dropped_regex, 'foreign-note-regex', '$1 folder regexes left out because FolderView3 cannot read them'],
+            [r.dropped_regex, 'foreign-note-regex', '$1 folder regexes left out because FolderView3 cannot use them'],
             [r.dropped_members, 'foreign-note-members-dropped', '$1 folder members left out because the folder holds more than FolderView3 keeps'],
         ];
         for (const [n, key, text] of counts) if (n > 0) notes.push(fv3I18nOr(key, text, n));

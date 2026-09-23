@@ -292,6 +292,12 @@ $r = importForeignBundle($json, 'docker', true);
 check('a Docker import does not depend on libvirt', !empty($r['success']), $r);
 vmUp(['vm-one', 'vm-two', 'vm-lab']);
 
+// Every counter the report carries must have a preview line, or the user is never told about it
+$previewJs = file_get_contents("$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/folderview3.js");
+preg_match_all('/\\[r\\.([a-z_]+),/', $previewJs, $shown);
+$reportKeys = array_keys(array_diff_key(fv3_convert_foreign_bundle(corpus('backup-docker.json'), 'docker')['report']['types']['docker'], ['folders' => 1]));
+check('every report counter has a preview line', !array_diff($reportKeys, $shown[1]), array_values(array_diff($reportKeys, $shown[1])));
+
 exec('rm -rf ' . escapeshellarg($fv3tTmp));
 echo $fv3tFailed ? "\n$fv3tFailed FAILED\n" : "\nall passed\n";
 exit($fv3tFailed ? 1 : 0);
