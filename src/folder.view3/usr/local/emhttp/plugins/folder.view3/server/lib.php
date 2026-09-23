@@ -606,8 +606,19 @@
 
     // Container names from getDockerContainers(). 'complete' is false when the read is empty
     // or any entry is unnamed — a degraded list must not drive autostart pruning (#214).
+    // DockerClient echoes its socket error when Docker is not running; buffer it out of the JSON response
+    function fv3_docker_quiet(callable $read) {
+        ob_start();
+        try {
+            return $read();
+        } finally {
+            $printed = ob_get_clean();
+            if ($printed !== '' && $printed !== false) fv3_debug_log('Docker client: ' . trim($printed));
+        }
+    }
+
     function fv3_read_container_names(DockerClient $dockerClient): array {
-        $cts = $dockerClient->getDockerContainers();
+        $cts = fv3_docker_quiet(fn() => $dockerClient->getDockerContainers());
         if (!is_array($cts)) { $cts = []; }
         $names = [];
         $complete = !empty($cts);
@@ -639,7 +650,7 @@
     // containers as unassigned (#214 class).
     function fv3_read_container_labels(DockerClient $dockerClient, array $allContainerNames): ?array {
         $ctLabels = [];
-        $rawCts = $dockerClient->getDockerJSON("/containers/json?all=1");
+        $rawCts = fv3_docker_quiet(fn() => $dockerClient->getDockerJSON("/containers/json?all=1"));
         if (!is_array($rawCts)) {
             fv3_debug_log("fv3_read_container_labels: read unavailable");
             return null;

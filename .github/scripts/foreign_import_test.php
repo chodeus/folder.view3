@@ -5,7 +5,7 @@ $fv3tCorpus = $argv[1] ?? dirname(__DIR__) . '/fixtures/folderview-plus';
 $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-foreign-test-' . bin2hex(random_bytes(4));
 
 // lib.php requires these two Unraid host files at load time
-foreach (['webGui/include/Helpers.php' => '<?php', 'plugins/dynamix.docker.manager/include/DockerClient.php' => '<?php class DockerUpdate {} class DockerClient { public function getDockerContainers() { return $GLOBALS["fv3tDockerContainers"]; } public function getDockerJSON($path) { return $GLOBALS["fv3tDockerJSON"]; } }'] as $rel => $src) {
+foreach (['webGui/include/Helpers.php' => '<?php', 'plugins/dynamix.docker.manager/include/DockerClient.php' => '<?php class DockerUpdate {} class DockerClient { public function getDockerContainers() { if (!empty($GLOBALS["fv3tDockerOff"])) { $this->getDockerJSON("/containers/json?all=1"); return []; } return $GLOBALS["fv3tDockerContainers"]; } public function getDockerJSON($path) { if (!empty($GLOBALS["fv3tDockerOff"])) { echo "Couldn\\x27t create socket: [2] No such file or directory"; return []; } return $GLOBALS["fv3tDockerJSON"]; } }'] as $rel => $src) {
     @mkdir(dirname("$fv3tTmp/docroot/$rel"), 0777, true);
     file_put_contents("$fv3tTmp/docroot/$rel", $src);
 }
@@ -19,11 +19,12 @@ function vmDown(): void { $GLOBALS['fv3tVmUp'] = false; unset($GLOBALS['lv']); }
 vmUp(['vm-one', 'vm-two', 'vm-lab']);
 // Drives the DockerClient stub above: dockerUp() for a healthy read, dockerDown() for an outage
 function dockerUp(array $names = [], array $labels = []): void {
+    $GLOBALS['fv3tDockerOff'] = false;
     $GLOBALS['fv3tDockerContainers'] = array_map(static fn($n) => ['Name' => $n], $names);
     $GLOBALS['fv3tDockerJSON'] = array_map(static fn($n) => ['Names' => ['/' . $n], 'Labels' => isset($labels[$n]) ? ['folder.view3' => $labels[$n]] : []], $names);
 }
 // Unraid's getDockerJSON() returns [] when it cannot open the socket, so an outage looks like no containers
-function dockerDown(): void { $GLOBALS['fv3tDockerContainers'] = []; $GLOBALS['fv3tDockerJSON'] = []; }
+function dockerDown(): void { $GLOBALS['fv3tDockerContainers'] = []; $GLOBALS['fv3tDockerJSON'] = []; $GLOBALS['fv3tDockerOff'] = true; }
 dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta', 'dup', 'x']);
 require "$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/server/lib.php";
 $configDir = "$fv3tTmp/config";
@@ -414,6 +415,53 @@ $r = importForeignBundle($json, 'docker', true);
 check('a corrupt vm.json does not block a Docker import', !empty($r['success']) && file_get_contents("$configDir/vm.json") === '{corrupt', $r);
 resetConfig(['docker.json' => '{corrupt']);
 check('a corrupt docker.json still blocks a Docker import', (importForeignBundle($json, 'docker', true)['error'] ?? null) === 'config-unreadable');
+
+// A fresh Unraid: FolderView3 just installed (no docker.json, vm.json or settings), Docker and VMs not running.
+// Every real migration looks like this, so the import must work and must not touch either service.
+resetConfig();
+dockerDown();
+vmDown();
+foreach ([['backup-docker.json', 'docker'], ['backup-vm.json', 'vm'], ['environment.json', null]] as [$fx, $t]) {
+    resetConfig();
+    ob_start();
+    $preview = importForeignBundle(file_get_contents("$fv3tCorpus/$fx"), $t, false);
+    $applied = importForeignBundle(file_get_contents("$fv3tCorpus/$fx"), $t, true);
+    $printed = ob_get_clean();
+    $written = array_filter(['docker.json', 'vm.json'], static fn($f) => file_exists("$configDir/$f"));
+    $objects = array_filter($written, static fn($f) => str_starts_with(file_get_contents("$configDir/$f"), '{'));
+    check("fresh install: $fx previews and imports with Docker and VMs off", isset($preview['report']) && !empty($applied['success']), [$preview['error'] ?? null, $applied['error'] ?? null]);
+    check("fresh install: $fx prints nothing into the response", $printed === '', $printed);
+    check("fresh install: $fx writes its folders as JSON objects", $written && count($objects) === count($written), array_values($written));
+}
+dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
+vmUp(['vm-one', 'vm-two', 'vm-lab']);
+
+// import_foreign.php runs syncContainerOrder('docker') after a Docker import. With no autostart.json (a fresh
+// FolderView3) that is folder mode, so it reads Docker; whatever Docker's state, nothing may reach the response.
+$endpoint = static function (string $bundle, ?string $type): array {
+    ob_start();
+    $r = importForeignBundle($bundle, $type, true);
+    if (!empty($r['success']) && isset($r['report']['types']['docker'])) syncContainerOrder('docker');
+    return [$r, ob_get_clean()];
+};
+foreach ([['Docker not running', static fn() => dockerDown()],
+          ['Docker running with no containers', static fn() => dockerUp([])],
+          ['containers present, none set to autostart', static fn() => dockerUp(['app-alpha', 'app-beta'])]] as [$state, $set]) {
+    resetConfig();
+    $set();
+    [$r, $printed] = $endpoint(file_get_contents("$fv3tCorpus/environment.json"), null);
+    check("endpoint, $state: imports", !empty($r['success']), $r['error'] ?? null);
+    check("endpoint, $state: prints nothing into the response", $printed === '', $printed);
+}
+foreach ([['VM service not running', static fn() => vmDown()], ['VM service running with no VMs', static fn() => vmUp([])]] as [$state, $set]) {
+    resetConfig();
+    $set();
+    dockerDown();
+    [$r, $printed] = $endpoint(file_get_contents("$fv3tCorpus/backup-vm.json"), 'vm');
+    check("endpoint, $state: a VM import works and prints nothing", !empty($r['success']) && $printed === '', [$r['error'] ?? null, $printed]);
+}
+vmUp(['vm-one', 'vm-two', 'vm-lab']);
+dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
 
 // Every counter the report carries must have a preview line, or the user is never told about it
 $previewJs = file_get_contents("$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/scripts/folderview3.js");
