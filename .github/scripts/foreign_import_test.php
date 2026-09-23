@@ -274,86 +274,6 @@ check('a file with no folders for the chosen type is refused at preview', (impor
 check('oversized bundle refused', (importForeignBundle(str_repeat(' ', FV3_FOREIGN_MAX_BYTES + 1), null, false)['error'] ?? null) === 'too-large');
 check('JSON list refused', (importForeignBundle('[1,2]', null, false)['error'] ?? null) === 'unsupported');
 
-// Effective membership: an existing folder can hold a container through a label, not just containers[]
-resetConfig(['docker.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => []]])]);
-dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta'], ['app-alpha' => 'Holder']);
-$r = importForeignBundle($json, 'docker', true);
-$afterLbl = json_decode(file_get_contents("$configDir/docker.json"), true);
-$importedMembers = array_merge(...array_column(array_filter($afterLbl, static fn($f) => $f['name'] !== 'Holder'), 'containers'));
-check('a container held by a label is not claimed by an import', !empty($r['success']) && !in_array('app-alpha', $importedMembers, true), $importedMembers);
-
-resetConfig(['docker.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => []]])]);
-dockerDown();
-$r = importForeignBundle($json, 'docker', true);
-check('a Docker import is refused when Docker cannot be read', ($r['error'] ?? null) === 'membership-unavailable', $r);
-check('the refused import left the config alone', array_keys(json_decode(file_get_contents("$configDir/docker.json"), true)) === ['hold']);
-$r = importForeignBundle(file_get_contents("$fv3tCorpus/backup-vm.json"), 'vm', true);
-check('a VM import still works while Docker is down', !empty($r['success']), $r);
-dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
-
-// VM membership: an existing folder can hold a VM through its regex, which vm.js lets an explicit entry override
-$vmBundle = file_get_contents("$fv3tCorpus/backup-vm.json");
-resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^vm-lab$']])]);
-vmUp(['vm-one', 'vm-two', 'vm-lab']);
-$r = importForeignBundle($vmBundle, 'vm', true);
-$afterVm = json_decode(file_get_contents("$configDir/vm.json"), true);
-$importedVms = array_merge(...array_column(array_filter($afterVm, static fn($f) => $f['name'] !== 'Holder'), 'containers'));
-check('a VM held by a regex is not claimed by an import', !empty($r['success']) && !in_array('vm-lab', $importedVms, true), $importedVms);
-check('the regex-held VM is reported as kept elsewhere', ($r['report']['types']['vm']['members_kept_elsewhere'] ?? null) === 1, $r['report']['types']['vm'] ?? $r);
-
-resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^vm-lab$']])]);
-vmDown();
-$r = importForeignBundle($vmBundle, 'vm', true);
-check('a VM import is refused when libvirt cannot be read', ($r['error'] ?? null) === 'vm-membership-unavailable', $r);
-check('the refused VM import left the config alone', array_keys(json_decode(file_get_contents("$configDir/vm.json"), true)) === ['hold']);
-resetConfig(['vm.json' => json_encode(['plain' => ['name' => 'Plain', 'containers' => ['vm-one']]])]);
-$r = importForeignBundle($vmBundle, 'vm', true);
-check('a VM import needs no libvirt read when no existing folder uses a regex', !empty($r['success']), $r);
-resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => ['app-alpha']]])]);
-$r = importForeignBundle($json, 'docker', true);
-check('a Docker import does not depend on libvirt', !empty($r['success']), $r);
-vmUp(['vm-one', 'vm-two', 'vm-lab']);
-
-// A connected libvirt with no VMs is an empty list, not an outage
-resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^vm-lab$']])]);
-vmUp([]);
-$r = importForeignBundle($vmBundle, 'vm', true);
-check('a VM import works when libvirt is up with no VMs', !empty($r['success']), $r);
-
-// VM names can be non-ASCII: the page counts characters, so the server must too
-$cjkName = 'Windows 11 家庭版';
-$cjkBundle = json_encode(['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'folders' => ['i' => ['name' => 'Imported', 'containers' => [$cjkName]]]]);
-resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^Windows 11 .{3}$']])]);
-vmUp([$cjkName]);
-$r = importForeignBundle($cjkBundle, 'vm', true);
-$afterCjk = json_decode(file_get_contents("$configDir/vm.json"), true);
-$cjkImported = array_merge(...array_column(array_filter($afterCjk, static fn($f) => $f['name'] !== 'Holder'), 'containers'));
-check('a non-ASCII VM a regex holds by character count is not claimed', !in_array($cjkName, $cjkImported, true), $cjkImported);
-vmUp(['vm-one', 'vm-two', 'vm-lab']);
-foreach (['家+', '[家]', '^.{3}$', 'Windows 11 家庭版'] as $good) check("regex kept: $good", fv3_foreign_regex_js_safe($good));
-foreach (["😀+", "a😀", "\xff", "a\xc3("] as $bad) check('regex refused: ' . bin2hex($bad), !fv3_foreign_regex_js_safe($bad));
-
-// The page's regex engine reads . \s and characters past U+FFFF differently from PCRE; the server must follow it
-$vmCase = static function (string $vmName, string $regex): bool {
-    $bundle = json_encode(['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'folders' => ['i' => ['name' => 'Imported', 'containers' => [$vmName]]]]);
-    resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => $regex]])]);
-    vmUp([$vmName]);
-    importForeignBundle($bundle, 'vm', true);
-    $after = json_decode(file_get_contents($GLOBALS['configDir'] . '/vm.json'), true);
-    return !in_array($vmName, array_merge(...array_column(array_filter($after, static fn($f) => $f['name'] !== 'Holder'), 'containers')), true);
-};
-check('an ideographic space counts as \s, as on the page', $vmCase("Windows 11\u{3000}家庭版", '^Windows 11\s'));
-check('a no-break space counts as \s, as on the page', $vmCase("vm\u{A0}one", '^vm\sone$'));
-// Import rejects control characters in member names, so \r is checked on the evaluator directly
-vmUp(["vm\rx"]);
-check('\r does not match ., as on the page', !in_array("vm\rx", fv3_effective_vm_members([['name' => 'H', 'containers' => [], 'regex' => '^vm.x$']]), true));
-check('a character past U+FFFF is two units, as on the page', $vmCase('vm😀', '^vm.{2}$'));
-check('a CJK character is not \\w, as on the page', !$vmCase('家', '^\\w$'));
-vmUp(['vm-one', 'vm-two', 'vm-lab']);
-check('regex refused: \S inside a class', !fv3_foreign_regex_js_safe('[a\S]'));
-check('regex kept: \s inside a class', fv3_foreign_regex_js_safe('[\s-]'));
-check('a pattern outside the allowlist is not rewritten', fv3_foreign_regex_as_js('(?i)a') === null);
-
 // ---- Independent audit, 2026-09-24: one case per defect ----
 $one = static fn(array $folder, string $t = 'docker') => fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => $t, 'mode' => 'full', 'folders' => ['a' => $folder + ['name' => 'A', 'containers' => []]]], $t)['report']['types'][$t];
 // Real backups must not look malformed
@@ -362,31 +282,13 @@ foreach (['backup-docker.json', 'backup-vm.json', 'environment.json', 'export-fu
         check("$fx $t reports no malformed entries", $rep['dropped_invalid'] === 0, $rep['dropped_invalid']);
     }
 }
-// 1: an all-digit VM name held by a regex stays protected
-resetConfig(['vm.json' => json_encode(['hold' => ['name' => 'Holder', 'containers' => [], 'regex' => '^\d+$']])]);
-vmUp(['123', 'vm-one']);
-$r = importForeignBundle(json_encode(['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'folders' => ['i' => ['name' => 'Imp', 'containers' => ['123']]]]), 'vm', true);
-$digits = array_merge(...array_column(array_filter(json_decode(file_get_contents("$configDir/vm.json"), true), static fn($f) => $f['name'] !== 'Holder'), 'containers'));
-check('an all-digit VM name held by a regex is not claimed', !in_array('123', $digits, true) && ($r['report']['types']['vm']['members_kept_elsewhere'] ?? null) === 1, [$digits, $r['report']['types']['vm'] ?? $r]);
-vmUp(['vm-one', 'vm-two', 'vm-lab']);
-// 1b: the same int-key trap on Docker, where a label holds the container
-resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => []]])]);
-dockerUp(['123'], ['123' => 'Existing']);
-importForeignBundle(json_encode(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['i' => ['name' => 'Imp', 'containers' => ['123']]]]), 'docker', true);
-$dDigits = array_merge(...array_column(array_filter(json_decode(file_get_contents("$configDir/docker.json"), true), static fn($f) => $f['name'] !== 'Existing'), 'containers'));
-check('an all-digit container held by a label is not claimed', !in_array('123', $dDigits, true), $dDigits);
-dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
-// 4: the client cannot tell no containers from an outage, so with existing Docker folders both refuse
+// The import itself never reads Docker, whatever state it is in
 resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => ['gone']]])]);
 dockerDown();
-check('a Docker outage refuses the import', (importForeignBundle($json, 'docker', true)['error'] ?? null) === 'membership-unavailable');
-dockerUp([]);
-check('an empty container list refuses too, since it may be an outage', (importForeignBundle($json, 'docker', true)['error'] ?? null) === 'membership-unavailable');
-resetConfig();
-check('with no existing Docker folders, Docker is never read', !empty(importForeignBundle($json, 'docker', true)['success']));
+check('a Docker import does not depend on Docker running', !empty(importForeignBundle($json, 'docker', true)['success']));
 dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta']);
-// 6: a class escape at a range end cannot compile in PCRE, so it is refused; at the class edge it is fine
-foreach (['[\s-z]', '[a-\s]', '[\d-z]', '[a-\w]', '[^\s-z]'] as $bad) check("regex refused: $bad", !fv3_foreign_regex_js_safe($bad));
+// 6: a class escape at a range end is a compile error in PCRE, so the converter drops it; at the class edge it is fine
+foreach (['[\s-z]', '[a-\s]', '[\d-z]', '[a-\w]', '[^\s-z]'] as $bad) check("regex dropped: $bad", $one(['regex' => $bad])['dropped_regex'] === 1);
 foreach (['[\s-]', '[-\s]', '[\w-]', '[^\s-]', '[a\-\s]'] as $good) check("regex kept: $good", fv3_foreign_regex_js_safe($good));
 // 8: an icon that is too big or not a string is left out and counted
 check('an oversize icon is counted', $one(['icon' => 'data:image/png;base64,' . str_repeat('A', 9000)])['dropped_icons'] === 1);

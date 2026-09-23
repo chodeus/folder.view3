@@ -393,8 +393,6 @@
     "foreign-error-too-many-folders": "Ta kopia zapasowa zawiera zbyt wiele folderów.",
     "foreign-error-too-large": "Ta kopia zapasowa jest za duża (maks. 5 MB).",
     "foreign-error-config-unreadable": "Nie udało się odczytać bieżącej konfiguracji folderów, więc nic nie zaimportowano.",
-    "foreign-error-membership-unavailable": "FolderView3 nie mógł odczytać usługi Docker, więc nie wie, które kontenery zawierają już Twoje foldery. Spróbuj zaimportować ponownie, gdy Docker będzie działać.",
-    "foreign-error-vm-membership-unavailable": "FolderView3 nie mógł odczytać listy maszyn wirtualnych, więc nie wie, które z nich zawierają już Twoje foldery. Spróbuj zaimportować ponownie, gdy usługa VM będzie działać.",
     "foreign-error-write-failed": "Nie udało się zapisać folderów, więc nic nie zaimportowano.",
     "foreign-error-write-partial": "Niektórych folderów nie udało się zapisać ani cofnąć, więc import może być niekompletny. Pozostawione pliki wymieniono w dzienniku błędów wtyczki.",
     "foreign-preview-title": "Zaimportować kopię zapasową FolderView Plus?",

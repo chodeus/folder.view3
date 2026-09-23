@@ -615,8 +615,6 @@ const fv3ForeignError = (code) => ({
     'too-many-folders': () => fv3I18nOr('foreign-error-too-many-folders', 'This backup holds too many folders.'),
     'too-large': () => fv3I18nOr('foreign-error-too-large', 'This backup is too large (5 MB max).'),
     'config-unreadable': () => fv3I18nOr('foreign-error-config-unreadable', 'The current folder config could not be read, so nothing was imported.'),
-    'membership-unavailable': () => fv3I18nOr('foreign-error-membership-unavailable', 'FolderView3 could not read the Docker service, so it cannot tell which containers your folders already hold. Try the import again once Docker is running.'),
-    'vm-membership-unavailable': () => fv3I18nOr('foreign-error-vm-membership-unavailable', 'FolderView3 could not read the VM list, so it cannot tell which VMs your folders already hold. Try the import again once the VM service is running.'),
     'write-failed': () => fv3I18nOr('foreign-error-write-failed', 'The folders could not be saved, so nothing was imported.'),
     'write-partial': () => fv3I18nOr('foreign-error-write-partial', 'Some folders could not be saved and could not be undone, so the import may be incomplete. Check the plugin error log for the files left behind.'),
 }[code] || (() => fv3I18nOr('foreign-error-unsupported', 'This kind of backup file is not supported.')))();

@@ -76,8 +76,6 @@
     // An allowlist, not a blocklist: every token must mean the same in PCRE and in the flag-less
     // JS new RegExp() the renderers use. Anything unlisted is refused, so no new construct slips in.
     function fv3_foreign_regex_js_safe(string $regex): bool {
-        // Valid UTF-8, nothing above U+FFFF: JS splits those into two code units, PCRE's /u does not
-        if (@preg_match('//u', $regex) !== 1 || preg_match('/[\x{10000}-\x{10FFFF}]/u', $regex)) return false;
         $n = strlen($regex);
         $groups = [];           // one entry per open group: true for a lookaround, which JS will not quantify
         $quantifiable = false;  // whether the previous token can take a quantifier
@@ -89,9 +87,7 @@
                 $quantifiable = true;
             } elseif ($c === '[') {
                 // A bare [ inside a class is refused: PCRE reads [[:digit:]] as a POSIX class, JS as literals
-                // \S is refused inside a class: fv3_foreign_regex_as_js() cannot negate within one
-                if (!preg_match('/\G\[\^?(?:\\\\(?:[dDwWstnrf\\\\\]\[\^.-]|x[0-9A-Fa-f]{2})|[^\\\\\]\[])+\]/', $regex, $m, 0, $i)) return false;
-                if (!fv3_foreign_class_ranges_ok(substr($m[0], 1, -1))) return false;
+                if (!preg_match('/\G\[\^?(?:\\\\(?:[dDwWsStnrf\\\\\]\[\^.-]|x[0-9A-Fa-f]{2})|[^\\\\\]\[])+\]/', $regex, $m, 0, $i)) return false;
                 $i += strlen($m[0]) - 1;
                 $quantifiable = true;
             } elseif ($c === '(') {
@@ -123,50 +119,6 @@
             }
         }
         return !$groups;
-    }
-
-    // A range with a class escape at either end, like [\s-z], is literal in JS but a compile error in PCRE
-    function fv3_foreign_class_ranges_ok(string $body): bool {
-        if (($body[0] ?? '') === '^') $body = substr($body, 1);
-        preg_match_all('/\\\\(?:x[0-9A-Fa-f]{2}|.)|./s', $body, $t);
-        $t = $t[0];
-        foreach ($t as $k => $tok) {
-            if ($tok !== '-' || $k === 0 || $k === count($t) - 1) continue;
-            if (preg_match('/^\\\\[dDwWsS]$/', $t[$k - 1]) || preg_match('/^\\\\[dDwWsS]$/', $t[$k + 1])) return false;
-        }
-        return true;
-    }
-
-    // JS's \s set. PCRE's \s without Unicode classes stops at ASCII; \x0B, since PCRE's \v is a whole class
-    const FV3_FOREIGN_JS_SPACE = '\t\n\x0B\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
-
-    // An allowlisted pattern rewritten so PCRE's (*UTF) mode reads . \s \S as flag-less JS does; null otherwise
-    function fv3_foreign_regex_as_js(string $regex): ?string {
-        if (!fv3_foreign_regex_js_safe($regex)) return null;
-        $out = '';
-        $inClass = false;
-        for ($i = 0, $n = strlen($regex); $i < $n; $i++) {
-            $c = $regex[$i];
-            if ($c === '\\') {
-                $next = $regex[$i + 1];
-                if ($next === 's') { $out .= $inClass ? FV3_FOREIGN_JS_SPACE : '[' . FV3_FOREIGN_JS_SPACE . ']'; $i++; continue; }
-                if ($next === 'S') { $out .= '[^' . FV3_FOREIGN_JS_SPACE . ']'; $i++; continue; }
-                $len = $next === 'x' ? 4 : 2;
-                $out .= substr($regex, $i, $len);
-                $i += $len - 1;
-            } elseif (!$inClass && $c === '[') {
-                $inClass = true;
-                $out .= $c;
-            } elseif ($inClass && $c === ']') {
-                $inClass = false;
-                $out .= $c;
-            } elseif (!$inClass && $c === '.') {
-                $out .= '[^\n\r\x{2028}\x{2029}]';  // JS . stops at \r and the line separators too
-            } else {
-                $out .= $c;
-            }
-        }
-        return $out;
     }
 
     // $capped: distinct usable names past the member cap; $invalid: entries that are not a usable name at all
@@ -316,7 +268,7 @@
     }
 
     // $existing: [type => folder map already on disk], used only for name clashes and member ownership
-    function fv3_convert_foreign_bundle(array $raw, ?string $onlyType, array $existing = [], array $alsoOwned = []): array {
+    function fv3_convert_foreign_bundle(array $raw, ?string $onlyType, array $existing = []): array {
         $detected = fv3_foreign_detect($raw);
         if (isset($detected['error'])) return $detected;
         $types = $detected['types'];
@@ -352,17 +304,12 @@
             foreach ($existing[$type] ?? [] as $f) {
                 if (is_array($f) && is_string($f['name'] ?? null)) $taken[strtolower($f['name'])] = true;
             }
-            // Explicit members plus anything held by a label or regex: an explicit import entry
-            // outranks both in fv3_compute_folder_membership(), so it would take the container
+            // A member another folder already lists explicitly stays with that folder
             $owned = [];
             foreach ($existing[$type] ?? [] as $f) {
                 foreach ((is_array($f['containers'] ?? null) ? $f['containers'] : []) as $ct) {
-                    if (is_string($ct) || is_int($ct)) $owned[(string)$ct] = true;
+                    if (is_string($ct)) $owned[$ct] = true;
                 }
-            }
-            // An all-digit name comes back as an int wherever PHP used it as an array key
-            foreach ($alsoOwned[$type] ?? [] as $ct) {
-                if (is_string($ct) || is_int($ct)) $owned[(string)$ct] = true;
             }
 
             $converted = [];
@@ -474,30 +421,13 @@
             if ($maps[$t] === []) $maps[$t] = new stdClass();
             if (!is_array($existing[$t]) || !$maps[$t] instanceof stdClass) { $unreadable[$t] = true; $existing[$t] = []; }
         }
-        // Read Docker before converting, but only refuse if the bundle turns out to hold Docker
-        // folders — a VM-only import must not depend on the Docker service being up
-        $alsoOwned = [];
-        $membershipUnavailable = false;
-        $vmMembershipUnavailable = false;
-        if ($type !== 'vm') {
-            $effective = fv3_effective_docker_members($existing['docker'] ?? []);
-            if ($effective === null) $membershipUnavailable = true;
-            else $alsoOwned['docker'] = $effective;
-        }
-        if ($type !== 'docker') {
-            $effective = fv3_effective_vm_members($existing['vm'] ?? []);
-            if ($effective === null) $vmMembershipUnavailable = true;
-            else $alsoOwned['vm'] = $effective;
-        }
-        $converted = fv3_convert_foreign_bundle($raw, $type, $existing, $alsoOwned);
+        $converted = fv3_convert_foreign_bundle($raw, $type, $existing);
         if (isset($converted['error'])) return $converted;
         // Corrupt config fails closed, as in updateFolder: merging onto empty would wipe it. Only the types this
         // import writes must be readable, so a damaged vm.json does not block a Docker-only import.
         foreach ($unreadable as $t => $_) {
             if (!empty($converted['folders'][$t])) return ['error' => 'config-unreadable'];
         }
-        if ($membershipUnavailable && !empty($converted['folders']['docker'])) return ['error' => 'membership-unavailable'];
-        if ($vmMembershipUnavailable && !empty($converted['folders']['vm'])) return ['error' => 'vm-membership-unavailable'];
         if (!array_filter($converted['folders'])) return ['error' => 'no-folders'];
         if (!$apply) return ['report' => $converted['report']];
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
@@ -527,62 +457,5 @@
             return ['error' => 'write-failed'];
         }
         return ['success' => true, 'report' => $converted['report']];
-    }
-
-    // VM names from libvirt. null = unreadable, which readInfo() cannot signal: it returns [] for both
-    function fv3_read_vm_names(): ?array {
-        if (!fv3_require_libvirt_helpers()) return null;
-        try {
-            global $lv;
-            if (!isset($lv)) { $lv = new Libvirt(); if (!$lv->connect()) return null; }
-            $vms = $lv->get_domains();
-            // get_domains() returns false for an empty list as well as a failure; the counts call does not
-            if ($vms === false) {
-                $counts = $lv->get_domain_count();
-                return (is_array($counts) && ($counts['total'] ?? null) === 0) ? [] : null;
-            }
-        } catch (\Throwable $e) {
-            return null;
-        }
-        return is_array($vms) ? array_values(array_filter($vms, 'is_string')) : null;
-    }
-
-    // VMs an existing folder holds through its regex. vm.js lets an explicit entry in any folder beat a
-    // regex match, so an imported explicit member would take one. null = libvirt could not be read.
-    function fv3_effective_vm_members(array $folders): ?array {
-        $regexFolders = array_filter($folders, static fn($f) => is_array($f) && is_string($f['regex'] ?? null) && trim($f['regex']) !== '');
-        if (!$regexFolders) return [];
-        $names = fv3_read_vm_names();
-        if ($names === null) return null;
-        $explicit = [];
-        foreach ($folders as $f) {
-            foreach ((is_array($f['containers'] ?? null) ? $f['containers'] : []) as $c) { if (is_string($c)) $explicit[$c] = true; }
-        }
-        // JS counts a character past U+FFFF as two code units; two private-use stand-ins do the same here
-        $subjects = [];
-        foreach ($names as $vm) $subjects[$vm] = preg_replace('/[\x{10000}-\x{10FFFF}]/u', "\u{E000}\u{E000}", $vm) ?? $vm;
-        $held = [];
-        foreach ($regexFolders as $f) {
-            // (*UTF) matches per character with ASCII-only \w \b \d, as the page does; /D keeps $ at the very end.
-            // A pattern outside the allowlist cannot be rewritten exactly, so it is read as written.
-            $re = '/(*UTF)' . str_replace('/', '\/', fv3_foreign_regex_as_js($f['regex']) ?? $f['regex']) . '/D';
-            foreach ($subjects as $vm => $subject) {
-                if (!isset($explicit[$vm]) && @preg_match($re, $subject) === 1) $held[$vm] = true;
-            }
-        }
-        return array_map('strval', array_keys($held));  // PHP makes an all-digit key an int
-    }
-
-    // Containers an existing folder already holds through a label or regex — explicit containers[]
-    // alone does not show those. null means Docker could not be read, so the caller must refuse.
-    function fv3_effective_docker_members(array $folders): ?array {
-        if (!$folders) return [];
-        $client = new DockerClient();
-        $names = fv3_read_container_names($client);
-        // DockerClient returns [] when it cannot reach the socket, so an empty list cannot be told from an outage
-        if (!$names['complete']) return null;
-        $labels = fv3_read_container_labels($client, $names['names']);
-        if ($labels === null) return null;
-        return fv3_compute_folder_membership($folders, $names['names'], $labels)['assigned'];
     }
 ?>
