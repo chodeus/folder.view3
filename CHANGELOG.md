@@ -4,8 +4,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- editor: arguments never reach a directPHP script either
-- editor: say User Scripts drops arguments in the background, and what Sync does
+- Folder settings page minor update
 
 ## 2026.09.24.2 (beta)
 
