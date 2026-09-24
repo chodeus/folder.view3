@@ -88,8 +88,6 @@ What the import does:
 - **Nested folders are merged.** FolderView3 has no nesting, so every nested folder's containers or VMs move into
   its top-level folder. The top-level folder keeps its own name, icon and settings; a nested folder's name, icon,
   settings, regex and custom actions are not kept.
-- **A folder with a missing or looping parent** is imported as a top-level folder.
-- **A container or VM listed in two folders** stays in the first one.
 - **Names:** a folder with no usable name, or named `root` (reserved by Unraid), is imported as `Imported folder`,
   and a name already used is imported as `Name (imported)`.
 - **Settings:** only settings FolderView3 has, with valid values, are kept. Plugin preferences and themes are not
@@ -99,10 +97,7 @@ What the import does:
 - **Custom actions** are kept when FolderView3 can run them as they are: a Docker or VM action may only target
   its own folder's members, and a User Script action needs a plain script name and arguments without `&`, `#`,
   `%` or `?`.
-- **Limits:** a file over 5 MB, or with more than 1000 folders of one type, is refused. Members past 5000 and
-  custom actions past 50 in one folder are left out.
 - **Newer formats:** a file from a newer FolderView Plus version is refused rather than guessed at.
-- **Fresh Unraid:** the import works with Docker or VMs stopped, or with no containers or VMs yet.
 
 ## Getting Started
 
