@@ -893,7 +893,19 @@ const fv3AsBindOnce = () => {
     });
 };
 
+// Unraid's own page loader (webGui DefaultPageLayout): the animated logo after 0.5 s; returns the stop function
+const fv3AsShowLoading = () => {
+    if ($('#fv3-as-rows').children().length) return () => {};
+    const $row = $('<tr class="fv3-as-loading"><td colspan="5"><div class="spinner"></div></td></tr>');
+    $('#fv3-as-rows').append($row);
+    const timer = setTimeout(() => {
+        $row.find('.spinner').html(typeof unraid_logo === 'string' ? unraid_logo : '<i class="fa fa-spinner fa-spin"></i>');
+    }, 500);
+    return () => { clearTimeout(timer); $row.remove(); };
+};
+
 const fv3LoadAutostart = async () => {
+    const stopLoading = fv3AsShowLoading();
     try {
         const [as, info, memb] = (await Promise.all([
             $.get('/plugins/folder.view3/server/read_autostart.php').promise(),
@@ -930,6 +942,8 @@ const fv3LoadAutostart = async () => {
     } catch (e) {
         console.error('[FV3] Failed to load autostart tab:', e);
         fv3SwalError(fv3I18nOr('autostart-load-failed', 'Failed to load autostart data.'), 'SETTINGS');
+    } finally {
+        stopLoading();
     }
 };
 
