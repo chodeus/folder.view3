@@ -606,6 +606,14 @@
 .fv3-as-table.fv3-as-locked .fv3-as-item {
     cursor: default;
 }
+.fv3-as-table .fv3-as-loading td {
+    padding: 24px 0;
+}
+/* Unraid pins .unraid_mark to the viewport centre; keep it in the empty table instead */
+.fv3-as-table .fv3-as-loading .unraid_mark {
+    position: static;
+    margin: 0;
+}
 .fv3-button-bar.fv3-as-buttons {
     justify-content: flex-end;
     max-width: none;
