@@ -1078,8 +1078,8 @@ window.fv3CollectEnv = () => {
 
 // debug.js owns the capture helpers; the fuller fv3CollectEnv() above replaces its page-agnostic one.
 
+// openBox and logging.htm take these as raw query values, so each one is encoded here
 window.fv3RunUserScript = async (act, prom) => {
-    // Spliced into a query string, so PHP would read a raw + as a space and a raw & as a separator
     const args = encodeURIComponent(act.script_args || '');
     try {
     if(act.script_sync) {
@@ -1089,11 +1089,11 @@ window.fv3RunUserScript = async (act, prom) => {
         if(scriptVariables['directPHP']) {
             $.post("/plugins/user.scripts/exec.php",{action:'directRunScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) { openBox(data,act.name,800,1200, 'loadlist');}});
         } else {
-            $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+data+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
+            $.post("/plugins/user.scripts/exec.php",{action:'convertScript',path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`},function(data) {if(data) {openBox('/plugins/user.scripts/startScript.sh&arg1='+encodeURIComponent(String(data).trim())+'&arg2='+args,act.name,800,1200,true, 'loadlist');}});
         }
     } else {
         const cmd = await $.post("/plugins/user.scripts/exec.php",{action:'convertScript', path:`/boot/config/plugins/user.scripts/scripts/${act.script}/script`}).promise();
-        prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+cmd+'&arg2='+args+'&csrf_token='+csrf_token+'&done=Done').promise());
+        prom.push($.get('/logging.htm?cmd=/plugins/user.scripts/backgroundScript.sh&arg1='+encodeURIComponent(String(cmd).trim())+'&arg2='+args+'&csrf_token='+encodeURIComponent(csrf_token)+'&done=Done').promise());
     }
     } catch (e) { fv3ShowBanner(fv3I18nOr('user-script-failed', 'Could not run the user script — check the User Scripts plugin is installed and the script exists.')); }
 };
