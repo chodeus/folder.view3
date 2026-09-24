@@ -2,6 +2,10 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- autostart: show Unraid's loading logo while the list loads
+
 ## 2026.09.24.3 (beta)
 
 - Folder settings page minor update
