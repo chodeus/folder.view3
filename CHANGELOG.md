@@ -2,6 +2,13 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- FolderView Plus migration now supported, see readme for FV Plus backup import behaviours
+- Custom actions with non-English text or symbols no longer break the folder editor or fail to save
+- User Script arguments containing &, #, %, + or ? now reach the script exactly as typed
+- The error dialog now stays open when you click Download Debug Info
+
 ## 2026.09.23.1 (beta)
 
 - Error banners now span the width above the list and appear correctly on the VMs and Dashboard pages
