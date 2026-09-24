@@ -74,8 +74,8 @@ FolderView3 to have no folders yet.
 1. Export your folders from FolderView Plus, or pick a backup from `config/plugins/folderview.plus/backups/`,
    and copy the file to your computer.
 2. Uninstall FolderView Plus, then install FolderView3.
-3. In **Settings → FolderView3**, use **Import Docker** or **Import VM** for a per-type file, or
-   **Import Everything** to take every type in the file.
+3. In **Settings → FolderView3 → Import / Export (Backup)**, use **Import Docker Folders** or **Import VM Folders**
+   for a per-type file, or **Import Everything** to take every type in the file.
 4. Check the preview, then confirm.
 
 FolderView3 reads the per-type export, a single-folder export, the scheduled and manual backups, and the
