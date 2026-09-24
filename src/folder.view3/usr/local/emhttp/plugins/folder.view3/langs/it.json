@@ -398,6 +398,7 @@
     "foreign-preview-title": "Importare il backup di FolderView Plus?",
     "foreign-preview-docker": "{{PLURAL:$1|Verrà aggiunta|Verranno aggiunte}} $1 {{PLURAL:$1|cartella|cartelle}} Docker:",
     "foreign-preview-vm": "{{PLURAL:$1|Verrà aggiunta|Verranno aggiunte}} $1 {{PLURAL:$1|cartella|cartelle}} VM:",
+    "foreign-preview-includes": "$1 (include $2)",
     "foreign-note-merged": "$1 {{PLURAL:$1|cartella annidata unita|cartelle annidate unite}} nella cartella di primo livello (nome, icona e impostazioni proprie non vengono mantenuti)",
     "foreign-note-broken-parents": "$1 {{PLURAL:$1|cartella aveva|cartelle avevano}} un genitore mancante, non valido o circolare e {{PLURAL:$1|resta|restano}} al primo livello",
     "foreign-note-renamed": "$1 {{PLURAL:$1|cartella rinominata|cartelle rinominate}} perché il nome mancava, non era utilizzabile o è già in uso",

@@ -398,6 +398,7 @@
     "foreign-preview-title": "Importer la sauvegarde FolderView Plus ?",
     "foreign-preview-docker": "$1 {{PLURAL:$1|dossier Docker sera ajouté|dossiers Docker seront ajoutés}} :",
     "foreign-preview-vm": "$1 {{PLURAL:$1|dossier VM sera ajouté|dossiers VM seront ajoutés}} :",
+    "foreign-preview-includes": "$1 (inclut $2)",
     "foreign-note-merged": "$1 {{PLURAL:$1|dossier imbriqué fusionné|dossiers imbriqués fusionnés}} dans {{PLURAL:$1|son|leur}} dossier de premier niveau ({{PLURAL:$1|ses|leurs}} propres nom, icône et réglages ne sont pas conservés)",
     "foreign-note-broken-parents": "$1 {{PLURAL:$1|dossier avait|dossiers avaient}} un parent manquant, invalide ou circulaire et {{PLURAL:$1|reste|restent}} au premier niveau",
     "foreign-note-renamed": "$1 {{PLURAL:$1|dossier renommé|dossiers renommés}} car le nom manquait, n’était pas utilisable ou est déjà utilisé",

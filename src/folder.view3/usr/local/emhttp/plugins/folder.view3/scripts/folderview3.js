@@ -629,7 +629,9 @@ const fv3ForeignPreviewHtml = (report) => {
         const notes = [];
         const names = r.folders.map(f => f.name);
         if (!names.length) continue;
-        const shown = names.slice(0, 12).map(escapeHtml).join(', ') + (names.length > 12 ? ', …' : '');
+        const shown = r.folders.slice(0, 12).map(f => escapeHtml(f.merged?.length
+            ? fv3I18nOr('foreign-preview-includes', '$1 (includes $2)', f.name, f.merged.join(', '))
+            : f.name)).join('<br>') + (names.length > 12 ? '<br>…' : '');
         const head = type === 'docker'
             ? fv3I18nOr('foreign-preview-docker', '$1 Docker folders will be added:', names.length)
             : fv3I18nOr('foreign-preview-vm', '$1 VM folders will be added:', names.length);

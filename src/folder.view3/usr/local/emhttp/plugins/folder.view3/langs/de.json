@@ -398,6 +398,7 @@
     "foreign-preview-title": "FolderView-Plus-Sicherung importieren?",
     "foreign-preview-docker": "$1 Docker-{{PLURAL:$1|Ordner wird|Ordner werden}} hinzugefügt:",
     "foreign-preview-vm": "$1 VM-{{PLURAL:$1|Ordner wird|Ordner werden}} hinzugefügt:",
+    "foreign-preview-includes": "$1 (enthält $2)",
     "foreign-note-merged": "$1 {{PLURAL:$1|verschachtelter Ordner|verschachtelte Ordner}} in den obersten Ordner zusammengeführt (eigener Name, eigenes Symbol und eigene Einstellungen werden nicht übernommen)",
     "foreign-note-broken-parents": "$1 {{PLURAL:$1|Ordner hatte|Ordner hatten}} einen fehlenden, ungültigen oder zirkulären Elternordner und {{PLURAL:$1|bleibt|bleiben}} auf oberster Ebene",
     "foreign-note-renamed": "$1 {{PLURAL:$1|Ordner|Ordner}} umbenannt, weil der Name fehlte, nicht verwendbar war oder schon vergeben ist",

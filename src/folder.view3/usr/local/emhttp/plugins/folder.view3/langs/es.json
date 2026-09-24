@@ -398,6 +398,7 @@
     "foreign-preview-title": "¿Importar copia de FolderView Plus?",
     "foreign-preview-docker": "Se {{PLURAL:$1|añadirá|añadirán}} $1 {{PLURAL:$1|carpeta|carpetas}} de Docker:",
     "foreign-preview-vm": "Se {{PLURAL:$1|añadirá|añadirán}} $1 {{PLURAL:$1|carpeta|carpetas}} de VM:",
+    "foreign-preview-includes": "$1 (incluye $2)",
     "foreign-note-merged": "$1 {{PLURAL:$1|carpeta anidada fusionada|carpetas anidadas fusionadas}} en su carpeta superior (su nombre, icono y ajustes propios no se conservan)",
     "foreign-note-broken-parents": "$1 {{PLURAL:$1|carpeta tenía|carpetas tenían}} un padre ausente, no válido o circular y {{PLURAL:$1|queda|quedan}} en el nivel superior",
     "foreign-note-renamed": "$1 {{PLURAL:$1|carpeta renombrada|carpetas renombradas}} porque el nombre faltaba, no era válido o ya está en uso",

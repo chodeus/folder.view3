@@ -398,6 +398,7 @@
     "foreign-preview-title": "导入 FolderView Plus 备份？",
     "foreign-preview-docker": "将添加 $1 个 Docker 文件夹：",
     "foreign-preview-vm": "将添加 $1 个虚拟机文件夹：",
+    "foreign-preview-includes": "$1（包含 $2）",
     "foreign-note-merged": "已将 $1 个嵌套文件夹合并到其顶级文件夹（不保留其自身名称、图标和设置）",
     "foreign-note-broken-parents": "$1 个文件夹的父文件夹缺失、无效或循环，已保留为顶级文件夹",
     "foreign-note-renamed": "$1 个文件夹因名称缺失、不可用或已被使用而重命名",
