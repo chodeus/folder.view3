@@ -311,10 +311,13 @@
                 $src = $folders[$id];
                 $r['dropped_keys'] += count(array_diff(array_keys($src), $known));
                 // A merged child's members, hidden entries and identities move up; its regex and unknown fields go
+                $mergedNames = [];
                 foreach ($childrenOf[$id] ?? [] as $cid) {
                     $child = $folders[$cid];
                     $r['dropped_keys'] += count(array_diff(array_keys($child), $known));
                     if (($child['regex'] ?? null) !== null && ($child['regex'] ?? '') !== '') $r['dropped_regex']++;
+                    $childName = fv3_foreign_clean_string(is_string($child['name'] ?? null) ? trim($child['name']) : null, 160);
+                    if ($childName !== null && $childName !== '') $mergedNames[] = $childName;
                 }
 
                 $group = fv3_foreign_collect_group($folders, $id, $childrenOf[$id] ?? []);
@@ -382,7 +385,7 @@
                 }
                 $folder[$idKey] = (object)$idMap;
                 $converted[] = $folder;
-                $r['folders'][] = ['name' => $candidate, 'members' => count($members), 'actions' => count($actions)];
+                $r['folders'][] = ['name' => $candidate, 'members' => count($members), 'actions' => count($actions), 'merged' => $mergedNames];
             }
             $out[$type] = $converted;
             $report['types'][$type] = $r;

@@ -84,6 +84,7 @@ $rep = $r['report']['types']['docker'];
 check('three top-level docker folders', array_keys($d) === ['Media', 'Tools', '<img src=x onerror=alert(1)>'], array_keys($d));
 check('children and grandchildren merge into the root', $d['Media']['containers'] === ['app-alpha', 'app-beta', 'app-gamma', 'app-delta'], $d['Media']['containers']);
 check('merged child count', $rep['merged_children'] === 2, $rep['merged_children']);
+check('the report names the folders merged into each top-level folder', array_column($r['report']['types']['docker']['folders'], 'merged', 'name') === ['Media' => ['Media Extras', 'Media Deep'], 'Tools' => [], '<img src=x onerror=alert(1)>' => []], array_column($r['report']['types']['docker']['folders'], 'merged', 'name'));
 check('hidden previews union across the group', $d['Media']['hidden_preview'] === ['app-beta', 'app-gamma'], $d['Media']['hidden_preview']);
 check('member identities become containerImages', (array)$d['Media']['containerImages'] === ['app-alpha' => 'example/alpha:latest', 'app-beta' => 'example/beta:1.2'], $d['Media']['containerImages']);
 check('a member in two imported folders stays with the first', $d['Tools']['containers'] === ['tool-one'] && $rep['members_kept_elsewhere'] === 1, [$d['Tools']['containers'], $rep['members_kept_elsewhere']]);
