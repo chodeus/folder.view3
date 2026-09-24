@@ -4,7 +4,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- autostart: show Unraid's loading logo while the list loads
+- Settings autostart page now shows Unraid's loading logo during delayed page load
 
 ## 2026.09.24.3 (beta)
 
