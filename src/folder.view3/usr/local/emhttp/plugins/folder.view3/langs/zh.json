@@ -186,7 +186,7 @@
     "file-manager": "打开文件管理器",
     "custom-actions": "自定义操作",
     "custom-actions-folder": "自定义操作：",
-    "custom-actions-folder-tooltip": "<b>名称：</b>操作的名称。<br><b>类型：</b>操作类型。<br><ul><li><b>标准</b> — Docker 容器的常规操作（启动、停止等）。</li><li><b>自定义</b> — 将执行 User Script（需要 User Scripts 插件）。</li></ul><b>操作：</b>要执行的操作。<br><ul><li><b>循环</b> — 在两个状态之间切换。</li><li><b>设置</b> — 设置一个状态。</li><li><b>重启</b> — 基本重启。</li></ul><b>容器：</b>以逗号（,）分隔的容器列表。<br><b>脚本：</b>仅脚本名称（<b>名称区分大小写且需要空格</b>）。<br><b>参数：</b>传递给脚本的参数。<br><b>同步：</b>是否在后台运行脚本。<br><b>图标：</b>操作图标，留空使用默认图标。",
+    "custom-actions-folder-tooltip": "<b>名称：</b>操作的名称。<br><b>类型：</b>操作类型。<br><ul><li><b>标准</b> — Docker 容器的常规操作（启动、停止等）。</li><li><b>自定义</b> — 将执行 User Script（需要 User Scripts 插件）。</li></ul><b>操作：</b>要执行的操作。<br><ul><li><b>循环</b> — 在两个状态之间切换。</li><li><b>设置</b> — 设置一个状态。</li><li><b>重启</b> — 基本重启。</li></ul><b>容器：</b>以逗号（,）分隔的容器列表。<br><b>脚本：</b>仅脚本名称（<b>名称区分大小写且需要空格</b>）。<br><b>参数：</b>传递给脚本的参数。仅在开启“同步”时，User Scripts 才会传递参数，且从不传给 directPHP 脚本。<br><b>同步：</b>开启时在显示输出的窗口中运行脚本；关闭时在后台运行。<br><b>图标：</b>操作图标，留空使用默认图标。",
     "custom-action": "<i class=\"fa fa-plus\" aria-hidden=\"true\"></i> 添加自定义操作",
     "custom-action-tooltip": "将自定义按钮添加到文件夹的右键菜单以进行高级操作。",
     "custom-actions-type": "类型：",
