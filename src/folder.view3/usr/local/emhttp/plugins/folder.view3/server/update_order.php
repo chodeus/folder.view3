@@ -16,6 +16,7 @@
         exit;
     }
     if (!saveOrderSnapshot($type, $entries)) {
+        fv3_error_log('update_order', "type=$type: snapshot write failed");
         http_response_code(500);
         echo json_encode(['error' => 'snapshot write failed']);
         exit;

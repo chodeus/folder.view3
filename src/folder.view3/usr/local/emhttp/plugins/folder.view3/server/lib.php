@@ -50,9 +50,11 @@
         // either as an empty file, or the next save resets every other setting.
         if (is_string($raw) && trim($raw) === '') return [];
         $data = is_string($raw) ? json_decode($raw, true) : null;
-        if (!is_array($data)) {
+        // A JSON list is not a settings map either: merging into one keeps its entries as junk keys
+        if (!is_array($data) || ($data !== [] && array_is_list($data))) {
             flock($fp, LOCK_UN);
             fclose($fp);
+            fv3_error_log('settings-decode', 'settings.json is unreadable or corrupt');
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => 'settings.json is unreadable — refusing to save so other settings are not reset']);
@@ -76,6 +78,98 @@
     if (FV3_DEBUG_MODE && isset($_GET['type']) && basename($_SERVER['SCRIPT_NAME']) === 'read_info.php') {
         @file_put_contents($fv3_debug_log_file, "--- FolderView3 lib.php readInfo Start ---\n");
     }
+
+    // Masks secret-shaped values in query, JSON, header and URL-userinfo form. Mirrors fv3RedactString()
+    // in scripts/debug.js — keep the two pattern lists identical.
+    function fv3_redact(string $s): string {
+        $rules = [
+            '/((?:token|api[_-]?key|key|secret|password|passwd|pass|auth|authorization|credential)=)[^&\s"\'\\\\]+/i' => '$1[redacted]',
+            '/("[^"\\\\]*(?:token|api[_-]?key|secret|password|passwd|authorization|credential|private[_-]?key|access[_-]?key)[^"\\\\]*"\s*:\s*")(?:[^"\\\\]|\\\\.)*(")/i' => '$1[redacted]$2',
+            '/((?:authorization|x-api-key|x-auth-token|cookie|set-cookie)\s*:\s*)[^\r\n"\'\\\\]+/i' => '$1[redacted]',
+            '#(://)[^/\s@"\'\\\\]+@#' => '$1[redacted]@',
+        ];
+        foreach ($rules as $re => $to) { $r = preg_replace($re, $to, $s); if ($r !== null) $s = $r; }
+        return $s;
+    }
+
+    // Always-on (unlike fv3_debug_log, gated behind /tmp/fv3_debug_enabled): every endpoint
+    // error lands here so a report never depends on debug mode having been armed in advance.
+    function fv3_error_log(string $context, string $message): void {
+        global $configDir;
+        static $seen = [];
+        $entry = "$context: " . fv3_redact($message);
+        // The log lives on the flash: an entry is written once per request, and a repeat of the
+        // previous line at most once a minute
+        if (isset($seen[$entry])) return;
+        $seen[$entry] = true;
+        if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
+        $path = "$configDir/error.log";
+        // Every call inside is @-suppressed: a warning here would re-enter the error handler
+        $fp = @fopen($path, 'c+');
+        if (!$fp) return;
+        if (@flock($fp, LOCK_EX)) {
+            $st = @fstat($fp);
+            $size = is_array($st) ? (int)$st['size'] : 0;
+            if ($size > 0 && fv3_error_log_repeats($fp, $size, $entry)) {
+                @flock($fp, LOCK_UN);
+                @fclose($fp);
+                return;
+            }
+            // Cap growth under the same lock as the append, keeping the newest ~150KB from a line boundary
+            if ($size > 262144) {
+                $all = @stream_get_contents($fp, -1, 0);
+                $tail = is_string($all) ? substr($all, -153600) : '';
+                $nl = strpos($tail, "\n");
+                if ($nl !== false) $tail = substr($tail, $nl + 1);
+                @ftruncate($fp, 0);
+                @rewind($fp);
+                @fwrite($fp, $tail);
+            }
+            @fseek($fp, 0, SEEK_END);
+            @fwrite($fp, '[' . date('Y-m-d H:i:s') . "] $entry\n");
+            @fflush($fp);
+            @flock($fp, LOCK_UN);
+        }
+        @fclose($fp);
+        @chmod($path, 0600);
+    }
+
+    // True when the same entry was written within the last minute (the newest ~2KB of the log is checked)
+    function fv3_error_log_repeats($fp, int $size, string $entry): bool {
+        $chunk = min($size, 2048);
+        if (@fseek($fp, -$chunk, SEEK_END) !== 0) return false;
+        $tail = @stream_get_contents($fp);
+        if (!is_string($tail)) return false;
+        foreach (explode("\n", $tail) as $line) {
+            if (preg_match('/^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\] (.*)$/', $line, $m) && $m[2] === $entry && (time() - (int)strtotime($m[1])) < 60) return true;
+        }
+        return false;
+    }
+
+    // Tail for read_error_log.php: '' when there is no log yet, null when one exists but cannot be read
+    function fv3_read_error_log_tail(): ?string {
+        global $configDir;
+        $path = "$configDir/error.log";
+        if (!file_exists($path)) return '';
+        $raw = @file_get_contents($path);
+        if ($raw === false) return null;
+        $lines = explode("\n", trim($raw));
+        return implode("\n", array_slice($lines, -200));
+    }
+
+    // Safety net for anything not caught explicitly: log, then answer the generic JSON 500 so the
+    // client sees a failure rather than a blank 200 that fv3SafeParse would mask
+    set_exception_handler(function(\Throwable $e) {
+        fv3_error_log('uncaught', get_class($e) . ': ' . $e->getMessage() . ' at ' . basename($e->getFile()) . ':' . $e->getLine());
+        if (!headers_sent()) { http_response_code(500); header('Content-Type: application/json'); }
+        echo json_encode(['error' => 'Internal error']);
+    });
+    // Non-fatal PHP errors don't end the request, so only log them; deprecations are noise, not failures
+    set_error_handler(function(int $severity, string $message, string $file, int $line): bool {
+        if (!(error_reporting() & $severity) || ($severity & (E_DEPRECATED | E_USER_DEPRECATED))) return false;
+        fv3_error_log('php-error', "$message at " . basename($file) . ":$line");
+        return false;
+    });
 
     function fv3_validate_type($type): string {
         // Untyped on purpose: a crafted type[]=x request reaches every endpoint as an
@@ -219,6 +313,7 @@
         $raw = @file_get_contents("$configDir/$type.json");
         if ($raw === false) {
             // Fail the request: a 200 '{}' would be cached client-side over the last good copy
+            fv3_error_log('readFolder', "$type.json is unreadable");
             http_response_code(500);
             return json_encode(['error' => "$type.json is unreadable"]);
         }
@@ -227,6 +322,7 @@
         if (json_last_error() !== JSON_ERROR_NONE) { return $raw; }
         // Valid JSON that isn't a folder map fails like an unreadable file
         if (!is_array($decoded)) {
+            fv3_error_log('readFolder', "$type.json does not contain a folder map");
             http_response_code(500);
             return json_encode(['error' => "$type.json does not contain a folder map"]);
         }
@@ -510,8 +606,19 @@
 
     // Container names from getDockerContainers(). 'complete' is false when the read is empty
     // or any entry is unnamed — a degraded list must not drive autostart pruning (#214).
+    // DockerClient echoes its socket error when Docker is not running; buffer it out of the JSON response
+    function fv3_docker_quiet(callable $read) {
+        ob_start();
+        try {
+            return $read();
+        } finally {
+            $printed = ob_get_clean();
+            if ($printed !== '' && $printed !== false) fv3_debug_log('Docker client: ' . trim($printed));
+        }
+    }
+
     function fv3_read_container_names(DockerClient $dockerClient): array {
-        $cts = $dockerClient->getDockerContainers();
+        $cts = fv3_docker_quiet(fn() => $dockerClient->getDockerContainers());
         if (!is_array($cts)) { $cts = []; }
         $names = [];
         $complete = !empty($cts);
@@ -543,7 +650,7 @@
     // containers as unassigned (#214 class).
     function fv3_read_container_labels(DockerClient $dockerClient, array $allContainerNames): ?array {
         $ctLabels = [];
-        $rawCts = $dockerClient->getDockerJSON("/containers/json?all=1");
+        $rawCts = fv3_docker_quiet(fn() => $dockerClient->getDockerJSON("/containers/json?all=1"));
         if (!is_array($rawCts)) {
             fv3_debug_log("fv3_read_container_labels: read unavailable");
             return null;
@@ -824,6 +931,7 @@
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
             // Corrupt config must fail closed — merging onto empty would wipe every other folder
+            fv3_error_log('updateFolder', "$type.json is unreadable, refusing to save");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
@@ -854,6 +962,7 @@
         // corrupt-as-empty read must abort rather than persist a pruned file
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
+            fv3_error_log('updateFolderIds', "$type.json is unreadable, refusing to save");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
@@ -894,6 +1003,7 @@
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) {
             // Corrupt config must fail closed — writing the fallback would wipe every folder
+            fv3_error_log('deleteFolder', "$type.json is unreadable, refusing to delete");
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => "$type.json is unreadable — refusing to delete so the folder config is not wiped"]);
@@ -908,169 +1018,164 @@
 
     function readSettings() : string {
         global $configDir;
-        $path = "$configDir/settings.json";
-        if(!file_exists($path)) {
-            if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-            fv3_atomic_write($path, '{}');
+        $raw = @file_get_contents("$configDir/settings.json");
+        $data = $raw !== false ? json_decode($raw, true) : null;
+        // A missing, blank, hand-edited or list-shaped file is answered as '{}'; only the locked writers create the file
+        if (!is_array($data) || ($data !== [] && array_is_list($data))) return '{}';
+        return json_encode(fv3_normalize_settings($data), JSON_FORCE_OBJECT);
+    }
+
+    // The one place that knows which settings exist and what each accepts
+    function fv3_settings_rules(): array {
+        return [
+            'enum' => [
+                'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+                'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
+                'dashboard_animation'            => ['yes', 'no'],
+                'dashboard_docker_expand_toggle' => ['yes', 'no'],
+                'dashboard_docker_greyscale'     => ['yes', 'no'],
+                'dashboard_docker_folder_label'  => ['yes', 'no'],
+                'dashboard_vm_expand_toggle'     => ['yes', 'no'],
+                'dashboard_vm_greyscale'         => ['yes', 'no'],
+                'dashboard_vm_folder_label'      => ['yes', 'no'],
+                'dashboard_context'              => ['0', '1', '2', '3'],
+                'dashboard_context_trigger'      => ['0', '1'],
+                'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
+                'default_preview'          => ['0', '1', '2', '3', '4'],
+                'default_preview_hover'    => ['yes', 'no'],
+                'default_preview_status'   => ['none', 'symbol', 'grayscale'],
+                'default_preview_grayscale'=> ['yes', 'no'],
+                'default_preview_webui'    => ['yes', 'no'],
+                'default_preview_logs'     => ['yes', 'no'],
+                'default_preview_console'  => ['yes', 'no'],
+                'default_preview_update'   => ['yes', 'no'],
+                'default_preview_update_folder'      => ['yes', 'no'],
+                'dashboard_update_container'         => ['yes', 'no'],
+                'dashboard_update_folder'            => ['yes', 'no'],
+                'default_preview_vertical_bars' => ['yes', 'no'],
+                'default_preview_border'   => ['yes', 'no'],
+                'default_row_separator'    => ['yes', 'no'],
+                'default_overflow'         => ['default', 'scroll', 'expand'],
+                'default_context'          => ['0', '1', '2', '3'],
+                'default_context_trigger'  => ['0', '1'],
+                'default_context_graph'    => ['0', '1', '2', '3', '4'],
+                'default_update_column'    => ['yes', 'no']
+            ],
+            'digits' => ['default_context_graph_time', 'dashboard_context_graph_time'],
+            'text'   => ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width'],
+        ];
+    }
+
+    // One verdict for one key: ['store' => v] to save, ['clear' => true] to remove, null to refuse
+    function fv3_sanitize_setting(string $key, $value): ?array {
+        $rules = fv3_settings_rules();
+        if (!is_scalar($value)) return null;
+        $value = (string)$value;
+        // Invalid UTF-8 would make json_encode() fail at write time — refuse it at the boundary instead
+        if (preg_match('//u', $value) !== 1) return null;
+        if (isset($rules['enum'][$key])) {
+            return in_array($value, $rules['enum'][$key], true) ? ['store' => $value] : null;
         }
-        $raw = @file_get_contents($path);
-        // A blank or hand-edited file is answered as '{}': every client parses this body as JSON
-        return ($raw !== false && is_object(json_decode($raw))) ? $raw : '{}';
+        if (in_array($key, $rules['digits'], true)) {
+            $value = preg_replace('/[^0-9]/', '', $value);
+            return $value === '' ? ['clear' => true] : ['store' => $value];
+        }
+        if (in_array($key, $rules['text'], true)) {
+            if (strlen($value) > 50) return null;
+            $value = preg_replace('/[<>"\'\\\\]/', '', $value);
+            return $value === '' ? ['clear' => true] : ['store' => $value];
+        }
+        return null;
+    }
+
+    // The map every reader and writer sees: entries the rules refuse are dropped, the rest sanitised
+    function fv3_normalize_settings(array $data): array {
+        $clean = [];
+        foreach ($data as $k => $v) {
+            $verdict = fv3_sanitize_setting((string)$k, $v);
+            if ($verdict !== null && isset($verdict['store'])) $clean[(string)$k] = $verdict['store'];
+        }
+        return $clean;
+    }
+
+    // Serialises every settings.json writer, imports included. A separate lock file: replacing
+    // settings.json gives it a new inode, so a lock on the file itself would stop serialising
+    function fv3_settings_lock() {
+        global $configDir;
+        if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
+        $lock = @fopen("$configDir/settings.json.lock", 'c');
+        if (!$lock) return null;
+        if (!flock($lock, LOCK_EX)) { fclose($lock); return null; }
+        return $lock;
+    }
+
+    function fv3_settings_unlock($lock): void {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+
+    // Every interactive write to settings.json goes through here: the live file is only ever
+    // replaced whole, so a failed encode or a short write leaves the previous copy intact
+    function fv3_write_settings(callable $apply): void {
+        global $configDir;
+        $path = "$configDir/settings.json";
+        $lock = fv3_settings_lock();
+        if (!$lock) {
+            fv3_error_log('fv3_write_settings', 'could not lock settings.json');
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not lock settings.json — nothing was saved']);
+            exit;
+        }
+        $raw = file_exists($path) ? @file_get_contents($path) : '';
+        $data = $apply(fv3_normalize_settings(fv3_decode_settings_or_abort($lock, $raw)));
+        $ok = fv3_atomic_write($path, json_encode($data));
+        fv3_settings_unlock($lock);
+        if (!$ok) {
+            fv3_error_log('fv3_write_settings', 'could not write settings.json');
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Could not write settings.json — the previous settings are unchanged']);
+            exit;
+        }
     }
 
     function updateSettings(string $key, string $value) : void {
-        global $configDir;
-        $allowed = [
-            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
-            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
-            'dashboard_animation'            => ['yes', 'no'],
-            'dashboard_docker_expand_toggle' => ['yes', 'no'],
-            'dashboard_docker_greyscale'     => ['yes', 'no'],
-            'dashboard_docker_folder_label'  => ['yes', 'no'],
-            'dashboard_vm_expand_toggle'     => ['yes', 'no'],
-            'dashboard_vm_greyscale'         => ['yes', 'no'],
-            'dashboard_vm_folder_label'      => ['yes', 'no'],
-            'dashboard_context'              => ['0', '1', '2', '3'],
-            'dashboard_context_trigger'      => ['0', '1'],
-            'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
-            'default_preview'          => ['0', '1', '2', '3', '4'],
-            'default_preview_hover'    => ['yes', 'no'],
-            'default_preview_status'   => ['none', 'symbol', 'grayscale'],
-            'default_preview_grayscale'=> ['yes', 'no'],
-            'default_preview_webui'    => ['yes', 'no'],
-            'default_preview_logs'     => ['yes', 'no'],
-            'default_preview_console'  => ['yes', 'no'],
-            'default_preview_update'   => ['yes', 'no'],
-            'default_preview_update_folder'      => ['yes', 'no'],
-            'dashboard_update_container'         => ['yes', 'no'],
-            'dashboard_update_folder'            => ['yes', 'no'],
-            'default_preview_vertical_bars' => ['yes', 'no'],
-            'default_preview_border'   => ['yes', 'no'],
-            'default_row_separator'    => ['yes', 'no'],
-            'default_overflow'         => ['default', 'scroll', 'expand'],
-            'default_context'          => ['0', '1', '2', '3'],
-            'default_context_trigger'  => ['0', '1'],
-            'default_context_graph'    => ['0', '1', '2', '3', '4'],
-            'default_update_column'    => ['yes', 'no']
-        ];
-        $freeformUpdate = ['default_context_graph_time', 'dashboard_context_graph_time'];
-        if (in_array($key, $freeformUpdate, true)) {
-            $value = preg_replace('/[^0-9]/', '', $value);
-            if ($value === '') { http_response_code(400); exit; }
-        } elseif (!isset($allowed[$key]) || !in_array($value, $allowed[$key], true)) {
-            http_response_code(400);
-            exit;
-        }
-        $path = "$configDir/settings.json";
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        $raw = stream_get_contents($fp);
-        $data = fv3_decode_settings_or_abort($fp, $raw);
-        $data[$key] = $value;
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($data));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
+        $verdict = fv3_sanitize_setting($key, $value);
+        if ($verdict === null) { http_response_code(400); exit; }
+        fv3_write_settings(function (array $data) use ($key, $verdict): array {
+            if (isset($verdict['clear'])) { unset($data[$key]); } else { $data[$key] = $verdict['store']; }
+            return $data;
+        });
     }
 
+    // All or nothing: one refused entry fails the whole batch before anything is written, as the single endpoint does
     function updateSettingsBatch(array $settings) : void {
-        global $configDir;
-        $allowed = [
-            'dashboard_docker_layout' => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
-            'dashboard_vm_layout'     => ['classic', 'fullwidth', 'accordion', 'inset', 'embossed'],
-            'dashboard_animation'            => ['yes', 'no'],
-            'dashboard_docker_expand_toggle' => ['yes', 'no'],
-            'dashboard_docker_greyscale'     => ['yes', 'no'],
-            'dashboard_docker_folder_label'  => ['yes', 'no'],
-            'dashboard_vm_expand_toggle'     => ['yes', 'no'],
-            'dashboard_vm_greyscale'         => ['yes', 'no'],
-            'dashboard_vm_folder_label'      => ['yes', 'no'],
-            'dashboard_context'              => ['0', '1', '2', '3'],
-            'dashboard_context_trigger'      => ['0', '1'],
-            'dashboard_context_graph'        => ['0', '1', '2', '3', '4'],
-            'default_preview'          => ['0', '1', '2', '3', '4'],
-            'default_preview_hover'    => ['yes', 'no'],
-            'default_preview_status'   => ['none', 'symbol', 'grayscale'],
-            'default_preview_grayscale'=> ['yes', 'no'],
-            'default_preview_webui'    => ['yes', 'no'],
-            'default_preview_logs'     => ['yes', 'no'],
-            'default_preview_console'  => ['yes', 'no'],
-            'default_preview_update'   => ['yes', 'no'],
-            'default_preview_update_folder'      => ['yes', 'no'],
-            'dashboard_update_container'         => ['yes', 'no'],
-            'dashboard_update_folder'            => ['yes', 'no'],
-            'default_preview_vertical_bars' => ['yes', 'no'],
-            'default_preview_border'   => ['yes', 'no'],
-            'default_row_separator'    => ['yes', 'no'],
-            'default_overflow'         => ['default', 'scroll', 'expand'],
-            'default_context'          => ['0', '1', '2', '3'],
-            'default_context_trigger'  => ['0', '1'],
-            'default_context_graph'    => ['0', '1', '2', '3', '4'],
-            'default_update_column'    => ['yes', 'no']
-        ];
-        $freeform = ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width', 'default_context_graph_time', 'dashboard_context_graph_time'];
-        $path = "$configDir/settings.json";
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        $raw = stream_get_contents($fp);
-        $data = fv3_decode_settings_or_abort($fp, $raw);
+        $verdicts = [];
+        $refused = [];
         foreach ($settings as $key => $value) {
             $key = (string)$key;
-            $value = (string)$value;
-            if (isset($allowed[$key])) {
-                if (in_array($value, $allowed[$key], true)) $data[$key] = $value;
-            } elseif (in_array($key, $freeform, true)) {
-                if (strlen($value) > 50) continue;
-                $value = preg_replace('/[<>"\'\\\\]/', '', $value);
-                if ($value === '') { unset($data[$key]); } else { $data[$key] = $value; }
-            }
+            $verdict = fv3_sanitize_setting($key, $value);
+            if ($verdict === null) { $refused[] = $key; continue; }
+            $verdicts[$key] = $verdict;
         }
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($data));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
-    }
-
-    function updateSettingsFreeform(string $key, string $value) : void {
-        global $configDir;
-        $allowedFreeform = [
-            'default_vertical_bars_color',
-            'default_border_color',
-            'default_separator_color',
-            'default_preview_text_width'
-        ];
-        if (!in_array($key, $allowedFreeform, true)) {
+        if ($refused) {
             http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Invalid setting: ' . implode(', ', $refused)]);
             exit;
         }
-        if (strlen($value) > 50) { http_response_code(400); exit; }
-        $value = preg_replace('/[<>"\'\\\\]/', '', $value);
-        $path = "$configDir/settings.json";
-        $fp = fopen($path, 'c+');
-        if (!$fp) { http_response_code(500); exit; }
-        flock($fp, LOCK_EX);
-        $raw = stream_get_contents($fp);
-        $data = fv3_decode_settings_or_abort($fp, $raw);
-        if ($value === '') { unset($data[$key]); } else { $data[$key] = $value; }
-        ftruncate($fp, 0);
-        rewind($fp);
-        fwrite($fp, json_encode($data));
-        fflush($fp);
-        flock($fp, LOCK_UN);
-        fclose($fp);
-        @chmod($path, 0660);
+        fv3_write_settings(function (array $data) use ($verdicts): array {
+            foreach ($verdicts as $key => $verdict) {
+                if (isset($verdict['clear'])) { unset($data[$key]); } else { $data[$key] = $verdict['store']; }
+            }
+            return $data;
+        });
     }
 
     // Theme listing, import, toggle and delete, and the styles/ confinement helpers they share
     require_once(__DIR__ . '/themes.php');
+    require_once(__DIR__ . '/lib.foreign_import.php');
 
     function exportAll() : array {
         global $configDir;
@@ -1173,6 +1278,12 @@
             }
             // Same validation an interactive save gets, before it is written AND before it is generated
             if ($key === 'css_config') { $data = fv3_sanitize_css_config($data); $bundle['css_config'] = $data; }
+            // Same rules as an interactive save: unknown keys, bad values and non-scalars never reach settings.json
+            if ($key === 'settings') {
+                // A JSON list is not a settings map: leave the destination alone, as a malformed order snapshot does
+                if ($data !== [] && array_is_list($data)) continue;
+                $data = fv3_normalize_settings($data);
+            }
             $flags = JSON_PRETTY_PRINT;
             if (empty($data)) $flags |= JSON_FORCE_OBJECT;
             $files[$key === 'css_config' ? 'css-config.json' : "$key.json"] = json_encode($data, $flags);
@@ -1191,7 +1302,14 @@
                 if ($css !== null) { $files["styles/$name"] = $css; } else { unset($files["styles/$name"]); $clear[] = "styles/$name"; }
             }
         }
+        // An interactive save must not interleave with the swap, so it waits on the same lock
+        $lock = null;
+        if (isset($files['settings.json'])) {
+            $lock = fv3_settings_lock();
+            if (!$lock) return ['error' => 'Could not lock settings.json — nothing was imported'];
+        }
         $result = fv3_replace_files($configDir, $files, $clear);
+        if ($lock) fv3_settings_unlock($lock);
         if (isset($result['error'])) return $result;
         $restored = [];
         foreach ($result['applied'] as $rel => $hadOld) {
@@ -1256,8 +1374,9 @@
                 if (is_dir($d)) $stuck[] = substr($d, strlen($baseDir) + 1) . '/';
             }
             if ($stuck) {
+                // `partial` lets a caller that maps errors to fixed codes keep this case distinct
                 return ['error' => "Could not replace $failed, and could not undo " . implode(', ', $stuck)
-                    . '; previous copies, where there were any, are in ' . basename($stage) . '/.old'];
+                    . '; previous copies, where there were any, are in ' . basename($stage) . '/.old', 'partial' => true];
             }
             return $discard(['error' => "Could not replace $failed — nothing was imported"]);
         };
@@ -1384,6 +1503,7 @@
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $result = fv3_replace_files($configDir, $files, $clear);
         if (isset($result['error'])) {
+            fv3_error_log('updateCssConfig', $result['error']);
             http_response_code(500);
             header('Content-Type: application/json');
             echo json_encode(['error' => $result['error']]);
