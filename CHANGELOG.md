@@ -2,6 +2,10 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Migration import dialogue improvements
+
 ## 2026.09.24.1 (beta)
 
 - FolderView Plus migration now supported, see readme for FV Plus backup import behaviours
