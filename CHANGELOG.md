@@ -2,6 +2,45 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## 2026.09.24.4 (beta)
+
+- Settings autostart page now shows Unraid's loading logo during delayed page load
+
+## 2026.09.24.3 (beta)
+
+- Folder settings page minor update
+
+## 2026.09.24.2 (beta)
+
+- Migration import dialogue improvements
+
+## 2026.09.24.1 (beta)
+
+- FolderView Plus migration now supported, see readme for FV Plus backup import behaviours
+- Custom actions with non-English text or symbols no longer break the folder editor or fail to save
+- User Script arguments containing &, #, %, + or ? now reach the script exactly as typed
+- The error dialog now stays open when you click Download Debug Info
+
+## 2026.09.23.1 (beta)
+
+- Error banners now span the width above the list and appear correctly on the VMs and Dashboard pages
+- Error banner text no longer squeezes beside the download link, and the error dialog stays open after a download
+- Debug downloads are now named for the plugin, stamped in your local time, and record the theme in use
+- Debug downloads now include the Dashboard's VM section, and your folders even when debug mode was never armed
+- Refused settings saves and backup restores are now recorded in the error log
+
+## 2026.09.22.1 (beta)
+
+- Every error dialog and banner now has a Download Debug Info button
+- Failed requests are captured even when debug mode was never armed
+- Server-side errors are kept in a size-capped error.log that the debug download includes
+- Debug downloads and the error log redact tokens, passwords and other secrets
+- One set of rules now validates settings from the settings page, a backup restore and the existing settings file
+- A backup can no longer persist unknown keys or invalid settings values
+- Saving settings can no longer truncate settings.json
+- One invalid value in a settings save now refuses the whole save
+- A settings file that is not a settings map is refused rather than merged into
+
 ## 2026.09.20
 
 - Folder information now loads successfully when the Docker autostart configuration file is missing.
