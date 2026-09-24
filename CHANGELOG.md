@@ -2,6 +2,11 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- editor: arguments never reach a directPHP script either
+- editor: say User Scripts drops arguments in the background, and what Sync does
+
 ## 2026.09.24.2 (beta)
 
 - Migration import dialogue improvements
