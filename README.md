@@ -68,18 +68,22 @@ https://raw.githubusercontent.com/chodeus/folder.view3/beta/folder.view3.plg
 
 ### Migrating from FolderView Plus
 
-Only one FolderView plugin should be installed at a time. The import is for moving to FolderView3, so it expects
-FolderView3 to have no folders yet.
+Only one FolderView plugin should be installed at a time. The import is for moving to FolderView3, so run it on
+a fresh FolderView3, before you create folders of your own.
 
-1. Export your folders from FolderView Plus, or pick a backup from `config/plugins/folderview.plus/backups/`,
-   and copy the file to your computer.
+1. Export your Docker folders and your VM folders from FolderView Plus, or pick the backups from
+   `config/plugins/folderview.plus/backups/`, and copy the files to your computer.
 2. Uninstall FolderView Plus, then install FolderView3.
-3. In **Settings → FolderView3 → Import / Export (Backup)**, use **Import Docker Folders** or **Import VM Folders**
-   for a per-type file, or **Import Everything** to take every type in the file.
-4. Check the preview, then confirm.
+3. In **Settings → FolderView3 → Import / Export (Backup)**, click **Import Everything** and choose a file.
+4. Check the preview, then confirm. Repeat for each file.
 
-FolderView3 reads the per-type export, a single-folder export, the scheduled and manual backups, and the
-environment and rollback snapshots.
+**Import Everything works with every FolderView Plus file.** FolderView Plus keeps Docker and VM folders in
+separate files: each export and each scheduled or manual backup holds one type, so a server with both has two
+files to import. An environment or rollback snapshot holds both types in one file, and a single-folder export
+holds one folder.
+
+**Import Docker Folders** and **Import VM Folders** also accept these files, but take only their own type. The
+preview says when the file holds folders of the other type.
 
 What the import does:
 
