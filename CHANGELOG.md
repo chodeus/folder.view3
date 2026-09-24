@@ -4,25 +4,10 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- debug: stop the error dialog closing on the download button
-- import: drop the live Docker and VM membership checks
-- import: keep Docker's socket error out of the response on a fresh Unraid
-- import: refuse an empty Docker container list again
-- import: close every gap an independent audit of the importer found
-- import: accept [] as the empty folder map
-- import: read VM names as the page does, and tell no VMs from no libvirt
-- import: make every preview line state all the causes behind its count
-- import: allowlist regex tokens, and keep VMs a regex folder holds
-- import: drop a ternary whose branches were the same expression
-- import: count every omission the preview claims to summarise
-- import: one config read, JS-compatible regexes, encoded script args
-- langs: translate the two new import errors
-- import: keep members an existing folder holds by label or regex
-- import: fail closed on the second config read, and name a partial rollback
-- fix: keep existing folders' empty objects as {} when importing
-- feat: import FolderView Plus backups
-- import: keep custom actions with text above U+00FF
-- fix: custom actions with non-English text or special characters in arguments
+- FolderView Plus migration now supported, see readme for FV Plus backup import behaviours
+- Custom actions with non-English text or symbols no longer break the folder editor or fail to save
+- User Script arguments containing &, #, %, + or ? now reach the script exactly as typed
+- The error dialog now stays open when you click Download Debug Info
 
 ## 2026.09.23.1 (beta)
 
