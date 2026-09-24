@@ -619,10 +619,14 @@ const fv3ForeignError = (code) => ({
     'write-partial': () => fv3I18nOr('foreign-error-write-partial', 'Some folders could not be saved and could not be undone, so the import may be incomplete. Check the plugin error log for the files left behind.'),
 }[code] || (() => fv3I18nOr('foreign-error-unsupported', 'This kind of backup file is not supported.')))();
 
+const fv3ForeignNotesHtml = (notes) => notes.length
+    ? `<ul style="text-align:left;margin:4px 0 12px">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`
+    : '';
+
 const fv3ForeignPreviewHtml = (report) => {
     const lines = [];
-    const notes = [];
     for (const [type, r] of Object.entries(report.types || {})) {
+        const notes = [];
         const names = r.folders.map(f => f.name);
         if (!names.length) continue;
         const shown = names.slice(0, 12).map(escapeHtml).join(', ') + (names.length > 12 ? ', …' : '');
@@ -645,14 +649,16 @@ const fv3ForeignPreviewHtml = (report) => {
             [r.dropped_invalid, 'foreign-note-invalid', '$1 malformed entries in the backup left out'],
         ];
         for (const [n, key, text] of counts) if (n > 0) notes.push(fv3I18nOr(key, text, n));
+        lines.push(fv3ForeignNotesHtml(notes));
     }
+    const notes = [];
     for (const section of report.skipped_sections || []) {
         if (section === 'prefs') notes.push(fv3I18nOr('foreign-note-prefs', 'Plugin preferences are not imported'));
         if (section === 'themes') notes.push(fv3I18nOr('foreign-note-themes', 'Themes are not imported'));
-        if (section === 'docker') notes.push(fv3I18nOr('foreign-note-other-docker', 'Docker folders in this file were not imported — use Import Docker'));
-        if (section === 'vm') notes.push(fv3I18nOr('foreign-note-other-vm', 'VM folders in this file were not imported — use Import VM'));
+        if (section === 'docker') notes.push(fv3I18nOr('foreign-note-other-docker', 'Docker folders in this file were not imported — use Import Docker Folders or Import Everything'));
+        if (section === 'vm') notes.push(fv3I18nOr('foreign-note-other-vm', 'VM folders in this file were not imported — use Import VM Folders or Import Everything'));
     }
-    if (notes.length) lines.push(`<ul style="text-align:left">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`);
+    lines.push(fv3ForeignNotesHtml(notes));
     lines.push(`<p>${escapeHtml(fv3I18nOr('foreign-preview-merge', 'Existing folders are kept; nothing is overwritten.'))}</p>`);
     return lines.join('');
 };
