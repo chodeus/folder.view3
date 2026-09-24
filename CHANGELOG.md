@@ -4,8 +4,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- import: name the folders merged into each top-level folder
-- import: group the preview notes under each type
+- Migration import dialogue improvements
 
 ## 2026.09.24.1 (beta)
 
