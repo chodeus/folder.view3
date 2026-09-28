@@ -2,6 +2,17 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## 2026.09.29
+
+- FolderView Plus migration now supported, see readme for FV Plus backup import behaviours
+- Significant debug package and error logging improvements
+- Improved form error handling across settings pages
+- Custom actions with non-English text or symbols no longer break the folder editor or fail to save
+- User Script arguments containing &, #, %, + or ? now reach the script exactly as typed
+- The error dialogs now provide an option to download a debug package
+- Folder settings page minor update
+- Settings autostart page now shows Unraid's loading logo during delayed page load
+
 ## 2026.09.24.4 (beta)
 
 - Settings autostart page now shows Unraid's loading logo during delayed page load
