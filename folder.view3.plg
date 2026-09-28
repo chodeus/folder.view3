@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.09.20">
-<!ENTITY md5 "41c347d6eeafb59976e08e24bea14fb0">
+<!ENTITY version "2026.09.29">
+<!ENTITY md5 "637478e47bd490255033a3f83e80908b">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,16 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.09.29
+- FolderView Plus migration now supported, see readme for FV Plus backup import behaviours
+- Significant debug package and error logging improvements
+- Improved form error handling across settings pages
+- Custom actions with non-English text or symbols no longer break the folder editor or fail to save
+- User Script arguments containing &amp;, #, %, + or ? now reach the script exactly as typed
+- The error dialogs now provide an option to download a debug package
+- Folder settings page minor update
+- Settings autostart page now shows Unraid's loading logo during delayed page load
 
 ###2026.09.20
 - Folder information now loads successfully when the Docker autostart configuration file is missing.
