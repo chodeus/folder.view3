@@ -108,6 +108,20 @@ body[data-fv3-unraid="modern"] div.title {
     opacity: 1;
 }
 
+.fv3-banner-debug-link {
+    text-decoration: underline;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* The link will not shrink, so a too-narrow banner gives the message its own row.
+   No breakpoint: what runs out is the banner's width, not the viewport's. */
+.fv3-banner-error {
+    flex-wrap: wrap;
+    column-gap: 12px;
+}
+
 /* --- General Folder Styles --- */
 @media (hover: hover) {
     .hover:hover div.folder-preview div {

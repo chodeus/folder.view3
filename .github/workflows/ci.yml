@@ -30,6 +30,9 @@ jobs:
           done < <(find src -name '*.php')
           exit $status
 
+      - name: FolderView Plus import tests
+        run: php .github/scripts/foreign_import_test.php
+
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
 

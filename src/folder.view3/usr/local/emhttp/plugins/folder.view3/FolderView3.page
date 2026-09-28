@@ -702,6 +702,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
     </div>
 </div>
 
+<script src="<?php autov('/plugins/folder.view3/scripts/debug.js')?>"></script>
 <script src="<?php autov('/plugins/folder.view3/scripts/folderview3.js')?>"></script>
 <script src="<?php autov('/plugins/folder.view3/scripts/csstool.js')?>"></script>
 

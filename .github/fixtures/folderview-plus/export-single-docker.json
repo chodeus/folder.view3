@@ -1,0 +1,141 @@
+{
+    "schemaVersion": 1,
+    "pluginVersion": "2026.09.17.03",
+    "exportedAt": "2026-09-23T07:25:23.264Z",
+    "type": "docker",
+    "mode": "single",
+    "folderId": "gX7Z4LK9337NLCMBv2sM",
+    "folder": {
+        "name": "Media",
+        "icon": "/plugins/dynamix.docker.manager/images/question.png",
+        "regex": "",
+        "containers": [
+            "app-alpha",
+            "app-beta"
+        ],
+        "hiddenPreviewMembers": [
+            "app-beta"
+        ],
+        "memberIdentities": {
+            "app-alpha": {
+                "kind": "docker",
+                "containerId": "0123456789ab",
+                "image": "example/alpha:latest",
+                "imageId": "sha256:aaaa",
+                "composeProject": "",
+                "template": "/boot/config/plugins/dockerMan/templates-user/my-app-alpha.xml",
+                "mountDestinations": [
+                    "/config"
+                ]
+            },
+            "app-beta": {
+                "kind": "docker",
+                "containerId": "ba9876543210",
+                "image": "example/beta:1.2",
+                "imageId": "sha256:bbbb",
+                "composeProject": "",
+                "template": "",
+                "mountDestinations": []
+            }
+        },
+        "settings": {
+            "folder_webui": true,
+            "folder_webui_url": "http://app-alpha.local:8080/",
+            "webui_profiles": [
+                {
+                    "id": "p1",
+                    "name": "Main",
+                    "containers": [
+                        "app-alpha"
+                    ]
+                }
+            ],
+            "preview": 2,
+            "preview_rows": 2,
+            "preview_overflow": "scroll",
+            "preview_status": "symbol",
+            "preview_hover": true,
+            "preview_hover_animation": "lift",
+            "preview_update": true,
+            "folder_update_highlight": true,
+            "preview_text_width": "120px",
+            "preview_grayscale": false,
+            "preview_hide_nested_items": false,
+            "child_folder_order": [],
+            "preview_child_folder_depth": 1,
+            "preview_webui": true,
+            "preview_logs": true,
+            "preview_console": false,
+            "preview_vertical_bars": true,
+            "preview_row_separator": true,
+            "preview_row_separator_color": "#334455",
+            "context": 1,
+            "context_trigger": 0,
+            "context_graph": 1,
+            "context_graph_time": 60,
+            "preview_border": true,
+            "preview_border_color": "#ff8800",
+            "preview_border_width": 2,
+            "preview_border_glow": true,
+            "preview_vertical_bars_color": "#00ff88",
+            "preview_vertical_bars_width": 2,
+            "dropdown_style": "chevron",
+            "dropdown_color": "#ffffff",
+            "dropdown_hover_color": "#cccccc",
+            "folder_accent_enabled": true,
+            "folder_accent_color": "#aa00ff",
+            "status_color_started": "#55b72d",
+            "status_color_started_explicit": true,
+            "status_color_paused": "#ffaa00",
+            "status_color_stopped": "#ff0000",
+            "status_color_text": "#ffffff",
+            "status_color_text_explicit": true,
+            "status_color_lock": false,
+            "health_warn_stopped_percent": 25,
+            "health_critical_stopped_percent": 75,
+            "health_profile": "balanced",
+            "health_updates_mode": "maintenance",
+            "health_all_stopped_mode": "critical",
+            "status_warn_stopped_percent": 50,
+            "update_column": true,
+            "default_action": false,
+            "expand_tab": true,
+            "override_default_actions": true,
+            "expand_dashboard": false,
+            "dashboard_overflow": "default",
+            "previewRows": 2,
+            "previewOverflow": "scroll",
+            "previewRowSeparator": true,
+            "previewHideNestedItems": false,
+            "childFolderOrder": [],
+            "previewChildFolderDepth": 1,
+            "previewHoverAnimation": "lift",
+            "dropdownStyle": "chevron",
+            "chevron_style": "chevron",
+            "chevronStyle": "chevron"
+        },
+        "actions": [
+            {
+                "name": "Restart all",
+                "type": 0,
+                "script_icon": "refresh",
+                "conatiners": [
+                    "app-alpha",
+                    "app-beta"
+                ],
+                "action": 2
+            },
+            {
+                "name": "Notify",
+                "type": 1,
+                "script_icon": "bell",
+                "script": "notify-media",
+                "script_args": "--quiet",
+                "script_sync": false
+            }
+        ],
+        "parentId": "",
+        "createdAt": "2026-09-23T07:25:23+00:00",
+        "updatedAt": "2026-09-23T07:25:23+00:00"
+    }
+}

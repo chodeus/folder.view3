@@ -782,10 +782,10 @@
                 const text = await resp.text();
                 let reason = text;
                 try { reason = JSON.parse(text).error || text; } catch (e) {}
-                swal({ title: fv3I18nOr('error', 'Error'), text: reason || fv3I18nOr('save-failed', 'Save failed'), type: 'error' });
+                fv3SwalError(reason || fv3I18nOr('save-failed', 'Save failed'), 'SETTINGS');
             }
         } catch (e) {
-            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('network-error', 'Network error'), type: 'error' });
+            fv3SwalError(fv3I18nOr('network-error', 'Network error'), 'SETTINGS');
         }
     }
 
@@ -1220,7 +1220,7 @@
             var apiUrl = 'https://api.github.com/repos/' + repo + '/contents/';
             if (branch) apiUrl += '?ref=' + encodeURIComponent(branch);
             const resp = await fetch(apiUrl, { headers: { 'User-Agent': 'FolderView3' } });
-            if (!resp.ok) { swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('theme-repo-unreachable', 'Could not reach repo. Check the URL.'), type: 'error' }); return; }
+            if (!resp.ok) { fv3SwalError(fv3I18nOr('theme-repo-unreachable', 'Could not reach repo. Check the URL.'), 'SETTINGS'); return; }
             const contents = await resp.json();
             const dirs = contents.filter(f => f.type === 'dir');
             const rootCss = contents.filter(f => f.type === 'file' && /\.css$/i.test(f.name));
@@ -1232,7 +1232,7 @@
             }
             await doImport(repo, '', branch);
         } catch (e) {
-            swal({ title: fv3I18nOr('error', 'Error'), text: fv3I18nOr('theme-repo-fetch-failed', 'Failed to fetch repo: $1', e.message), type: 'error' });
+            fv3SwalError(fv3I18nOr('theme-repo-fetch-failed', 'Failed to fetch repo: $1', e.message), 'SETTINGS');
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = fv3I18nOr('css-theme-import', 'Import from GitHub'); }
         }
@@ -1499,7 +1499,7 @@
         } catch (e) {
             reason = e.message || fv3I18nOr('network-error', 'Network error');
         }
-        swal({ title: fv3I18nOr('error', 'Error'), text: enable ? fv3I18nOr('theme-enable-failed', 'Could not enable the theme: $1', reason) : fv3I18nOr('theme-disable-failed', 'Could not disable the theme: $1', reason), type: 'error' });
+        fv3SwalError(enable ? fv3I18nOr('theme-enable-failed', 'Could not enable the theme: $1', reason) : fv3I18nOr('theme-disable-failed', 'Could not disable the theme: $1', reason), 'SETTINGS');
         return false;
     }
 
