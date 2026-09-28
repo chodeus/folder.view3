@@ -6,7 +6,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 - FolderView Plus migration now supported, see readme for FV Plus backup import behaviours
 - Significant debug package and error logging improvements
-- Improved form error handling across settings pages 
+- Improved form error handling across settings pages
 - Custom actions with non-English text or symbols no longer break the folder editor or fail to save
 - User Script arguments containing &, #, %, + or ? now reach the script exactly as typed
 - The error dialogs now provide an option to download a debug package
