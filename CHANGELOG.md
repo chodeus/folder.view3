@@ -4,25 +4,12 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- Every error dialog and banner now has a Download Debug Info button
-- Failed requests are captured even when debug mode was never armed
-- Server-side errors are kept in a size-capped error.log that the debug download includes
-- Debug downloads and the error log redact tokens, passwords and other secrets
-- One set of rules now validates settings from the settings page, a backup restore and the existing settings file
-- A backup can no longer persist unknown keys or invalid settings values
-- Saving settings can no longer truncate settings.json
-- One invalid value in a settings save now refuses the whole save
-- A settings file that is not a settings map is refused rather than merged into
-- Error banners now span the width above the list and appear correctly on the VMs and Dashboard pages
-- Error banner text no longer squeezes beside the download link, and the error dialog stays open after a download
-- Debug downloads are now named for the plugin, stamped in your local time, and record the theme in use
-- Debug downloads now include the Dashboard's VM section, and your folders even when debug mode was never armed
-- Refused settings saves and backup restores are now recorded in the error log
 - FolderView Plus migration now supported, see readme for FV Plus backup import behaviours
+- Significant debug package and error logging improvements
+- Improved form error handling across settings pages 
 - Custom actions with non-English text or symbols no longer break the folder editor or fail to save
 - User Script arguments containing &, #, %, + or ? now reach the script exactly as typed
-- The error dialog now stays open when you click Download Debug Info
-- Migration import dialogue improvements
+- The error dialogs now provide an option to download a debug package
 - Folder settings page minor update
 - Settings autostart page now shows Unraid's loading logo during delayed page load
 
