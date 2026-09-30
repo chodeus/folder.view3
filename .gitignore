@@ -8,3 +8,4 @@ dev/tests/
 tmp/
 dist/
 .ops/
+__pycache__/

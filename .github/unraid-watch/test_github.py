@@ -24,18 +24,11 @@ class GitHubTest(unittest.TestCase):
         self.compare(1, 'identical', 0, [])
         self.assertEqual(self.gh.between('o/r', sha(1), sha(2)), set())
 
-    def test_between_refuses_a_base_that_is_not_an_ancestor(self):
+    def test_between_answers_none_when_the_base_is_not_an_ancestor(self):
         for status in ('diverged', 'behind'):
             with self.subTest(status):
                 self.compare(1, status, 3, [10, 11, 12])
-                with self.assertRaisesRegex(GitHubError, 'not an ancestor'):
-                    self.gh.between('o/r', sha(1), sha(2))
-
-    def test_between_answers_none_for_a_diverged_pair_when_asked_not_to_raise(self):
-        self.compare(1, 'diverged', 3, [10, 11, 12])
-        self.assertIsNone(self.gh.between('o/r', sha(1), sha(2), strict=False))
-        self.compare(1, 'ahead', 1, [10])
-        self.assertEqual(self.gh.between('o/r', sha(1), sha(2), strict=False), {sha(10)})
+                self.assertIsNone(self.gh.between('o/r', sha(1), sha(2)))
 
     def test_tree_maps_every_path_once_and_refuses_a_cut_listing(self):
         route = url(f'/repos/o/r/git/trees/{sha(2)}', recursive=1)

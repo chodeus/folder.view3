@@ -76,16 +76,13 @@ class GitHub:
             raise GitHubError(f'{repo}: there is no ref called {ref}')
         return sha
 
-    def between(self, repo, base, head, strict=True):
-        """Shas after base up to head. When base is not an ancestor of head: raise, or None if not strict."""
+    def between(self, repo, base, head):
+        """Shas after base up to head; None when base is not an ancestor of head."""
         shas, total = [], 0
         for page in range(1, 101):
             data = self._call('GET', f'/repos/{repo}/compare/{base}...{head}', {'page': page, 'per_page': 100})
             if data['status'] not in ('ahead', 'identical'):
-                if not strict:
-                    return None
-                raise GitHubError(f'{repo}: {base[:7]} is not an ancestor of {head[:7]} ({data["status"]}); '
-                                  f'run again with base "{repo}=<ref>"')
+                return None
             if page == 1:
                 total = data['total_commits']
             shas += [c['sha'] for c in data['commits']]

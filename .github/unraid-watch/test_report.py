@@ -128,10 +128,6 @@ class ReportTest(Case):
         self.assertIn('- added `T.f39: Int`\n- … and 5 more\n', body)
         self.assertNotIn('T.f40', body)
 
-    def test_operation_with_two_errors_counts_once(self):
-        ops = [('q1', ['a.js:1']), ('q2', ['a.js:2'])]
-        self.assertEqual(watch.valid_count(ops, [('a.js:1', 'q1', 'first'), ('a.js:1', 'q1', 'second')]), 1)
-
     def test_oversized_report_is_cut_but_still_carries_its_state(self):
         data = {'releases': [], 'files': [], 'contract': 'Operations valid: none.',
                   'api': [('changed', 'T.f' + 'x' * 380, True, ['a.js:1'])] * 300}

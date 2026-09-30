@@ -185,6 +185,23 @@ reviews:
           reintroduce date or archive-glob versioning here.
         - .githooks/pre-push must fail closed: an unreadable .plg or a
           pluginURL that does not name the branch being pushed is a rejection.
+    - path: ".github/unraid-watch/**"
+      instructions: |
+        The upstream watcher for issue #52 (Python, graphql-core). Review for:
+        - FAIL CLOSED: anything unexpected from GitHub or upstream raises;
+          nothing is read as "no change". With no saved position the run
+          refuses instead of guessing.
+        - WRITE ORDER: every read happens before the first write, and the
+          comment that carries the saved position is the last write.
+        - TOKEN: only ever in the Authorization header, never in a URL, an
+          error message, a log line or a job output.
+        - UPSTREAM TEXT IS DATA: commit subjects, headings and schema text reach
+          a comment only through code(), never GITHUB_OUTPUT or a run: line,
+          and never start an output line (workflow commands parse there).
+        - ONE DEFINITION: release-notes parsing lives in releases.py and
+          GraphQL checks in schema.py; flag a second copy of either.
+        - TESTS use synthetic versions, shas and handles only; a value captured
+          from a live system in a fixture is a finding.
     - path: "**"
       instructions: |-
         Applies to every file, whatever the language:

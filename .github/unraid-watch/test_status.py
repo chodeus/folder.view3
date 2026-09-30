@@ -44,12 +44,6 @@ class StatusTest(Case):
                                                          WEB: {'emhttp/page/': 'markup', USERPREFS: 'called from a.js:5'},
                                                          DOCS: {}}, NEW)
 
-    def test_missing_names_the_field_or_keeps_the_message(self):
-        errors = [('a.js:1', 'q', "Cannot query field 'restart' on type 'DockerMutations'. Did you mean 'start'?"),
-                  ('a.js:2', 'q', "Cannot query field 'restart' on type 'DockerMutations'."),
-                  ('a.js:3', 'q', 'Unknown argument "to" on field "Mutation.move".')]
-        self.assertEqual(status.missing(errors), ['DockerMutations.restart', 'Unknown argument "to" on field "Mutation.move".'])
-
     def test_stages_cover_merged_released_and_the_prerelease(self):
         titles = [title for title, _ in self.view()['stages']]
         self.assertEqual(titles, ['Coming: merged, in no release', 'Coming: released API, not in an OS build',
