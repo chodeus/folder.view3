@@ -8,16 +8,27 @@ plugin stands. Both go to issue #52.
 - **check** (every CI run, offline). Reads each GraphQL document out of `scripts/*.js` and `*.page`, and each
   webgui PHP file the plugin references. Fails when a document is not a plain string, because nothing
   downstream could see it.
-- **contract** (pull requests and pushes that touch `src/` or this directory, and daily for `main` and `beta`).
-  Validates every operation against the `unraid/api` schema on `main` and at the latest release, and confirms
-  every watched path still exists upstream. Red means the plugin sends something that is no longer valid, or a
-  file it depends on is gone.
-- **watch** (daily, from `main`). Does two things:
+- **contract** (pull requests that touch `src/`, this directory or the workflow file, every push to `main` or
+  `beta`, and daily for both). Validates every operation against the `unraid/api` schema on `main` and at the
+  latest release, and confirms every watched path still exists upstream. Red means the plugin sends something
+  that is no longer valid, or a file it depends on is gone. The daily run checks each branch with that branch's
+  copy of the tool; a manual run checks the branch it is started on.
+- **watch** (daily, on every push to `beta`, and by hand). It always reads the plugin on `beta`, whichever branch
+  starts it, and does two things:
   - Posts a news comment when something changed since the previous run: the first heading of an Unraid OS
     release-notes file (a new beta, rc or stable), the Docker and VM part of the API schema, or commits on the
     watched files. A day with nothing relevant leaves no comment.
   - Rewrites the status comment. It is rebuilt from upstream on every run and only written when it reads
     differently, so it does not notify.
+
+GitHub starts scheduled runs only from the default branch, and shows the Run workflow button only when the
+workflow is there. While the workflow is on `beta` alone, the report runs on pushes to `beta` and by hand:
+
+```sh
+gh workflow run unraid-watch.yml --ref beta -f dry_run=false
+```
+
+Once it is on `main` the daily run starts by itself, and still reads `beta`.
 
 ## The status comment
 
@@ -69,11 +80,15 @@ Set `GITHUB_TOKEN` for anything beyond `check`; without one GitHub allows 60 req
 ## State
 
 The position of the last run is a hidden marker at the end of the workflow's latest news comment on the issue.
-With no marker the run stops instead of guessing. Start it from the Actions tab with `base`, for example
-`unraid/api=v4.35.1 unraid/webgui=7.3.2 unraid/docs=main`. The same input replays any range, and `dry_run` prints
-both comments in the run summary without writing.
+With no marker the run stops instead of guessing. Start it by hand with `base`, for example
+`-f base='unraid/api=v4.35.1 unraid/webgui=7.3.2 unraid/docs=main'`. The same input replays any range, and
+`dry_run`, which is on unless you turn it off, prints both comments in the run summary without writing.
 
 A run reads everything before it writes, and the comment that carries the position is its last write. A run that
 fails is repeated in full by the next one.
+
+Report runs go one at a time, and GitHub keeps only one waiting. A newer run replaces the waiting one, which then
+shows as cancelled. Nothing is lost, because every run reports from the saved position, but a cancelled manual
+run with `base` has to be started again.
 
 The status comment carries no state. Delete it and the next run writes a new one.
