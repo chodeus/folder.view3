@@ -30,6 +30,13 @@ class GitHubTest(unittest.TestCase):
                 self.compare(1, status, 3, [10, 11, 12])
                 self.assertIsNone(self.gh.between('o/r', sha(1), sha(2)))
 
+    def test_between_refuses_a_status_it_does_not_know(self):
+        for status in (None, 'unknown'):
+            with self.subTest(status):
+                self.compare(1, status, 1, [10])
+                with self.assertRaisesRegex(GitHubError, 'unknown compare status'):
+                    self.gh.between('o/r', sha(1), sha(2))
+
     def test_tree_maps_every_path_once_and_refuses_a_cut_listing(self):
         route = url(f'/repos/o/r/git/trees/{sha(2)}', recursive=1)
         self.fake.routes['GET', route] = {'truncated': False, 'tree': [{'path': 'a/b.php', 'sha': 'x1'}, {'path': 'a', 'sha': 'x2'}]}

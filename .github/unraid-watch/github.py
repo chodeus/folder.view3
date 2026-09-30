@@ -81,8 +81,10 @@ class GitHub:
         shas, total = [], 0
         for page in range(1, 101):
             data = self._call('GET', f'/repos/{repo}/compare/{base}...{head}', {'page': page, 'per_page': 100})
-            if data['status'] not in ('ahead', 'identical'):
+            if data['status'] in ('behind', 'diverged'):
                 return None
+            if data['status'] not in ('ahead', 'identical'):
+                raise GitHubError(f'{repo}: unknown compare status {data["status"]!r} for {base[:7]}...{head[:7]}')
             if page == 1:
                 total = data['total_commits']
             shas += [c['sha'] for c in data['commits']]
