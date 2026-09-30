@@ -71,6 +71,20 @@ class CheckTest(unittest.TestCase):
         self.assertIsNone(schema.syntax_error('{ a }'))
         self.assertIn('Syntax Error', schema.syntax_error('{ a '))
 
+    def test_operation_with_two_errors_counts_once(self):
+        ops = [('q1', ['a.js:1']), ('q2', ['a.js:2'])]
+        self.assertEqual(schema.valid_count(ops, [('a.js:1', 'q1', 'first'), ('a.js:1', 'q1', 'second')]), 1)
+
+    def test_missing_names_the_field_or_keeps_the_message(self):
+        errors = [('a.js:1', 'q', "Cannot query field 'restart' on type 'DockerMutations'. Did you mean 'start'?"),
+                  ('a.js:2', 'q', "Cannot query field 'restart' on type 'DockerMutations'."),
+                  ('a.js:3', 'q', 'Unknown argument "to" on field "Mutation.move".')]
+        self.assertEqual(schema.missing(errors), ['DockerMutations.restart', 'Unknown argument "to" on field "Mutation.move".'])
+
+    def test_missing_reads_the_message_graphql_core_actually_writes(self):
+        errors, _, _ = schema.check(S, [op('mutation { docker { restart(id: 1) { id } } }')])
+        self.assertEqual(schema.missing(errors), ['DockerMutations.restart'])
+
 
 class SurfaceTest(unittest.TestCase):
     def test_matching_roots_and_everything_they_reach(self):

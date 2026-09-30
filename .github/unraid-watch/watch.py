@@ -11,7 +11,7 @@ import schema
 import status
 from github import GitHub, GitHubError
 from report import announce, code, read_state, render, render_status, restamp, status_comment
-from upstream import api_changes, release_notes, source, valid_count, validity
+from upstream import api_changes, release_notes, source, validity
 
 HERE = Path(__file__).resolve().parent
 
@@ -90,7 +90,7 @@ def cmd_contract(cfg, gh, root, refs):
         errors += [f'{site}: not valid on {api["repo"]} {ref}: {message} In: {query}' for site, query, message in bad]
         for site, _, message in deprecated:
             annotate('warning', f'{site}: deprecated on {api["repo"]} {ref}: {message}')
-        lines.append(f'- {valid_count(ops, bad)} of {len(ops)} operations valid on {code(ref)}, {len(deprecated)} deprecated')
+        lines.append(f'- {schema.valid_count(ops, bad)} of {len(ops)} operations valid on {code(ref)}, {len(deprecated)} deprecated')
     for src in cfg['sources']:
         repo, head = src['repo'], gh.sha(src['repo'], src['branch'])
         paths = sorted({*watched[repo], *filter(None, (src.get('releases'), src.get('schema')))})
@@ -131,6 +131,9 @@ def cmd_watch(cfg, gh, root, me, base, dry_run):
         if start == head:
             continue
         within = gh.between(repo, start, head)
+        if within is None:
+            raise Problem(f'{repo}: {start[:7]} is not an ancestor of {head[:7]}; '
+                          f'run the workflow by hand with base "{repo}=<ref>"')
         rows = [(path, why, commits) for path, why in sorted(watched[repo].items())
                 for commits in [gh.path_commits(repo, path, head, within)] if commits]
         if rows:
@@ -144,7 +147,7 @@ def cmd_watch(cfg, gh, root, me, base, dry_run):
     if not quiet:
         api = source(cfg, 'schema')
         report['contract'] = 'Operations valid: ' + ', '.join(
-            f'{valid_count(ops, bad)} of {len(ops)} on {code(ref)}'
+            f'{schema.valid_count(ops, bad)} of {len(ops)} on {code(ref)}'
             for ref, bad, _ in validity(gh, api, ops, [api['branch'], gh.latest_release(api['repo'])])) + '.'
         body = render(report, heads)
     show(body)

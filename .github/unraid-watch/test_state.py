@@ -80,7 +80,7 @@ class StateTest(Case):
     def test_rewritten_history_stops_the_run_before_any_write(self):
         self.w.state()
         self.w.between(API, [1, 2], status='diverged')
-        with self.assertRaisesRegex(GitHubError, 'not an ancestor'):
+        with self.assertRaisesRegex(watch.Problem, f'unraid/api: {OLD[API][:7]} is not an ancestor .*base "unraid/api=<ref>"'):
             self.w.run()
         self.assertEqual((self.w.posted, self.w.patched), ([], []))
 

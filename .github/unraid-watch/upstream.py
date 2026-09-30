@@ -67,14 +67,10 @@ def validity(gh, src, ops, refs):
     return out
 
 
-def valid_count(ops, errors):
-    return len(ops) - len({query for _, query, _ in errors})
-
-
 def differences(gh, repo, paths, start, head):
     """[(path, why, commits)] for watched paths that differ between two commits; commits is None when start is no ancestor."""
     a, b = gh.tree(repo, start), gh.tree(repo, head)
     changed = [(path, why) for path, why in sorted(paths.items()) if a.get(path.rstrip('/')) != b.get(path.rstrip('/'))]
     # Release branches diverge from the development line, so a commit list does not always exist
-    within = gh.between(repo, start, head, strict=False) if changed else None
+    within = gh.between(repo, start, head) if changed else None
     return [(path, why, None if within is None else gh.path_commits(repo, path, head, within)) for path, why in changed]

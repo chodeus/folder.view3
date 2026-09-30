@@ -1,16 +1,7 @@
 """Where FolderView3 stands against Unraid today: what is coming, what each OS release supports, what it leaves unused."""
-import re
-
 import releases
 import schema
 import upstream
-
-FIELD = re.compile(r"Cannot query field '(\w+)' on type '(\w+)'")
-
-
-def missing(errors):
-    """What the failed operations asked for that is not there: Type.field, or the message for another kind of error."""
-    return sorted({f'{m[2]}.{m[1]}' if m else message for _, _, message in errors for m in [FIELD.search(message)]})
 
 
 def stage(gh, cfg, ops, watched, spans):
@@ -63,7 +54,7 @@ def gather(gh, cfg, ops, watched, heads):
             rows.setdefault(f'v{number}', []).append(f'Unraid {version}')
         else:
             unstated.append(version)
-    matrix = [(ref, rows[ref], upstream.valid_count(ops, bad), len(ops), missing(bad))
+    matrix = [(ref, rows[ref], schema.valid_count(ops, bad), len(ops), schema.missing(bad))
               for ref, bad, _ in upstream.validity(gh, api, ops, list(rows))]
 
     current = schema.load(gh.file(core, heads[core], api['schema']))

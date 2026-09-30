@@ -10,6 +10,9 @@ from graphql.language import Visitor
 from graphql.utilities import TypeInfoVisitor
 from graphql.validation import NoDeprecatedCustomRule
 
+FIELD = re.compile(r"Cannot query field '(\w+)' on type '(\w+)'")
+
+
 @functools.lru_cache(maxsize=32)
 def load(sdl):
     """Schema for an SDL text; a run meets the same text several times and parses it once."""
@@ -52,6 +55,16 @@ def check(schema, ops):
         info = TypeInfo(schema)
         visit(doc, TypeInfoVisitor(info, _Fields(info, used, where)))
     return errors, deprecated, used
+
+
+def valid_count(ops, errors):
+    """How many of the operations check() found no error in."""
+    return len(ops) - len({query for _, query, _ in errors})
+
+
+def missing(errors):
+    """What the failed operations asked for that is not there: Type.field, or the message for another kind of error."""
+    return sorted({f'{m[2]}.{m[1]}' if m else message for _, _, message in errors for m in [FIELD.search(message)]})
 
 
 def _deprecated(item):
