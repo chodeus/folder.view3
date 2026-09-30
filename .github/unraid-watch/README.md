@@ -8,11 +8,11 @@ plugin stands. Both go to issue #52.
 - **check** (every CI run, offline). Reads each GraphQL document out of `scripts/*.js` and `*.page`, and each
   webgui PHP file the plugin references. Fails when a document is not a plain string, because nothing
   downstream could see it.
-- **contract** (pull requests that touch `src/` or this directory, every push to `main` or `beta`, and daily for
-  both). Validates every operation against the `unraid/api` schema on `main` and at the latest release, and
-  confirms every watched path still exists upstream. Red means the plugin sends something that is no longer
-  valid, or a file it depends on is gone. The daily run checks each branch with that branch's copy of the tool;
-  a manual run checks the branch it is started on.
+- **contract** (pull requests that touch `src/`, this directory or the workflow file, every push to `main` or
+  `beta`, and daily for both). Validates every operation against the `unraid/api` schema on `main` and at the
+  latest release, and confirms every watched path still exists upstream. Red means the plugin sends something
+  that is no longer valid, or a file it depends on is gone. The daily run checks each branch with that branch's
+  copy of the tool; a manual run checks the branch it is started on.
 - **watch** (daily, on every push to `beta`, and by hand). It always reads the plugin on `beta`, whichever branch
   starts it, and does two things:
   - Posts a news comment when something changed since the previous run: the first heading of an Unraid OS
@@ -86,5 +86,9 @@ With no marker the run stops instead of guessing. Start it by hand with `base`, 
 
 A run reads everything before it writes, and the comment that carries the position is its last write. A run that
 fails is repeated in full by the next one.
+
+Report runs go one at a time, and GitHub keeps only one waiting. A newer run replaces the waiting one, which then
+shows as cancelled. Nothing is lost, because every run reports from the saved position, but a cancelled manual
+run with `base` has to be started again.
 
 The status comment carries no state. Delete it and the next run writes a new one.
