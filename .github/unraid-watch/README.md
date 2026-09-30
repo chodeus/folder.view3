@@ -73,4 +73,7 @@ With no marker the run stops instead of guessing. Start it from the Actions tab 
 `unraid/api=v4.35.1 unraid/webgui=7.3.2 unraid/docs=main`. The same input replays any range, and `dry_run` prints
 both comments in the run summary without writing.
 
+A run reads everything before it writes, and the comment that carries the position is its last write. A run that
+fails is repeated in full by the next one.
+
 The status comment carries no state. Delete it and the next run writes a new one.

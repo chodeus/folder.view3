@@ -3,12 +3,12 @@ import json
 import os
 import re
 
+import releases
 from github import SHA, GitHubError
 
 BOT = 'github-actions[bot]'
 STATE = re.compile(r'\n<!-- unraid-watch (\{[^<>\n]*\}) -->\s*\Z')
 STATUS = '<!-- unraid-watch-status -->'
-VERSION = re.compile(r'Version (\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+(?:\.\d+)*)?)(?=\s|$)')
 COMMENT_URL = re.compile(r'https://github\.com/[\w.-]+/[\w.-]+/issues/\d+#issuecomment-\d+\Z')
 
 
@@ -132,7 +132,7 @@ def announce(report, url):
     path = os.environ.get('GITHUB_OUTPUT')
     if not COMMENT_URL.match(url):
         raise GitHubError('the comment URL GitHub returned is not an issue comment link')
-    versions = [m.group(1) for title, _, _ in report['releases'] for m in [VERSION.match(title)] if m]
+    versions = [v for title, name, _ in report['releases'] for v in [releases.os_version(title, name)] if v]
     commits = sum(len(c) for _, _, _, rows in report['files'] for _, _, c in rows)
     title = f'Unraid {versions[0]} release notes published' if versions else 'Unraid watch: upstream changes for FolderView3'
     counts = f'{len(report["releases"])} release note update(s), {len(report["api"])} API change(s), {commits} commit(s) on watched files'

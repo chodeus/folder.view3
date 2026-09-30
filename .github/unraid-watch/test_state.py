@@ -3,7 +3,7 @@ import unittest
 import report
 import watch
 from github import GitHubError
-from world import API, DOCS, ME, NEW, OLD, SCRIPT, WEB, Case, World, bot, url
+from world import API, BOT, DOCS, ME, NEW, OLD, RELEASE, SCRIPT, WEB, Case, World, bot, url
 
 
 class StateTest(Case):
@@ -91,6 +91,27 @@ class StateTest(Case):
         with self.assertRaisesRegex(GitHubError, 'HTTP 500'):
             self.w.run()
         self.assertEqual((self.w.posted, self.w.patched), ([], []))
+
+    def test_failed_status_read_stops_the_run_before_any_write(self):
+        outputs = self.outputs()
+        self.w.state()
+        self.w.hit()
+        self.w.fake.routes['GET', url(f'/repos/{API}/git/trees/{RELEASE}', recursive=1)] = (500, 'oops')
+        with self.assertRaisesRegex(GitHubError, 'HTTP 500'):
+            self.w.run()
+        self.assertEqual((self.w.fake.sent('POST'), self.w.fake.sent('PATCH')), ([], []))
+        self.assertFalse(outputs.exists())
+
+    def test_failed_status_write_leaves_the_saved_position_alone(self):
+        outputs = self.outputs()
+        self.w.state()
+        self.w.hit()
+        self.w.comments.append({'id': 300, 'user': BOT, 'body': 'old view\n\n' + report.STATUS})
+        self.w.fake.routes['PATCH', f'/repos/{ME}/issues/comments/300'] = (500, 'oops')
+        with self.assertRaisesRegex(GitHubError, 'HTTP 500'):
+            self.w.run()
+        self.assertEqual(self.w.posted, [])
+        self.assertFalse(outputs.exists())
 
     def test_unreadable_call_in_the_plugin_stops_the_run(self):
         world = World(self, SCRIPT + 'fv3GraphQL(dynamic);\n')

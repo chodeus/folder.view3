@@ -88,7 +88,7 @@ def cmd_contract(cfg, gh, root, refs):
     lines = []
     for ref, bad, deprecated in validity(gh, api, ops, refs or [api['branch'], gh.latest_release(api['repo'])]):
         errors += [f'{site}: not valid on {api["repo"]} {ref}: {message} In: {query}' for site, query, message in bad]
-        for site, query, message in deprecated:
+        for site, _, message in deprecated:
             annotate('warning', f'{site}: deprecated on {api["repo"]} {ref}: {message}')
         lines.append(f'- {valid_count(ops, bad)} of {len(ops)} operations valid on {code(ref)}, {len(deprecated)} deprecated')
     for src in cfg['sources']:
@@ -139,28 +139,31 @@ def cmd_watch(cfg, gh, root, me, base, dry_run):
             report['api'] = api_changes(gh, src, start, head, ops)
         if 'releases' in src:
             report['releases'] = release_notes(gh, src, start, head)
-    if holder and not (report['releases'] or report['api'] or report['files']):
-        if heads != saved and not dry_run:
-            gh.edit_comment(me, holder['id'], restamp(holder['body'], heads))
-        show('### Unraid watch\n\nNo relevant upstream changes.')
-    else:
+    quiet = holder is not None and not (report['releases'] or report['api'] or report['files'])
+    body = '### Unraid watch\n\nNo relevant upstream changes.'
+    if not quiet:
         api = source(cfg, 'schema')
         report['contract'] = 'Operations valid: ' + ', '.join(
             f'{valid_count(ops, bad)} of {len(ops)} on {code(ref)}'
             for ref, bad, _ in validity(gh, api, ops, [api['branch'], gh.latest_release(api['repo'])])) + '.'
         body = render(report, heads)
-        show(body)
-        if not dry_run:
-            announce(report, gh.comment(me, cfg['issue'], body))
-    # The status view is rebuilt from upstream every run, so it is only written when it reads differently
+    show(body)
     view = render_status(status.gather(gh, cfg, ops, watched, heads))
     show(view)
+    if dry_run:
+        return 0
+    # Every read is done. The status view carries no state, so it goes first and is only written when it reads differently
     current = status_comment(comments)
-    if not dry_run and not (current and current['body'].strip() == view.strip()):
+    if not (current and current['body'].strip() == view.strip()):
         if current:
             gh.edit_comment(me, current['id'], view)
         else:
             gh.comment(me, cfg['issue'], view)
+    # The write that moves the saved position is the last call, so a run that fails earlier is repeated in full
+    if not quiet:
+        announce(report, gh.comment(me, cfg['issue'], body))
+    elif heads != saved:
+        gh.edit_comment(me, holder['id'], restamp(holder['body'], heads))
     return 0
 
 

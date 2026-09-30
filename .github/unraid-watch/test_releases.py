@@ -20,6 +20,7 @@ class ReleasesTest(unittest.TestCase):
 
     def test_falls_back_to_the_file_name_and_rejects_a_file_with_no_version(self):
         self.assertEqual(releases.read('9.0.7.md', '# Release notes\n'), ('9.0.7', None))
+        self.assertEqual(releases.read('9.0.8.md', 'Notes with no heading.\n'), ('9.0.8', None))
         self.assertIsNone(releases.read('index.md', '# Release notes\n'))
 
     def test_reads_the_bundled_api_version_in_every_style_the_notes_use(self):

@@ -228,6 +228,12 @@ class Case(unittest.TestCase):
     def saved(self, body):
         return report.read_state([bot(body)])[0]
 
+    def outputs(self):
+        """Point the job outputs at a file and return its path."""
+        path = Path(self.w.root, 'out')
+        os.environ['GITHUB_OUTPUT'] = str(path)
+        return path
+
     def captured(self, call, *args):
         out = io.StringIO()
         with redirect_stdout(out):

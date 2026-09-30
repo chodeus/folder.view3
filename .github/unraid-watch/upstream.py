@@ -12,14 +12,6 @@ def source(cfg, key):
     return next(s for s in cfg['sources'] if key in s)
 
 
-def headline(text):
-    """First markdown heading of a release-notes file."""
-    for line in (text or '').splitlines():
-        if line.startswith('# '):
-            return line[2:].strip()
-    return None
-
-
 def release_notes(gh, src, start, head):
     """[(heading, file name, url)] for release notes whose first heading changed."""
     repo, folder = src['repo'], src['releases']
@@ -28,8 +20,8 @@ def release_notes(gh, src, start, head):
     for name in sorted(new):
         if new[name] == old.get(name) or not NOTES.match(name):
             continue
-        before = headline(gh.file(repo, start, folder + name)) if name in old else None
-        after = headline(gh.file(repo, head, folder + name))
+        before = releases.heading(gh.file(repo, start, folder + name)) if name in old else None
+        after = releases.heading(gh.file(repo, head, folder + name))
         if after and after != before:
             out.append((after, name, f'https://github.com/{repo}/blob/{head}/{folder}{name}'))
     return out

@@ -4,7 +4,7 @@ import report
 import status
 import upstream
 import watch
-from world import (API, BETA_API, BETA_WEB, CFG, DOCS, LATEST_API, NEW, RELEASE, SCRIPT, STABLE_WEB, USERPREFS, WEB,
+from world import (API, BETA_API, BETA_WEB, CFG, DOCS, LATEST_API, ME, NEW, RELEASE, SCRIPT, STABLE_WEB, USERPREFS, WEB,
                    Case, World, commit, sha, url)
 
 OPS = [('{ docker { statuses { name } } }', ['a.js:3']),
@@ -196,11 +196,11 @@ class StatusCommentTest(Case):
         self.w.comments.append({'id': 299, 'user': {'login': report.BOT}, 'body': 'older view\n\n' + report.STATUS})
         self.w.comments.append({'id': 300, 'user': {'login': report.BOT}, 'body': 'old view\n\n' + report.STATUS})
         self.w.comments.append({'id': 301, 'user': {'login': 'someone'}, 'body': 'fake\n\n' + report.STATUS})
-        self.w.fake.routes['PATCH', f'/repos/me/plugin/issues/comments/300'] = {'id': 300}
+        self.w.fake.routes['PATCH', f'/repos/{ME}/issues/comments/300'] = {'id': 300}
         self.w.run()
         ((method, body),) = self.w.status
         self.assertEqual(method, 'PATCH')
-        self.assertEqual([c[1] for c in self.w.fake.sent('PATCH') if c[2]['body'] == body], ['/repos/me/plugin/issues/comments/300'])
+        self.assertEqual([c[1] for c in self.w.fake.sent('PATCH') if c[2]['body'] == body], [f'/repos/{ME}/issues/comments/300'])
 
     def test_never_mistaken_for_the_saved_position(self):
         self.w.state()

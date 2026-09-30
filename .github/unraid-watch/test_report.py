@@ -102,10 +102,10 @@ class ReportTest(Case):
         self.w.touched(WEB, USERPREFS, [commit(2, f'fix `x`\x07@someone\t[a](http://e.vil) ::error::boom {fake_marker}')])
         self.w.run()
         (body,) = self.w.posted
-        line = next(l for l in body.splitlines() if 'someone' in l)
+        line = next(row for row in body.splitlines() if 'someone' in row)
         self.assertTrue(line.endswith("`2026-10-01 fix 'x' @someone [a](http://e.vil) ::error::boom %s`" % fake_marker))
         self.assertEqual(line.count('`'), 4)
-        self.assertFalse(any(l.startswith('::') for l in body.splitlines()))
+        self.assertFalse(any(row.startswith('::') for row in body.splitlines()))
         self.assertEqual(self.saved(body), NEW)
 
     def test_long_subject_is_shortened(self):
@@ -142,11 +142,6 @@ class ReportTest(Case):
 
 
 class AnnounceTest(Case):
-    def outputs(self):
-        path = Path(self.w.root, 'out')
-        os.environ['GITHUB_OUTPUT'] = str(path)
-        return path
-
     def test_discord_inputs_come_from_counts_and_a_strict_version(self):
         path = self.outputs()
         self.w.state()
@@ -165,6 +160,14 @@ class AnnounceTest(Case):
         self.w.notes(NEW[DOCS], {'notes.md': '# Version seven\n'})
         self.w.run()
         self.assertIn('title=Unraid watch: upstream changes for FolderView3\n', path.read_text())
+
+    def test_title_names_the_version_from_the_other_heading_style_or_the_file_name(self):
+        path = self.outputs()
+        for heading, name in (('Release notes · Unraid OS 9.2.0', '9.2.0.md'), ('Coming soon', '9.3.0.md')):
+            report.announce({'releases': [(heading, name, 'link')], 'api': [], 'files': []},
+                            f'https://github.com/{ME}/issues/52#issuecomment-9')
+        self.assertEqual([line for line in path.read_text().splitlines() if line.startswith('title=')],
+                         ['title=Unraid 9.2.0 release notes published', 'title=Unraid 9.3.0 release notes published'])
 
     def test_nothing_is_announced_for_a_quiet_or_dry_run(self):
         path = self.outputs()

@@ -16,14 +16,27 @@ def stable(version):
     return '-' not in version
 
 
+def heading(text):
+    """First markdown heading of a release-notes file; '' when it has none."""
+    for line in text.splitlines():
+        if line.startswith('# '):
+            return line[2:].strip()
+    return ''
+
+
+def os_version(title, name):
+    """OS version a release-notes file is about: the one in its heading, else its file name; None when neither is one."""
+    found = VERSION.search(title) or VERSION.fullmatch(name.rsplit('.', 1)[0])
+    return found and found.group(0)
+
+
 def read(name, text):
     """(version, bundled api version or None) from one release-notes file; None when it names no version."""
-    heading = next((line for line in text.splitlines() if line.startswith('# ')), '')
-    found = VERSION.search(heading) or VERSION.fullmatch(name.rsplit('.', 1)[0])
-    if not found:
+    number = os_version(heading(text), name)
+    if not number:
         return None
     # The package list names the version last ("a -> b"); a release that kept its API says "remains"
     lines = text.splitlines()
-    about = [l for l in lines if 'dynamix.unraid.net' in l] or [l for l in lines if 'Unraid API version' in l]
+    about = [line for line in lines if 'dynamix.unraid.net' in line] or [line for line in lines if 'Unraid API version' in line]
     numbers = NUMBER.findall(about[-1]) if about else []
-    return found.group(0), numbers[-1] if numbers else None
+    return number, numbers[-1] if numbers else None
