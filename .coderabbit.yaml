@@ -103,14 +103,18 @@ reviews:
         the bug.
 
         CSRF: Unraid's webGui auto-attaches csrf_token to every same-origin
-        jQuery POST (global ajaxPrefilter in HeadInlineJS.php; upstream
-        guidance: "the webGUI will add it to POST methods automatically"), so
-        a bare same-origin $.post/$.ajax POST is correct — do NOT flag it.
-        Only requests the injector can't reach need the token explicitly
-        (csrf_token field or X-Csrf-Token header, guarded with
-        typeof csrf_token !== 'undefined'): fetch/XMLHttpRequest, and any
-        non-POST or cross-origin mutating call. Flag a mutating fetch/XHR
-        without it.
+        jQuery POST (global ajaxPrefilter in the page layout, present from
+        7.0.0), so a bare same-origin $.post/$.ajax POST is correct — do NOT
+        flag it. Requests the injector can't reach need the token explicitly,
+        guarded with typeof csrf_token !== 'undefined':
+        - fetch/XHR or any non-jQuery mutating call to a plugin PHP endpoint:
+          send csrf_token as a POST field. local_prepend.php only accepts the
+          X-CSRF-Token header from Unraid 7.3.0 and this plugin supports 7.0,
+          so a header-only token fails on 7.0-7.2.
+        - fetch/WebSocket to /graphql (the Unraid API): the X-CSRF-Token header
+          (x-csrf-token in connection_init) is the API's own check and is
+          correct there.
+        Flag a mutating request without the token in the right form.
 
         EVENT BUS FROZEN: the customEvents / event-bus contract is FROZEN. Do
         not rename, repurpose, or remove existing custom events — extensions
