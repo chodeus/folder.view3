@@ -1272,27 +1272,7 @@ fv3DetectApi().then(() => {
     }
 });
 
-// memToB() moved to advanced-preview.js (window global)
-
-
-// Convert a byte count to a human-readable memory string (B/KiB/MiB/...).
-const bToMem = (b) => {
-    if (typeof b !== 'number' || isNaN(b) || b < 0) {
-        fv3DebugWarn('bToMem', `Invalid input ${b}. Returning '0 B'.`);
-        return '0 B';
-    }
-    if (b === 0) return '0 B';
-
-    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
-    let i = 0;
-    let value = b;
-    while (value >= 1024 && i < units.length - 1) {
-        value /= 1024;
-        i++;
-    }
-    const result = `${value.toFixed(2)} ${units[i]}`;
-    return result;
-};
+// memToB() and bToMem() moved to advanced-preview.js (window globals)
 
 
 fv3Debug('init', 'globals', {
