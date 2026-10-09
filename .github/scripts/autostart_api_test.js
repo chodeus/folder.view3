@@ -13,11 +13,11 @@ const lift = (name) => {
     const end = source.findIndex((l, i) => i > start && l === '};');
     return source.slice(start, end + 1).join('\n');
 };
-const names = ['fv3AsFileWaits', 'fv3AsWant', 'fv3AsUpdateConfigCalls', 'fv3AsApiEntries', 'fv3AsApiSave'];
+const names = ['fv3AsFileWaits', 'fv3AsWant', 'fv3AsUpdateConfigCalls', 'fv3AsApiEntries', 'fv3AsChangedWaits', 'fv3AsApiSave'];
 let gql = () => Promise.reject(new Error('no answer set'));
 const sentQueries = [];
 const page = vm.createContext({ fv3GraphQL: (q, v) => { sentQueries.push({ q, v }); return gql(q, v); }, fv3DebugWarn: () => {} });
-const { fv3AsWant, fv3AsUpdateConfigCalls, fv3AsApiEntries, fv3AsApiSave } =
+const { fv3AsWant, fv3AsUpdateConfigCalls, fv3AsApiEntries, fv3AsChangedWaits, fv3AsApiSave } =
     vm.runInContext(names.map(lift).join('\n') + `\n({ ${names.join(', ')} })`, page);
 
 let failed = 0;
@@ -121,7 +121,16 @@ check('a name that is off needs no id', same(fv3AsApiEntries(want, liveWithE, co
 check('only the first name counts', fv3AsApiEntries({ alias: { on: true, wait: 0 } }, [], containers) === null);
 check('a malformed container is skipped', fv3AsApiEntries({ 'app-n': { on: true, wait: 0 } }, [], containers) === null
     && fv3AsApiEntries({ 'app-s': { on: true, wait: 0 } }, [], containers) === null);
-check('everything off is an empty list, which needs no ids', same(fv3AsApiEntries({ 'app-a': { on: false, wait: 0 } }, [{ name: 'app-a', wait: 0 }], []), []));
+check('everything off is an empty list when the container read is healthy, and stops when it is empty',
+    same(fv3AsApiEntries({ 'app-a': { on: false, wait: 0 } }, [{ name: 'app-a', wait: 0 }], containers), [])
+    && fv3AsApiEntries({ 'app-a': { on: false, wait: 0 } }, [{ name: 'app-a', wait: 0 }], []) === null);
+
+// update_autostart.php folds every wait it is sent, so only the edited ones go: a wait changed elsewhere survives
+const waitsBefore = { toggles: {}, waits: { 'app-a': 0, 'app-b': 30, 'app-c': 10 } };
+const waitsNow = { 'app-a': 0, 'app-b': 45, 'app-c': 0, 'app-d': 15, 'app-e': 0, constructor: 0 };
+check('only edited waits are sent: a changed one, a cleared one as 0, a new one', same(fv3AsChangedWaits({ waits: waitsNow }, waitsBefore), { 'app-b': 45, 'app-c': 0, 'app-d': 15 }),
+    fv3AsChangedWaits({ waits: waitsNow }, waitsBefore));
+check('nothing edited sends no waits', same(fv3AsChangedWaits({ waits: { 'app-a': 0, 'app-b': 30 } }, waitsBefore), {}));
 check('a file line missing from the wanted state stops it', fv3AsApiEntries({}, [{ name: 'app-a', wait: 0 }], containers) === null
     && fv3AsApiEntries({}, [{ name: 'constructor', wait: 0 }], containers) === null);
 check('a repeated file line is one entry', same(fv3AsApiEntries({ 'app-a': { on: true, wait: 0 } }, [{ name: 'app-a', wait: 0 }, { name: 'app-a', wait: 0 }], containers), [{ id: 'id-a', autoStart: true, wait: 0 }]));

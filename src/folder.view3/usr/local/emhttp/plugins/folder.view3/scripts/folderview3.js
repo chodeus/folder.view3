@@ -1025,11 +1025,12 @@ const fv3AsUpdateConfigCalls = (want, lines) => {
     return calls;
 };
 
-// updateAutostartConfiguration entries in file order, then newly enabled names; null when a wanted name has no API id,
-// because the mutation drops that line without an error
+// updateAutostartConfiguration entries in file order, then newly enabled names; null when the container list is empty
+// or a wanted name has no API id, because the mutation drops such lines without an error
 const fv3AsApiEntries = (want, lines, containers) => {
+    if (!Array.isArray(containers) || !containers.length) return null;
     const ids = {};
-    (Array.isArray(containers) ? containers : []).forEach(c => {
+    containers.forEach(c => {
         // the name the API writes: the first one, leading slash dropped (its getDockerContainerPrimaryName)
         const name = c && Array.isArray(c.names) && typeof c.names[0] === 'string' ? c.names[0].replace(/^\//, '') : '';
         if (name && typeof c.id === 'string' && !Object.prototype.hasOwnProperty.call(ids, name)) ids[name] = c.id;
@@ -1043,6 +1044,16 @@ const fv3AsApiEntries = (want, lines, containers) => {
         entries.push({ id: ids[name], autoStart: true, wait: w.wait > 0 ? w.wait : 0 });
     }
     return entries;
+};
+
+// Waits the user edited, a cleared one as 0; the rest stay as the live file has them
+const fv3AsChangedWaits = (cur, snapshot) => {
+    const waits = {};
+    for (const [name, wait] of Object.entries(cur.waits)) {
+        const before = Object.prototype.hasOwnProperty.call(snapshot.waits, name) ? snapshot.waits[name] : 0;
+        if (wait !== before) waits[name] = wait;
+    }
+    return waits;
 };
 
 // true once the mutation was sent, even if it then failed: the file may have changed. Failures are only logged;
@@ -1084,7 +1095,7 @@ const fv3SubmitAutostart = async () => {
         await $.ajax({
             url: '/plugins/folder.view3/server/update_autostart.php',
             method: 'POST',
-            data: { mode: cur.mode, sequence: JSON.stringify(cur.sequence), waits: JSON.stringify(cur.waits) }
+            data: { mode: cur.mode, sequence: JSON.stringify(cur.sequence), waits: JSON.stringify(fv3AsChangedWaits(cur, fv3AsSnapshot)) }
         }).promise();
         await fv3LoadAutostart();
         swal({ title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('autostart-saved', 'Start order saved and applied.'), type: 'success', timer: 1800 });
