@@ -75,7 +75,7 @@ check('after an API write that dropped unchanged lines, the calls put them back 
     fv3AsUpdateConfigCalls(want, dropped));
 check('nothing to do when the file already matches', fv3AsUpdateConfigCalls(want, [{ name: 'app-a', wait: 0 }, { name: 'app-b', wait: 30 }, { name: 'app-x', wait: 5 }, { name: 'app-e', wait: 0 }, { name: 'app-d', wait: 15 }]).length === 0);
 
-// Without an API write the calls must be the old loop's, call for call (mulberry32: plain LCG low bits repeat)
+// Without an API write the calls must equal legacyCalls, call for call (mulberry32: plain LCG low bits repeat)
 let seed = 7;
 const rand = (n) => {
     seed = (seed + 0x6D2B79F5) | 0;
@@ -107,7 +107,7 @@ for (let trial = 0; trial < 3000 && !mismatch; trial++) {
     });
     if (!ref.length) seen.untouched++;
 }
-check('without an API write, the calls equal the old loop over 3000 random tabs and files', mismatch === null, mismatch);
+check('without an API write, the calls equal legacyCalls over 3000 random tabs and files', mismatch === null, mismatch);
 check('and those trials remove by a file wait the tab differs on, add with waits, remove a repeated line, and leave files alone',
     Object.values(seen).every((v) => v >= 50), seen);
 

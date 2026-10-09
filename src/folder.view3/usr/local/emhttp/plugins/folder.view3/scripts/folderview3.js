@@ -1081,15 +1081,20 @@ const fv3SubmitAutostart = async () => {
     try {
         // fresh file state, not the load-time snapshot: Unraid removes by exact "name wait" line match
         // (mismatch corrupts entry 0) and duplicates on re-add — a concurrent docker-page edit must not trip either
-        const readLive = async () => fv3SafeParse(await $.get('/plugins/folder.view3/server/read_autostart.php').promise(), {});
+        const readLive = async () => {
+            const live = fv3SafeParse(await $.get('/plugins/folder.view3/server/read_autostart.php').promise(), null);
+            // an unreadable answer is not an empty file: the calls below would skip every removal
+            if (!live || !Array.isArray(live.autostart)) throw new Error('read_autostart.php returned no autostart list');
+            return live;
+        };
         let live = await readLive();
-        const want = fv3AsWant(cur, fv3AsSnapshot, live.autostart || []);
+        const want = fv3AsWant(cur, fv3AsSnapshot, live.autostart);
         // one whole-file write through the API where it writes this same file. Not in Off mode: Unraid's own handler
         // re-sorts by the Docker page order, which only Off mode keeps (the other modes re-sort below)
-        const useApi = cur.mode !== 'off' && live.apiFile && fv3AsUpdateConfigCalls(want, live.autostart || []).length > 0;
-        if (useApi && await fv3AsApiSave(want, live.autostart || [])) live = await readLive();
+        const useApi = cur.mode !== 'off' && live.apiFile && fv3AsUpdateConfigCalls(want, live.autostart).length > 0;
+        if (useApi && await fv3AsApiSave(want, live.autostart)) live = await readLive();
         // remaining on/off changes go through Unraid's own handler; the batch below re-asserts order after its re-sort
-        for (const call of fv3AsUpdateConfigCalls(want, live.autostart || [])) {
+        for (const call of fv3AsUpdateConfigCalls(want, live.autostart)) {
             await $.post('/plugins/dynamix.docker.manager/include/UpdateConfig.php', {
                 action: 'autostart', container: call.name, wait: call.wait, auto: call.on ? 'true' : 'false',
                 csrf_token: typeof csrf_token !== 'undefined' ? csrf_token : ''
