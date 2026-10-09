@@ -1628,6 +1628,14 @@
         return fv3_xml_decode($doc->getElementsByTagName($tag)->item(0)->nodeValue ?? $default);
     }
 
+    // The charset keeps a hostile label out of the inline onclick JS string the shell is rendered into;
+    // Unraid 7.4's OpenTerminal.php runs only sh and bash, so a path to either is cut to its name
+    function fv3_console_shell($raw): string {
+        $shell = trim(preg_replace('/[^a-zA-Z0-9 _.\/-]/', '', (string)$raw));
+        if ($shell === '') return 'sh';
+        return in_array(basename($shell), ['sh', 'bash'], true) ? basename($shell) : $shell;
+    }
+
     // Template data for the advanced preview's Variables tab; variables keep the template's order
     function fv3_template_extras(DOMDocument $doc): array {
         $variables = [];
@@ -1748,9 +1756,7 @@
                     $isTailscaleEnabledForContainer = strtolower($ct['Labels']['net.unraid.docker.tailscale.enabled'] ?? 'false') === 'true';
                     $ct['info']['Shell'] = $ct['Labels']['net.unraid.docker.shell'] ?? 'sh';
                 }
-                // Shell is rendered into an inline onclick JS-string arg — constrain to a shell-path charset so a hostile image label can't break out and inject JS
-                $ct['info']['Shell'] = preg_replace('/[^a-zA-Z0-9 _.\/-]/', '', (string)$ct['info']['Shell']);
-                if ($ct['info']['Shell'] === '') { $ct['info']['Shell'] = 'sh'; }
+                $ct['info']['Shell'] = fv3_console_shell($ct['info']['Shell']);
                 fv3_debug_log("  $containerName: Using ".($templateData && $ct['info']['State']['manager'] == 'dockerman' ? "XML" : "Label")." data. TailscaleEnabled: " . ($isTailscaleEnabledForContainer ? 'true' : 'false'));
                 fv3_debug_log("    $containerName: Raw WebUI: '$rawWebUiString', Raw TS XML URL: '$rawTsXmlUrl', TS Serve Mode: '$tsServeModeFromXml'");
                 

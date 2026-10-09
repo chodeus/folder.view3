@@ -116,14 +116,16 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
         ].map((r) => ({ ...r, values: r.values.filter((v) => typeof v === 'string' && v !== '') })).filter((r) => r.values.length);
     };
 
-    // Network always; everything else only when it differs from Docker's default
+    // Every attached network (NetworkMode's first); everything else only when it differs from Docker's default
     window.fv3EnvRuntimeRows = (info) => {
         const hc = info?.HostConfig || {};
         const rows = [];
         const mode = typeof hc.NetworkMode === 'string' ? hc.NetworkMode : '';
-        if (mode) {
-            const ip = info?.NetworkSettings?.Networks?.[mode]?.IPAddress || '';
-            rows.push({ key: 'runtime-network', fallback: 'Network', values: [ip ? `${mode} · ${ip}` : mode], personal: true });
+        const nets = info?.NetworkSettings?.Networks && typeof info.NetworkSettings.Networks === 'object' ? info.NetworkSettings.Networks : {};
+        const names = [...new Set([mode, ...Object.keys(nets).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))])].filter(Boolean);
+        if (names.length) {
+            const ipOf = (n) => nets[n]?.IPAddress || nets[n]?.GlobalIPv6Address || '';
+            rows.push({ key: 'runtime-network', fallback: 'Network', values: names.map((n) => (ipOf(n) ? `${n} · ${ipOf(n)}` : n)), personal: true });
         }
         const gpus = (Array.isArray(hc.DeviceRequests) ? hc.DeviceRequests : [])
             .filter((r) => Array.isArray(r?.Capabilities) && r.Capabilities.some((c) => Array.isArray(c) && c.includes('gpu')))
