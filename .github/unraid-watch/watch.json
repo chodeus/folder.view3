@@ -1,0 +1,56 @@
+{
+  "issue": 52,
+  "plugin": "src/folder.view3/usr/local/emhttp/plugins/folder.view3",
+  "expand": [
+    {"match": "docker { ${gqlAction}", "map": "fv3DockerActionMap"},
+    {"match": "vm { ${gqlAction}", "map": "fv3VmActionMap"}
+  ],
+  "sources": [
+    {
+      "repo": "unraid/api",
+      "branch": "main",
+      "schema": "api/generated-schema.graphql",
+      "surface": "(?i)docker|vm|container|organizer|folder|autostart",
+      "namespaces": ["Docker", "DockerMutations", "Vms", "VmMutations"],
+      "paths": {
+        "api/src/unraid-api/unraid-file-modifier/modifications/docker-containers-page.modification.ts": "switch that replaces the legacy Docker page with the new one",
+        "api/src/unraid-api/graph/resolvers/docker/organizer/": "organizer behind the folder mirror",
+        "api/src/unraid-api/graph/resolvers/docker/docker-autostart.service.ts": "autostart file handling",
+        "api/src/unraid-api/graph/resolvers/docker/docker-stats.service.ts": "stats payload the graphs parse",
+        "api/src/unraid-api/graph/resolvers/docker/docker-php.service.ts": "update status source",
+        "api/src/unraid-api/auth/auth.service.ts": "CSRF check every request passes",
+        "api/src/unraid-api/auth/cookie.strategy.ts": "cookie session every request uses",
+        "api/.env.production": "production feature flags",
+        "web/src/components/Docker/": "the new Docker page"
+      }
+    },
+    {
+      "repo": "unraid/webgui",
+      "branch": "master",
+      "endpoints": {
+        "/plugins/dynamix.docker.manager/": "emhttp/plugins/dynamix.docker.manager/",
+        "/plugins/dynamix.vm.manager/": "emhttp/plugins/dynamix.vm.manager/",
+        "/plugins/dynamix/": "emhttp/plugins/dynamix/",
+        "/webGui/": "emhttp/plugins/dynamix/"
+      },
+      "paths": {
+        "emhttp/plugins/dynamix.docker.manager/DockerContainers.page": "Docker tab markup, loadlist and resetSorting",
+        "emhttp/plugins/dynamix.docker.manager/include/DockerContainers.php": "container rows the folders wrap",
+        "emhttp/plugins/dynamix.docker.manager/javascript/docker.js": "container menu, updateContainer and eventControl",
+        "emhttp/plugins/dynamix.vm.manager/VMMachines.page": "VM tab markup and loadlist",
+        "emhttp/plugins/dynamix.vm.manager/javascript/vmmanager.js": "VM menu",
+        "emhttp/plugins/dynamix/DashStats.page": "Dashboard tiles and loadlist",
+        "emhttp/plugins/dynamix/include/DefaultPageLayout/HeadInlineJS.php": "openDocker, openBox and openTerminal",
+        "emhttp/plugins/dynamix/include/DefaultPageLayout/BodyInlineJS.php": "task tray openDocker runs through from 7.4",
+        "emhttp/plugins/dynamix/include/TaskCommand.php": "task tray endpoint behind openDocker from 7.4"
+      }
+    },
+    {
+      "repo": "unraid/docs",
+      "branch": "main",
+      "releases": "docs/unraid-os/release-notes/",
+      "since": "7.2.0",
+      "tags": "unraid/webgui"
+    }
+  ]
+}

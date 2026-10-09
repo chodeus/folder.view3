@@ -1345,13 +1345,16 @@
             showCancelButton: false,
             allowOutsideClick: false,
             animation: 'none',
-            customClass: 'nchan'
+            customClass: 'fv3-progress'
         });
         var swalEl = document.querySelector('.sweet-alert');
         var titleEl = swalEl.querySelector('h2');
         var statusEl = document.getElementById('fv3ProgressTitle');
         var log = document.getElementById('fv3ProgressLog');
         var scrollParent = log.closest('p') || log.parentElement;
+        // Unraid's sheet rules beat swal's inline display:block with !important; inline here instead (swal resets both)
+        swalEl.style.display = 'flex';
+        scrollParent.style.display = 'flex';
         var btnContainer = swalEl.querySelector('.sa-button-container');
         var confirmContainer = swalEl.querySelector('.sa-confirm-button-container');
         var confirmBtn = confirmContainer ? confirmContainer.querySelector('.confirm') : null;

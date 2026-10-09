@@ -679,6 +679,18 @@
         return $ctLabels;
     }
 
+    // An image's own Config.Env, which the Variables tab subtracts from the container's. null = unreadable.
+    function fv3_read_image_env(string $imageId): ?array {
+        $code = null;
+        // A closure, not fn(): getDockerJSON reports the HTTP status through $code by reference
+        $image = fv3_docker_quiet(function () use ($imageId, &$code) {
+            return (new DockerClient())->getDockerJSON('/images/' . $imageId . '/json', 'GET', $code);
+        });
+        if ($code !== true || !is_array($image)) return null;
+        $env = $image['Config']['Env'] ?? [];
+        return is_array($env) ? array_values(array_filter($env, 'is_string')) : null;
+    }
+
     // Effective membership — explicit > label > regex (issues #46/#55). Single source of
     // truth shared by syncContainerOrder and read_membership.php (issue #61).
     function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): array {
@@ -1607,6 +1619,43 @@
         return $DockerUpdate->getUpdateStatus($ct['info']['Config']['Image']);
     }
 
+    // Template text read back as Unraid's xml_decode() does (dynamix.docker.manager Helpers.php): most fields are stored encoded twice
+    function fv3_xml_decode(string $raw): string {
+        return trim(html_entity_decode($raw, ENT_XML1, 'UTF-8'));
+    }
+
+    function fv3_template_tag(DOMDocument $doc, string $tag, string $default = ''): string {
+        return fv3_xml_decode($doc->getElementsByTagName($tag)->item(0)->nodeValue ?? $default);
+    }
+
+    // The charset keeps a hostile label out of the inline onclick JS string the shell is rendered into;
+    // Unraid 7.4's OpenTerminal.php runs only sh and bash, so a path to either is cut to its name
+    function fv3_console_shell($raw): string {
+        $shell = trim(preg_replace('/[^a-zA-Z0-9 _.\/-]/', '', (string)$raw));
+        if ($shell === '') return 'sh';
+        return in_array(basename($shell), ['sh', 'bash'], true) ? basename($shell) : $shell;
+    }
+
+    // Template data for the advanced preview's Variables tab; variables keep the template's order
+    function fv3_template_extras(DOMDocument $doc): array {
+        $variables = [];
+        foreach ($doc->getElementsByTagName('Config') as $config) {
+            if (fv3_xml_decode($config->getAttribute('Type')) !== 'Variable') continue;
+            $target = fv3_xml_decode($config->getAttribute('Target'));
+            if ($target === '') continue;
+            $variables[] = [
+                'target' => $target,
+                'name'   => fv3_xml_decode($config->getAttribute('Name')),
+                'mask'   => strtolower(fv3_xml_decode($config->getAttribute('Mask'))) === 'true',
+            ];
+        }
+        return [
+            'extraParams' => fv3_template_tag($doc, 'ExtraParams'),
+            'postArgs'    => fv3_template_tag($doc, 'PostArgs'),
+            'variables'   => $variables,
+        ];
+    }
+
     function readInfo(string $type): array {
         fv3_debug_log("readInfo called for type: $type");
         $info = [];
@@ -1655,16 +1704,17 @@
                     $templateImage = DockerUtil::ensureImageTag($doc->getElementsByTagName('Repository')->item(0)->nodeValue ?? '');
                     if ($templateName && $templateImage) {
                         $allXmlTemplates[$templateName . '|' . $templateImage] = [
-                            'WebUi'             => trim($doc->getElementsByTagName('WebUI')->item(0)->nodeValue ?? ''),
-                            'TSUrlRaw'          => trim($doc->getElementsByTagName('TailscaleWebUI')->item(0)->nodeValue ?? ''),
-                            'TSServeMode'       => trim($doc->getElementsByTagName('TailscaleServe')->item(0)->nodeValue ?? 'no'),
-                            'TSTailscaleEnabled'=> strtolower(trim($doc->getElementsByTagName('TailscaleEnabled')->item(0)->nodeValue ?? 'false')) === 'true',
-                            'registry'          => trim($doc->getElementsByTagName('Registry')->item(0)->nodeValue ?? ''),
-                            'Support'           => trim($doc->getElementsByTagName('Support')->item(0)->nodeValue ?? ''),
-                            'Project'           => trim($doc->getElementsByTagName('Project')->item(0)->nodeValue ?? ''),
-                            'DonateLink'        => trim($doc->getElementsByTagName('DonateLink')->item(0)->nodeValue ?? ''),
-                            'ReadMe'            => trim($doc->getElementsByTagName('ReadMe')->item(0)->nodeValue ?? ''),
-                            'Shell'             => trim($doc->getElementsByTagName('Shell')->item(0)->nodeValue ?? 'sh'),
+                            'WebUi'             => fv3_template_tag($doc, 'WebUI'),
+                            'TSUrlRaw'          => fv3_template_tag($doc, 'TailscaleWebUI'),
+                            'TSServeMode'       => fv3_template_tag($doc, 'TailscaleServe', 'no'),
+                            'TSTailscaleEnabled'=> strtolower(fv3_template_tag($doc, 'TailscaleEnabled', 'false')) === 'true',
+                            'registry'          => fv3_template_tag($doc, 'Registry'),
+                            'Support'           => fv3_template_tag($doc, 'Support'),
+                            'Project'           => fv3_template_tag($doc, 'Project'),
+                            'DonateLink'        => fv3_template_tag($doc, 'DonateLink'),
+                            'ReadMe'            => fv3_template_tag($doc, 'ReadMe'),
+                            'Shell'             => fv3_template_tag($doc, 'Shell', 'sh'),
+                            'extras'            => fv3_template_extras($doc),
                             'path'              => $templateFile['path']
                         ];
                     }
@@ -1698,7 +1748,7 @@
                     $rawWebUiString = $templateData['WebUi']; $rawTsXmlUrl = $templateData['TSUrlRaw'];
                     $tsServeModeFromXml = $templateData['TSServeMode'];
                     $isTailscaleEnabledForContainer = $templateData['TSTailscaleEnabled'];
-                    $ct['info']['registry'] = $templateData['registry']; $ct['info']['Support'] = $templateData['Support']; $ct['info']['Project'] = $templateData['Project']; $ct['info']['DonateLink'] = $templateData['DonateLink']; $ct['info']['ReadMe'] = $templateData['ReadMe']; $ct['info']['Shell'] = $templateData['Shell'] ?: 'sh'; $ct['info']['template'] = ['path' => $templateData['path']];
+                    $ct['info']['registry'] = $templateData['registry']; $ct['info']['Support'] = $templateData['Support']; $ct['info']['Project'] = $templateData['Project']; $ct['info']['DonateLink'] = $templateData['DonateLink']; $ct['info']['ReadMe'] = $templateData['ReadMe']; $ct['info']['Shell'] = $templateData['Shell'] ?: 'sh'; $ct['info']['template'] = ['path' => $templateData['path']] + $templateData['extras'];
                 } else {
                     $rawWebUiString = $ct['Labels']['net.unraid.docker.webui'] ?? '';
                     $rawTsXmlUrl = $ct['Labels']['net.unraid.docker.tailscale.webui'] ?? '';
@@ -1706,9 +1756,7 @@
                     $isTailscaleEnabledForContainer = strtolower($ct['Labels']['net.unraid.docker.tailscale.enabled'] ?? 'false') === 'true';
                     $ct['info']['Shell'] = $ct['Labels']['net.unraid.docker.shell'] ?? 'sh';
                 }
-                // Shell is rendered into an inline onclick JS-string arg — constrain to a shell-path charset so a hostile image label can't break out and inject JS
-                $ct['info']['Shell'] = preg_replace('/[^a-zA-Z0-9 _.\/-]/', '', (string)$ct['info']['Shell']);
-                if ($ct['info']['Shell'] === '') { $ct['info']['Shell'] = 'sh'; }
+                $ct['info']['Shell'] = fv3_console_shell($ct['info']['Shell']);
                 fv3_debug_log("  $containerName: Using ".($templateData && $ct['info']['State']['manager'] == 'dockerman' ? "XML" : "Label")." data. TailscaleEnabled: " . ($isTailscaleEnabledForContainer ? 'true' : 'false'));
                 fv3_debug_log("    $containerName: Raw WebUI: '$rawWebUiString', Raw TS XML URL: '$rawTsXmlUrl', TS Serve Mode: '$tsServeModeFromXml'");
                 

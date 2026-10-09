@@ -294,7 +294,7 @@ div.folder-preview-4 span.outer {
     color: inherit;
 }
 
-.info-ports a, .info-volumes a {
+.info-ports a, .info-volumes a, .info-env a {
     color: var(--blue-400, #6a9fd4);
 }
 
@@ -310,6 +310,115 @@ div.folder-preview-4 span.outer {
 .mem-stat-graph canvas {
     max-width: 100%;
     min-height: 150px;
+}
+
+/* Variables tab: size containment keeps the list out of jQuery UI's shared panel height and the popup width */
+.info-section .info-env {
+    contain: size;
+}
+
+/* Only while shown: heightStyle 'auto' measures before aria-hidden is set, so other tabs never inherit this floor */
+.info-section .info-env[aria-hidden="false"] {
+    min-height: 160px;
+}
+
+.info-section .fv3-env-heading {
+    font-weight: 600;
+    opacity: 0.85;
+    margin: 10px 4px 4px;
+}
+
+.info-section .fv3-env-heading:first-child {
+    margin-top: 2px;
+}
+
+.info-section .fv3-env-group {
+    font-size: 0.85em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.55;
+    margin: 8px 4px 2px;
+}
+
+.info-section .fv3-env-row {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    column-gap: 10px;
+    align-items: start;
+    padding: 3px 4px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+}
+
+.info-section .fv3-env-dim {
+    opacity: 0.72;
+}
+
+.info-section .fv3-env-name {
+    min-width: 0;
+}
+
+.info-section .fv3-env-cell {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+}
+
+.info-section .fv3-env-key,
+.info-section .fv3-env-value,
+.info-section .fv3-env-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overflow-wrap: anywhere;
+}
+
+.info-section .fv3-env-value,
+.info-section .fv3-env-code {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.info-section .fv3-env-label {
+    display: block;
+    font-size: 0.85em;
+    opacity: 0.65;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.info-section .fv3-env-prop {
+    opacity: 0.8;
+}
+
+.info-section .fv3-env-muted,
+.info-section .fv3-env-note {
+    opacity: 0.6;
+}
+
+.info-section .fv3-env-note {
+    padding: 3px 4px;
+}
+
+.info-section .fv3-env-code {
+    margin: 0 4px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background-color: var(--fv3-surface-tint);
+    border: var(--fv3-border);
+    white-space: pre-wrap;
+}
+
+.info-section .fv3-env-reveal {
+    flex: 0 0 auto;
+    padding: 0 2px;
+    color: inherit;
+    opacity: 0.75;
+}
+
+.info-section .fv3-env-more {
+    display: inline-block;
+    margin: 6px 4px 0;
 }
 
 /* --- Specific Colors --- */
