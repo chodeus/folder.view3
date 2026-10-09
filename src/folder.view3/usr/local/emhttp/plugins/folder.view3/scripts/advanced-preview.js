@@ -25,6 +25,25 @@ window.memToB = window.memToB || ((mem) => {
     return numPart * multiplier;
 });
 
+// Convert a byte count to a human-readable memory string (B/KiB/MiB/...).
+window.bToMem = window.bToMem || ((b) => {
+    if (typeof b !== 'number' || isNaN(b) || b < 0) {
+        fv3DebugWarn('bToMem', `Invalid input ${b}. Returning '0 B'.`);
+        return '0 B';
+    }
+    if (b === 0) return '0 B';
+
+    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    let i = 0;
+    let value = b;
+    while (value >= 1024 && i < units.length - 1) {
+        value /= 1024;
+        i++;
+    }
+    const result = `${value.toFixed(2)} ${units[i]}`;
+    return result;
+});
+
 window.hideAllTips = window.hideAllTips || (() => {
     if (!$.tooltipster) return;
     $.each($.tooltipster.instances(), (i, instance) => instance.close());
@@ -37,6 +56,202 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
     if (!m) return;
     $(`#${m[1]}`).parents('.folder-element').find('.switch-button-background').click();
 });
+
+// Variables tab helpers; .github/scripts/variables_tab_test.js runs them outside the page
+(() => {
+    const COMMON = ['PUID', 'PGID', 'UMASK', 'TZ', 'HOST_OS', 'HOST_HOSTNAME', 'HOST_CONTAINERNAME'];
+    // Over-masking costs one click; a miss puts a secret in someone's screenshot
+    const SECRET_NAME = /pass|secret|token|key|auth|credential|claim|webhook|private|cookie|session|salt|(?:^|[_-])pwd?(?:$|[_-])/i;
+    const DOTS = '••••••••';
+    const imageEnvCache = new Map();
+    const squash = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const byKey = (a, b) => a.key.localeCompare(b.key, undefined, { numeric: true, sensitivity: 'base' });
+    const redacts = (s) => typeof fv3RedactString === 'function' && fv3RedactString(s) !== s;
+
+    window.fv3EnvIsSecret = (key, value, templateMask) => templateMask === true || SECRET_NAME.test(key) || redacts(value);
+
+    // Any secret-looking NAME= or --flag hides the whole text: quoted values make partial masking leak
+    window.fv3EnvParamsSecret = (text) => {
+        const s = String(text);
+        const names = [...s.matchAll(/([A-Za-z0-9_.-]+)=/g), ...s.matchAll(/(?:^|[\s'"=])--?([A-Za-z][A-Za-z0-9_-]*)/g)].map((m) => m[1]);
+        return names.some((n) => SECRET_NAME.test(n)) || redacts(s);
+    };
+
+    // Set for this container (template order first), Common (pinned last), and values identical to the image's own
+    window.fv3EnvGroups = (env, imageEnv, templateVars) => {
+        const tpl = Array.isArray(templateVars) ? templateVars : [];
+        const order = new Map(tpl.map((v, i) => [v.target, i]));
+        const fromImage = new Set(Array.isArray(imageEnv) ? imageEnv : []);
+        const groups = { main: [], common: [], image: [] };
+        for (const entry of Array.isArray(env) ? env : []) {
+            if (typeof entry !== 'string') continue;
+            const eq = entry.indexOf('=');
+            const key = eq < 0 ? entry : entry.slice(0, eq);
+            const value = eq < 0 ? '' : entry.slice(eq + 1);
+            const t = order.has(key) ? tpl[order.get(key)] : null;
+            const row = { key, value, label: t?.name && squash(t.name) !== squash(key) ? t.name : '', secret: fv3EnvIsSecret(key, value, t?.mask) };
+            if (COMMON.includes(key)) groups.common.push(row);
+            else if (t || !fromImage.has(entry)) groups.main.push(row);
+            else groups.image.push(row);
+        }
+        groups.main.sort((a, b) => (order.get(a.key) ?? Infinity) - (order.get(b.key) ?? Infinity) || byKey(a, b));
+        groups.common.sort((a, b) => COMMON.indexOf(a.key) - COMMON.indexOf(b.key));
+        groups.image.sort(byKey);
+        return groups;
+    };
+
+    // From the labels Compose puts on every container it creates (docker/compose pkg/api/labels.go)
+    window.fv3EnvComposeRows = (labels) => {
+        const l = labels && typeof labels === 'object' ? labels : {};
+        if (!l['com.docker.compose.project']) return [];
+        const list = (v) => String(v ?? '').split(',').map((s) => s.trim());
+        return [
+            { key: 'compose-project', fallback: 'Project', values: [l['com.docker.compose.project']] },
+            { key: 'compose-service', fallback: 'Service', values: [l['com.docker.compose.service']] },
+            { key: 'compose-files', fallback: 'Compose files', values: list(l['com.docker.compose.project.config_files']) },
+            { key: 'compose-env-files', fallback: 'Env files', values: list(l['com.docker.compose.project.environment_file']) },
+            { key: 'compose-folder', fallback: 'Folder', values: [l['com.docker.compose.project.working_dir']] },
+            // "service:condition:restart,…" (docker/compose pkg/compose/create.go)
+            { key: 'compose-depends-on', fallback: 'Depends on', values: list(l['com.docker.compose.depends_on']).map((d) => d.split(':')[0]) }
+        ].map((r) => ({ ...r, values: r.values.filter((v) => typeof v === 'string' && v !== '') })).filter((r) => r.values.length);
+    };
+
+    // Network always; everything else only when it differs from Docker's default
+    window.fv3EnvRuntimeRows = (info) => {
+        const hc = info?.HostConfig || {};
+        const rows = [];
+        const mode = typeof hc.NetworkMode === 'string' ? hc.NetworkMode : '';
+        if (mode) {
+            const ip = info?.NetworkSettings?.Networks?.[mode]?.IPAddress || '';
+            rows.push({ key: 'runtime-network', fallback: 'Network', values: [ip ? `${mode} · ${ip}` : mode], personal: true });
+        }
+        const gpus = (Array.isArray(hc.DeviceRequests) ? hc.DeviceRequests : [])
+            .filter((r) => Array.isArray(r?.Capabilities) && r.Capabilities.some((c) => Array.isArray(c) && c.includes('gpu')))
+            .map((r) => r.Count === -1 ? fv3I18nOr('runtime-gpu-all', 'All GPUs') : (Array.isArray(r.DeviceIDs) && r.DeviceIDs.length ? r.DeviceIDs.join(', ') : String(r.Count)));
+        if (hc.Runtime === 'nvidia') gpus.unshift('nvidia');
+        if (gpus.length) rows.push({ key: 'runtime-gpu', fallback: 'GPU', values: gpus });
+        if (typeof hc.Runtime === 'string' && hc.Runtime !== '' && !['runc', 'nvidia'].includes(hc.Runtime)) rows.push({ key: 'runtime-oci', fallback: 'OCI runtime', values: [hc.Runtime] });
+        if (typeof hc.CpusetCpus === 'string' && hc.CpusetCpus !== '') rows.push({ key: 'runtime-cpu-pinning', fallback: 'CPU pinning', values: [hc.CpusetCpus] });
+        const devices = (Array.isArray(hc.Devices) ? hc.Devices : []).map((d) => d.PathOnHost === d.PathInContainer ? String(d.PathOnHost) : `${d.PathOnHost} → ${d.PathInContainer}`);
+        if (devices.length) rows.push({ key: 'runtime-devices', fallback: 'Devices', values: devices });
+        if (hc.Privileged === true) rows.push({ key: 'runtime-privileged', fallback: 'Privileged', values: [fv3I18nOr('yes', 'Yes')] });
+        if (hc.Memory > 0) rows.push({ key: 'runtime-memory', fallback: 'Memory limit', values: [bToMem(hc.Memory)] });
+        if (Array.isArray(hc.CapAdd) && hc.CapAdd.length) rows.push({ key: 'runtime-capabilities', fallback: 'Capabilities', values: [hc.CapAdd.join(', ')] });
+        const restart = hc.RestartPolicy?.Name;
+        if (typeof restart === 'string' && restart !== '' && restart !== 'no') {
+            const retries = hc.RestartPolicy.MaximumRetryCount;
+            rows.push({ key: 'runtime-restart', fallback: 'Restart policy', values: [restart === 'on-failure' && retries > 0 ? `${restart} (${retries})` : restart] });
+        }
+        return rows;
+    };
+
+    // Masked values are never written into the page until revealed
+    window.fv3EnvPanelHtml = (ct, state) => {
+        const text = (s) => escapeHtml(String(s));
+        if (state.loading) return `<div class="fv3-env-note">${text(fv3I18nOr('env-loading', 'Loading…'))}</div>`;
+        const incognito = state.incognito === true;
+        const hidden = fv3I18nOr('incognito-hidden', '[hidden]');
+        const heading = (label) => `<div class="fv3-env-heading">${text(label)}</div>`;
+        const reveal = (id, open) => {
+            const label = text(open ? fv3I18nOr('env-hide-value', 'Hide value') : fv3I18nOr('env-show-value', 'Show value'));
+            return `<a href="#" class="fv3-env-reveal" data-fv3-env-reveal="${text(id)}" role="button" aria-label="${label}" title="${label}"><i class="fa fa-${open ? 'eye-slash' : 'eye'}" aria-hidden="true"></i></a>`;
+        };
+        const row = (r, dim) => {
+            const masked = incognito || (r.secret && !state.revealed.has(`env:${r.key}`));
+            const value = masked ? DOTS : r.value === '' ? fv3I18nOr('env-empty', '(empty)') : r.value;
+            return `<div class="fv3-env-row${dim ? ' fv3-env-dim' : ''}"><div class="fv3-env-name"><span class="fv3-env-key">${text(r.key)}</span>`
+                + (r.label ? `<span class="fv3-env-label">${text(r.label)}</span>` : '')
+                + `</div><div class="fv3-env-cell"><span class="fv3-env-value${masked || r.value === '' ? ' fv3-env-muted' : ''}">${text(value)}</span>`
+                + (r.secret && !incognito ? reveal(`env:${r.key}`, !masked) : '') + '</div></div>';
+        };
+        const params = (label, value, id) => {
+            const secret = value !== '' && fv3EnvParamsSecret(value);
+            const masked = secret && !state.revealed.has(`params:${id}`);
+            const shown = value === '' ? fv3I18nOr('env-params-none', 'None') : incognito ? hidden : masked ? DOTS : value;
+            return heading(label) + `<div class="fv3-env-cell"><div class="fv3-env-code${value === '' || masked || incognito ? ' fv3-env-muted' : ''}">${text(shown)}</div>`
+                + (secret && !incognito ? reveal(`params:${id}`, !masked) : '') + '</div>';
+        };
+        const props = (rows, personal) => rows.map((r) => `<div class="fv3-env-row"><span class="fv3-env-prop">${text(fv3I18nOr(r.key, r.fallback))}</span>`
+            + `<span class="fv3-env-value">${(incognito && (personal || r.personal) ? [hidden] : r.values).map(text).join('<br>')}</span></div>`).join('');
+
+        const groups = fv3EnvGroups(ct.info?.Config?.Env, state.imageEnv, ct.info?.template?.variables);
+        let html = heading(fv3I18nOr('variables', 'Variables'));
+        if (!groups.main.length && !groups.common.length && !groups.image.length) html += `<div class="fv3-env-note">${text(fv3I18nOr('env-none', 'No variables set'))}</div>`;
+        html += groups.main.map((r) => row(r, false)).join('');
+        if (groups.common.length) html += `<div class="fv3-env-group">${text(fv3I18nOr('env-common', 'Common'))}</div>` + groups.common.map((r) => row(r, true)).join('');
+        if (groups.image.length) {
+            const label = state.showImage ? fv3I18nOr('env-image-hide', 'Hide image defaults') : fv3I18nOr('env-image-show', 'Show $1 image defaults', groups.image.length);
+            html += `<a href="#" class="fv3-env-more" role="button" aria-expanded="${state.showImage === true}"><i class="fa fa-chevron-${state.showImage ? 'down' : 'right'}" aria-hidden="true"></i> ${text(label)}</a>`;
+            if (state.showImage) html += groups.image.map((r) => row(r, true)).join('');
+        }
+        const tpl = ct.info?.template;
+        if (tpl) {
+            html += params(fv3I18nOr('extra-parameters', 'Extra Parameters'), typeof tpl.extraParams === 'string' ? tpl.extraParams : '', 'extra');
+            if (typeof tpl.postArgs === 'string' && tpl.postArgs !== '') html += params(fv3I18nOr('post-arguments', 'Post Arguments'), tpl.postArgs, 'post');
+        }
+        const compose = fv3EnvComposeRows(ct.Labels ?? ct.info?.Config?.Labels);
+        if (compose.length) html += heading(fv3I18nOr('compose', 'Compose')) + props(compose, true);
+        const runtime = fv3EnvRuntimeRows(ct.info);
+        if (runtime.length) html += heading(fv3I18nOr('runtime', 'Runtime')) + props(runtime, false);
+        return html;
+    };
+
+    // One request per image per page; a failed one leaves the cache so the next view asks again
+    window.fv3ImageEnv = (imageId) => {
+        if (!imageEnvCache.has(imageId)) {
+            const request = Promise.resolve($.get('/plugins/folder.view3/server/read_image_env.php', { image: imageId })).then((raw) => {
+                const env = fv3SafeParse(raw, null)?.env;
+                if (!Array.isArray(env)) throw new Error('read_image_env.php returned no env list');
+                return env;
+            });
+            request.catch(() => imageEnvCache.delete(imageId));
+            imageEnvCache.set(imageId, request);
+        }
+        return imageEnvCache.get(imageId);
+    };
+
+    // One per popup: the tab's state, its redraws and its clicks
+    window.fv3EnvTab = (ct) => {
+        const state = { revealed: new Set(), showImage: false, imageEnv: undefined, loading: false };
+        let $panel = null;
+        const render = () => { if ($panel) $panel.html(fv3EnvPanelHtml(ct, { ...state, incognito: !!window.fv3Incognito })); };
+        const show = () => {
+            if (state.imageEnv === undefined && !state.loading && typeof ct.ImageID === 'string') {
+                state.loading = true;
+                fv3ImageEnv(ct.ImageID)
+                    .then((env) => { state.imageEnv = env; }, (e) => fv3DebugWarn('variablesTab', ct.shortId, 'image defaults unavailable:', fv3FailReason(e)))
+                    .then(() => { state.loading = false; render(); });
+            }
+            render();
+        };
+        return {
+            bind($el) {
+                $panel = $el;
+                // stopPropagation: the redraw detaches the clicked link, so tooltipster's click-outside check would close the popup
+                $panel.on('click', '.fv3-env-reveal', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.fv3Incognito) return;
+                    const id = this.getAttribute('data-fv3-env-reveal');
+                    if (state.revealed.has(id)) state.revealed.delete(id); else state.revealed.add(id);
+                    render();
+                    $panel.find(`[data-fv3-env-reveal="${CSS.escape(id)}"]`).trigger('focus');
+                }).on('click', '.fv3-env-more', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    state.showImage = !state.showImage;
+                    render();
+                    $panel.find('.fv3-env-more').trigger('focus');
+                });
+            },
+            show,
+            // Redrawn on re-open only while it is the active tab: incognito may have changed meanwhile
+            refresh() { if ($panel && $panel.attr('aria-hidden') === 'false') show(); },
+            // A revealed value never outlives the popup
+            close() { if (state.revealed.size) { state.revealed.clear(); render(); } }
+        };
+    };
+})();
 
 /**
  * Attaches the FolderView3 advanced preview (tooltipster popup with CPU/MEM graphs)
@@ -55,6 +270,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
     // removes the same listener it added, even if fv3UsingWebSocket flipped in between.
     let attachedListener = null; // 'ws' | 'sse' | null
     fv3Debug('createFolder', id, container_name_in_folder, 'Initialized CPU, MEM, charts, tootltipObserver for tooltip.');
+
+    const envTab = fv3EnvTab(ct);
 
     const pushChartData = (cpuVal, memVal) => {
         const now = Date.now();
@@ -329,15 +546,18 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
             if($(`.preview-outbox-${ct.shortId} .status-autostart`, tooltipDomEl).children().length === 1) {
                 fv3Debug('tooltipster', ct.shortId, 'Initializing switchButton and tabs for tooltip content.');
                 $(`.preview-outbox-${ct.shortId} .status-autostart > input[type='checkbox']`, tooltipDomEl).switchButton({ labels_placement: 'right', off_label: $.i18n('off'), on_label: $.i18n('on'), checked: !(ct.info.State.Autostart === false) });
+                envTab.bind($(`.preview-outbox-${ct.shortId} .info-env`, tooltipDomEl));
                 $(`.preview-outbox-${ct.shortId} .info-section`, tooltipDomEl).tabs({
                     heightStyle: 'auto',
                     disabled: diabled,
-                    active: active
+                    active: active,
+                    activate: (event, ui) => { if (ui.newPanel.hasClass('info-env')) envTab.show(); }
                 });
                 $(`.preview-outbox-${ct.shortId} table > tbody div.status-autostart > input[type="checkbox"]`, tooltipDomEl).on("change", advancedAutostart);
             } else {
                  fv3DebugWarn('tooltipster', ct.shortId, 'Autostart switch placeholder not found as expected in tooltip.');
             }
+            envTab.refresh();
 
             if (window.innerWidth <= 768) {
                 fv3Debug('tooltipster', ct.shortId, 'Mobile detected — applying hybrid accordion layout.');
@@ -469,6 +689,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
             }
             chartHeightGuards.forEach(id => clearTimeout(id));
             chartHeightGuards = [];
+            envTab.close();
         },
        content: $(`
             <div class="preview-outbox preview-outbox-${ct.shortId}">
@@ -532,12 +753,14 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                             <li><a class="tabs-mem-graph localURL" href="#mem-graph-${ct.shortId}">${$.i18n('mem-graph')}</a></li>
                             <li><a class="tabs-ports localURL" href="#info-ports-${ct.shortId}">${$.i18n('port-mappings')}</a></li>
                             <li><a class="tabs-volumes localURL" href="#info-volumes-${ct.shortId}">${$.i18n('volume-mappings')}</a></li>
+                            <li><a class="tabs-env localURL" href="#info-env-${ct.shortId}">${fv3I18nOr('variables', 'Variables')}</a></li>
                         </ul>
                         <div class="comb-graph-${ct.shortId} comb-stat-graph" id="comb-graph-${ct.shortId}" style="display: none;"><canvas></canvas></div>
                         <div class="cpu-graph-${ct.shortId} cpu-stat-graph" id="cpu-graph-${ct.shortId}" style="display: none;"><canvas></canvas></div>
                         <div class="mem-graph-${ct.shortId} mem-stat-graph" id="mem-graph-${ct.shortId}" style="display: none;"><canvas></canvas></div>
                         <div class="info-ports" id="info-ports-${ct.shortId}" style="display: none;">${ct.info.Ports?.length > 10 ? (`<span class="info-ports-more" style="display: none;">${ct.info.Ports?.map(e=>`${e.PrivateIP ? escapeHtml(e.PrivateIP) + ':' : ''}${escapeHtml(e.PrivatePort)}/${escapeHtml((e.Type||'').toUpperCase())} <i class="fa fa-arrows-h"></i> ${e.PublicIP ? escapeHtml(e.PublicIP) + ':' : ''}${escapeHtml(e.PublicPort)}`).join('<br>') || ''}<br><a onclick="event.preventDefault(); $(this).parent().css('display', 'none').siblings('.info-ports-less').css('display', 'inline')">${$.i18n('compress')}</a></span><span class="info-ports-less">${ct.info.Ports?.slice(0,10).map(e=>`${e.PrivateIP ? escapeHtml(e.PrivateIP) + ':' : ''}${escapeHtml(e.PrivatePort)}/${escapeHtml((e.Type||'').toUpperCase())} <i class="fa fa-arrows-h"></i> ${e.PublicIP ? escapeHtml(e.PublicIP) + ':' : ''}${escapeHtml(e.PublicPort)}`).join('<br>') || ''}<br><a onclick="event.preventDefault(); $(this).parent().css('display', 'none').siblings('.info-ports-more').css('display', 'inline')">${$.i18n('expand')}</a></span>`) : (`<span class="info-ports-mono">${ct.info.Ports?.map(e=>`${e.PrivateIP ? escapeHtml(e.PrivateIP) + ':' : ''}${escapeHtml(e.PrivatePort)}/${escapeHtml((e.Type||'').toUpperCase())} <i class="fa fa-arrows-h"></i> ${e.PublicIP ? escapeHtml(e.PublicIP) + ':' : ''}${escapeHtml(e.PublicPort)}`).join('<br>') || ''}</span>`)}</div>
                         <div class="info-volumes" id="info-volumes-${ct.shortId}" style="display: none;">${ct.Mounts?.filter(e => e.Type==='bind').length > 10 ? (`<span class="info-volumes-more" style="display: none;">${ct.Mounts?.filter(e => e.Type==='bind').map(e=>`${escapeHtml(e.Destination)} <i class="fa fa-arrows-h"></i> ${escapeHtml(e.Source)}`).join('<br>') || ''}<br><a onclick="event.preventDefault(); $(this).parent().css('display', 'none').siblings('.info-volumes-less').css('display', 'inline')">${$.i18n('compress')}</a></span><span class="info-volumes-less">${ct.Mounts?.filter(e => e.Type==='bind').slice(0,10).map(e=>`${escapeHtml(e.Destination)} <i class="fa fa-arrows-h"></i> ${escapeHtml(e.Source)}`).join('<br>') || ''}<br><a onclick="event.preventDefault(); $(this).parent().css('display', 'none').siblings('.info-volumes-more').css('display', 'inline')">${$.i18n('expand')}</a></span>`) : (`<span class="info-volumes-mono">${ct.Mounts?.filter(e => e.Type==='bind').map(e=>`${escapeHtml(e.Destination)} <i class="fa fa-arrows-h"></i> ${escapeHtml(e.Source)}`).join('<br>') || ''}</span>`)}</div>
+                        <div class="info-env" id="info-env-${ct.shortId}" style="display: none;"></div>
                     </div>
                 </div>
             </div>

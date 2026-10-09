@@ -33,6 +33,11 @@ jobs:
       - name: FolderView Plus import tests
         run: php .github/scripts/foreign_import_test.php
 
+      - name: Variables tab tests
+        run: |
+          php .github/scripts/variables_tab_test.php
+          node .github/scripts/variables_tab_test.js
+
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
 
