@@ -4,15 +4,10 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- feat: Variables tab in the advanced preview
-- fix: Variables tab shows an IPv6-only network's address
-- feat: Variables tab lists every attached network
-- fix: CSS tool import dialog uses its own sheet class
-- fix: a console shell given as a path opens on Unraid 7.4
-- fix: Autostart save stops on an unreadable autostart answer
-- fix: Autostart save keeps a wait set in another tab
-- fix: Autostart tab saves only the waits the user edited
-- feat: Autostart toggles save through the Unraid API
+- Advanced preview has a new Variables tab
+- Unraid API integration additions: autostart toggle
+- Settings autostart page no longer resets a wait changed elsewhere
+- Unraid 7.4 compatibility improvements
 
 ## 2026.09.29
 
