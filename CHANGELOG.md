@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.10.10.1 (beta)
 
 - Advanced preview has a new Variables tab
 - Unraid API integration additions: autostart toggle
