@@ -124,7 +124,8 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
         const nets = info?.NetworkSettings?.Networks && typeof info.NetworkSettings.Networks === 'object' ? info.NetworkSettings.Networks : {};
         const names = [...new Set([mode, ...Object.keys(nets).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))])].filter(Boolean);
         if (names.length) {
-            rows.push({ key: 'runtime-network', fallback: 'Network', values: names.map((n) => (nets[n]?.IPAddress ? `${n} · ${nets[n].IPAddress}` : n)), personal: true });
+            const ipOf = (n) => nets[n]?.IPAddress || nets[n]?.GlobalIPv6Address || '';
+            rows.push({ key: 'runtime-network', fallback: 'Network', values: names.map((n) => (ipOf(n) ? `${n} · ${ipOf(n)}` : n)), personal: true });
         }
         const gpus = (Array.isArray(hc.DeviceRequests) ? hc.DeviceRequests : [])
             .filter((r) => Array.isArray(r?.Capabilities) && r.Capabilities.some((c) => Array.isArray(c) && c.includes('gpu')))

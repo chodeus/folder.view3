@@ -83,7 +83,9 @@ const plain = ctx.fv3EnvRuntimeRows({ HostConfig: { NetworkMode: 'bridge', Runti
 check('Docker defaults add nothing beyond the network', same(keys(plain), ['runtime-network']), plain);
 const multi = ctx.fv3EnvRuntimeRows({ HostConfig: { NetworkMode: 'br0' }, NetworkSettings: { Networks: { proxynet: { IPAddress: '172.18.0.4' }, br0: { IPAddress: '192.0.2.5' }, aux: {} } } });
 check('every attached network, the primary first', same(multi[0].values, ['br0 · 192.0.2.5', 'aux', 'proxynet · 172.18.0.4']), multi[0]);
-check('a borrowed container network shows as set', same(ctx.fv3EnvRuntimeRows({ HostConfig: { NetworkMode: 'container:abc123' }, NetworkSettings: { Networks: {} } })[0].values, ['container:abc123']));
+const v6 = ctx.fv3EnvRuntimeRows({ HostConfig: { NetworkMode: 'v6net' }, NetworkSettings: { Networks: { v6net: { IPAddress: '', GlobalIPv6Address: '2001:db8::5' }, dual: { IPAddress: '192.0.2.7', GlobalIPv6Address: '2001:db8::7' } } } });
+check('an IPv6-only network shows its IPv6 address, a dual-stack one its IPv4', same(v6[0].values, ['v6net · 2001:db8::5', 'dual · 192.0.2.7']), v6[0]);
+check('a borrowed container network shows as set',same(ctx.fv3EnvRuntimeRows({ HostConfig: { NetworkMode: 'container:abc123' }, NetworkSettings: { Networks: {} } })[0].values, ['container:abc123']));
 
 // Rendering
 const state = (more) => Object.assign({ revealed: new Set(), showImage: false, imageEnv: imageEnv, loading: false, incognito: false }, more);
