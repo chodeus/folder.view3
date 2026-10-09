@@ -26,6 +26,20 @@ const fv3SafeParse = window.fv3SafeParse || ((raw, fallback) => {
     catch (e) { console.error('[FV3] JSON parse failed:', e); return fallback; }
 });
 
+// shared.js is not loaded on this page; mirrors its fv3GraphQL, and the name keeps these documents in the Unraid watch
+const fv3GraphQL = window.fv3GraphQL || (async (query, variables) => {
+    const resp = await fetch('/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': typeof csrf_token !== 'undefined' ? csrf_token : '' },
+        credentials: 'same-origin',
+        body: JSON.stringify(variables ? { query: query, variables: variables } : { query: query })
+    });
+    if (!resp.ok) throw new Error('GraphQL HTTP ' + resp.status);
+    const json = await resp.json();
+    if (json.errors && json.errors.length) throw new Error(json.errors[0].message);
+    return json.data;
+});
+
 let dockers = {};
 let vms = {};
 
@@ -976,23 +990,94 @@ const fv3IsAutostartDirty = () => {
 
 const fv3CancelAutostart = () => { if (fv3AsSnapshot) fv3LoadAutostart(); };
 
+const fv3AsFileWaits = (lines) => {
+    const waits = {};
+    lines.forEach(e => { waits[e.name] = e.wait || 0; });
+    return waits;
+};
+
+// Each name's wanted state: the user's toggle where they changed it (touched), the live file's otherwise
+const fv3AsWant = (cur, snapshot, lines) => {
+    const inFile = fv3AsFileWaits(lines);
+    const want = {};
+    for (const [name, on] of Object.entries(cur.toggles)) {
+        const has = Object.prototype.hasOwnProperty.call(inFile, name);
+        want[name] = (snapshot.toggles[name] || false) === on
+            ? { on: has, wait: has ? inFile[name] : 0, touched: false }
+            : { on, wait: cur.waits[name] || 0, touched: true };
+    }
+    for (const [name, wait] of Object.entries(inFile)) {
+        if (!Object.prototype.hasOwnProperty.call(want, name)) want[name] = { on: true, wait, touched: false };
+    }
+    return want;
+};
+
+// UpdateConfig.php calls that bring the file to the wanted state: Unraid removes by the exact "name wait" line, appends on add.
+// An untouched name is only put back (an API write dropped it), never removed: another tab may have just enabled it
+const fv3AsUpdateConfigCalls = (want, lines) => {
+    const inFile = fv3AsFileWaits(lines);
+    const calls = [];
+    for (const [name, w] of Object.entries(want)) {
+        const has = Object.prototype.hasOwnProperty.call(inFile, name);
+        if (w.on === has || (!w.touched && !w.on)) continue;
+        calls.push({ name, on: w.on, wait: w.on ? (w.wait > 0 ? w.wait : '') : (inFile[name] > 0 ? inFile[name] : '') });
+    }
+    return calls;
+};
+
+// updateAutostartConfiguration entries in file order, then newly enabled names; null when a wanted name has no API id,
+// because the mutation drops that line without an error
+const fv3AsApiEntries = (want, lines, containers) => {
+    const ids = {};
+    (Array.isArray(containers) ? containers : []).forEach(c => {
+        // the name the API writes: the first one, leading slash dropped (its getDockerContainerPrimaryName)
+        const name = c && Array.isArray(c.names) && typeof c.names[0] === 'string' ? c.names[0].replace(/^\//, '') : '';
+        if (name && typeof c.id === 'string' && !Object.prototype.hasOwnProperty.call(ids, name)) ids[name] = c.id;
+    });
+    const entries = [];
+    for (const name of new Set([...lines.map(e => e.name), ...Object.keys(want)])) {
+        const w = Object.prototype.hasOwnProperty.call(want, name) ? want[name] : null;
+        if (!w) return null;
+        if (!w.on) continue;
+        if (!Object.prototype.hasOwnProperty.call(ids, name)) return null;
+        entries.push({ id: ids[name], autoStart: true, wait: w.wait > 0 ? w.wait : 0 });
+    }
+    return entries;
+};
+
+// true once the mutation was sent, even if it then failed: the file may have changed. Failures are only logged;
+// the UpdateConfig.php calls that follow repair a skipped or failed write
+const fv3AsApiSave = async (want, lines) => {
+    let sent = false;
+    try {
+        const data = await fv3GraphQL('{ docker { containers { id names } } }');
+        const entries = fv3AsApiEntries(want, lines, data && data.docker && data.docker.containers);
+        if (!entries) return false;
+        sent = true;
+        await fv3GraphQL('mutation($entries: [DockerAutostartEntryInput!]!) { docker { updateAutostartConfiguration(entries: $entries) } }', { entries: entries });
+    } catch (e) {
+        fv3DebugWarn('API', 'Autostart save through GraphQL failed, using UpdateConfig.php:', e.message);
+    }
+    return sent;
+};
+
 const fv3SubmitAutostart = async () => {
     if (!fv3AsSnapshot) return;
     const cur = fv3AsCollect();
     try {
         // fresh file state, not the load-time snapshot: Unraid removes by exact "name wait" line match
         // (mismatch corrupts entry 0) and duplicates on re-add — a concurrent docker-page edit must not trip either
-        const live = fv3SafeParse(await $.get('/plugins/folder.view3/server/read_autostart.php').promise(), {});
-        const liveWaits = {};
-        (live.autostart || []).forEach(e => { liveWaits[e.name] = e.wait || 0; });
-        // autostart on/off goes through Unraid's own handler; the batch below re-asserts order after its re-sort
-        for (const [name, on] of Object.entries(cur.toggles)) {
-            if ((fv3AsSnapshot.toggles[name] || false) === on) continue;
-            const inFile = Object.prototype.hasOwnProperty.call(liveWaits, name);
-            if (on === inFile) continue;
-            const wait = on ? (cur.waits[name] > 0 ? cur.waits[name] : '') : (liveWaits[name] > 0 ? liveWaits[name] : '');
+        const readLive = async () => fv3SafeParse(await $.get('/plugins/folder.view3/server/read_autostart.php').promise(), {});
+        let live = await readLive();
+        const want = fv3AsWant(cur, fv3AsSnapshot, live.autostart || []);
+        // one whole-file write through the API where it writes this same file. Not in Off mode: Unraid's own handler
+        // re-sorts by the Docker page order, which only Off mode keeps (the other modes re-sort below)
+        const useApi = cur.mode !== 'off' && live.apiFile && fv3AsUpdateConfigCalls(want, live.autostart || []).length > 0;
+        if (useApi && await fv3AsApiSave(want, live.autostart || [])) live = await readLive();
+        // remaining on/off changes go through Unraid's own handler; the batch below re-asserts order after its re-sort
+        for (const call of fv3AsUpdateConfigCalls(want, live.autostart || [])) {
             await $.post('/plugins/dynamix.docker.manager/include/UpdateConfig.php', {
-                action: 'autostart', container: name, wait: wait, auto: on ? 'true' : 'false',
+                action: 'autostart', container: call.name, wait: call.wait, auto: call.on ? 'true' : 'false',
                 csrf_token: typeof csrf_token !== 'undefined' ? csrf_token : ''
             }).promise();
         }
