@@ -38,6 +38,9 @@ jobs:
           php .github/scripts/variables_tab_test.php
           node .github/scripts/variables_tab_test.js
 
+      - name: Autostart tab tests
+        run: node .github/scripts/autostart_api_test.js
+
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
 
