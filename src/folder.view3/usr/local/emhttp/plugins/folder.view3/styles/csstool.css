@@ -241,35 +241,55 @@
     cursor: default;
 }
 
-/* Theme import progress dialog — uses native swal(), minimal overrides */
-.sweet-alert.nchan {
+/* Theme import progress dialog: its own class, so Unraid 7.4's .nchan task-sheet restyle and tray controls skip it.
+   Sheet layout copied from Unraid's .sweet-alert.nchan (jquery.sweetalert.css); display: flex is set by csstool.js */
+.sweet-alert.fv3-progress {
+    flex-direction: column;
+    width: 95vw;
     max-width: 540px;
+    height: 95vh;
 }
 
-.sweet-alert.nchan #fv3ProgressLog {
+.sweet-alert.fv3-progress h2 {
+    margin: -2rem -2rem 0;
+    padding: 2rem 0;
+    background-color: rgba(192, 192, 192, 0.3);
+}
+
+.sweet-alert.fv3-progress p {
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    margin: 0 -2rem;
+    padding: 0;
+}
+
+.sweet-alert.fv3-progress #fv3ProgressLog {
     text-align: left;
     white-space: pre-wrap;
     word-break: break-all;
 }
 
-.sweet-alert.nchan #fv3ProgressLog fieldset.docker {
+.sweet-alert.fv3-progress #fv3ProgressLog fieldset.docker {
     border: solid thin;
     margin-top: 8px;
 }
 
-.sweet-alert.nchan #fv3ProgressLog legend {
+.sweet-alert.fv3-progress #fv3ProgressLog legend {
     font-size: 1.1rem;
     font-weight: bold;
 }
 
-.sweet-alert.nchan #fv3ProgressLog .logLine {
+.sweet-alert.fv3-progress #fv3ProgressLog .logLine {
+    display: flex;
+    flex-direction: column;
     font-family: bitstream, monospace;
     font-size: 1.2rem;
     margin: 0;
     padding: 0;
 }
 
-.sweet-alert.nchan .fv3-swal-spinner {
+.sweet-alert.fv3-progress .fv3-swal-spinner {
     display: inline-block;
     margin-left: 6px;
     animation: fv3-swal-spin 1s linear infinite;

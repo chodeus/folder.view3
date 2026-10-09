@@ -2,6 +2,13 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## 2026.10.10.1 (beta)
+
+- Advanced preview has a new Variables tab
+- Unraid API integration additions: autostart toggle
+- Settings autostart page no longer resets a wait changed elsewhere
+- Unraid 7.4 compatibility improvements
+
 ## 2026.09.29
 
 - FolderView Plus migration now supported, see readme for FV Plus backup import behaviours

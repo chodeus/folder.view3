@@ -14,5 +14,7 @@
             $entries[] = ['name' => $parts[0], 'wait' => isset($parts[1]) ? (int)trim($parts[1]) : 0];
         }
     }
-    echo json_encode(['mode' => $cfg['mode'], 'sequence' => $cfg['sequence'], 'autostart' => $entries]);
+    // updateAutostartConfiguration writes the stock path, as Unraid does (DockerClient.php); only FV3 reads a dockerMan.cfg override
+    $apiFile = $autoStartFile === '/var/lib/docker/unraid-autostart';
+    echo json_encode(['mode' => $cfg['mode'], 'sequence' => $cfg['sequence'], 'autostart' => $entries, 'apiFile' => $apiFile]);
 ?>
