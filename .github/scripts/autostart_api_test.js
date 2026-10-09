@@ -16,7 +16,7 @@ const lift = (name) => {
 const names = ['fv3AsFileWaits', 'fv3AsWant', 'fv3AsUpdateConfigCalls', 'fv3AsApiEntries', 'fv3AsApiSave'];
 let gql = () => Promise.reject(new Error('no answer set'));
 const sentQueries = [];
-const page = vm.createContext({ fv3GraphQL: (q, v) => { sentQueries.push(q); return gql(q, v); }, fv3DebugWarn: () => {} });
+const page = vm.createContext({ fv3GraphQL: (q, v) => { sentQueries.push({ q, v }); return gql(q, v); }, fv3DebugWarn: () => {} });
 const { fv3AsWant, fv3AsUpdateConfigCalls, fv3AsApiEntries, fv3AsApiSave } =
     vm.runInContext(names.map(lift).join('\n') + `\n({ ${names.join(', ')} })`, page);
 
@@ -136,16 +136,19 @@ check('a name shaped like an Object property is no id', fv3AsApiEntries({ constr
         sentQueries.length = 0;
         gql = answer(containers, mutation);
         const sent = await fv3AsApiSave(want, liveWithE);
-        return { sent, mutations: sentQueries.filter(isMutation).length };
+        return { sent, mutations: sentQueries.filter((c) => isMutation(c.q)).length };
     };
     const ok = () => Promise.resolve({ docker: { updateAutostartConfiguration: true } });
     const fail = () => Promise.reject(new Error('GraphQL HTTP 502'));
     check('a written save answers true', same(await run(containers, ok), { sent: true, mutations: 1 }));
+    const mutation = sentQueries.find((c) => isMutation(c.q));
+    check('and sends the built entries as $entries: ids, waits, order', same(mutation.v, { entries })
+        && mutation.q.includes('mutation($entries: [DockerAutostartEntryInput!]!)') && mutation.q.includes('updateAutostartConfiguration(entries: $entries)'), mutation);
     check('a mutation that fails still answers true, since it may have written', same(await run(containers, fail), { sent: true, mutations: 1 }));
     check('a missing id sends no mutation and answers false', same(await run(containers.filter((c) => !c || c.id !== 'id-b'), ok), { sent: false, mutations: 0 }));
     sentQueries.length = 0;
     gql = () => Promise.reject(new Error('Cannot query field "containers"'));
-    check('a failed container read answers false', (await fv3AsApiSave(want, liveWithE)) === false && sentQueries.filter(isMutation).length === 0);
+    check('a failed container read answers false', (await fv3AsApiSave(want, liveWithE)) === false && !sentQueries.some((c) => isMutation(c.q)));
 
     console.log(failed ? `\n${failed} FAILED` : '\nall passed');
     process.exit(failed ? 1 : 0);
