@@ -996,15 +996,28 @@ const fv3AsFileWaits = (lines) => {
     return waits;
 };
 
-// Each name's wanted state: the user's toggle where they changed it (touched), the live file's otherwise
+// Waits the user edited, a cleared one as 0; the rest stay as the live file has them
+const fv3AsChangedWaits = (cur, snapshot) => {
+    const waits = {};
+    for (const [name, wait] of Object.entries(cur.waits)) {
+        const before = Object.prototype.hasOwnProperty.call(snapshot.waits, name) ? snapshot.waits[name] : 0;
+        if (wait !== before) waits[name] = wait;
+    }
+    return waits;
+};
+
+// Each name's wanted state: the user's toggle where they changed it (touched), the live file's otherwise.
+// A line already in the file keeps its wait unless the user edited it (another tab may have just set it)
 const fv3AsWant = (cur, snapshot, lines) => {
     const inFile = fv3AsFileWaits(lines);
+    const edited = fv3AsChangedWaits(cur, snapshot);
     const want = {};
     for (const [name, on] of Object.entries(cur.toggles)) {
         const has = Object.prototype.hasOwnProperty.call(inFile, name);
+        const fileWait = has && !Object.prototype.hasOwnProperty.call(edited, name);
         want[name] = (snapshot.toggles[name] || false) === on
             ? { on: has, wait: has ? inFile[name] : 0, touched: false }
-            : { on, wait: cur.waits[name] || 0, touched: true };
+            : { on, wait: fileWait ? inFile[name] : (cur.waits[name] || 0), touched: true };
     }
     for (const [name, wait] of Object.entries(inFile)) {
         if (!Object.prototype.hasOwnProperty.call(want, name)) want[name] = { on: true, wait, touched: false };
@@ -1044,16 +1057,6 @@ const fv3AsApiEntries = (want, lines, containers) => {
         entries.push({ id: ids[name], autoStart: true, wait: w.wait > 0 ? w.wait : 0 });
     }
     return entries;
-};
-
-// Waits the user edited, a cleared one as 0; the rest stay as the live file has them
-const fv3AsChangedWaits = (cur, snapshot) => {
-    const waits = {};
-    for (const [name, wait] of Object.entries(cur.waits)) {
-        const before = Object.prototype.hasOwnProperty.call(snapshot.waits, name) ? snapshot.waits[name] : 0;
-        if (wait !== before) waits[name] = wait;
-    }
-    return waits;
 };
 
 // true once the mutation was sent, even if it then failed: the file may have changed. Failures are only logged;

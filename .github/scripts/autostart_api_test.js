@@ -13,7 +13,7 @@ const lift = (name) => {
     const end = source.findIndex((l, i) => i > start && l === '};');
     return source.slice(start, end + 1).join('\n');
 };
-const names = ['fv3AsFileWaits', 'fv3AsWant', 'fv3AsUpdateConfigCalls', 'fv3AsApiEntries', 'fv3AsChangedWaits', 'fv3AsApiSave'];
+const names = ['fv3AsFileWaits', 'fv3AsChangedWaits', 'fv3AsWant', 'fv3AsUpdateConfigCalls', 'fv3AsApiEntries', 'fv3AsApiSave'];
 let gql = () => Promise.reject(new Error('no answer set'));
 const sentQueries = [];
 const page = vm.createContext({ fv3GraphQL: (q, v) => { sentQueries.push({ q, v }); return gql(q, v); }, fv3DebugWarn: () => {} });
@@ -28,7 +28,7 @@ const check = (label, ok, detail) => {
 };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-// The loop fv3SubmitAutostart ran before the API path, kept as the reference for the UpdateConfig.php calls
+// Reference UpdateConfig.php calls for the no-API-write differential below
 const legacyCalls = (cur, snapshot, lines) => {
     const liveWaits = {};
     lines.forEach(e => { liveWaits[e.name] = e.wait || 0; });
@@ -43,7 +43,7 @@ const legacyCalls = (cur, snapshot, lines) => {
 };
 
 const lines = [{ name: 'app-a', wait: 0 }, { name: 'app-b', wait: 30 }, { name: 'app-c', wait: 0 }, { name: 'app-x', wait: 5 }];
-const snapshot = { toggles: { 'app-a': true, 'app-b': true, 'app-c': true, 'app-d': false, 'app-e': false, 'app-f': false } };
+const snapshot = { toggles: { 'app-a': true, 'app-b': true, 'app-c': true, 'app-d': false, 'app-e': false, 'app-f': false }, waits: { 'app-a': 0, 'app-b': 30, 'app-c': 0 } };
 // c turned off, d turned on with a wait; app-e was enabled elsewhere after the tab loaded; app-x is in the file but not the tab
 const cur = {
     toggles: { 'app-a': true, 'app-b': true, 'app-c': false, 'app-d': true, 'app-e': false, 'app-f': false },
@@ -55,6 +55,12 @@ check('a changed toggle wants the tab, with its wait', same(want['app-c'], { on:
 check('an unchanged toggle keeps the file, with the file wait', same(want['app-b'], { on: true, wait: 30, touched: false }) && same(want['app-f'], { on: false, wait: 0, touched: false }), want);
 check('an edit made elsewhere since the tab loaded survives', same(want['app-e'], { on: true, wait: 0, touched: false }), want);
 check('a file line the tab does not list stays on', same(want['app-x'], { on: true, wait: 5, touched: false }), want);
+// Switched on here while another tab enabled the same container with a wait: its wait stays unless edited here
+const raceLines = [{ name: 'app-g', wait: 20 }];
+const raceBefore = { toggles: { 'app-g': false }, waits: {} };
+check('a switch turned on for a line already enabled elsewhere keeps that line\'s wait',
+    same(fv3AsWant({ toggles: { 'app-g': true }, waits: { 'app-g': 0 } }, raceBefore, raceLines)['app-g'], { on: true, wait: 20, touched: true }));
+check('unless the wait was edited here', same(fv3AsWant({ toggles: { 'app-g': true }, waits: { 'app-g': 5 } }, raceBefore, raceLines)['app-g'], { on: true, wait: 5, touched: true }));
 check('an untouched name enabled elsewhere after the first read is never removed',
     !fv3AsUpdateConfigCalls(want, [...liveWithE, { name: 'app-f', wait: 0 }]).some((c) => c.name === 'app-f'));
 
@@ -82,11 +88,12 @@ const seen = { removeByFileWait: 0, addWithWait: 0, repeatedLine: 0, untouched: 
 for (let trial = 0; trial < 3000 && !mismatch; trial++) {
     const pool = ['n0', 'n1', 'n2', 'n3', 'n4', 'n5'];
     const t = { toggles: {}, waits: {} };
-    const s = { toggles: {} };
+    const s = { toggles: {}, waits: {} };
     const file = [];
     pool.forEach((n) => {
         if (rand(5)) { t.toggles[n] = !!rand(2); t.waits[n] = [0, 0, 7, 60][rand(4)]; }
         if (rand(4)) s.toggles[n] = !!rand(2);
+        if (rand(3)) s.waits[n] = [0, 7, 60][rand(3)];
         if (rand(2)) file.push({ name: n, wait: [0, 3, 0][rand(3)] });
     });
     if (rand(6) === 0 && file.length) file.push({ ...file[0], wait: 9 });
@@ -141,10 +148,10 @@ check('a name shaped like an Object property is no id', fv3AsApiEntries({ constr
 (async () => {
     const isMutation = (q) => q.startsWith('mutation');
     const answer = (containers, mutation) => (q) => (isMutation(q) ? mutation() : Promise.resolve({ docker: { containers } }));
-    const run = async (containers, mutation) => {
+    const run = async (containers, mutation, w = want, l = liveWithE) => {
         sentQueries.length = 0;
         gql = answer(containers, mutation);
-        const sent = await fv3AsApiSave(want, liveWithE);
+        const sent = await fv3AsApiSave(w, l);
         return { sent, mutations: sentQueries.filter((c) => isMutation(c.q)).length };
     };
     const ok = () => Promise.resolve({ docker: { updateAutostartConfiguration: true } });
@@ -155,6 +162,11 @@ check('a name shaped like an Object property is no id', fv3AsApiEntries({ constr
         && mutation.q.includes('mutation($entries: [DockerAutostartEntryInput!]!)') && mutation.q.includes('updateAutostartConfiguration(entries: $entries)'), mutation);
     check('a mutation that fails still answers true, since it may have written', same(await run(containers, fail), { sent: true, mutations: 1 }));
     check('a missing id sends no mutation and answers false', same(await run(containers.filter((c) => !c || c.id !== 'id-b'), ok), { sent: false, mutations: 0 }));
+    const offLines = [{ name: 'app-a', wait: 0 }, { name: 'app-b', wait: 30 }];
+    const allOff = fv3AsWant({ toggles: { 'app-a': false, 'app-b': false }, waits: { 'app-a': 0, 'app-b': 0 } },
+        { toggles: { 'app-a': true, 'app-b': true }, waits: { 'app-a': 0, 'app-b': 30 } }, offLines);
+    check('turning everything off sends one mutation with no entries and answers true',
+        same(await run(containers, ok, allOff, offLines), { sent: true, mutations: 1 }) && same(sentQueries.find((c) => isMutation(c.q)).v, { entries: [] }));
     sentQueries.length = 0;
     gql = () => Promise.reject(new Error('Cannot query field "containers"'));
     check('a failed container read answers false', (await fv3AsApiSave(want, liveWithE)) === false && !sentQueries.some((c) => isMutation(c.q)));
