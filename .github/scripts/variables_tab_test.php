@@ -1,5 +1,5 @@
 <?php
-// php .github/scripts/variables_tab_test.php [plugin-dir] — template extras and read_image_env.php behind the advanced preview's Variables tab
+// php .github/scripts/variables_tab_test.php [plugin-dir] — the advanced preview's server side: template extras, read_image_env.php, console shell
 $fv3tPlugin = $argv[1] ?? dirname(__DIR__, 2) . '/src/folder.view3/usr/local/emhttp/plugins/folder.view3';
 $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-variables-test-' . bin2hex(random_bytes(4));
 
@@ -79,6 +79,13 @@ check('an existing template field decodes too', fv3_template_tag($doc, 'Support'
 check('a missing tag gives its default', fv3_template_tag($doc, 'TailscaleServe', 'no') === 'no' && fv3_template_tag($doc, 'ReadMe') === '');
 $bare = fv3_template_extras(unraidTemplate(['Name' => 'bare'], []));
 check('a template without extras gives empty values', $bare === ['extraParams' => '', 'postArgs' => '', 'variables' => []], $bare);
+
+// Unraid 7.4's OpenTerminal.php refuses any console shell but sh and bash
+foreach (['bash' => 'bash', 'sh' => 'sh', '/bin/bash' => 'bash', '/usr/bin/bash' => 'bash', '/bin/sh' => 'sh', ' bash ' => 'bash',
+          'zsh' => 'zsh', '/bin/zsh' => '/bin/zsh', 'bash -l' => 'bash -l', '' => 'sh', '"\';' => 'sh', "bash');alert(1)//" => 'bashalert1//'] as $raw => $want) {
+    check("console shell " . json_encode($raw) . " → $want", fv3_console_shell($raw) === $want, fv3_console_shell($raw));
+}
+check('no shell at all is sh', fv3_console_shell(null) === 'sh');
 
 $id = 'sha256:' . str_repeat('ab', 32);
 docker(['Config' => ['Env' => ['PATH=/usr/bin', 'EMPTY=', 7, 'ZERO=0']]]);
