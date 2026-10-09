@@ -81,6 +81,9 @@ check('runtime rows for every non-default setting', same(runtime.map((r) => [r.k
     ['runtime-capabilities', ['NET_ADMIN']], ['runtime-restart', ['on-failure (3)']]]), runtime);
 const plain = ctx.fv3EnvRuntimeRows({ HostConfig: { NetworkMode: 'bridge', Runtime: 'runc', Privileged: false, Memory: 0, RestartPolicy: { Name: 'no' }, CpusetCpus: '' } });
 check('Docker defaults add nothing beyond the network', same(keys(plain), ['runtime-network']), plain);
+const multi = ctx.fv3EnvRuntimeRows({ HostConfig: { NetworkMode: 'br0' }, NetworkSettings: { Networks: { proxynet: { IPAddress: '172.18.0.4' }, br0: { IPAddress: '192.0.2.5' }, aux: {} } } });
+check('every attached network, the primary first', same(multi[0].values, ['br0 · 192.0.2.5', 'aux', 'proxynet · 172.18.0.4']), multi[0]);
+check('a borrowed container network shows as set', same(ctx.fv3EnvRuntimeRows({ HostConfig: { NetworkMode: 'container:abc123' }, NetworkSettings: { Networks: {} } })[0].values, ['container:abc123']));
 
 // Rendering
 const state = (more) => Object.assign({ revealed: new Set(), showImage: false, imageEnv: imageEnv, loading: false, incognito: false }, more);
