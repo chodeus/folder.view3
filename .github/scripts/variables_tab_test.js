@@ -101,6 +101,12 @@ check('image defaults start folded', !html.includes('PATH') && html.includes('Sh
 html = ctx.fv3EnvPanelHtml(ct, state({ revealed: new Set(['env:APP_TOKEN', 'params:extra']), showImage: true }));
 check('revealing shows the value and the params', html.includes('not-a-real-token') && html.includes('-e API_KEY=abc123 --runtime=nvidia') && html.includes('fa-eye-slash'));
 check('unfolding shows the image defaults', html.includes('PATH') && html.includes('Hide image defaults'));
+check('the image defaults come last, below Runtime', html.indexOf('>Runtime<') !== -1 && html.indexOf('fv3-env-more') > html.indexOf('>Runtime<') && html.indexOf('>PATH<') > html.indexOf('fv3-env-more'));
+const rowOf = (key) => html.split('<div class="fv3-env-row').find((r) => r.includes(`>${key}<`)) || '';
+check('Common rows are not dimmed, image defaults still are', rowOf('PUID') !== '' && !rowOf('PUID').includes('fv3-env-dim') && rowOf('PATH').includes('fv3-env-dim'));
+check('one grid wraps the whole list', html.startsWith('<div class="fv3-env-list">') && html.endsWith('</div>'));
+html = ctx.fv3EnvPanelHtml({ ImageID: ct.ImageID, Labels: {}, info: { Config: { Env: ['PATH=/usr/bin', 'LANG=C.UTF-8'] } } }, state());
+check('only image defaults still says No variables set under Variables', html.includes('>Variables</div><div class="fv3-env-note">No variables set</div>') && html.includes('Show 2 image defaults'));
 html = ctx.fv3EnvPanelHtml(ct, state({ incognito: true, revealed: new Set(['env:APP_TOKEN', 'params:extra']) }));
 check('incognito hides every value, even revealed ones', !html.includes('not-a-real-token') && !html.includes('bold') && !html.includes('>99<') && !html.includes('abc123'));
 check('incognito offers nothing to reveal and hides the network', !html.includes('fv3-env-reveal') && !html.includes('192.0.2.5') && html.includes('[hidden]') && html.includes('2,3'));

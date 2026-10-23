@@ -1958,6 +1958,12 @@ window.fv3HasWidthSnapshot = () => {
     return tbl.querySelectorAll('thead > tr > th').length === snap.headerCount;
 };
 
+// Forget every view's snapshot so the next build re-measures — for content changes a replay can't see.
+window.fv3ResetWidthSnapshots = () => {
+    _fv3ViewCache = {};
+    _fv3WidthSnapshots = null;
+};
+
 window.fv3ApplyCachedWidths = () => {
     // Current view's cached snapshot; fall back to the last-measured one until this view is measured.
     const snap = _fv3ViewCache[fv3CurrentDockerView()] || _fv3WidthSnapshots;

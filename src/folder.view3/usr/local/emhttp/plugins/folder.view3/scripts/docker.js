@@ -11,6 +11,7 @@ let folderobserverConfig = {
     attributes: true
 };
 let folderReq = [];
+let fv3RemeasureWidths = false;
 
 // Folder rendering — orchestrate (createFolders) and per-folder build (createFolder)
 const createFolders = async () => {
@@ -200,6 +201,10 @@ const createFolders = async () => {
     // every refresh makes Volume snap); only measure on the first build. Genuine changes re-measure via
     // their own triggers (toggle, resize, first expansion).
     try {
+        if (fv3RemeasureWidths) {
+            fv3RemeasureWidths = false;
+            fv3ResetWidthSnapshots();
+        }
         if (fv3HasWidthSnapshot()) {
             fv3ApplyCachedWidths();
         } else {
@@ -1382,6 +1387,15 @@ $(document).ajaxComplete((event, jqXHR, settings) => {
         fv3Debug('autostartSync', 'Rebuilding autostart after Unraid event', {url, sample: data.slice(0, 80)});
         $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'});
     }
+});
+
+// checkAll shows "checking..." in every version cell until its loadlist's reply, and a measure before then caps the
+// labels at that text — so the rebuild from that reply drops the cache (not here, while the cells still read it).
+$(document).ajaxComplete((event, jqXHR, settings) => {
+    if (!settings || !settings.url) return;
+    if (settings.url.indexOf('/plugins/dynamix.docker.manager/include/DockerUpdate.php') === -1) return;
+    fv3Debug('WidthFix', 'Update check finished; next build re-measures.');
+    fv3RemeasureWidths = true;
 });
 
 fv3Debug('init', 'docker.js loaded');

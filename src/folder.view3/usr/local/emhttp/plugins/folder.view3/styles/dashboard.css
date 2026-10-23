@@ -842,7 +842,7 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
 }
 
 .info-section .ui-tabs-panel {
-    padding: var(--tooltip-spacing);
+    padding: 6px var(--tooltip-spacing) var(--tooltip-spacing) 10px;
     clear: both;
     background-color: var(--fv3-surface-tint);
     border: var(--fv3-border);
@@ -915,21 +915,32 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
     margin-top: 2px;
 }
 
+.info-section .fv3-env-list {
+    display: grid;
+    grid-template-columns: fit-content(60%) minmax(0, 1fr);
+    column-gap: 10px;
+}
+
+.info-section .fv3-env-list > * {
+    grid-column: 1 / -1;
+}
+
 .info-section .fv3-env-group {
     font-size: 0.85em;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    opacity: 0.55;
     margin: 8px 4px 2px;
 }
 
+/* subgrid shares the list's name column across rows; the 2fr/3fr line is the fallback where it's unsupported */
 .info-section .fv3-env-row {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-columns: subgrid;
     column-gap: 10px;
     align-items: start;
-    padding: 3px 4px;
+    padding: 0 4px 0 16px;
     border-bottom: 1px solid rgba(128, 128, 128, 0.15);
 }
 
@@ -955,6 +966,11 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
     overflow-wrap: anywhere;
 }
 
+.info-section .fv3-env-key::after,
+.info-section .fv3-env-prop::after {
+    content: ":";
+}
+
 .info-section .fv3-env-value,
 .info-section .fv3-env-code {
     flex: 1 1 auto;
@@ -963,6 +979,7 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
 
 .info-section .fv3-env-label {
     display: block;
+    contain: inline-size; /* a long label must not widen the shared name column */
     font-size: 0.85em;
     opacity: 0.65;
     overflow: hidden;
@@ -1001,6 +1018,7 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
 
 .info-section .fv3-env-more {
     display: inline-block;
+    justify-self: start;
     margin: 6px 4px 0;
 }
 

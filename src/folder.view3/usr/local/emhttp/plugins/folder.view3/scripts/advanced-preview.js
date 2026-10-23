@@ -178,14 +178,9 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
 
         const groups = fv3EnvGroups(ct.info?.Config?.Env, state.imageEnv, ct.info?.template?.variables);
         let html = heading(fv3I18nOr('variables', 'Variables'));
-        if (!groups.main.length && !groups.common.length && !groups.image.length) html += `<div class="fv3-env-note">${text(fv3I18nOr('env-none', 'No variables set'))}</div>`;
+        if (!groups.main.length && !groups.common.length) html += `<div class="fv3-env-note">${text(fv3I18nOr('env-none', 'No variables set'))}</div>`;
         html += groups.main.map((r) => row(r, false)).join('');
-        if (groups.common.length) html += `<div class="fv3-env-group">${text(fv3I18nOr('env-common', 'Common'))}</div>` + groups.common.map((r) => row(r, true)).join('');
-        if (groups.image.length) {
-            const label = state.showImage ? fv3I18nOr('env-image-hide', 'Hide image defaults') : fv3I18nOr('env-image-show', 'Show $1 image defaults', groups.image.length);
-            html += `<a href="#" class="fv3-env-more" role="button" aria-expanded="${state.showImage === true}"><i class="fa fa-chevron-${state.showImage ? 'down' : 'right'}" aria-hidden="true"></i> ${text(label)}</a>`;
-            if (state.showImage) html += groups.image.map((r) => row(r, true)).join('');
-        }
+        if (groups.common.length) html += `<div class="fv3-env-group">${text(fv3I18nOr('env-common', 'Common'))}</div>` + groups.common.map((r) => row(r, false)).join('');
         const tpl = ct.info?.template;
         if (tpl) {
             html += params(fv3I18nOr('extra-parameters', 'Extra Parameters'), typeof tpl.extraParams === 'string' ? tpl.extraParams : '', 'extra');
@@ -195,7 +190,13 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
         if (compose.length) html += heading(fv3I18nOr('compose', 'Compose')) + props(compose, true);
         const runtime = fv3EnvRuntimeRows(ct.info);
         if (runtime.length) html += heading(fv3I18nOr('runtime', 'Runtime')) + props(runtime, false);
-        return html;
+        if (groups.image.length) {
+            const label = state.showImage ? fv3I18nOr('env-image-hide', 'Hide image defaults') : fv3I18nOr('env-image-show', 'Show $1 image defaults', groups.image.length);
+            html += `<a href="#" class="fv3-env-more" role="button" aria-expanded="${state.showImage === true}"><i class="fa fa-chevron-${state.showImage ? 'down' : 'right'}" aria-hidden="true"></i> ${text(label)}</a>`;
+            if (state.showImage) html += groups.image.map((r) => row(r, true)).join('');
+        }
+        // One grid for every row, so the name column sizes to the longest name across all sections
+        return `<div class="fv3-env-list">${html}</div>`;
     };
 
     // One request per image per page; a failed one leaves the cache so the next view asks again
