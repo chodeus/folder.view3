@@ -5,14 +5,13 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "actionlint's version and tarball SHA-256 in validate-workflows.yml; Renovate re-hashes the matching release asset.",
+      "description": "actionlint's release tag and tarball SHA-256 in validate-workflows.yml; Renovate takes the same asset's hash from the new release.",
       "managerFilePatterns": ["/^\\.github/workflows/validate-workflows\\.yml$/"],
       "matchStrings": [
         "ACTIONLINT_VERSION:\\s*(?<currentValue>[^\\s]+)\\s+ACTIONLINT_SHA256:\\s*(?<currentDigest>[a-f0-9]{64})"
       ],
       "datasourceTemplate": "github-release-attachments",
-      "depNameTemplate": "rhysd/actionlint",
-      "extractVersionTemplate": "^v(?<version>.+)$"
+      "depNameTemplate": "rhysd/actionlint"
     }
   ]
 }
