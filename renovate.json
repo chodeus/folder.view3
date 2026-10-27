@@ -53,12 +53,6 @@
       "matchDepTypes": ["bundled"],
       "matchDatasources": ["npm"],
       "minimumReleaseAge": "7 days"
-    },
-    {
-      "description": "chartjs-plugin-streaming 2.0.0, its last release, needs chart.js 3 (peer ^3.0.0).",
-      "matchDepTypes": ["bundled"],
-      "matchPackageNames": ["chart.js"],
-      "allowedVersions": "<4"
     }
   ]
 }
