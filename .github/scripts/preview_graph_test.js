@@ -9,11 +9,14 @@ const attached = new Set();
 const built = [];
 let frames = [];
 let nextFrame = 1;
+let timers = [];
 const ctx = {
     console,
     document: { body: { contains: (el) => attached.has(el) } },
     requestAnimationFrame: (cb) => { frames.push({ id: nextFrame, cb }); return nextFrame++; },
     cancelAnimationFrame: (id) => { frames = frames.filter((f) => f.id !== id); },
+    setInterval: (cb) => timers.push(cb),
+    clearInterval: (id) => { timers[id - 1] = null; },
 };
 // Stands in for Chart.js and records what the page passes it; the library itself is not loaded here
 ctx.Chart = function Chart(canvas, config) {
@@ -109,6 +112,30 @@ runFrames(1000, 1200, 1000 / 60);
 check('each frame reads the current charts array', looped.modes.length === before);
 stop();
 check('stop cancels the next frame', frames.length === 0, frames.length);
+
+// A hidden tab runs no frames, and Chrome runs its timers about once a minute; a sample still arrives every second
+const RealDate = vm.runInContext('Date', ctx);
+let clock = NOW;
+ctx.Date = class extends RealDate { static now() { return clock; } };
+frames = [];
+timers = [];
+const hidden = graph();
+const hiddenCpu = [];
+const stopHidden = ctx.fv3GraphLoop(() => [hidden], [hiddenCpu], MIN);
+for (let s = 1; s <= 3600; s++) {
+    clock = NOW + s * 1000;
+    hiddenCpu.push({ x: clock, y: 1 });
+    if (s % 60 === 0) timers.forEach((cb) => cb && cb());
+}
+check('hidden for an hour: the samples stay about one window long', hiddenCpu.length <= 63 + 60, hiddenCpu.length);
+check('hidden: the timer redraws the chart', hidden.modes.length === 60, hidden.modes.length);
+runFrames(0, 0, 1);
+const drawnByFrame = hidden.modes.length;
+timers.forEach((cb) => cb && cb());
+check('visible: the timer leaves the drawing to the frames', hidden.modes.length === drawnByFrame, hidden.modes.length - drawnByFrame);
+stopHidden();
+check('stop clears the timer', timers.every((cb) => cb === null), timers.length);
+ctx.Date = RealDate;
 
 ctx.innerWidth = 1440;
 check('desktop: the chart fills its panel', ctx.fv3GraphOptions(MIN, NOW).maintainAspectRatio === false);

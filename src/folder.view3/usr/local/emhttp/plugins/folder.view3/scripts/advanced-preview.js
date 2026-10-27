@@ -57,7 +57,7 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
     $(`#${m[1]}`).parents('.folder-element').find('.switch-button-background').click();
 });
 
-// Preview graphs: Chart.js 4 has no realtime scale, so fv3GraphLoop slides the x range (epoch ms) every frame.
+// Preview graphs: Chart.js 4 has no realtime scale, so fv3GraphLoop slides the x range (epoch ms) about 30 times a second.
 // .github/scripts/preview_graph_test.js runs these outside the page
 (() => {
     // Plotted a second behind now, so the newest sample has arrived
@@ -142,16 +142,26 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
     window.fv3GraphLoop = window.fv3GraphLoop || ((getCharts, series, duration) => {
         let frame;
         let drawn = -Infinity;
+        let at = Date.now();
+        const draw = () => {
+            at = Date.now();
+            fv3GraphScroll(getCharts(), series, duration, at);
+        };
         const tick = (t) => {
             // 30 ms, not 1000/30: frame times jitter, and a hair short would skip to every third frame
             if (t - drawn >= 30) {
                 drawn = t;
-                fv3GraphScroll(getCharts(), series, duration, Date.now());
+                draw();
             }
             frame = requestAnimationFrame(tick);
         };
         frame = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(frame);
+        // A hidden tab gets no frames but its stats keep arriving; without this the samples pile up until it returns
+        const timer = setInterval(() => { if (Date.now() - at >= 1000) draw(); }, 1000);
+        return () => {
+            cancelAnimationFrame(frame);
+            clearInterval(timer);
+        };
     });
 })();
 
