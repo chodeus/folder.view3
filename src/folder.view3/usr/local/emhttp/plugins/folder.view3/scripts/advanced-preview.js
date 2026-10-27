@@ -57,7 +57,7 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
     $(`#${m[1]}`).parents('.folder-element').find('.switch-button-background').click();
 });
 
-// Preview graphs: Chart.js 4 has no realtime scale, so fv3GraphScroll slides the x range (epoch ms) on a timer.
+// Preview graphs: Chart.js 4 has no realtime scale, so fv3GraphLoop slides the x range (epoch ms) every frame.
 // .github/scripts/preview_graph_test.js runs these outside the page
 (() => {
     // Plotted a second behind now, so the newest sample has arrived
@@ -69,6 +69,11 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
         return `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     };
     const STAMP = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' };
+    // Charts fv3GraphChart built; anything an extension adds to the shared charts array is left alone
+    const own = new WeakSet();
+
+    // The settings forms allow 5–600 s; longer would put hour labels on UTC-round times in +5:30-style zones
+    window.fv3GraphDuration = window.fv3GraphDuration || ((seconds) => 1000 * Math.min(600, Math.max(5, Number(seconds) || 60)));
 
     window.fv3GraphOptions = window.fv3GraphOptions || ((duration, now) => {
         // About six labels, on whole seconds or minutes
@@ -108,8 +113,11 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
     });
 
     // Its own options object every time: Chart.js 4 ignores later x-range changes on options two charts share
-    window.fv3GraphChart = window.fv3GraphChart || ((canvas, datasets, duration) =>
-        new Chart(canvas, { type: 'line', data: { datasets }, options: fv3GraphOptions(duration, Date.now()) }));
+    window.fv3GraphChart = window.fv3GraphChart || ((canvas, datasets, duration) => {
+        const chart = new Chart(canvas, { type: 'line', data: { datasets }, options: fv3GraphOptions(duration, Date.now()) });
+        own.add(chart);
+        return chart;
+    });
 
     window.fv3GraphScroll = window.fv3GraphScroll || ((charts, series, duration, now) => {
         const max = now - DELAY;
@@ -120,12 +128,28 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
         }
         for (const chart of charts) {
             try {
-                if (!chart || !chart.canvas || !document.body.contains(chart.canvas)) continue;
+                if (!own.has(chart) || !chart.canvas || !document.body.contains(chart.canvas)) continue;
                 chart.options.scales.x.min = min;
                 chart.options.scales.x.max = max;
                 chart.update('none');
             } catch (e) { /* chart was destroyed between ticks */ }
         }
+    });
+
+    // About 30 redraws a second, as chartjs-plugin-streaming did, so the window glides; returns the stop function
+    window.fv3GraphLoop = window.fv3GraphLoop || ((getCharts, series, duration) => {
+        let frame;
+        let drawn = -Infinity;
+        const tick = (t) => {
+            // 30 ms, not 1000/30: frame times jitter, and a hair short would skip to every third frame
+            if (t - drawn >= 30) {
+                drawn = t;
+                fv3GraphScroll(getCharts(), series, duration, Date.now());
+            }
+            frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
     });
 })();
 
@@ -339,7 +363,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
         return;
     }
 
-    let CPU = []; let MEM = []; let charts = []; let tootltipObserver; let tooltipResizeObserver; let chartHeightGuards = []; let graphTimer;
+    let CPU = []; let MEM = []; let charts = []; let tootltipObserver; let tooltipResizeObserver; let chartHeightGuards = []; let stopGraphs;
     // Tracks which stats listener (if any) is currently attached. Prevents duplicate adds
     // (e.g. hover trigger firing functionReady multiple times) and ensures functionAfter
     // removes the same listener it added, even if fv3UsingWebSocket flipped in between.
@@ -348,7 +372,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
 
     const envTab = fv3EnvTab(ct);
 
-    // The graph timer redraws; a sample only needs recording
+    // fv3GraphLoop redraws; a sample only needs recording
     const pushChartData = (cpuVal, memVal) => {
         const now = Date.now();
         CPU.push({ x: now, y: cpuVal });
@@ -467,7 +491,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
 
             let diabled = [];
             let active = 0;
-            const graphDuration = 1000 * (folder.settings.context_graph_time || 60);
+            const graphDuration = fv3GraphDuration(folder.settings.context_graph_time);
             fv3Debug('tooltipster', ct.shortId, 'Chart.js options:', fv3GraphOptions(graphDuration, Date.now()), "Graph mode setting:", folder.settings.context_graph);
 
             charts = [];
@@ -528,8 +552,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     break;
             };
             fv3Debug('tooltipster', ct.shortId, `Tab states: disabled=${diabled}, active=${active}. Charts array length: ${charts.length}`);
-            clearInterval(graphTimer);
-            graphTimer = charts.length ? setInterval(() => fv3GraphScroll(charts, [CPU, MEM], graphDuration, Date.now()), 1000) : undefined;
+            if (stopGraphs) stopGraphs();
+            stopGraphs = charts.length ? fv3GraphLoop(() => charts, [CPU, MEM], graphDuration) : undefined;
 
             fv3Debug('tooltipster', ct.shortId, 'canvas check', {
                 comb: $(`.comb-graph-${ct.shortId} > canvas`, tooltipDomEl).length,
@@ -682,8 +706,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
             }
             attachedListener = null;
             fv3Debug('tooltipster', ct.shortId, 'Removed graphListener.');
-            clearInterval(graphTimer);
-            graphTimer = undefined;
+            if (stopGraphs) stopGraphs();
+            stopGraphs = undefined;
             for (const chart of charts) {
                 chart.destroy();
             }
