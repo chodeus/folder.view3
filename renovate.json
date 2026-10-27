@@ -1,5 +1,64 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>chodeus/chodeus-ops"],
-  "forkProcessing": "enabled"
+  "forkProcessing": "enabled",
+  "baseBranchPatterns": ["beta"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "actionlint's release tag and tarball SHA-256 in validate-workflows.yml; Renovate takes the same asset's hash from the new release.",
+      "managerFilePatterns": ["/^\\.github/workflows/validate-workflows\\.yml$/"],
+      "matchStrings": [
+        "ACTIONLINT_VERSION:\\s*(?<currentValue>[^\\s]+)\\s+ACTIONLINT_SHA256:\\s*(?<currentDigest>[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "github-release-attachments",
+      "depNameTemplate": "rhysd/actionlint"
+    },
+    {
+      "customType": "regex",
+      "description": "Bundled libraries released on npm; vendor-sync.yml copies the new files in.",
+      "managerFilePatterns": ["/^vendor\\.json$/"],
+      "matchStrings": [
+        "\"npm\":\\s*\"(?<depName>[^\"]+)\",\\s*\"version\":\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "npm",
+      "depTypeTemplate": "bundled"
+    },
+    {
+      "customType": "regex",
+      "description": "Bundled libraries taken from an upstream branch; Renovate moves the commit, vendor-sync.yml copies the new files in.",
+      "managerFilePatterns": ["/^vendor\\.json$/"],
+      "matchStrings": [
+        "\"github\":\\s*\"(?<depName>[^\"]+)\",\\s*\"branch\":\\s*\"(?<currentValue>[^\"]+)\",\\s*\"commit\":\\s*\"(?<currentDigest>[a-f0-9]{40})\""
+      ],
+      "datasourceTemplate": "git-refs",
+      "packageNameTemplate": "https://github.com/{{{depName}}}",
+      "depTypeTemplate": "bundled"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Bundled libraries ship to users, so their updates are fix(deps).",
+      "matchDepTypes": ["bundled"],
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "One PR for the non-major bundled updates. The preset automerges minor and patch but not digests, so an upstream-branch commit is merged by hand.",
+      "matchDepTypes": ["bundled"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "bundled libraries"
+    },
+    {
+      "description": "A new npm release waits 7 days before it is bundled; a hijacked publish is normally pulled within that.",
+      "matchDepTypes": ["bundled"],
+      "matchDatasources": ["npm"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "chartjs-plugin-streaming 2.0.0, its last release, needs chart.js 3 (peer ^3.0.0).",
+      "matchDepTypes": ["bundled"],
+      "matchPackageNames": ["chart.js"],
+      "allowedVersions": "<4"
+    }
+  ]
 }
