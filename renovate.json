@@ -2,7 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>chodeus/chodeus-ops"],
   "forkProcessing": "enabled",
-  "baseBranchPatterns": ["main", "beta"],
+  "baseBranchPatterns": ["beta"],
   "customManagers": [
     {
       "customType": "regex",
@@ -37,23 +37,6 @@
     }
   ],
   "packageRules": [
-    {
-      "description": "beta takes only the bundled libraries; everything else updates main and reaches beta in the merge after each stable release.",
-      "matchBaseBranches": ["beta"],
-      "enabled": false
-    },
-    {
-      "description": "Bundled libraries ship in the plugin, so their updates go to beta for testing, never straight to main.",
-      "matchBaseBranches": ["beta"],
-      "matchDepTypes": ["bundled"],
-      "enabled": true
-    },
-    {
-      "description": "See above: main never takes a bundled-library update.",
-      "matchBaseBranches": ["main"],
-      "matchDepTypes": ["bundled"],
-      "enabled": false
-    },
     {
       "description": "Bundled libraries ship to users, so their updates are fix(deps).",
       "matchDepTypes": ["bundled"],
