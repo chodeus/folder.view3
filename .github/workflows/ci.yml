@@ -44,6 +44,12 @@ jobs:
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
 
+      # Each bundled library must be byte-for-byte the upstream file vendor.json names.
+      - name: Bundled libraries match vendor.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/vendor.py check
+
       - name: Checkout release scripts
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

@@ -1,0 +1,58 @@
+{
+  "$comment": "Bundled browser libraries and where each file came from. .github/scripts/vendor.py checks the copies against these sources (CI) and re-copies them after a Renovate bump.",
+  "root": "src/folder.view3/usr/local/emhttp/plugins/folder.view3",
+  "libraries": [
+    {
+      "npm": "chart.js",
+      "version": "3.9.1",
+      "files": {
+        "dist/chart.min.js": "scripts/include/chart.min.js"
+      }
+    },
+    {
+      "npm": "chartjs-adapter-moment",
+      "version": "1.0.1",
+      "files": {
+        "dist/chartjs-adapter-moment.min.js": "scripts/include/chartjs-adapter-moment.min.js"
+      }
+    },
+    {
+      "npm": "chartjs-plugin-streaming",
+      "version": "2.0.0",
+      "files": {
+        "dist/chartjs-plugin-streaming.min.js": "scripts/include/chartjs-plugin-streaming.min.js"
+      }
+    },
+    {
+      "npm": "moment",
+      "version": "2.31.0",
+      "files": {
+        "min/moment.min.js": "scripts/include/moment.min.js"
+      }
+    },
+    {
+      "github": "wikimedia/jquery.i18n",
+      "branch": "master",
+      "commit": "486ec53ed35cc498315ca6c8304d526e3159d217",
+      "files": {
+        "src/jquery.i18n.js": "scripts/include/jquery.i18n.js",
+        "src/jquery.i18n.messagestore.js": "scripts/include/jquery.i18n.messagestore.js",
+        "src/jquery.i18n.fallbacks.js": "scripts/include/jquery.i18n.fallbacks.js",
+        "src/jquery.i18n.parser.js": "scripts/include/jquery.i18n.parser.js",
+        "src/jquery.i18n.emitter.js": "scripts/include/jquery.i18n.emitter.js",
+        "src/jquery.i18n.emitter.bidi.js": "scripts/include/jquery.i18n.emitter.bidi.js",
+        "src/jquery.i18n.language.js": "scripts/include/jquery.i18n.language.js",
+        "libs/CLDRPluralRuleParser/src/CLDRPluralRuleParser.js": "scripts/include/CLDRPluralRuleParser.js"
+      }
+    },
+    {
+      "github": "ehynds/jquery-ui-multiselect-widget",
+      "branch": "master",
+      "commit": "18a34162d998df1a20df5f9d62a535f7606860f7",
+      "files": {
+        "src/jquery.multiselect.js": "scripts/include/jquery.multiselect.js",
+        "css/jquery.multiselect.css": "styles/include/jquery.multiselect.css"
+      }
+    }
+  ]
+}
