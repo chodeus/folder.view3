@@ -36,7 +36,6 @@ const check = (label, ok, detail) => {
 const NOW = new Date(2026, 9, 27, 9, 5, 7).getTime();
 const MIN = 60 * 1000;
 
-// Window and labels
 const x = ctx.fv3GraphOptions(MIN, NOW).scales.x;
 check('the x range ends a second behind now and spans the duration', x.min === NOW - 1000 - MIN && x.max === NOW - 1000, { min: x.min, max: x.max });
 check('a linear axis: no time scale, so no date adapter', x.type === 'linear');
@@ -61,12 +60,10 @@ const STAMP = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit'
 check('the tooltip title is the sample date and time in the browser locale', title([{ parsed: { x: NOW } }]) === new Date(NOW).toLocaleString(undefined, STAMP), title([{ parsed: { x: NOW } }]));
 check('a tooltip with no items has no title', title([]) === '');
 
-// Window length
 check('an unset or zero length is a minute', ctx.fv3GraphDuration(undefined) === MIN && ctx.fv3GraphDuration(0) === MIN && ctx.fv3GraphDuration('') === MIN);
 check('a stored string length is read as seconds', ctx.fv3GraphDuration('120') === 120 * 1000);
 check('lengths stay within the 5–600 s the settings forms allow', ctx.fv3GraphDuration(1) === 5000 && ctx.fv3GraphDuration(7200) === 600 * 1000, [ctx.fv3GraphDuration(1), ctx.fv3GraphDuration(7200)]);
 
-// Building
 const graph = (opts = {}) => {
     const canvas = {};
     if (!opts.detached) attached.add(canvas);
@@ -79,7 +76,6 @@ const b = graph();
 check('a graph is a line chart over the given datasets', a.config.type === 'line' && a.config.data.datasets[0].label === 'CPU');
 check('every chart gets its own options object (Chart.js 4 freezes shared ones)', a.config.options !== b.config.options && a.config.options.scales.x !== b.config.options.scales.x);
 
-// Scrolling
 const series = (...ages) => ages.map((age) => ({ x: NOW - age * 1000, y: age }));
 const cpu = series(90, 75, 62, 30, 1);
 const mem = series(62, 5);
@@ -100,7 +96,6 @@ check('a chart no longer in the page is left alone', gone.modes.length === 0);
 check('a chart that throws does not stop the rest', JSON.stringify(after.modes) === '["none"]', after.modes);
 check('a chart an extension put in the array is left alone', foreign.modes.length === 0 && foreign.options.scales.x.min === 1);
 
-// Frame loop
 frames = [];
 const looped = graph();
 let current = [looped];
@@ -115,22 +110,21 @@ check('each frame reads the current charts array', looped.modes.length === befor
 stop();
 check('stop cancels the next frame', frames.length === 0, frames.length);
 
-// Graph sizing
 ctx.innerWidth = 1440;
 check('desktop: the chart fills its panel', ctx.fv3GraphOptions(MIN, NOW).maintainAspectRatio === false);
 ctx.innerWidth = 390;
 check('phone width: the chart keeps its shape for the accordion', ctx.fv3GraphOptions(MIN, NOW).maintainAspectRatio === true);
 delete ctx.innerWidth;
 
-// Popup aim, with geometry measured on the Docker tab: tooltipster's origin is the 36x17 span, the icon is 32x32 inside it
+// Geometry measured on the Docker tab: tooltipster's origin is the 36x17 span, the icon is 32x32 inside it
 const span = { left: 702.45, top: 249.33, right: 738.45, bottom: 266.33 };
 const icon = { left: 702.45, top: 243, width: 32, height: 32, right: 734.45, bottom: 275 };
 const base = { left: 300, top: 300 };
 const near = (a, b) => Math.abs(a - b) < 1e-6;
-const aim = (side, iconBox = icon, size = { width: 700, height: 414 }) => ctx.fv3AimAtIcon(null, {
+const aim = (side, iconBox = icon, size = { width: 700, height: 414 }, coord = base) => ctx.fv3AimAtIcon(null, {
     origin: { querySelector: (sel) => (sel === '.img' && iconBox ? { getBoundingClientRect: () => iconBox } : null) },
     geo: { origin: { windowOffset: span }, window: { size: { width: 1702, height: 806 } } },
-}, { side, size, target: 720, coord: { ...base } });
+}, { side, size, target: 720, coord: { ...coord } });
 const below = aim('bottom');
 check('the arrow points at the icon centre, not the span', below.target === 718, below.target);
 check('the popup is centred on the icon', below.coord.left === 718 - 350, below.coord.left);
@@ -144,6 +138,10 @@ check('left: the popup ends at the icon edge', near(aim('left').coord.left, base
 const edge = aim('bottom', { ...icon, left: 10, right: 42 });
 check('the popup stops at the window edge', edge.coord.left === 0 && edge.target === 26, edge);
 check('a popup wider than the window keeps tooltipster\'s place', aim('bottom', icon, { width: 2000, height: 414 }).coord.left === base.left);
+check('above, at the window top: the popup stays on screen', aim('top', icon, undefined, { left: 300, top: 3 }).coord.top === 0);
+check('below, at the window bottom: the popup stays on screen', aim('bottom', icon, undefined, { left: 300, top: 806 - 414 - 2 }).coord.top === 806 - 414);
+check('beside, at the window edge: the popup stays on screen', aim('right', { ...icon, right: span.right + 10 }, undefined, { left: 1702 - 700 - 2, top: 300 }).coord.left === 1702 - 700);
+check('a popup already past the edge still moves to the icon', near(aim('top', icon, undefined, { left: 300, top: -50 }).coord.top, -50 + icon.top - span.top));
 const none = aim('bottom', null);
 check('no icon: tooltipster\'s position stands', none.target === 720 && none.coord.left === base.left && none.coord.top === base.top, none);
 

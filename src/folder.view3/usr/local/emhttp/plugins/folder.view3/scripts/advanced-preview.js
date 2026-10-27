@@ -161,18 +161,20 @@ window.fv3AimAtIcon = window.fv3AimAtIcon || ((instance, helper, position) => {
     if (!box || !box.width) return position;
     const origin = helper.geo.origin.windowOffset;
     const win = helper.geo.window.size;
+    // Moving toward the icon must not push a popup that fit the window past its edge
+    const shift = (from, by, size, room) => (from >= 0 && from + size <= room ? Math.min(Math.max(from + by, 0), room - size) : from + by);
     if (position.side === 'top' || position.side === 'bottom') {
         position.target = Math.floor(box.left + box.width / 2);
         if (position.size.width <= win.width) {
             position.coord.left = Math.min(Math.max(Math.floor(position.target - position.size.width / 2), 0), win.width - position.size.width);
         }
-        position.coord.top += position.side === 'top' ? box.top - origin.top : box.bottom - origin.bottom;
+        position.coord.top = shift(position.coord.top, position.side === 'top' ? box.top - origin.top : box.bottom - origin.bottom, position.size.height, win.height);
     } else {
         position.target = Math.floor(box.top + box.height / 2);
         if (position.size.height <= win.height) {
             position.coord.top = Math.min(Math.max(Math.floor(position.target - position.size.height / 2), 0), win.height - position.size.height);
         }
-        position.coord.left += position.side === 'left' ? box.left - origin.left : box.right - origin.right;
+        position.coord.left = shift(position.coord.left, position.side === 'left' ? box.left - origin.left : box.right - origin.right, position.size.width, win.width);
     }
     return position;
 });
