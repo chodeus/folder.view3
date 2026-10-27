@@ -48,6 +48,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
           SUMMARY: ${{ steps.sync.outputs.summary }}
         run: |
           set -euo pipefail
@@ -56,4 +57,5 @@ jobs:
           git add -A -- src
           git commit -q -m "chore(deps): copy the updated bundled libraries in" -m "$SUMMARY"
           git push origin "HEAD:${HEAD_REF}"
-          gh workflow run ci.yml --ref "$HEAD_REF"
+          # Without the base, CI would check the beta manifest against the renovate/ branch name.
+          gh workflow run ci.yml --ref "$HEAD_REF" -f base="$BASE_REF"
