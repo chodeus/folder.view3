@@ -53,7 +53,7 @@ jobs:
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
 
-      # Each bundled library must be byte-for-byte the upstream file vendor.json names.
+      # Each bundled library must match the upstream file vendor.json names; text is compared with LF endings, as git stores it.
       - name: Bundled libraries match vendor.json
         env:
           GH_TOKEN: ${{ github.token }}
