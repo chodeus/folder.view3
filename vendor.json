@@ -33,7 +33,7 @@
     {
       "github": "wikimedia/jquery.i18n",
       "branch": "master",
-      "commit": "486ec53ed35cc498315ca6c8304d526e3159d217",
+      "commit": "92e607d26efe1bfc00fc4c0a1191b58ca9f10b91",
       "files": {
         "src/jquery.i18n.js": "scripts/include/jquery.i18n.js",
         "src/jquery.i18n.messagestore.js": "scripts/include/jquery.i18n.messagestore.js",
