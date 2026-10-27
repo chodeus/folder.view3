@@ -50,6 +50,9 @@ jobs:
       - name: Autostart tab tests
         run: node .github/scripts/autostart_api_test.js
 
+      - name: Preview graph tests
+        run: node .github/scripts/preview_graph_test.js
+
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
 

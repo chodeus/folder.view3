@@ -57,6 +57,78 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
     $(`#${m[1]}`).parents('.folder-element').find('.switch-button-background').click();
 });
 
+// Preview graphs: Chart.js 4 has no realtime scale, so fv3GraphScroll slides the x range (epoch ms) on a timer.
+// .github/scripts/preview_graph_test.js runs these outside the page
+(() => {
+    // Plotted a second behind now, so the newest sample has arrived
+    const DELAY = 1000;
+    const STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600];
+    const pad = (n) => String(n).padStart(2, '0');
+    const time = (ms) => {
+        const d = new Date(ms);
+        return `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+    const STAMP = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' };
+
+    window.fv3GraphOptions = window.fv3GraphOptions || ((duration, now) => {
+        // About six labels, on whole seconds or minutes
+        const step = 1000 * (STEPS.find((s) => s * 1000 >= duration / 6) || STEPS[STEPS.length - 1]);
+        return {
+            scales: {
+                x: {
+                    type: 'linear',
+                    min: now - DELAY - duration,
+                    max: now - DELAY,
+                    // Chart.js counts ticks from min; these stay on round times and slide with the window
+                    afterBuildTicks: (scale) => {
+                        const ticks = [];
+                        for (let v = Math.ceil(scale.min / step) * step; v <= scale.max; v += step) ticks.push({ value: v });
+                        scale.ticks = ticks;
+                    },
+                    ticks: {
+                        maxRotation: 0,
+                        callback: (value) => time(value)
+                    }
+                },
+                y: {
+                    min: 0,
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
+            plugins: {
+                tooltip: {
+                    position: 'nearest',
+                    callbacks: { title: (items) => (items.length ? new Date(items[0].parsed.x).toLocaleString(undefined, STAMP) : '') }
+                }
+            }
+        };
+    });
+
+    // Its own options object every time: Chart.js 4 ignores later x-range changes on options two charts share
+    window.fv3GraphChart = window.fv3GraphChart || ((canvas, datasets, duration) =>
+        new Chart(canvas, { type: 'line', data: { datasets }, options: fv3GraphOptions(duration, Date.now()) }));
+
+    window.fv3GraphScroll = window.fv3GraphScroll || ((charts, series, duration, now) => {
+        const max = now - DELAY;
+        const min = max - duration;
+        // The last point before the window stays, so the line still enters from the left edge
+        for (const points of series) {
+            while (points.length > 1 && points[1].x < min) points.shift();
+        }
+        for (const chart of charts) {
+            try {
+                if (!chart || !chart.canvas || !document.body.contains(chart.canvas)) continue;
+                chart.options.scales.x.min = min;
+                chart.options.scales.x.max = max;
+                chart.update('none');
+            } catch (e) { /* chart was destroyed between ticks */ }
+        }
+    });
+})();
+
 // Variables tab helpers; .github/scripts/variables_tab_test.js runs them outside the page
 (() => {
     const COMMON = ['PUID', 'PGID', 'UMASK', 'TZ', 'HOST_OS', 'HOST_HOSTNAME', 'HOST_CONTAINERNAME'];
@@ -267,7 +339,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
         return;
     }
 
-    let CPU = []; let MEM = []; let charts = []; let tootltipObserver; let tooltipResizeObserver; let chartHeightGuards = [];
+    let CPU = []; let MEM = []; let charts = []; let tootltipObserver; let tooltipResizeObserver; let chartHeightGuards = []; let graphTimer;
     // Tracks which stats listener (if any) is currently attached. Prevents duplicate adds
     // (e.g. hover trigger firing functionReady multiple times) and ensures functionAfter
     // removes the same listener it added, even if fv3UsingWebSocket flipped in between.
@@ -276,20 +348,11 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
 
     const envTab = fv3EnvTab(ct);
 
+    // The graph timer redraws; a sample only needs recording
     const pushChartData = (cpuVal, memVal) => {
         const now = Date.now();
         CPU.push({ x: now, y: cpuVal });
         MEM.push({ x: now, y: memVal });
-        // Defensive: chartjs-plugin-streaming can throw when called on a destroyed chart
-        // (race between WS event arrival and tooltipster's functionAfter cleanup, or
-        // stale listener from a previous popup). Skip silently.
-        for (const chart of charts) {
-            try {
-                if (chart && chart.canvas && document.body.contains(chart.canvas)) {
-                    chart.update('quiet');
-                }
-            } catch (e) { /* chart was destroyed during the update tick */ }
-        }
     };
 
     const graphListenerSSE = (e) => {
@@ -404,45 +467,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
 
             let diabled = [];
             let active = 0;
-            const options = {
-                scales: {
-                    x: {
-                        type: 'realtime',
-                        realtime: {
-                            duration: 1000*(folder.settings.context_graph_time || 60),
-                            refresh: 1000,
-                            delay: 1000
-                        },
-                        time: {
-                            tooltipFormat: 'dd MMM, yyyy, HH:mm:ss',
-                            displayFormats: {
-                                millisecond: 'H:mm:ss.SSS',
-                                second: 'H:mm:ss',
-                                minute: 'H:mm',
-                                hour: 'H',
-                                day: 'MMM D',
-                                week: 'll',
-                                month: 'MMM YYYY',
-                                quarter: '[Q]Q - YYYY',
-                                year: 'YYYY'
-                            },
-                        },
-                    },
-                    y: {
-                        min: 0,
-                    }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index',
-                },
-                plugins: {
-                    tooltip: {
-                        position: 'nearest'
-                    }
-                }
-            };
-            fv3Debug('tooltipster', ct.shortId, 'Chart.js options:', options, "Graph mode setting:", folder.settings.context_graph);
+            const graphDuration = 1000 * (folder.settings.context_graph_time || 60);
+            fv3Debug('tooltipster', ct.shortId, 'Chart.js options:', fv3GraphOptions(graphDuration, Date.now()), "Graph mode setting:", folder.settings.context_graph);
 
             charts = [];
             switch (folder.settings.context_graph) {
@@ -456,16 +482,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     diabled = [0];
                     active = 1;
                     try {
-                        charts.push(new Chart($(`.cpu-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), {
-                            type: 'line',
-                            data: { datasets: [ { label: 'CPU', data: CPU, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ] },
-                            options: options
-                        }));
-                        charts.push(new Chart($(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), {
-                            type: 'line',
-                            data: { datasets: [ { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ] },
-                            options: options
-                        }));
+                        charts.push(fv3GraphChart($(`.cpu-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), [ { label: 'CPU', data: CPU, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ], graphDuration));
+                        charts.push(fv3GraphChart($(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), [ { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ], graphDuration));
                          fv3Debug('tooltipster', ct.shortId, 'Split charts created. CPU canvas:', $(`.cpu-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), "MEM canvas:", $(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0));
                     } catch(e) {
                         fv3DebugWarn('tooltipster', ct.shortId, 'Error creating split charts:', e);
@@ -476,11 +494,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     diabled = [0, 2];
                     active = 1;
                     try {
-                        charts.push(new Chart($(`.cpu-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), {
-                            type: 'line',
-                            data: { datasets: [ { label: 'CPU', data: CPU, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ] },
-                            options: options
-                        }));
+                        charts.push(fv3GraphChart($(`.cpu-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), [ { label: 'CPU', data: CPU, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ], graphDuration));
                          fv3Debug('tooltipster', ct.shortId, 'CPU chart created. Canvas:', $(`.cpu-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0));
                     } catch(e) {
                          fv3DebugWarn('tooltipster', ct.shortId, 'Error creating CPU chart:', e);
@@ -491,11 +505,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     diabled = [0, 1];
                     active = 2;
                     try {
-                        charts.push(new Chart($(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), {
-                            type: 'line',
-                            data: { datasets: [ { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ] },
-                            options: options
-                        }));
+                        charts.push(fv3GraphChart($(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), [ { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 } ], graphDuration));
                         fv3Debug('tooltipster', ct.shortId, 'MEM chart created. Canvas:', $(`.mem-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0));
                     } catch(e) {
                         fv3DebugWarn('tooltipster', ct.shortId, 'Error creating MEM chart:', e);
@@ -507,16 +517,10 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     diabled = [1, 2];
                     active = 0;
                     try {
-                        charts.push(new Chart($(`.comb-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), {
-                            type: 'line',
-                            data: {
-                                datasets: [
-                                    { label: 'CPU', data: CPU, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), tension: 0.4, pointRadius: 0, borderWidth: 1 },
-                                    { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 }
-                                ]
-                            },
-                            options: options
-                        }));
+                        charts.push(fv3GraphChart($(`.comb-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0), [
+                                { label: 'CPU', data: CPU, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-cpu'), tension: 0.4, pointRadius: 0, borderWidth: 1 },
+                                { label: fv3I18nOr('mem', 'MEM'), data: MEM, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--folder-view3-graph-mem'), tension: 0.4, pointRadius: 0, borderWidth: 1 }
+                        ], graphDuration));
                         fv3Debug('tooltipster', ct.shortId, 'Combined chart created. Canvas:', $(`.comb-graph-${ct.shortId} > canvas`, tooltipDomEl).get(0));
                     } catch(e) {
                          fv3DebugWarn('tooltipster', ct.shortId, 'Error creating combined chart:', e);
@@ -524,6 +528,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     break;
             };
             fv3Debug('tooltipster', ct.shortId, `Tab states: disabled=${diabled}, active=${active}. Charts array length: ${charts.length}`);
+            clearInterval(graphTimer);
+            graphTimer = charts.length ? setInterval(() => fv3GraphScroll(charts, [CPU, MEM], graphDuration, Date.now()), 1000) : undefined;
 
             fv3Debug('tooltipster', ct.shortId, 'canvas check', {
                 comb: $(`.comb-graph-${ct.shortId} > canvas`, tooltipDomEl).length,
@@ -676,6 +682,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
             }
             attachedListener = null;
             fv3Debug('tooltipster', ct.shortId, 'Removed graphListener.');
+            clearInterval(graphTimer);
+            graphTimer = undefined;
             for (const chart of charts) {
                 chart.destroy();
             }

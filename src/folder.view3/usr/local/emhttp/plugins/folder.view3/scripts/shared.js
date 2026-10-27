@@ -993,7 +993,6 @@ window.fv3CollectEnv = () => {
         const g = {};
         try { g.jQuery = (typeof window.jQuery !== 'undefined') ? ((window.jQuery.fn && window.jQuery.fn.jquery) || true) : false; } catch (_) { g.jQuery = false; }
         try { g.Chart = (typeof window.Chart !== 'undefined') ? (window.Chart.version || true) : false; } catch (_) { g.Chart = false; }
-        try { g.moment = (typeof window.moment !== 'undefined') ? (window.moment.version || true) : false; } catch (_) { g.moment = false; }
         try { g.i18n = !!(window.jQuery && window.jQuery.i18n); } catch (_) { g.i18n = false; }
         try { g.widthFix = typeof window.fv3InstallDockerTableWidthFix === 'function'; } catch (_) { g.widthFix = false; }
         try { g.detectApi = typeof window.fv3DetectApi === 'function'; } catch (_) { g.detectApi = false; }

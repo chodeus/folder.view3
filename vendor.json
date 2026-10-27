@@ -4,30 +4,9 @@
   "libraries": [
     {
       "npm": "chart.js",
-      "version": "3.9.1",
+      "version": "4.5.1",
       "files": {
-        "dist/chart.min.js": "scripts/include/chart.min.js"
-      }
-    },
-    {
-      "npm": "chartjs-adapter-moment",
-      "version": "1.0.1",
-      "files": {
-        "dist/chartjs-adapter-moment.min.js": "scripts/include/chartjs-adapter-moment.min.js"
-      }
-    },
-    {
-      "npm": "chartjs-plugin-streaming",
-      "version": "2.0.0",
-      "files": {
-        "dist/chartjs-plugin-streaming.min.js": "scripts/include/chartjs-plugin-streaming.min.js"
-      }
-    },
-    {
-      "npm": "moment",
-      "version": "2.31.0",
-      "files": {
-        "min/moment.min.js": "scripts/include/moment.min.js"
+        "dist/chart.umd.min.js": "scripts/include/chart.min.js"
       }
     },
     {
