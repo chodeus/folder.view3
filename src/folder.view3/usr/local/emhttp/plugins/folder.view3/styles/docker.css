@@ -27,8 +27,10 @@ div.folder-preview-4 span.outer {
 }
 
 /* --- Tooltipster Base Styling --- */
+/* Shadow on the base, not .preview-outbox: an outbox shadow paints over Unraid's tooltipster border */
 .tooltipster-docker-folder.tooltipster-base {
     background: transparent;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
 }
 
 .tooltipster-docker-folder>.tooltipster-box {
@@ -53,7 +55,6 @@ div.folder-preview-4 span.outer {
     color: inherit;
     border: 1px solid rgba(128, 128, 128, 0.4);
     border-radius: 6px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;

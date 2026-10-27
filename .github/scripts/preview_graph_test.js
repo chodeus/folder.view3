@@ -1,4 +1,4 @@
-// node .github/scripts/preview_graph_test.js [plugin-dir] — the advanced preview's graph window helpers, run from the page source
+// node .github/scripts/preview_graph_test.js [plugin-dir] — the advanced preview's graph window and popup aim helpers, run from the page source
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -114,6 +114,38 @@ runFrames(1000, 1200, 1000 / 60);
 check('each frame reads the current charts array', looped.modes.length === before);
 stop();
 check('stop cancels the next frame', frames.length === 0, frames.length);
+
+// Graph sizing
+ctx.innerWidth = 1440;
+check('desktop: the chart fills its panel', ctx.fv3GraphOptions(MIN, NOW).maintainAspectRatio === false);
+ctx.innerWidth = 390;
+check('phone width: the chart keeps its shape for the accordion', ctx.fv3GraphOptions(MIN, NOW).maintainAspectRatio === true);
+delete ctx.innerWidth;
+
+// Popup aim, with geometry measured on the Docker tab: tooltipster's origin is the 36x17 span, the icon is 32x32 inside it
+const span = { left: 702.45, top: 249.33, right: 738.45, bottom: 266.33 };
+const icon = { left: 702.45, top: 243, width: 32, height: 32, right: 734.45, bottom: 275 };
+const base = { left: 300, top: 300 };
+const near = (a, b) => Math.abs(a - b) < 1e-6;
+const aim = (side, iconBox = icon, size = { width: 700, height: 414 }) => ctx.fv3AimAtIcon(null, {
+    origin: { querySelector: (sel) => (sel === '.img' && iconBox ? { getBoundingClientRect: () => iconBox } : null) },
+    geo: { origin: { windowOffset: span }, window: { size: { width: 1702, height: 806 } } },
+}, { side, size, target: 720, coord: { ...base } });
+const below = aim('bottom');
+check('the arrow points at the icon centre, not the span', below.target === 718, below.target);
+check('the popup is centred on the icon', below.coord.left === 718 - 350, below.coord.left);
+check('below: the popup starts under the icon', near(below.coord.top, base.top + icon.bottom - span.bottom), below.coord.top);
+check('above: the popup ends over the icon', near(aim('top').coord.top, base.top + icon.top - span.top));
+const right = aim('right');
+check('beside: the arrow points at the icon middle', right.target === 259, right.target);
+check('beside: the popup is centred on the icon', right.coord.top === 259 - 207, right.coord.top);
+check('right: the gap starts at the icon, not its spacing', near(right.coord.left, base.left + icon.right - span.right), right.coord.left);
+check('left: the popup ends at the icon edge', near(aim('left').coord.left, base.left + icon.left - span.left));
+const edge = aim('bottom', { ...icon, left: 10, right: 42 });
+check('the popup stops at the window edge', edge.coord.left === 0 && edge.target === 26, edge);
+check('a popup wider than the window keeps tooltipster\'s place', aim('bottom', icon, { width: 2000, height: 414 }).coord.left === base.left);
+const none = aim('bottom', null);
+check('no icon: tooltipster\'s position stands', none.target === 720 && none.coord.left === base.left && none.coord.top === base.top, none);
 
 console.log(failed ? `\n${failed} FAILED` : '\nall passed');
 process.exit(failed ? 1 : 0);

@@ -79,6 +79,8 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
         // About six labels, on whole seconds or minutes
         const step = 1000 * (STEPS.find((s) => s * 1000 >= duration / 6) || STEPS[STEPS.length - 1]);
         return {
+            // Desktop fills the fixed-height panel; the <=768px accordion in functionReady sizes the panel from the chart
+            maintainAspectRatio: window.innerWidth <= 768,
             scales: {
                 x: {
                     type: 'linear',
@@ -152,6 +154,28 @@ window.advancedAutostart = window.advancedAutostart || ((el) => {
         return () => cancelAnimationFrame(frame);
     });
 })();
+
+// Tooltipster measures the inline span.hand, which is one text line tall, so aim at the icon inside it
+window.fv3AimAtIcon = window.fv3AimAtIcon || ((instance, helper, position) => {
+    const box = helper.origin.querySelector('.img')?.getBoundingClientRect();
+    if (!box || !box.width) return position;
+    const origin = helper.geo.origin.windowOffset;
+    const win = helper.geo.window.size;
+    if (position.side === 'top' || position.side === 'bottom') {
+        position.target = Math.floor(box.left + box.width / 2);
+        if (position.size.width <= win.width) {
+            position.coord.left = Math.min(Math.max(Math.floor(position.target - position.size.width / 2), 0), win.width - position.size.width);
+        }
+        position.coord.top += position.side === 'top' ? box.top - origin.top : box.bottom - origin.bottom;
+    } else {
+        position.target = Math.floor(box.top + box.height / 2);
+        if (position.size.height <= win.height) {
+            position.coord.top = Math.min(Math.max(Math.floor(position.target - position.size.height / 2), 0), win.height - position.size.height);
+        }
+        position.coord.left += position.side === 'left' ? box.left - origin.left : box.right - origin.right;
+    }
+    return position;
+});
 
 // Variables tab helpers; .github/scripts/variables_tab_test.js runs them outside the page
 (() => {
@@ -412,6 +436,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
         theme: ['tooltipster-docker-folder'],
         trigger: (folder.settings.context_trigger===1 ? 'hover' : 'click') || 'click',
         zIndex: 99998,
+        functionPosition: fv3AimAtIcon,
         functionBefore: function(instance, helper) {
             const origin = helper.origin;
 
@@ -586,6 +611,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     active: active,
                     activate: (event, ui) => { if (ui.newPanel.hasClass('info-env')) envTab.show(); }
                 });
+                // Tooltipster sized the popup while the disabled graph tabs still showed
+                instance.reposition();
                 $(`.preview-outbox-${ct.shortId} table > tbody div.status-autostart > input[type="checkbox"]`, tooltipDomEl).on("change", advancedAutostart);
             } else {
                  fv3DebugWarn('tooltipster', ct.shortId, 'Autostart switch placeholder not found as expected in tooltip.');
