@@ -379,6 +379,8 @@ check('settings graph time under 5 s is stored as 5', $graphTime('2') === ['stor
 check('settings graph time in range is kept', $graphTime('120') === ['store' => '120'] && fv3_sanitize_setting('default_context_graph_time', '600') === ['store' => '600']);
 check('settings graph time of 0 or empty falls back to the default', $graphTime('0') === ['clear' => true] && $graphTime('') === ['clear' => true]);
 check('a stored graph time over 600 s reads back as 600', fv3_normalize_settings(['default_context_graph_time' => '7200'])['default_context_graph_time'] === '600');
+check('a graph time that is not whole seconds is refused', array_map($graphTime, ['5x00', 'abc', '62.5', '-5', ' 60']) === [null, null, null, null, null], array_map($graphTime, ['5x00', 'abc', '62.5', '-5', ' 60']));
+check('a stored graph time that is not whole seconds is dropped on read', !isset(fv3_normalize_settings(['dashboard_context_graph_time' => '5x00'])['dashboard_context_graph_time']));
 
 exec('rm -rf ' . escapeshellarg($fv3tTmp));
 echo $fv3tFailed ? "\n$fv3tFailed FAILED\n" : "\nall passed\n";

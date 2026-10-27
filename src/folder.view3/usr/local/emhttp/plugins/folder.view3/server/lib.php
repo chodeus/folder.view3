@@ -1089,8 +1089,9 @@
             return in_array($value, $rules['enum'][$key], true) ? ['store' => $value] : null;
         }
         if (in_array($key, $rules['seconds'], true)) {
-            // The 5–600 the graph draws (fv3GraphDuration); 0 or empty falls back to its 60 s default
-            $seconds = (int)preg_replace('/[^0-9]/', '', $value);
+            // Whole seconds, kept to the 5–600 the graph draws (fv3GraphDuration); 0 or empty falls back to its 60 s default
+            if (preg_match('/^[0-9]*$/', $value) !== 1) return null;
+            $seconds = (int)$value;
             return $seconds === 0 ? ['clear' => true] : ['store' => (string)min(600, max(5, $seconds))];
         }
         if (in_array($key, $rules['text'], true)) {
