@@ -240,6 +240,17 @@ const addRow = (p, id) => p.$(`<table><tr><td><span class="cpu-${id}">0%</span><
         tip.close();
     }
 
+    // A hung cpu.php times out instead of holding up stats, and is asked again
+    {
+        const p = await makePage({ page: 'docker', api: true, answers: { 'cpu.php': 'manual' } });
+        await p.tick(9000);
+        check('cpu.php hung: stats still wait before the timeout', p.sockets.length === 0, p.sockets.length);
+        await p.tick(1000);
+        check('cpu.php hung: stats start once it times out', p.sockets.length === 1, p.sockets.length);
+        await p.tick(10000);
+        check('cpu.php hung: asked again 10 s after the timeout', p.gets.filter((g) => g.url.includes('cpu.php')).length === 2);
+    }
+
     // The stream dropping on the Docker page: Unraid's feed takes over the graph
     {
         const p = await makePage({ page: 'docker', api: true });

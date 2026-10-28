@@ -72,7 +72,12 @@ const makePage = async (opts = {}) => {
         }
         return d;
     };
-    $.ajax = (o) => $.get(o.url);
+    // jQuery rejects a request that outlives its timeout
+    $.ajax = (o) => {
+        const d = $.get(o.url);
+        if (o.timeout) w.setTimeout(() => { if (d.state() === 'pending') d.reject({ status: 0, statusText: 'timeout' }); }, o.timeout);
+        return d;
+    };
     $.post = () => $.Deferred().resolve('ok');
     w.csrf_token = 'tok';
     w.fetch = async (url, init) => {

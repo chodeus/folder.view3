@@ -1492,8 +1492,8 @@ window.fv3StatsMark = (transport) => {
 // Logical CPUs (docker's NCPU): docker counts one thread as 100%. Not the API's cores, which leave out hyper-threads
 window.fv3CpuThreads = 1;
 let fv3CpuThreadsReq = null;
-// Settles even when cpu.php fails (stats must still start); a failure is asked again 10 s later
-window.fv3LoadCpuThreads = () => fv3CpuThreadsReq || (fv3CpuThreadsReq = $.get('/plugins/folder.view3/server/cpu.php').then((data) => {
+// Settles even when cpu.php fails or hangs (stats wait on it); a failure is asked again 10 s later
+window.fv3LoadCpuThreads = () => fv3CpuThreadsReq || (fv3CpuThreadsReq = $.ajax({ url: '/plugins/folder.view3/server/cpu.php', timeout: 10000 }).then((data) => {
     const n = parseInt(data, 10);
     if (n > 0) window.fv3CpuThreads = n;
     fv3Debug('init', `CPU threads: ${window.fv3CpuThreads}`);
