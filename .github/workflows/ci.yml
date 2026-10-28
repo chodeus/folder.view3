@@ -53,6 +53,9 @@ jobs:
       - name: Preview graph tests
         run: node .github/scripts/preview_graph_test.js
 
+      - name: Folder editor regex tests
+        run: node .github/scripts/regex_held_test.js
+
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
 
