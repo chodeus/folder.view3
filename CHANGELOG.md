@@ -2,6 +2,25 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## 2026.10.29
+
+- Resolved the width reset also drops the last-measured fallback snapshot
+- Improved the spacing and layout of the variables tab (thankyou Hernandito)
+- Docker version labels are no longer cut off after Check for Updates
+- Folder editor hides containers held by another folder's specific regex (thankyou Joly0)
+- Tick "Show other folders' regex matches" in Containers / VMs to see them
+- Folder editor flags containers another folder's regex also matches
+- Migrated from Chart.js 3 to Chart.js 4 (CVE-2026-17495)
+- Advanced preview arrow and popup now centre on the container icon
+- Advanced preview border now matches the arrow on every side (thankyou Masterwish)
+- Advanced preview graph no longer shows a scrollbar
+- Advanced preview CPU bar no longer has a block drawn over it
+- Advanced preview CPU and memory now update on the Dashboard
+- CPU figures now count every thread, so hybrid Intel CPUs read correctly
+- No container goes missing from CPU stats or folder totals
+- Dashboard advanced preview has live stats without the Unraid API
+- Stats keep updating if the Unraid API stops sending them
+
 ## 2026.10.28.2 (beta)
 
 - Advanced preview CPU bar no longer has a block drawn over it
