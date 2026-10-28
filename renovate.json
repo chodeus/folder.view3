@@ -53,6 +53,12 @@
       "matchDepTypes": ["bundled"],
       "matchDatasources": ["npm"],
       "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Unraid's webGui ships jQuery 3.7.1; the folder editor DOM test runs on the same major.",
+      "matchFileNames": [".github/scripts/package.json"],
+      "matchPackageNames": ["jquery"],
+      "allowedVersions": "<4"
     }
   ]
 }

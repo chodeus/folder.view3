@@ -53,6 +53,20 @@ jobs:
       - name: Preview graph tests
         run: node .github/scripts/preview_graph_test.js
 
+      - name: Folder editor regex tests
+        run: node .github/scripts/regex_held_test.js
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Folder editor DOM tests
+        working-directory: .github/scripts
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node folder_editor_dom_test.js
+
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
 

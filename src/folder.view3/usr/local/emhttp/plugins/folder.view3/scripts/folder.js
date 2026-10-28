@@ -33,6 +33,8 @@ let selected = [];
 let hiddenPreview = [];
 let labelFolderNames = new Set();
 let otherExplicitMembers = new Set();
+let regexHeld = new Map();
+const regexTicked = new Set();
 const type = new URLSearchParams(location.search).get('type');
 const folderId = new URLSearchParams(location.search).get('id');
 // Only a missing id means a new folder: ?id= is a real (hand-edited) '' key, which must load, not be created again
@@ -60,6 +62,19 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
         lbl.onclick = (e) => e.stopPropagation();
         lbl.innerHTML = '<input type="checkbox" name="use_global_defaults" onchange="fv3ToggleGlobalDefaults(this.checked)"><span><i class="fa fa-refresh"></i> <span data-i18n="use-global-defaults">' + escapeHtml(fv3I18nOr('use-global-defaults', 'Use Global Defaults')) + '</span></span>';
         previewSummary.appendChild(lbl);
+    }
+
+    const containersSummary = document.getElementById('fv3-containers-summary');
+    if (containersSummary) {
+        const lbl = document.createElement('label');
+        lbl.className = 'fv3-regex-held-toggle';
+        lbl.hidden = true;
+        lbl.title = fv3I18nOr('show-regex-held-tooltip', "Containers/VMs another folder holds with a specific regex are hidden; a catch-all like ^ hides nothing. Tick to show them; including one moves it into this folder.");
+        lbl.setAttribute('data-i18n', '[title]show-regex-held-tooltip');
+        lbl.onclick = (e) => e.stopPropagation();
+        lbl.innerHTML = '<input type="checkbox"><span><i class="fa fa-filter"></i> <span data-i18n="show-regex-held">' + escapeHtml(fv3I18nOr('show-regex-held', "Show other folders' regex matches")) + '</span> <span class="fv3-regex-held-count"></span></span>';
+        lbl.querySelector('input').addEventListener('change', () => fv3ApplyRegexHeld());
+        containersSummary.appendChild(lbl);
     }
 
     const fv3SyncSwitchButtons = () => {
@@ -102,6 +117,7 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     }
 
     choose = Object.values(fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_info.php?type=${type}`).promise(), {})).map(typeFilter);
+    const allNames = choose.map(e => e.Name);
 
     if (isEdit) {
         const currFolder = folders[folderId];
@@ -250,6 +266,8 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
             }
         }
     }
+    // folders no longer holds the folder being edited
+    regexHeld = fv3RegexHeld(Object.values(folders), allNames);
 
     choose.sort((a, b) => a.Name.localeCompare(b.Name));
 
@@ -354,10 +372,44 @@ const updateForm = () => {
     }
 };
 
+// Container name -> the other folders whose specific regex matches it. A catch-all (it matches even a NUL name: ^, .*, ^(?!x)) is left out, so its members stay pickable (issue #46)
+window.fv3RegexHeld = (folders, names) => {
+    const held = new Map();
+    for (const f of folders) {
+        if (typeof f.regex !== 'string' || f.regex.trim() === '') continue;
+        let re;
+        try { re = new RegExp(f.regex); } catch (e) { continue; }
+        if (re.test('\u0000')) continue;
+        for (const n of names.filter(n => re.test(n))) held.set(n, [...(held.get(n) || []), { name: f.name, regex: f.regex }]);
+    }
+    return held;
+};
+
+// A label claim beats regex elsewhere (issue #55), so a labelled row has no regex holders
+window.fv3RegexRowHolders = (el, fldName, held, labelFolders) => {
+    if (el.Label && (el.Label === fldName || labelFolders.has(el.Label))) return undefined;
+    return held.get(el.Name);
+};
+
+// No tick box shows everything; a row ticked here, even if a regex edit has since reset it, stays visible
+window.fv3RegexRowVisible = (toggle, ticked, tickedBefore) => !toggle || toggle.checked || ticked || tickedBefore;
+
+const fv3RegexHeldTag = (holders, cls, icon, text, title) => `<span class="${cls}" title="${escapeHtml(title + holders.map(h => `\n${h.name}: ${h.regex}`).join(''))}"><i class="fa ${icon}" aria-hidden="true"></i> ${escapeHtml(text + holders.map(h => h.name).join(', '))}</span>`;
+
+const fv3ApplyRegexHeld = () => {
+    const toggle = document.querySelector('.fv3-regex-held-toggle input');
+    $('table.sortable tr.fv3-regex-held').each(function() {
+        const cb = $(this).find('input.container-switch')[0];
+        $(this).toggle(fv3RegexRowVisible(toggle, cb.checked, regexTicked.has(cb.value)));
+    });
+};
+
 // Rebuild the container select table from selected/choose/selectedRegex.
 const updateList = () => {
     const table = $('.sortable > tbody');
     table.empty();
+    const fldName = $('[name="name"]')[0].value;
+    let heldCount = 0;
 
     for (const el of selected) {
         const isHidden = hiddenPreview.includes(el.Name);
@@ -366,18 +418,33 @@ const updateList = () => {
 
     for (const el of choose) {
         // fa-tag marker: this container carries a live label claim (issue #55)
-        const labelClaim = el.Label && labelFolderNames.has(el.Label) ? `<span class="fv3-label-claim" title="${escapeHtml(fv3I18nOr('label-claim-tooltip', 'Claimed by a folder.view3 label — an explicit folder assignment anywhere overrides it'))}" data-i18n="[title]label-claim-tooltip"><i class="fa fa-tag" aria-hidden="true"></i> ${escapeHtml(el.Label)}</span>` : '';
-        table.append($(`<tr class="item" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}${labelClaim}</td><td><input class="container-switch fv3-checkbox" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
+        const labelled = el.Label && labelFolderNames.has(el.Label);
+        const labelClaim = labelled ? `<span class="fv3-label-claim" title="${escapeHtml(fv3I18nOr('label-claim-tooltip', 'Claimed by a folder.view3 label — an explicit folder assignment anywhere overrides it'))}" data-i18n="[title]label-claim-tooltip"><i class="fa fa-tag" aria-hidden="true"></i> ${escapeHtml(el.Label)}</span>` : '';
+        const holders = fv3RegexRowHolders(el, fldName, regexHeld, labelFolderNames);
+        if (holders) heldCount++;
+        const heldTag = holders ? fv3RegexHeldTag(holders, 'fv3-regex-held-tag', 'fa-filter', '', fv3I18nOr('regex-held-tooltip', "Held by another folder's regex. Including it here moves it into this folder.")) : '';
+        table.append($(`<tr class="item${holders ? ' fv3-regex-held' : ''}" draggable="true"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}${labelClaim}${heldTag}</td><td><input class="container-switch fv3-checkbox" type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td></td></tr>`));
     }
 
     for (const el of selectedRegex) {
         const isHidden = hiddenPreview.includes(el.Name);
-        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}</td><td><input class="container-switch fv3-checkbox" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
+        // A regex capture goes to whichever matching folder the Docker/VM page builds first, which the editor can't know
+        const overlap = fv3RegexRowHolders(el, fldName, regexHeld, labelFolderNames);
+        const overlapTag = overlap ? fv3RegexHeldTag(overlap, 'fv3-regex-overlap-tag', 'fa-exclamation-triangle', fv3I18nOr('regex-overlap', 'Also matched by') + ' ', fv3I18nOr('regex-overlap-tooltip', "This folder's regex and another folder's both match it. Only one of these folders gets it.")) : '';
+        table.prepend($(`<tr class="item"><td><span style="cursor: pointer;" onclick="setIconAsContainer(this)"><img src="${escapeHtml(el.Icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span>${escapeHtml(el.Name)}${overlapTag}</td><td><input class="container-switch fv3-checkbox" checked disabled type="checkbox" name="containers[]" value="${escapeHtml(el.Name)}"></td><td><input class="preview-switch fv3-checkbox" ${isHidden ? 'checked' : ''} type="checkbox" value="${escapeHtml(el.Name)}"></td></tr>`));
     }
+
+    const heldToggle = document.querySelector('.fv3-regex-held-toggle');
+    if (heldToggle) {
+        heldToggle.hidden = heldCount === 0;
+        heldToggle.querySelector('.fv3-regex-held-count').textContent = `(${heldCount})`;
+    }
+    fv3ApplyRegexHeld();
 
     $('table.sortable > tbody > tr > td > input.container-switch:disabled').parent().css('opacity', '0.5').css('cursor', 'default');
 
     $('table.sortable').off('change', 'input.container-switch').on('change', 'input.container-switch', function() {
+        if (this.checked && $(this).closest('tr').hasClass('fv3-regex-held')) regexTicked.add(this.value);
         syncHidePreview($(this).closest('tr'));
     });
 
