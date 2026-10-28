@@ -9,3 +9,4 @@ tmp/
 dist/
 .ops/
 __pycache__/
+node_modules/
