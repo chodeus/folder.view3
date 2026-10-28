@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.10.28.1">
-<!ENTITY md5 "4011896af3f64d004263677af22807b8">
+<!ENTITY version "2026.10.28.2">
+<!ENTITY md5 "6ce349470cd99eac0b9098c57af643e2">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,15 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.10.28.2
+- Advanced preview CPU bar no longer has a block drawn over it
+- Advanced preview CPU and memory now update on the Dashboard
+- Advanced preview shows CPU and memory to two decimals
+- CPU figures now count every thread, so hybrid Intel CPUs read correctly
+- No container goes missing from CPU stats or folder totals
+- Dashboard advanced preview has live stats without the Unraid API
+- Stats keep updating if the Unraid API stops sending them
 
 ###2026.10.28.1
 - Folder editor hides containers held by another folder's specific regex (thankyou Joly0)
