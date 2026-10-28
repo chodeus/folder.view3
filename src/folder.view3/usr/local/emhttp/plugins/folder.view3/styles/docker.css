@@ -445,10 +445,6 @@ div.folder-preview-4 span.outer {
     background-color: var(--folder-view3-graph-cpu);
 }
 
-.preview-outbox div.status-stats div.usage-disk.mm span:last-of-type {
-    background-color: var(--folder-view3-graph-mem);
-}
-
 /* === DOCKER CONTEXT MENU === */
 .docker-context {
     position: absolute;

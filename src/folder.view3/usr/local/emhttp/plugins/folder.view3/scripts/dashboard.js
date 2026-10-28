@@ -373,8 +373,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
                         ct,
                         folder: { ...folder, settings: { ...(folder.settings || {}), context: 2, context_trigger: dashboardContextTrigger, context_graph: dashboardContextGraph, context_graph_time: dashboardContextGraphTime } },
                         id,
-                        container_name_in_folder: container,
-                        cpus: window.fv3CpuCores || dashboardCpus || 1
+                        container_name_in_folder: container
                     });
                 }
             }
@@ -1429,24 +1428,39 @@ const fv3SettingsReq = $.get('/plugins/folder.view3/server/read_settings.php').p
     fv3ShowBanner(fv3I18nOr('dashboard-settings-load-failed', 'Could not load Dashboard settings, so the default layouts are shown. Try refreshing the page.'));
 });
 
-let dashboardCpus = 1;
+// Without the API stream there is no dockerload feed here (only the Docker page runs it), so poll docker_load.php while a preview is open
+let fv3DashboardPolls = false;
+let fv3LoadPolling = false;
+let fv3LoadTimer = null;
+const fv3OpenPreviews = new Set();
+const fv3PollDockerLoad = () => {
+    if (!fv3DashboardPolls || !fv3OpenPreviews.size || fv3LoadPolling) return;
+    // One timer: a preview opened while an old chain's timer waits must not start a second chain
+    clearTimeout(fv3LoadTimer);
+    fv3LoadPolling = true;
+    $.ajax({ url: '/plugins/folder.view3/server/docker_load.php', timeout: 15000 }).then((text) => {
+        fv3StatsMark('sse');
+        folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { load: fv3ParseDockerLoad(text), source: 'sse' } }));
+    }).always(() => {
+        fv3LoadPolling = false;
+        fv3LoadTimer = setTimeout(fv3PollDockerLoad, 1000);
+    });
+};
+// A Set, not a count: a hover trigger can fire ready more than once per open
+folderEvents.addEventListener('docker-tooltip-ready-end', (e) => { fv3OpenPreviews.add(e.detail.containerInfo.shortId); fv3PollDockerLoad(); });
+folderEvents.addEventListener('docker-tooltip-after', (e) => fv3OpenPreviews.delete(e.detail.containerInfo.shortId));
+
 const fv3InitDashboardStats = () => {
     if (dashboardStatsInitialized) return;
     dashboardStatsInitialized = true;
-    // Fetch CPU core count from PHP — fv3CpuCores comes from GraphQL and may be null on
-    // servers without the Unraid API. Falling back to 1 would render CPU% as cores× actual.
-    $.get('/plugins/folder.view3/server/cpu.php').then((data) => {
-        const n = parseInt(data, 10);
-        if (n > 0) dashboardCpus = n;
-    });
-    if (typeof fv3ConnectStats !== 'function') return;
-    fv3ConnectStats(
-        (stat) => {
+    const poll = () => { fv3DashboardPolls = true; fv3PollDockerLoad(); };
+    Promise.all([fv3DetectApiWithin(), fv3LoadCpuThreads()]).then(() => {
+        if (!fv3ApiAvailable || typeof fv3ConnectStats !== 'function') { poll(); return; }
+        fv3ConnectStats((stat) => {
             window.fv3UsingWebSocket = true;
             folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { stat, source: 'ws' } }));
-        },
-        () => {} // no SSE fallback on Dashboard — popup graphs degrade to 0% if WS unavailable
-    );
+        }, poll);
+    });
 };
 
 const applyDashboardLayouts = () => {

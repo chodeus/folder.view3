@@ -817,6 +817,7 @@ window.fv3CollectEnv = () => {
             stats = Object.assign({}, window.fv3StatsState, {
                 apiAvailable: window.fv3ApiAvailable,
                 cpuCores: window.fv3CpuCores,
+                cpuThreads: window.fv3CpuThreads,
                 wsReadyState: window.fv3StatsConnection ? window.fv3StatsConnection.readyState : null,
                 listeners: Array.isArray(window.fv3StatsCallbacks) ? window.fv3StatsCallbacks.length : null
             });
@@ -1488,6 +1489,46 @@ window.fv3StatsMark = (transport) => {
     window.fv3Mark('stats-first');
 };
 
+// Logical CPUs (docker's NCPU): docker counts one thread as 100%. Not the API's cores, which leave out hyper-threads
+window.fv3CpuThreads = 1;
+let fv3CpuThreadsReq = null;
+const fv3RetryCpuThreads = (err) => {
+    fv3DebugWarn('init', 'error fetching CPU count', err);
+    fv3CpuThreadsReq = null;
+    setTimeout(fv3LoadCpuThreads, 10000);
+};
+// Settles even when cpu.php fails, hangs or answers no count (stats wait on it); each of those is asked again 10 s later
+window.fv3LoadCpuThreads = () => fv3CpuThreadsReq || (fv3CpuThreadsReq = $.ajax({ url: '/plugins/folder.view3/server/cpu.php', timeout: 10000 }).then((data) => {
+    const n = parseInt(data, 10);
+    if (!(n > 0)) return fv3RetryCpuThreads(data);
+    window.fv3CpuThreads = n;
+    fv3Debug('init', `CPU threads: ${window.fv3CpuThreads}`);
+}, fv3RetryCpuThreads));
+// fv3DetectApi has no timeout of its own: a hung /graphql must not hold up live stats. Aborted reads as no API
+window.fv3DetectApiWithin = (ms = 4000) => {
+    const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(() => { if (ctl) ctl.abort(); }, ms);
+    return fv3DetectApi(ctl && ctl.signal).finally(() => clearTimeout(timer));
+};
+// A container's share of the whole CPU: the API sends a number, docker stats text like "12.5%", or "--" when it has no reading
+window.fv3CpuShare = (cpu) => {
+    const share = (typeof cpu === 'number' ? cpu : parseFloat(String(cpu).replace('%', ''))) / window.fv3CpuThreads;
+    return Number.isFinite(share) ? share : 0;
+};
+// A number FV3 writes, with Unraid's decimal mark (window.fv3DecimalPoint, from langs/script.php)
+window.fv3Decimal = (text) => String(text).replace('.', window.fv3DecimalPoint || '.');
+// The API relays docker stats screen output, so an id can carry its clear-screen codes (\e[J\e[H)
+window.fv3StatShortId = (rawId) => String(rawId).replace(/\x1b\[[0-?]*[ -\/]*[@-~]/g, '').replace(/[\x00-\x1f]/g, '').split(':').pop().substring(0, 12);
+// docker stats "id;cpu%;used / limit" lines (Unraid's dockerload feed, docker_load.php) as {id: {cpu, mem: [used, limit]}}
+window.fv3ParseDockerLoad = (text) => {
+    const load = {};
+    for (const line of String(text || '').split('\n')) {
+        const exp = line.split(';');
+        if (exp.length >= 3) load[exp[0]] = { cpu: exp[1], mem: exp[2].split(' / ') };
+    }
+    return load;
+};
+
 window.fv3ConnectStats = (onData, onFallback) => {
     if (fv3ApiAvailable) {
         fv3StatsCallbacks.push(onData);
@@ -1508,8 +1549,18 @@ window.fv3ConnectStats = (onData, onFallback) => {
 window.fv3ConnectStatsWebSocket = (onFallback) => {
     var wsUrl = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/graphql';
     var ws = new WebSocket(wsUrl, 'graphql-transport-ws');
+    // The API's collector can stop without an error or complete (unraid/api#2120): 15 s of silence closes the stream, so onclose falls back
+    var stallTimer = null;
+    var armStall = () => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => {
+            fv3DebugWarn('API', 'WebSocket stats silent for 15 s, falling back');
+            ws.close();
+        }, 15000);
+    };
 
     ws.onopen = () => {
+        armStall();
         ws.send(JSON.stringify({ type: 'connection_init', payload: { 'x-csrf-token': typeof csrf_token !== 'undefined' ? csrf_token : '' } }));
         setTimeout(() => {
             ws.send(JSON.stringify({
@@ -1527,23 +1578,25 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
         if (!msg) return;
         if (msg.type === 'next' && msg.payload && msg.payload.data && msg.payload.data.dockerContainerStats) {
             var raw = msg.payload.data.dockerContainerStats;
-            var cleanId = raw.id.replace(/[\x00-\x1f]/g, '').split(':').pop();
             var stat = {
-                shortId: cleanId.substring(0, 12),
+                shortId: fv3StatShortId(raw.id),
                 cpuPercent: raw.cpuPercent,
                 mem: raw.memUsage.split(' / ')
             };
             window.fv3StatsMark('websocket');
+            armStall();
             for (var i = 0; i < fv3StatsCallbacks.length; i++) {
                 try { fv3StatsCallbacks[i](stat); } catch(e) {}
             }
-        } else if (msg.type === 'error') {
-            fv3DebugWarn('API', 'WebSocket subscription error:', msg.payload);
+        } else if (msg.type === 'error' || msg.type === 'complete') {
+            // An ended subscription sends nothing more: close, so onclose falls back like an error
+            fv3DebugWarn('API', `WebSocket subscription ${msg.type}:`, msg.payload);
             ws.close();
         }
     };
 
     ws.onerror = () => {
+        clearTimeout(stallTimer);
         fv3DebugWarn('API', 'WebSocket stats error, falling back to SSE');
         fv3StatsConnection = null;
         fv3StatsCallbacks = [];
@@ -1554,6 +1607,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
 
     var fv3WsClosing = false;
     ws.onclose = () => {
+        clearTimeout(stallTimer);
         if (fv3StatsConnection === ws) {
             fv3StatsConnection = null;
             fv3StatsCallbacks = [];

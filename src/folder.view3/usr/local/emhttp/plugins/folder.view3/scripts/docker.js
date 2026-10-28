@@ -1,5 +1,6 @@
 // Global variables
-let cpus = 1;
+// Kept for extensions that scale fv3-stats-update by it; follows a late cpu.php answer
+Object.defineProperty(window, 'cpus', { configurable: true, get: () => window.fv3CpuThreads });
 let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
@@ -502,8 +503,7 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
                         ct,
                         folder,
                         id,
-                        container_name_in_folder,
-                        cpus
+                        container_name_in_folder
                     });
                 }
             } else {
@@ -1201,10 +1201,8 @@ const fv3UpdateFolderStats = (load) => {
         for (const [cid_name, cvalue] of Object.entries(value.containers)) {
             const containerShortId = cvalue.id;
             const curLoad = load[containerShortId] || { cpu: '0.00%', mem: ['0B', '0B'] };
-            const cpuVal = typeof curLoad.cpu === 'number' ? curLoad.cpu : parseFloat(curLoad.cpu.replace('%', ''));
-            // Both transports deliver docker-native % (0..cpus*100): SSE from `docker stats {{.CPUPerc}}`,
-            // WS from the API's systeminformation cpuPercent. Normalize identically so they can't diverge.
-            loadCpu += cpuVal / cpus;
+            // Both transports send docker's own % (one thread = 100%); fv3CpuShare normalises both alike
+            loadCpu += fv3CpuShare(curLoad.cpu);
             loadMemB += memToB(curLoad.mem[0]);
             limits.push(memToB(curLoad.mem[1]));
         }
@@ -1213,7 +1211,7 @@ const fv3UpdateFolderStats = (load) => {
         const totalMemB = allLimited ? limits.reduce((a, b) => a + b, 0) : Math.max(0, ...limits);
 
         $(`span.mem-folder-${id}`).text(`${bToMem(loadMemB)} / ${bToMem(totalMemB)}`);
-        $(`span.cpu-folder-${id}`).text(`${loadCpu.toFixed(2)}%`);
+        $(`span.cpu-folder-${id}`).text(fv3Decimal(`${loadCpu.toFixed(2)}%`));
         $(`span#cpu-folder-${id}`).css('width', `${Math.min(100, loadCpu).toFixed(2)}%`);
     }
 };
@@ -1224,41 +1222,22 @@ let fv3WsDebounceTimer = null;
 
 // SSE stats fallback (when GraphQL WebSocket isn't available)
 const fv3InitSSEStats = () => {
-    // Listener first: a failed cpu.php must not leave the tab without live stats (divisor stays 1)
     dockerload.addEventListener('message', (e_sse) => {
         const sseData = (typeof e_sse.data === 'string') ? e_sse.data : (typeof e_sse === 'string' ? e_sse : null);
         if (!sseData || !sseData.trim()) return;
         if (window.fv3StatsMark) window.fv3StatsMark('sse');
 
-        let load = {};
-        const lines = sseData.split('\n');
-        lines.forEach((line_str) => {
-            if (!line_str.trim()) return;
-            const exp = line_str.split(';');
-            if (exp.length >= 3) {
-                load[exp[0]] = { cpu: exp[1], mem: exp[2].split(' / ') };
-            }
-        });
-
+        const load = fv3ParseDockerLoad(sseData);
         fv3UpdateFolderStats(load);
 
         folderEvents.dispatchEvent(new CustomEvent('fv3-stats-update', { detail: { load, source: 'sse' } }));
     });
-    $.get('/plugins/folder.view3/server/cpu.php').promise().then((data) => {
-        const n = parseInt(data, 10);
-        if (n > 0) cpus = n;
-        fv3Debug('init', `CPU count for SSE stats: ${cpus}`);
-    }).catch(err => {
-        fv3DebugWarn('init', 'error fetching CPU count', err);
-    });
 };
 
-// fv3ApiAvailable/fv3CpuCores are populated async by fv3DetectApi(); must await it before
-// choosing WebSocket vs SSE, or the check runs too early and always falls back to SSE.
-fv3DetectApi().then(() => {
-    if (fv3ApiAvailable && fv3CpuCores) {
-        cpus = fv3CpuCores;
-        fv3Debug('init', `CPU cores from API: ${cpus}. Trying WebSocket stats.`);
+// Await both: the API check decides WebSocket vs SSE, and samples need the thread count. Both settle on failure.
+Promise.all([fv3DetectApiWithin(), fv3LoadCpuThreads()]).then(() => {
+    if (fv3ApiAvailable) {
+        fv3Debug('init', 'Trying WebSocket stats.');
         fv3ConnectStats(
             (stat) => {
                 window.fv3UsingWebSocket = true;
@@ -1281,7 +1260,7 @@ fv3DetectApi().then(() => {
 
 
 fv3Debug('init', 'globals', {
-    cpus, loadedFolder, globalFolders: {...globalFolders}, folderRegex: folderRegex.toString(),
+    cpuThreads: fv3CpuThreads, loadedFolder, globalFolders: {...globalFolders}, folderRegex: folderRegex.toString(),
     folderDebugMode, folderobserverConfig: {...folderobserverConfig}, folderReq: [...folderReq]
 });
 

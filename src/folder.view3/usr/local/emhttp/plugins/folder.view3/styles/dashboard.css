@@ -1028,10 +1028,6 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
     background-color: var(--folder-view3-graph-cpu);
 }
 
-.preview-outbox div.status-stats div.usage-disk.mm span:last-of-type {
-    background-color: var(--folder-view3-graph-mem);
-}
-
 /* === MOBILE: Advanced Preview Hybrid Layout === */
 @media (max-width: 768px) {
     .preview-outbox {

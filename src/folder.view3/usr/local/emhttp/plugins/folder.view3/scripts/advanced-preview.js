@@ -44,6 +44,26 @@ window.bToMem = window.bToMem || ((b) => {
     return result;
 });
 
+// One container's sample from fv3-stats-update: null when the event isn't about it, zeros when docker stats left it out (stopped)
+window.fv3StatSample = (detail, shortId) => {
+    const { source, stat, load } = detail || {};
+    let s;
+    if (source === 'ws' && stat && stat.shortId === shortId) s = { cpu: stat.cpuPercent, mem: stat.mem };
+    else if (source === 'sse' && load) s = load[shortId];
+    else return null;
+    if (!s) return { cpu: 0, mem: 0 };
+    const used = memToB(s.mem[0]), limit = memToB(s.mem[1]);
+    // Two decimals, as the folder rows show it: docker's own text ("9.776GiB") changes length and shifts the popup's table
+    return { cpu: fv3CpuShare(s.cpu), mem: limit > 0 ? used / limit * 100 : 0, memText: `${bToMem(used)} / ${bToMem(limit)}` };
+};
+// CPU text as the folder rows show it: capped at 100, always two decimals (a steady width), Unraid's decimal mark
+window.fv3CpuText = (share) => fv3Decimal(`${(Number.isFinite(share) ? Math.min(share, 100) : 0).toFixed(2)}%`);
+// That text may carry a decimal comma, so "4,33%" has to become a width of 4.33%
+window.fv3CpuBarWidth = (text) => {
+    const pct = parseFloat(String(text).replace(',', '.'));
+    return Number.isFinite(pct) ? `${Math.min(100, Math.max(0, pct))}%` : null;
+};
+
 window.hideAllTips = window.hideAllTips || (() => {
     if (!$.tooltipster) return;
     $.each($.tooltipster.instances(), (i, instance) => instance.close());
@@ -392,7 +412,7 @@ window.fv3AimAtIcon = window.fv3AimAtIcon || ((instance, helper, position) => {
  * Attaches the FolderView3 advanced preview (tooltipster popup with CPU/MEM graphs)
  * to a given trigger element. Called from docker.js and dashboard.js.
  */
-window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, container_name_in_folder, cpus }) {
+window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, container_name_in_folder }) {
     if (!triggerEl || (triggerEl.length !== undefined && triggerEl.length === 0)) { return; }
     if (!$.fn.tooltipster) {
         fv3DebugWarn('fv3AttachAdvancedPreview', 'tooltipster plugin not loaded on this page; aborting');
@@ -400,10 +420,6 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
     }
 
     let CPU = []; let MEM = []; let charts = []; let tootltipObserver; let tooltipResizeObserver; let chartHeightGuards = []; let stopGraphs;
-    // Tracks which stats listener (if any) is currently attached. Prevents duplicate adds
-    // (e.g. hover trigger firing functionReady multiple times) and ensures functionAfter
-    // removes the same listener it added, even if fv3UsingWebSocket flipped in between.
-    let attachedListener = null; // 'ws' | 'sse' | null
     fv3Debug('createFolder', id, container_name_in_folder, 'Initialized CPU, MEM, charts, tootltipObserver for tooltip.');
 
     const envTab = fv3EnvTab(ct);
@@ -415,30 +431,19 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
         MEM.push({ x: now, y: memVal });
     };
 
-    const graphListenerSSE = (e) => {
+    const statsListener = (e) => {
+        let sample;
         try {
-            let dataToParse = e.data ? e.data : e;
-            let loadMatch = dataToParse.match(new RegExp(`^${ct.shortId}\;.*\;.*\ \/\ .*$`, 'm'));
-            if (!loadMatch) { pushChartData(0, 0); return; }
-            let load = loadMatch[0].split(';');
-            let cpuVal = parseFloat(load[1].replace('%', '')) / cpus;
-            let memParts = load[2].split(' / ');
-            let memVal = memToB(memParts[0]) / memToB(memParts[1]) * 100;
-            pushChartData(cpuVal, memVal);
+            sample = fv3StatSample(e.detail, ct.shortId);
         } catch (error) {
-            pushChartData(0, 0);
+            sample = { cpu: 0, mem: 0 };
         }
-    };
-
-    const graphListenerWS = (e) => {
-        const detail = e.detail;
-        if (detail.source !== 'ws' || !detail.stat || detail.stat.shortId !== ct.shortId) return;
-        try {
-            let cpuVal = detail.stat.cpuPercent / cpus;
-            let memVal = memToB(detail.stat.mem[0]) / memToB(detail.stat.mem[1]) * 100;
-            pushChartData(cpuVal, memVal);
-        } catch (error) {
-            pushChartData(0, 0);
+        if (!sample) return;
+        pushChartData(sample.cpu, sample.mem);
+        // fv3- classes, not Unraid's cpu-<id>/mem-<id>: its Docker page handler divides by a different count and would overwrite them
+        if (sample.memText) {
+            $(`.preview-outbox-${ct.shortId} span.fv3-cpu-${ct.shortId}`).text(fv3CpuText(sample.cpu));
+            $(`.preview-outbox-${ct.shortId} span.fv3-mem-${ct.shortId}`).text(sample.memText);
         }
     };
 
@@ -601,11 +606,12 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
             tootltipObserver = new MutationObserver((mutationList, observer) => {
                 fv3Debug('tooltipObserver', ct.shortId, 'Mutation observed for CPU text.', mutationList);
                 for (const mutation of mutationList) {
-                    $(`.preview-outbox-${ct.shortId} span#cpu-${ct.shortId}`, tooltipDomEl).css('width',  mutation.target.textContent)
+                    const width = fv3CpuBarWidth(mutation.target.textContent);
+                    if (width) $(`.preview-outbox-${ct.shortId} span.fv3-cpu-bar-${ct.shortId}`, tooltipDomEl).css('width', width);
                 }
             });
 
-            const cpuTextElement = $(`.preview-outbox-${ct.shortId} span.cpu-${ct.shortId}`, tooltipDomEl).get(0);
+            const cpuTextElement = $(`.preview-outbox-${ct.shortId} span.fv3-cpu-${ct.shortId}`, tooltipDomEl).get(0);
             if (cpuTextElement) {
                 tootltipObserver.observe(cpuTextElement, {childList: true});
                 fv3Debug('tooltipster', ct.shortId, 'tootltipObserver observing CPU text element.', cpuTextElement);
@@ -689,19 +695,9 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                 tooltipResizeObserver.observe($(`.preview-outbox-${ct.shortId}`, tooltipDomEl).get(0));
             }
 
-            if (attachedListener) {
-                fv3Debug('tooltipster', ct.shortId, `Stats listener already attached (${attachedListener}); skipping duplicate add.`);
-            } else if (fv3UsingWebSocket) {
-                folderEvents.addEventListener('fv3-stats-update', graphListenerWS);
-                attachedListener = 'ws';
-                fv3Debug('tooltipster', ct.shortId, 'Added graphListener via WebSocket events.');
-            } else if (typeof dockerload !== 'undefined') {
-                dockerload.addEventListener('message', graphListenerSSE);
-                attachedListener = 'sse';
-                fv3Debug('tooltipster', ct.shortId, 'Added graphListener to dockerload SSE.');
-            } else {
-                fv3DebugWarn('tooltipster', ct.shortId, 'No stats source on this page (no WS, no dockerload). Graphs will not update.');
-            }
+            // Either source arrives on the bus, whichever connects later; a repeat add of the same listener is a no-op
+            folderEvents.addEventListener('fv3-stats-update', statsListener);
+            fv3Debug('tooltipster', ct.shortId, 'Listening for fv3-stats-update.');
 
             if (fv3Incognito) fv3IncognitoScrubTooltip($(tooltipDomEl)[0], ct.info.Name);
 
@@ -736,15 +732,8 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                     MEM
                 }
             }}));
-            // Use the tracked listener type, not the current fv3UsingWebSocket flag
-            // (which may have flipped between attach and detach).
-            if (attachedListener === 'ws') {
-                folderEvents.removeEventListener('fv3-stats-update', graphListenerWS);
-            } else if (attachedListener === 'sse' && typeof dockerload !== 'undefined') {
-                dockerload.removeEventListener('message', graphListenerSSE);
-            }
-            attachedListener = null;
-            fv3Debug('tooltipster', ct.shortId, 'Removed graphListener.');
+            folderEvents.removeEventListener('fv3-stats-update', statsListener);
+            fv3Debug('tooltipster', ct.shortId, 'Removed stats listener.');
             if (stopGraphs) stopGraphs();
             stopGraphs = undefined;
             for (const chart of charts) {
@@ -780,7 +769,7 @@ window.fv3AttachAdvancedPreview = function({ triggerEl, ct, folder, id, containe
                         <thead class="status-header"><tr><th class="status-header-version">${$.i18n('version')}</th><th class="status-header-stats">${fv3I18nOr('cpu-mem', 'CPU/MEM')}</th><th class="status-header-autostart">${$.i18n('autostart')}</th></tr></thead>
                         <tbody><tr>
                             <td><div class="status-version">${ct.info.State.manager === 'composeman' ? `<span class="folder-update-text"><i class="fa fa-docker fa-fw"></i> ${$.i18n('compose')}</span>` : ct.info.State.manager !== 'dockerman' ? `<span class="folder-update-text"><i class="fa fa-docker fa-fw"></i> ${$.i18n('third-party')}</span>` : !fv3HasUpdate(ct) ? `<span class="green-text folder-update-text"><i class="fa fa-check fa-fw"></i>${$.i18n('up-to-date')}</span><br><a class="exec" onclick="hideAllTips(); updateContainer(${fv3JsArg(ct.info.Name)});"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i>${$.i18n('force-update')}</span></a>` : `<span class="orange-text folder-update-text" style="white-space:nowrap;"><i class="fa fa-flash fa-fw"></i>${$.i18n('update-ready')}</span><br><a class="exec" onclick="hideAllTips(); updateContainer(${fv3JsArg(ct.info.Name)});"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i>${$.i18n('apply-update')}</span></a>`}<br><i class="fa fa-info-circle fa-fw"></i> ${escapeHtml(ct.info.Config.Image.split(':').pop())}</div></td>
-                            <td><div class="status-stats"><span class="cpu-${ct.shortId}">0%</span><div class="usage-disk mm"><span id="cpu-${ct.shortId}" style="width: 0%;"></span><span></span></div><br><span class="mem-${ct.shortId}">0 / 0</span></div></td>
+                            <td><div class="status-stats"><span class="fv3-cpu-${ct.shortId}">0%</span><div class="usage-disk mm"><span class="fv3-cpu-bar-${ct.shortId}" style="width: 0%;"></span><span></span></div><br><span class="fv3-mem-${ct.shortId}">0 / 0</span></div></td>
                             <td><div class="status-autostart"><input type="checkbox" style="display:none" class="staus-autostart-checkbox" name="preview-autostart-${ct.shortId}"></div></td>
                         </tr></tbody>
                     </table>
