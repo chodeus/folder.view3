@@ -2,6 +2,16 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Folder editor hides containers held by another folder's specific regex (thankyou Joly0)
+- Tick "Show other folders' regex matches" in Containers / VMs to see them
+- Folder editor flags containers another folder's regex also matches
+- Preview graphs now use Chart.js 4; moment is removed (CVE-2026-17495)
+- Advanced preview arrow and popup now centre on the container icon
+- Advanced preview border now matches the arrow on every side (thankyou Masterwish)
+- Advanced preview graph no longer shows a scrollbar
+
 ## 2026.10.23.1 (beta)
 
 - Resolved the width reset also drops the last-measured fallback snapshot
