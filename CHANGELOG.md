@@ -4,7 +4,13 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: CPU/MEM in the advanced preview and folder rows show the right numbers on every page (#150)
+- Advanced preview CPU bar no longer has a block drawn over it
+- Advanced preview CPU and memory now update on the Dashboard
+- Advanced preview shows CPU and memory to two decimals
+- CPU figures now count every thread, so hybrid Intel CPUs read correctly
+- No container goes missing from CPU stats or folder totals
+- Dashboard advanced preview has live stats without the Unraid API
+- Stats keep updating if the Unraid API stops sending them
 
 ## 2026.10.28.1 (beta)
 
