@@ -261,6 +261,45 @@ const addRow = (p, id) => p.$(`<table><tr><td><span class="cpu-${id}">0%</span><
         check('cpu.php hung: asked again 10 s after the timeout', p.gets.filter((g) => g.url.includes('cpu.php')).length === 2);
     }
 
+    // A stream that goes quiet without an error (the API's collector stopping) falls back after 15 s; a live one never does
+    {
+        const p = await makePage({ page: 'docker', api: true });
+        addRow(p, A);
+        await p.tick(0);
+        const ws = p.sockets[0];
+        ws.readyState = 1; ws.onopen();
+        const tip = p.attach(p.ct(A));
+        tip.open();
+        await p.tick(14000);
+        check('Docker, silent stream: still on the stream before 15 s', p.g('fv3StatsState.transport') === 'websocket', p.g('fv3StatsState.transport'));
+        await p.tick(1000);
+        check('Docker, silent stream: falls back after 15 s of silence', p.g('fv3StatsState.transport') === 'sse', p.g('fv3StatsState.transport'));
+        p.nchan[0].emit('message', LOAD);
+        await p.tick(0);
+        check('Docker, silent stream: Unraid\'s feed fills the graph after the fallback', p.samples[A].CPU.length === 1, p.samples[A].CPU);
+        tip.close();
+    }
+    {
+        const p = await makePage({ page: 'docker', api: true });
+        await p.tick(0);
+        const ws = p.sockets[0];
+        ws.readyState = 1; ws.onopen();
+        for (let i = 0; i < 15; i++) { next(ws, `${HOST}:${A}`, 10); await p.tick(2000); }
+        check('Docker, live stream: no fallback while stats keep arriving', p.g('fv3StatsState.transport') === 'websocket' && p.g('fv3StatsState.fallbacks') === 0, [p.g('fv3StatsState.transport'), p.g('fv3StatsState.fallbacks')]);
+    }
+    {
+        const p = await makePage({ page: 'dashboard', api: true, answers: { 'docker_load.php': () => LOAD } });
+        p.g('fv3InitDashboardStats()');
+        await p.tick(0);
+        const ws = p.sockets[0];
+        ws.readyState = 1; ws.onopen();
+        const tip = p.attach(p.ct(A));
+        tip.open();
+        await p.tick(16000);
+        check('Dashboard, silent stream: the open preview is polled after 15 s', loads(p).length >= 1, loads(p).length);
+        tip.close();
+    }
+
     // The stream dropping on the Docker page: Unraid's feed takes over the graph
     {
         const p = await makePage({ page: 'docker', api: true });

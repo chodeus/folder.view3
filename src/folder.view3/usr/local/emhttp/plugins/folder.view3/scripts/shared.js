@@ -1549,8 +1549,18 @@ window.fv3ConnectStats = (onData, onFallback) => {
 window.fv3ConnectStatsWebSocket = (onFallback) => {
     var wsUrl = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/graphql';
     var ws = new WebSocket(wsUrl, 'graphql-transport-ws');
+    // The API's collector can stop without an error or complete (unraid/api#2120): 15 s of silence closes the stream, so onclose falls back
+    var stallTimer = null;
+    var armStall = () => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => {
+            fv3DebugWarn('API', 'WebSocket stats silent for 15 s, falling back');
+            ws.close();
+        }, 15000);
+    };
 
     ws.onopen = () => {
+        armStall();
         ws.send(JSON.stringify({ type: 'connection_init', payload: { 'x-csrf-token': typeof csrf_token !== 'undefined' ? csrf_token : '' } }));
         setTimeout(() => {
             ws.send(JSON.stringify({
@@ -1574,6 +1584,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
                 mem: raw.memUsage.split(' / ')
             };
             window.fv3StatsMark('websocket');
+            armStall();
             for (var i = 0; i < fv3StatsCallbacks.length; i++) {
                 try { fv3StatsCallbacks[i](stat); } catch(e) {}
             }
@@ -1585,6 +1596,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
     };
 
     ws.onerror = () => {
+        clearTimeout(stallTimer);
         fv3DebugWarn('API', 'WebSocket stats error, falling back to SSE');
         fv3StatsConnection = null;
         fv3StatsCallbacks = [];
@@ -1595,6 +1607,7 @@ window.fv3ConnectStatsWebSocket = (onFallback) => {
 
     var fv3WsClosing = false;
     ws.onclose = () => {
+        clearTimeout(stallTimer);
         if (fv3StatsConnection === ws) {
             fv3StatsConnection = null;
             fv3StatsCallbacks = [];
