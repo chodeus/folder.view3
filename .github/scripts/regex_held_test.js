@@ -53,7 +53,8 @@ check('an invalid regex is skipped, as on the Docker page', JSON.stringify(held(
 const vms = ['Windows 11', 'Home Assistant', 'debian', 'app5'];
 const blank = ctx.fv3RegexHeld([{ name: 'A' }, { name: 'B', regex: '' }, { name: 'C', regex: ' ' }, { name: 'D', regex: null }, { name: 'E', regex: 5 }], vms);
 check('a missing, empty, blank or non-string regex holds nothing', blank.size === 0, [...blank.keys()]);
-check('with one container, a regex matching it is a catch-all', none(held(['^plex'], ['plex'])));
+check('with one container, a specific regex matching it still holds it', JSON.stringify(held(['^plex'], ['plex'])) === '{"plex":["F0"]}', held(['^plex'], ['plex']));
+check('a specific regex matching every installed container still holds them', Object.keys(held(['^(immich|plex)'], ['immich_server', 'plex'])).length === 2);
 check('with no containers, nothing is held', none(held(['^plex'], [])));
 
 const map = ctx.fv3RegexHeld([{ name: 'Immich', regex: '^immich' }], names);

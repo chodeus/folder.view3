@@ -372,16 +372,15 @@ const updateForm = () => {
     }
 };
 
-// Container name -> the other folders whose specific regex matches it. A catch-all (matches every name, or any text) is left out, so its members stay pickable (issue #46)
+// Container name -> the other folders whose specific regex matches it. A catch-all (it matches even a NUL name: ^, .*, ^(?!x)) is left out, so its members stay pickable (issue #46)
 window.fv3RegexHeld = (folders, names) => {
     const held = new Map();
     for (const f of folders) {
         if (typeof f.regex !== 'string' || f.regex.trim() === '') continue;
         let re;
         try { re = new RegExp(f.regex); } catch (e) { continue; }
-        const matched = names.filter(n => re.test(n));
-        if ((re.test('') && re.test('\u0000')) || matched.length === names.length) continue;
-        for (const n of matched) held.set(n, [...(held.get(n) || []), { name: f.name, regex: f.regex }]);
+        if (re.test('\u0000')) continue;
+        for (const n of names.filter(n => re.test(n))) held.set(n, [...(held.get(n) || []), { name: f.name, regex: f.regex }]);
     }
     return held;
 };

@@ -136,7 +136,11 @@ dl.fv3-folder-settings dt {
     color: var(--_accent);
 }
 .fv3-regex-held-toggle {
-    --_accent: var(--blue-700, #0099ff);
+    --_accent: var(--blue-700, currentColor);
+}
+/* Without --blue-700 (Unraid 7.0) the accent is currentColor, which on the checkbox would be the browser's input black */
+.fv3-regex-held-toggle input {
+    color: inherit;
 }
 
 /* Color reset button */
