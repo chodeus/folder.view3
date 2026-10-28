@@ -239,9 +239,6 @@ Language packs live in `src/folder.view3/usr/local/emhttp/plugins/folder.view3/l
 ## Libraries
 
 - [Chart.js](https://www.chartjs.org/)
-- [chartjs-adapter-moment](https://github.com/chartjs/chartjs-adapter-moment)
-- [Moment.js](https://momentjs.com/)
-- [chartjs-plugin-streaming](https://github.com/nagix/chartjs-plugin-streaming)
 - [jquery.i18n](https://github.com/wikimedia/jquery.i18n)
 - [jQuery UI MultiSelect](https://github.com/ehynds/jquery-ui-multiselect-widget)
 

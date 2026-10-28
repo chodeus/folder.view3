@@ -1073,7 +1073,7 @@
                 'default_context_graph'    => ['0', '1', '2', '3', '4'],
                 'default_update_column'    => ['yes', 'no']
             ],
-            'digits' => ['default_context_graph_time', 'dashboard_context_graph_time'],
+            'seconds' => ['default_context_graph_time', 'dashboard_context_graph_time'],
             'text'   => ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width'],
         ];
     }
@@ -1088,9 +1088,11 @@
         if (isset($rules['enum'][$key])) {
             return in_array($value, $rules['enum'][$key], true) ? ['store' => $value] : null;
         }
-        if (in_array($key, $rules['digits'], true)) {
-            $value = preg_replace('/[^0-9]/', '', $value);
-            return $value === '' ? ['clear' => true] : ['store' => $value];
+        if (in_array($key, $rules['seconds'], true)) {
+            // Whole seconds, kept to the 5–600 the graph draws (fv3GraphDuration); 0 or empty falls back to its 60 s default
+            if (preg_match('/^[0-9]*$/', $value) !== 1) return null;
+            $seconds = (int)$value;
+            return $seconds === 0 ? ['clear' => true] : ['store' => (string)min(600, max(5, $seconds))];
         }
         if (in_array($key, $rules['text'], true)) {
             if (strlen($value) > 50) return null;

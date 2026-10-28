@@ -5,6 +5,12 @@ on:
     branches: [main, beta]
   pull_request:
   workflow_dispatch:
+    inputs:
+      base:
+        description: 'Branch the code is headed for, when dispatched on a PR branch (e.g. beta). Empty = the branch it runs on.'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -13,6 +19,9 @@ jobs:
   validate:
     name: Lint + build
     runs-on: ubuntu-latest
+    env:
+      # A PR's base, a dispatch's base input, else the pushed branch: the channel the manifest is checked against.
+      BRANCH: ${{ github.base_ref || inputs.base || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -41,8 +50,35 @@ jobs:
       - name: Autostart tab tests
         run: node .github/scripts/autostart_api_test.js
 
+      - name: Preview graph tests
+        run: node .github/scripts/preview_graph_test.js
+
+      - name: Preview stats tests
+        run: node .github/scripts/preview_stats_test.js
+
+      - name: Folder editor regex tests
+        run: node .github/scripts/regex_held_test.js
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Folder editor DOM tests
+        working-directory: .github/scripts
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node folder_editor_dom_test.js
+          node preview_pages_test.js
+
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
+
+      # Each bundled library must match the upstream file vendor.json names; text is compared with LF endings, as git stores it.
+      - name: Bundled libraries match vendor.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/vendor.py check
 
       - name: Checkout release scripts
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -57,16 +93,15 @@ jobs:
       # pluginURL must point at this branch, and the manifest md5 must match the served package.
       - name: Verify changelog, manifest and served package agree
         run: |
-          branch="${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
           channel=stable
-          [ "$branch" != beta ] || channel=beta
+          [ "$BRANCH" != beta ] || channel=beta
           python3 .ops/scripts/plg_release.py check \
             --changelog CHANGELOG.md --plg folder.view3.plg \
-            --channel "$channel" --branch "$branch" --verify-asset
+            --channel "$channel" --branch "$BRANCH" --verify-asset
 
       - name: Test build
         run: |
-          bash pkg_build.sh --version 0000.00.00 --branch "${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
+          bash pkg_build.sh --version 0000.00.00 --branch "$BRANCH"
           test -f dist/folder.view3-0000.00.00-x86_64-1.txz
 
       - name: Set up Python

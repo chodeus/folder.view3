@@ -105,8 +105,9 @@ dl.fv3-folder-settings dt {
     float: none;
 }
 
-/* Use Global Defaults toggle — inline in summary bar via flexbox */
-.fv3-global-defaults-toggle {
+/* Summary-bar tick boxes (Use Global Defaults, regex matches): inline via flexbox */
+.fv3-global-defaults-toggle,
+.fv3-regex-held-toggle {
     --_accent: var(--fv3-accent-color, #f97316);
     margin-left: auto;
     font-size: 13px;
@@ -120,16 +121,26 @@ dl.fv3-folder-settings dt {
     opacity: 0.8;
     transition: opacity 0.15s;
 }
-.fv3-global-defaults-toggle:hover {
+.fv3-global-defaults-toggle:hover,
+.fv3-regex-held-toggle:hover {
     opacity: 1;
 }
-.fv3-global-defaults-toggle input {
+.fv3-global-defaults-toggle input,
+.fv3-regex-held-toggle input {
     vertical-align: middle;
     margin: 0 4px 0 0;
     accent-color: var(--_accent);
 }
-.fv3-global-defaults-toggle span {
+.fv3-global-defaults-toggle span,
+.fv3-regex-held-toggle span {
     color: var(--_accent);
+}
+.fv3-regex-held-toggle {
+    --_accent: var(--blue-700, currentColor);
+}
+/* Without --blue-700 (Unraid 7.0) the accent is currentColor, which on the checkbox would be the browser's input black */
+.fv3-regex-held-toggle input {
+    color: inherit;
 }
 
 /* Color reset button */
@@ -174,6 +185,13 @@ table.sortable td:first-child {
     text-align: left;
 }
 
+/* Unraid's td nowrap would run a long name or claim marker under the switches */
+table.sortable td:first-child {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+}
+
 table.sortable th:nth-child(2),
 table.sortable td:nth-child(2) {
     width: 22%;
@@ -186,12 +204,16 @@ table.sortable td:last-child {
     text-align: center;
 }
 
-/* fa-tag claim marker rendered by updateList() for label-claimed containers (issue #55) */
-.fv3-label-claim {
+/* Claim markers rendered by updateList(): fa-tag label claims (issue #55), regex holders and overlaps */
+.fv3-label-claim,
+.fv3-regex-held-tag,
+.fv3-regex-overlap-tag {
+    /* Beside the name when it fits, else on the next line, wrapped */
+    display: inline-block;
+    max-width: calc(100% - 0.6em);
     margin-left: 0.6em;
     font-size: 0.85em;
     color: var(--orange-500, inherit);
-    white-space: nowrap;
     cursor: help;
 }
 
