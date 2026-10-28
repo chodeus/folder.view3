@@ -149,6 +149,16 @@ const addRow = (p, id) => p.$(`<table><tr><td><span class="cpu-${id}">0%</span><
         tip.close();
     }
 
+    // cpu.php answering 200 with no usable count is retried, not cached as a divisor of 1
+    for (const bad of ['0', 'oops', '']) {
+        let first = true;
+        const p = await makePage({ page: 'dashboard', api: false, answers: { 'cpu.php': () => (first ? (first = false, bad) : '20'), 'docker_load.php': () => LOAD } });
+        p.g('fv3InitDashboardStats()');
+        await p.tick(10000);
+        const asked = p.gets.filter((g) => g.url.includes('cpu.php')).length;
+        check(`cpu.php answers ${JSON.stringify(bad)}: asked again, then the real count is used`, asked === 2 && p.g('fv3CpuThreads') === 20, { asked, threads: p.g('fv3CpuThreads') });
+    }
+
     // A failed reading (docker_load.php 503) draws nothing rather than a 0 for a running container
     {
         let fail = false;

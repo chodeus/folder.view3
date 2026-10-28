@@ -1492,24 +1492,29 @@ window.fv3StatsMark = (transport) => {
 // Logical CPUs (docker's NCPU): docker counts one thread as 100%. Not the API's cores, which leave out hyper-threads
 window.fv3CpuThreads = 1;
 let fv3CpuThreadsReq = null;
-// Settles even when cpu.php fails or hangs (stats wait on it); a failure is asked again 10 s later
-window.fv3LoadCpuThreads = () => fv3CpuThreadsReq || (fv3CpuThreadsReq = $.ajax({ url: '/plugins/folder.view3/server/cpu.php', timeout: 10000 }).then((data) => {
-    const n = parseInt(data, 10);
-    if (n > 0) window.fv3CpuThreads = n;
-    fv3Debug('init', `CPU threads: ${window.fv3CpuThreads}`);
-}, (err) => {
+const fv3RetryCpuThreads = (err) => {
     fv3DebugWarn('init', 'error fetching CPU count', err);
     fv3CpuThreadsReq = null;
     setTimeout(fv3LoadCpuThreads, 10000);
-}));
+};
+// Settles even when cpu.php fails, hangs or answers no count (stats wait on it); each of those is asked again 10 s later
+window.fv3LoadCpuThreads = () => fv3CpuThreadsReq || (fv3CpuThreadsReq = $.ajax({ url: '/plugins/folder.view3/server/cpu.php', timeout: 10000 }).then((data) => {
+    const n = parseInt(data, 10);
+    if (!(n > 0)) return fv3RetryCpuThreads(data);
+    window.fv3CpuThreads = n;
+    fv3Debug('init', `CPU threads: ${window.fv3CpuThreads}`);
+}, fv3RetryCpuThreads));
 // fv3DetectApi has no timeout of its own: a hung /graphql must not hold up live stats. Aborted reads as no API
 window.fv3DetectApiWithin = (ms = 4000) => {
     const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = setTimeout(() => { if (ctl) ctl.abort(); }, ms);
     return fv3DetectApi(ctl && ctl.signal).finally(() => clearTimeout(timer));
 };
-// A container's share of the whole CPU: the API sends a number, docker stats text like "12.5%"
-window.fv3CpuShare = (cpu) => (typeof cpu === 'number' ? cpu : parseFloat(String(cpu).replace('%', ''))) / window.fv3CpuThreads;
+// A container's share of the whole CPU: the API sends a number, docker stats text like "12.5%", or "--" when it has no reading
+window.fv3CpuShare = (cpu) => {
+    const share = (typeof cpu === 'number' ? cpu : parseFloat(String(cpu).replace('%', ''))) / window.fv3CpuThreads;
+    return Number.isFinite(share) ? share : 0;
+};
 // A number FV3 writes, with Unraid's decimal mark (window.fv3DecimalPoint, from langs/script.php)
 window.fv3Decimal = (text) => String(text).replace('.', window.fv3DecimalPoint || '.');
 // The API relays docker stats screen output, so an id can carry its clear-screen codes (\e[J\e[H)

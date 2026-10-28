@@ -48,6 +48,7 @@ check('no output, or docker not running, gives no entries', same(ctx.fv3ParseDoc
 // docker counts one thread as 100%, so a share of the whole CPU divides by the thread count
 check('the stream\'s number is divided by the threads', near(ctx.fv3CpuShare(121.48), 6.074), ctx.fv3CpuShare(121.48));
 check('docker stats text gives the same share', near(ctx.fv3CpuShare('121.48%'), 6.074), ctx.fv3CpuShare('121.48%'));
+check('no reading ("--", empty, NaN) is a 0 share, never NaN', [ctx.fv3CpuShare('--'), ctx.fv3CpuShare(''), ctx.fv3CpuShare(NaN), ctx.fv3CpuShare(undefined)].every((v) => v === 0));
 
 const ws = (shortId, cpuPercent, mem) => ({ source: 'ws', stat: { shortId, cpuPercent, mem } });
 let s = ctx.fv3StatSample(ws('a0a0a0a0a0a0', 121.48, ['9.776GiB', '125.6GiB']), 'a0a0a0a0a0a0');
@@ -57,6 +58,10 @@ s = ctx.fv3StatSample({ source: 'sse', load }, 'a0a0a0a0a0a0');
 check('a docker stats batch gives the same sample as the stream', near(s.cpu, 6.074) && s.memText === '9.78 GiB / 125.60 GiB', s);
 s = ctx.fv3StatSample({ source: 'sse', load }, '0123456789ab');
 check('a container missing from the batch (stopped) graphs zeros and leaves the text alone', same(s, { cpu: 0, mem: 0 }), s);
+s = ctx.fv3StatSample({ source: 'sse', load: ctx.fv3ParseDockerLoad('a0a0a0a0a0a0;--;-- / --\n') }, 'a0a0a0a0a0a0');
+check('a reading docker has no figures for graphs zeros, never NaN', s.cpu === 0 && s.mem === 0, s);
+s = ctx.fv3StatSample({ source: 'ws', stat: { shortId: 'a0a0a0a0a0a0', cpuPercent: 5, mem: ['0B', '0B'] } }, 'a0a0a0a0a0a0');
+check('a 0B memory limit is a 0% memory share, never NaN', s.mem === 0, s);
 check('an event without a known source is ignored', ctx.fv3StatSample({ source: 'other', load }, 'a0a0a0a0a0a0') === null && ctx.fv3StatSample(undefined, 'a0a0a0a0a0a0') === null);
 
 // The popup's CPU text, and the bar width read back from text in any number format

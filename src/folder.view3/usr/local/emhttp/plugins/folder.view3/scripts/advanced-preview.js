@@ -54,7 +54,7 @@ window.fv3StatSample = (detail, shortId) => {
     if (!s) return { cpu: 0, mem: 0 };
     const used = memToB(s.mem[0]), limit = memToB(s.mem[1]);
     // Two decimals, as the folder rows show it: docker's own text ("9.776GiB") changes length and shifts the popup's table
-    return { cpu: fv3CpuShare(s.cpu), mem: used / limit * 100, memText: `${bToMem(used)} / ${bToMem(limit)}` };
+    return { cpu: fv3CpuShare(s.cpu), mem: limit > 0 ? used / limit * 100 : 0, memText: `${bToMem(used)} / ${bToMem(limit)}` };
 };
 // CPU text as the folder rows show it: capped at 100, always two decimals (a steady width), Unraid's decimal mark
 window.fv3CpuText = (share) => fv3Decimal(`${(Number.isFinite(share) ? Math.min(share, 100) : 0).toFixed(2)}%`);
