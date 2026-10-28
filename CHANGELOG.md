@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.10.28.1 (beta)
 
 - Folder editor hides containers held by another folder's specific regex (thankyou Joly0)
 - Tick "Show other folders' regex matches" in Containers / VMs to see them
