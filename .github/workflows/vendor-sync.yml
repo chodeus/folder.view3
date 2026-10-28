@@ -1,0 +1,61 @@
+name: Bundled libraries
+
+# Renovate bumps a version or commit in vendor.json but not the files it names; this copies them into the PR.
+on:
+  pull_request:
+    branches: [beta]
+    paths: ['vendor.json']
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    # Same-repo Renovate branches only; a fork PR's token can't push, and nothing else should be rewritten.
+    if: startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push the copied files
+      actions: write    # re-run the required checks on them
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Copy the bumped libraries in
+        id: sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          summary=$(python3 .github/scripts/vendor.py sync)
+          if [ -z "$(git status --porcelain -- src)" ]; then
+            echo "Bundled files already match vendor.json."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$summary"
+          {
+            echo "changed=true"
+            echo "summary<<EOF"
+            echo "$summary"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # A push made with GITHUB_TOKEN starts no workflow, so the required check is dispatched by hand.
+      - name: Commit and re-run the required check
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          SUMMARY: ${{ steps.sync.outputs.summary }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A -- src
+          git commit -q -m "chore(deps): copy the updated bundled libraries in" -m "$SUMMARY"
+          git push origin "HEAD:${HEAD_REF}"
+          # Without the base, CI would check the beta manifest against the renovate/ branch name.
+          gh workflow run ci.yml --ref "$HEAD_REF" -f base="$BASE_REF"

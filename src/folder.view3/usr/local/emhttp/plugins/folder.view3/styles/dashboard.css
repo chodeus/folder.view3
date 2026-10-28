@@ -623,8 +623,10 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
 }
 
 /* --- Tooltipster Base Styling --- */
+/* Shadow on the base, not .preview-outbox: an outbox shadow paints over Unraid's tooltipster border */
 .tooltipster-docker-folder.tooltipster-base {
     background: transparent;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
 }
 
 .tooltipster-docker-folder>.tooltipster-box {
@@ -649,7 +651,6 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
     color: inherit;
     border: 1px solid rgba(128, 128, 128, 0.4);
     border-radius: 6px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -842,7 +843,7 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
 }
 
 .info-section .ui-tabs-panel {
-    padding: var(--tooltip-spacing);
+    padding: 6px var(--tooltip-spacing) var(--tooltip-spacing) 10px;
     clear: both;
     background-color: var(--fv3-surface-tint);
     border: var(--fv3-border);
@@ -915,21 +916,32 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
     margin-top: 2px;
 }
 
+.info-section .fv3-env-list {
+    display: grid;
+    grid-template-columns: fit-content(60%) minmax(0, 1fr);
+    column-gap: 10px;
+}
+
+.info-section .fv3-env-list > * {
+    grid-column: 1 / -1;
+}
+
 .info-section .fv3-env-group {
     font-size: 0.85em;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    opacity: 0.55;
     margin: 8px 4px 2px;
 }
 
+/* subgrid shares the list's name column across rows; the 2fr/3fr line is the fallback where it's unsupported */
 .info-section .fv3-env-row {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-columns: subgrid;
     column-gap: 10px;
     align-items: start;
-    padding: 3px 4px;
+    padding: 0 4px 0 16px;
     border-bottom: 1px solid rgba(128, 128, 128, 0.15);
 }
 
@@ -955,6 +967,11 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
     overflow-wrap: anywhere;
 }
 
+.info-section .fv3-env-key::after,
+.info-section .fv3-env-prop::after {
+    content: ":";
+}
+
 .info-section .fv3-env-value,
 .info-section .fv3-env-code {
     flex: 1 1 auto;
@@ -963,6 +980,7 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
 
 .info-section .fv3-env-label {
     display: block;
+    contain: inline-size; /* a long label must not widen the shared name column */
     font-size: 0.85em;
     opacity: 0.65;
     overflow: hidden;
@@ -1001,16 +1019,13 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
 
 .info-section .fv3-env-more {
     display: inline-block;
+    justify-self: start;
     margin: 6px 4px 0;
 }
 
 /* --- Specific Colors --- */
 .preview-outbox div.status-stats div.usage-disk.mm span:first-of-type {
     background-color: var(--folder-view3-graph-cpu);
-}
-
-.preview-outbox div.status-stats div.usage-disk.mm span:last-of-type {
-    background-color: var(--folder-view3-graph-mem);
 }
 
 /* === MOBILE: Advanced Preview Hybrid Layout === */

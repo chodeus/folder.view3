@@ -1,0 +1,37 @@
+{
+  "$comment": "Bundled browser libraries and where each file came from. .github/scripts/vendor.py checks the copies against these sources (CI) and re-copies them after a Renovate bump.",
+  "root": "src/folder.view3/usr/local/emhttp/plugins/folder.view3",
+  "libraries": [
+    {
+      "npm": "chart.js",
+      "version": "4.5.1",
+      "files": {
+        "dist/chart.umd.min.js": "scripts/include/chart.min.js"
+      }
+    },
+    {
+      "github": "wikimedia/jquery.i18n",
+      "branch": "master",
+      "commit": "92e607d26efe1bfc00fc4c0a1191b58ca9f10b91",
+      "files": {
+        "src/jquery.i18n.js": "scripts/include/jquery.i18n.js",
+        "src/jquery.i18n.messagestore.js": "scripts/include/jquery.i18n.messagestore.js",
+        "src/jquery.i18n.fallbacks.js": "scripts/include/jquery.i18n.fallbacks.js",
+        "src/jquery.i18n.parser.js": "scripts/include/jquery.i18n.parser.js",
+        "src/jquery.i18n.emitter.js": "scripts/include/jquery.i18n.emitter.js",
+        "src/jquery.i18n.emitter.bidi.js": "scripts/include/jquery.i18n.emitter.bidi.js",
+        "src/jquery.i18n.language.js": "scripts/include/jquery.i18n.language.js",
+        "libs/CLDRPluralRuleParser/src/CLDRPluralRuleParser.js": "scripts/include/CLDRPluralRuleParser.js"
+      }
+    },
+    {
+      "github": "ehynds/jquery-ui-multiselect-widget",
+      "branch": "master",
+      "commit": "18a34162d998df1a20df5f9d62a535f7606860f7",
+      "files": {
+        "src/jquery.multiselect.js": "scripts/include/jquery.multiselect.js",
+        "css/jquery.multiselect.css": "styles/include/jquery.multiselect.css"
+      }
+    }
+  ]
+}

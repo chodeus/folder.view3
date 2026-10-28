@@ -622,7 +622,7 @@ Markdown="false"
         </details>
 
         <details class="fv3-section" open>
-            <summary data-i18n="folder-containers">Containers / VMs</summary>
+            <summary id="fv3-containers-summary"><span data-i18n="folder-containers">Containers / VMs</span></summary>
             <dl class="fv3-folder-settings">
                 <dt data-i18n="order">Order:</dt>
                 <dd class="fv3-order-dd">
