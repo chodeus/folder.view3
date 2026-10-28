@@ -2,6 +2,12 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix(deps): update vendored moment to 2.31.0 (CVE-2026-17495) (#142)
+- fix(deps): Chart.js 4 for the preview graphs; centre the popup on its icon and fit its graph (#147)
+- feat: hide containers another folder's regex already holds in the folder editor (#149)
+
 ## 2026.10.23.1 (beta)
 
 - Resolved the width reset also drops the last-measured fallback snapshot
