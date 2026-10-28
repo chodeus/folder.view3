@@ -2,6 +2,8 @@
     $loc = substr($_SESSION['locale'] ?? '', 0, 2);
     // Only a shipped pack is requested: an unsupported locale would 404 and skip the translate pass that runs once the pack loads
     if ($loc === '' || !is_file((($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '/usr/local/emhttp') . "/plugins/folder.view3/langs/$loc.json")) { $loc = 'en'; }
+    // Display Settings' number format (decimal mark first), as Unraid's Docker page reads it
+    $fv3Number = is_array($display ?? null) && !empty($display['number']) ? (string)$display['number'] : '.,';
 ?>
 <script src="/plugins/folder.view3/scripts/include/CLDRPluralRuleParser.js"></script>
 <script src="/plugins/folder.view3/scripts/include/jquery.i18n.js"></script>
@@ -15,6 +17,7 @@
     // A value as a JavaScript string literal inside an inline on*= handler: the browser decodes HTML entities
     // before parsing the attribute as JS, so the JSON form is escaped whole and supplies its own quotes
     window.fv3JsArg = (v) => escapeHtml(JSON.stringify(String(v ?? '')));
+    window.fv3DecimalPoint = <?= json_encode(substr($fv3Number, 0, 1)) ?>;
     // Shared by every FV3 page: $.i18n returns the key itself until the pack loads, so fall back to English with $n filled in
     window.fv3I18nOr = (key, fallback, ...args) => {
         const s = $.i18n(key, ...args);
