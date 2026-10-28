@@ -2,6 +2,10 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix: CPU/MEM in the advanced preview and folder rows show the right numbers on every page (#150)
+
 ## 2026.10.28.1 (beta)
 
 - Folder editor hides containers held by another folder's specific regex (thankyou Joly0)
