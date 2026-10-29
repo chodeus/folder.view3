@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/main/&name;.plg">
-<!ENTITY version "2026.10.29">
-<!ENTITY md5 "aa295cf1892362cc329a582a55e12b57">
+<!ENTITY version "2026.10.29.2">
+<!ENTITY md5 "002df5ff99896e8b01083c425a091ed5">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,9 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.10.29.2
+- Advanced preview CSS fixes when browser is zoomed
 
 ###2026.10.29
 - Resolved the width reset also drops the last-measured fallback snapshot
