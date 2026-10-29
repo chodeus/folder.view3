@@ -2,6 +2,10 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix: the advanced preview's bottom arrow no longer pokes above its border when the browser is zoomed (#152)
+
 ## 2026.10.29
 
 - Resolved the width reset also drops the last-measured fallback snapshot
