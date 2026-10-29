@@ -4,7 +4,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: the advanced preview's bottom arrow no longer pokes above its border when the browser is zoomed (#152)
+- Advanced preview CSS fixes when browser is zoomed
 
 ## 2026.10.29
 
