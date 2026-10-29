@@ -2,6 +2,10 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Advanced preview CSS fixes when browser is zoomed
+
 ## 2026.10.29
 
 - Resolved the width reset also drops the last-measured fallback snapshot
