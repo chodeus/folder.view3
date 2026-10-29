@@ -371,7 +371,8 @@ const fv3ToggleMap = {
     'default-preview-vertical-bars': 'default_preview_vertical_bars',
     'default-preview-border': 'default_preview_border',
     'default-row-separator': 'default_row_separator',
-    'default-update-column': 'default_update_column'
+    'default-update-column': 'default_update_column',
+    'editor-hide-regex-claimed': 'editor_hide_regex_claimed'
 };
 
 const fv3SelectMap = {

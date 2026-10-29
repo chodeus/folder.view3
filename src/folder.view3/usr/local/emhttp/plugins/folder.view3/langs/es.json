@@ -350,6 +350,8 @@
     "dashboard-animation-tooltip": "Activa una animación de deslizamiento suave al expandir o contraer carpetas en el panel de control.",
     "default-preview-tooltip": "Estilo de vista previa predeterminado para las carpetas nuevas. Cada carpeta puede cambiarlo en su configuración.",
     "default-update-column-tooltip": "Oculta la columna de actualización \"Versión\" en todas las filas de carpeta y libera espacio horizontal.",
+    "editor-hide-regex-claimed": "Ocultar contenedores/VM capturados por la regex de otra carpeta",
+    "editor-hide-regex-claimed-tooltip": "Al editar una carpeta, los contenedores/VM que otra carpeta ya incluye mediante su regex no aparecen en la lista. Los contenedores con una etiqueta folder.view3 siguen visibles, ya que una regex nunca los captura. Déjalo desactivado si usas una carpeta comodín con regex (p. ej. ^) y sacas contenedores de ella seleccionándolos en otra carpeta.",
     "autostart-mode-tooltip": "Según carpetas mantiene el comportamiento actual: el orden de arranque de los contenedores sigue la disposición de tus carpetas en la página de Docker. Secuencia personalizada usa en su lugar el orden de abajo: abarca todas las carpetas, prevalece sobre el orden de la página de Docker y se conserva tras reiniciar. Desactivado devuelve el orden de arranque por completo a Unraid; FolderView3 deja de escribirlo.",
     "docker-only": "Solo Docker",
     "preview-text-width-placeholder": "p. ej. 80px, 6rem (vacío = sin límite)",

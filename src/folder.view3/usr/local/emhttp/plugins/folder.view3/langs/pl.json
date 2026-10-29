@@ -350,6 +350,8 @@
     "dashboard-animation-tooltip": "Włącza płynną animację przesuwania przy rozwijaniu i zwijaniu folderów na Dashboardzie.",
     "default-preview-tooltip": "Domyślny styl podglądu dla nowych folderów. Poszczególne foldery mogą to zmienić w swoich ustawieniach.",
     "default-update-column-tooltip": "Ukrywa kolumnę aktualizacji \"Wersja\" we wszystkich wierszach folderów, zwalniając miejsce w poziomie.",
+    "editor-hide-regex-claimed": "Ukryj kontenery/VM przechwycone przez regex innego folderu",
+    "editor-hide-regex-claimed-tooltip": "Podczas edycji folderu kontenery/VM, które inny folder już obejmuje swoim regexem, nie są wyświetlane na liście. Kontenery z etykietą folder.view3 pozostają widoczne, ponieważ regex nigdy ich nie przechwytuje. Pozostaw wyłączone, jeśli używasz folderu zbiorczego z regexem (np. ^) i przenosisz z niego kontenery, wybierając je w innym folderze.",
     "autostart-mode-tooltip": "Wg folderów zachowuje dotychczasowe działanie: kolejność uruchamiania kontenerów wynika z układu folderów na stronie Docker. Własna kolejność używa zamiast tego kolejności poniżej — obejmuje wszystkie foldery, zastępuje kolejność ze strony Docker i przetrwa ponowne uruchomienie. Wyłączone oddaje kolejność uruchamiania w całości Unraid; FolderView3 całkowicie przestaje ją zapisywać.",
     "docker-only": "Tylko Docker",
     "preview-text-width-placeholder": "np. 80px, 6rem (puste = bez limitu)",

@@ -350,6 +350,8 @@
     "dashboard-animation-tooltip": "Enables a smooth slide animation when expanding or collapsing folders on the Dashboard.",
     "default-preview-tooltip": "Default preview style for new folders. Individual folders can override this in their settings.",
     "default-update-column-tooltip": "Hides the \"Version\" update column for all folder rows, freeing up horizontal space.",
+    "editor-hide-regex-claimed": "Hide containers/VMs matched by another folder's regex",
+    "editor-hide-regex-claimed-tooltip": "When editing a folder, containers/VMs that another folder already holds through its regex are left out of the list. Containers with a folder.view3 label stay visible, since a regex never captures them. Leave this off if you use a catch-all regex folder (e.g. ^) and move containers out of it by picking them in another folder.",
     "autostart-mode-tooltip": "Folder-based keeps today's behaviour: the container start order follows your folder layout on the Docker page. Custom sequence uses the order below instead — it cuts across folders and overrides the Docker page order, and survives reboots. Off hands the start order fully back to Unraid; FolderView3 stops writing it entirely.",
     "docker-only": "Docker only",
     "preview-text-width-placeholder": "e.g. 80px, 6rem (blank = no limit)",

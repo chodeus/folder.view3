@@ -350,6 +350,8 @@
     "dashboard-animation-tooltip": "Attiva un'animazione di scorrimento fluida quando si espandono o comprimono le cartelle nella dashboard.",
     "default-preview-tooltip": "Stile di anteprima predefinito per le nuove cartelle. Ogni cartella può sovrascriverlo nelle proprie impostazioni.",
     "default-update-column-tooltip": "Nasconde la colonna di aggiornamento \"Versione\" per tutte le righe delle cartelle, liberando spazio orizzontale.",
+    "editor-hide-regex-claimed": "Nascondi container/VM catturati dalla regex di un'altra cartella",
+    "editor-hide-regex-claimed-tooltip": "Durante la modifica di una cartella, i container/VM che un'altra cartella include già tramite la sua regex non compaiono nell'elenco. I container con un'etichetta folder.view3 restano visibili, perché una regex non li cattura mai. Lascia disattivato se usi una cartella generica con regex (ad es. ^) e sposti i container selezionandoli in un'altra cartella.",
     "autostart-mode-tooltip": "In base alle cartelle mantiene il comportamento attuale: l'ordine di avvio dei container segue la disposizione delle cartelle nella pagina Docker. Sequenza personalizzata usa invece l'ordine qui sotto — vale per tutte le cartelle, sovrascrive l'ordine della pagina Docker e resta valido dopo un riavvio. Disattivato restituisce completamente l'ordine di avvio a Unraid; FolderView3 smette del tutto di scriverlo.",
     "docker-only": "Solo Docker",
     "preview-text-width-placeholder": "es. 80px, 6rem (vuoto = nessun limite)",

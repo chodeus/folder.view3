@@ -269,6 +269,13 @@ $('div.canvas > form')[0].preview_vertical_bars_color.value = rgbToHex($('body')
     // folders no longer holds the folder being edited
     regexHeld = fv3RegexHeld(Object.values(folders), allNames);
 
+    // Opt-in: also hide containers another folder holds by regex. Off by default, it blocks moving them out of a catch-all folder (issue #46)
+    if (fv3SafeParse(await $.get('/plugins/folder.view3/server/read_settings.php').promise(), {}).editor_hide_regex_claimed === 'yes') {
+        const otherRegexes = Object.values(folders).filter(f => f.regex).flatMap(f => { try { return [new RegExp(f.regex)]; } catch { return []; } });
+        // Label-claimed containers are never regex-captured at render, so they stay (issue #55)
+        choose = choose.filter(el => (el.Label && labelFolderNames.has(el.Label)) || !otherRegexes.some(re => re.test(el.Name)));
+    }
+
     choose.sort((a, b) => a.Name.localeCompare(b.Name));
 
     updateList();

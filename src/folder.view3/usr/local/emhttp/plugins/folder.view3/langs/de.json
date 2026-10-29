@@ -350,6 +350,8 @@
     "dashboard-animation-tooltip": "Aktiviert eine sanfte Gleitanimation beim Auf- und Zuklappen von Ordnern im Dashboard.",
     "default-preview-tooltip": "Standard-Vorschaustil für neue Ordner. Einzelne Ordner können dies in ihren Einstellungen überschreiben.",
     "default-update-column-tooltip": "Blendet die Aktualisierungsspalte \"Version\" für alle Ordnerzeilen aus und schafft so horizontalen Platz.",
+    "editor-hide-regex-claimed": "Von der Regex eines anderen Ordners erfasste Container/VMs ausblenden",
+    "editor-hide-regex-claimed-tooltip": "Beim Bearbeiten eines Ordners werden Container/VMs, die ein anderer Ordner bereits über seine Regex enthält, nicht in der Liste angezeigt. Container mit einem folder.view3-Label bleiben sichtbar, da eine Regex sie nie erfasst. Deaktiviert lassen, wenn ein Sammelordner mit Regex (z. B. ^) genutzt wird und Container daraus verschoben werden, indem sie in einem anderen Ordner ausgewählt werden.",
     "autostart-mode-tooltip": "Ordnerbasiert behält das bisherige Verhalten bei: Die Startreihenfolge der Container folgt deiner Ordneranordnung auf der Docker-Seite. Eigene Reihenfolge verwendet stattdessen die Reihenfolge unten — sie gilt ordnerübergreifend, überschreibt die Reihenfolge der Docker-Seite und bleibt nach einem Neustart erhalten. Aus überlässt die Startreihenfolge vollständig Unraid; FolderView3 schreibt sie dann überhaupt nicht mehr.",
     "docker-only": "Nur Docker",
     "preview-text-width-placeholder": "z. B. 80px, 6rem (leer = keine Begrenzung)",

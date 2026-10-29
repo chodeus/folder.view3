@@ -350,6 +350,8 @@
     "dashboard-animation-tooltip": "在仪表板上展开或折叠文件夹时启用平滑的滑动动画。",
     "default-preview-tooltip": "新文件夹的默认预览样式。各个文件夹可以在其设置中覆盖此项。",
     "default-update-column-tooltip": "隐藏所有文件夹行的“版本”更新栏，腾出水平空间。",
+    "editor-hide-regex-claimed": "隐藏已被其他文件夹正则匹配的容器/虚拟机",
+    "editor-hide-regex-claimed-tooltip": "编辑文件夹时，已通过其他文件夹的正则表达式归入该文件夹的容器/虚拟机不会出现在列表中。带有 folder.view3 标签的容器仍会显示，因为正则表达式不会匹配它们。如果你使用通配正则文件夹（例如 ^）并通过在其他文件夹中勾选来移出容器，请保持关闭。",
     "autostart-mode-tooltip": "按文件夹保持现有行为：容器的启动顺序跟随 Docker 页面上的文件夹布局。自定义顺序改用下方的顺序——它跨越文件夹，覆盖 Docker 页面的顺序，并在重启后保留。关闭则将启动顺序完全交还给 Unraid；FolderView3 将完全停止写入它。",
     "docker-only": "仅 Docker",
     "preview-text-width-placeholder": "例如 80px、6rem（留空 = 不限制）",

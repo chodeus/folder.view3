@@ -583,6 +583,16 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
         </blockquote>
     </div>
 
+    <div class="basic">
+        <dl>
+            <dt><label for="editor-hide-regex-claimed" data-i18n="editor-hide-regex-claimed">Hide containers/VMs matched by another folder's regex</label></dt>
+            <dd><img class="img" style="visibility: hidden;"><input class="fv3-toggle" id="editor-hide-regex-claimed" type="checkbox" /></dd>
+        </dl>
+        <blockquote class="inline_help">
+            <p data-i18n="editor-hide-regex-claimed-tooltip">When editing a folder, containers/VMs that another folder already holds through its regex are left out of the list. Containers with a folder.view3 label stay visible, since a regex never captures them. Leave this off if you use a catch-all regex folder (e.g. ^) and move containers out of it by picking them in another folder.</p>
+        </blockquote>
+    </div>
+
 
     <div class="fv3-button-bar">
         <button onclick="fv3SubmitSettings()" data-i18n="apply">Apply</button>

@@ -350,6 +350,8 @@
     "dashboard-animation-tooltip": "Active une animation de glissement fluide lors du déploiement ou de la réduction des dossiers sur le tableau de bord.",
     "default-preview-tooltip": "Style d'aperçu par défaut des nouveaux dossiers. Chaque dossier peut le remplacer dans ses paramètres.",
     "default-update-column-tooltip": "Masque la colonne de mise à jour \"Version\" pour toutes les lignes de dossier, ce qui libère de l'espace horizontal.",
+    "editor-hide-regex-claimed": "Masquer les conteneurs/VM capturés par la regex d'un autre dossier",
+    "editor-hide-regex-claimed-tooltip": "Lors de la modification d'un dossier, les conteneurs/VM qu'un autre dossier contient déjà via sa regex n'apparaissent pas dans la liste. Les conteneurs avec une étiquette folder.view3 restent visibles, car une regex ne les capture jamais. À laisser désactivé si vous utilisez un dossier fourre-tout avec une regex (par ex. ^) et que vous en sortez des conteneurs en les sélectionnant dans un autre dossier.",
     "autostart-mode-tooltip": "Basé sur les dossiers conserve le comportement actuel : l'ordre de démarrage des conteneurs suit la disposition de vos dossiers sur la page Docker. Séquence personnalisée utilise plutôt l'ordre ci-dessous — il s'applique à travers les dossiers, remplace l'ordre de la page Docker et survit aux redémarrages. Désactivé rend entièrement l'ordre de démarrage à Unraid ; FolderView3 cesse complètement de l'écrire.",
     "docker-only": "Docker seulement",
     "preview-text-width-placeholder": "ex. 80px, 6rem (vide = aucune limite)",

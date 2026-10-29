@@ -1071,7 +1071,8 @@
                 'default_context'          => ['0', '1', '2', '3'],
                 'default_context_trigger'  => ['0', '1'],
                 'default_context_graph'    => ['0', '1', '2', '3', '4'],
-                'default_update_column'    => ['yes', 'no']
+                'default_update_column'    => ['yes', 'no'],
+                'editor_hide_regex_claimed' => ['yes', 'no']
             ],
             'seconds' => ['default_context_graph_time', 'dashboard_context_graph_time'],
             'text'   => ['default_vertical_bars_color', 'default_border_color', 'default_separator_color', 'default_preview_text_width'],
