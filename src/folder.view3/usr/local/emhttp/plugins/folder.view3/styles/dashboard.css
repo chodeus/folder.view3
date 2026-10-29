@@ -634,6 +634,11 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
     background: initial;
 }
 
+/* Unraid's 7px (8px on the other sides) leaves the arrow's base above the border once zoom rounds the border down */
+.tooltipster-docker-folder.tooltipster-sidetip.tooltipster-top>.tooltipster-box {
+    margin-bottom: 8px;
+}
+
 .tooltipster-docker-folder>.tooltipster-box>.tooltipster-content {
     color: inherit;
     padding: initial;
