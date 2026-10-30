@@ -33,6 +33,8 @@ const badgeIntact = (b) => !!b.querySelector('img') && b.textContent.trim() === 
 (async () => {
     {
         const { p, add, contents } = await setup();
+        // The page's own startup pass adds the toggle button; a click can only come after it
+        await p.tick(100);
         const b73 = add('demo-app', V73);
         const b74 = add('demo-web', V74);
         b73.classList.add('tooltipstered');
@@ -46,10 +48,11 @@ const badgeIntact = (b) => !!b.querySelector('img') && b.textContent.trim() === 
 
         p.g('fv3IncognitoApply()');
         check('a second pass keeps the real text stashed', b73.getAttribute('data-fv3-real-tstitle') === V73 && opened(p, b73) === '[hidden]', b73.getAttribute('data-fv3-real-tstitle'));
-        // Unraid re-renders the list; the pass after folder creation reaches the new badge
+        // Unraid re-renders the list; the event docker.js sends after folder creation schedules the next pass
         const later = add('demo-new', V74);
-        p.g('fv3IncognitoApply()');
-        check('a badge rendered later is hidden on the next pass', opened(p, later) === '[hidden]', opened(p, later));
+        p.g("folderEvents.dispatchEvent(new CustomEvent('docker-post-folders-creation', { detail: { folders: {}, order: [], containersInfo: {} } }))");
+        await p.tick(100);
+        check('a badge rendered later is hidden after the post-render event', opened(p, later) === '[hidden]', opened(p, later));
 
         contents.length = 0;
         p.g('fv3IncognitoToggle()');
