@@ -131,6 +131,11 @@ window.fv3Incognito = false;
         return result;
     }
 
+    // An open tooltip keeps the content it opened with; tooltipster throws on a badge it never initialised
+    function syncTsTooltip(el) {
+        if ($(el).hasClass('tooltipstered')) $(el).tooltipster('content', el.getAttribute('data-tstitle'));
+    }
+
     var macRe = /[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5}/g;
     var ipv6Re = /[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{0,4}){2,7}(?:\/\d{1,3})?/g;
     var diskFileRe = /([^\/\s]+)\.(qcow2|img|iso|raw|vmdk|vdi|vhd|vhdx)\b/gi;
@@ -288,6 +293,7 @@ window.fv3Incognito = false;
             if (el.hasAttribute('data-fv3-real-tstitle')) return;
             el.setAttribute('data-fv3-real-tstitle', el.getAttribute('data-tstitle'));
             el.setAttribute('data-tstitle', hiddenLabel());
+            syncTsTooltip(el);
         });
 
         var extraNames = [];
@@ -411,6 +417,7 @@ window.fv3Incognito = false;
         document.querySelectorAll('[data-fv3-real-tstitle]').forEach(function(el) {
             el.setAttribute('data-tstitle', el.getAttribute('data-fv3-real-tstitle'));
             el.removeAttribute('data-fv3-real-tstitle');
+            syncTsTooltip(el);
         });
         document.querySelectorAll('[data-fv3-scrubbed]').forEach(function(el) {
             var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
@@ -475,15 +482,15 @@ window.fv3Incognito = false;
         setTimeout(injectToggle, 100);
     }
 
+    // After every list render, including one where folder rendering failed and the native list was revealed
+    window.fv3IncognitoRefresh = function() {
+        injectToggle();
+        if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
+    };
+
     if (typeof folderEvents !== 'undefined') {
-        folderEvents.addEventListener('docker-post-folders-creation', function() {
-            injectToggle();
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
-        });
-        folderEvents.addEventListener('vm-post-folders-creation', function() {
-            injectToggle();
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
-        });
+        folderEvents.addEventListener('docker-post-folders-creation', fv3IncognitoRefresh);
+        folderEvents.addEventListener('vm-post-folders-creation', fv3IncognitoRefresh);
     }
 })();
 

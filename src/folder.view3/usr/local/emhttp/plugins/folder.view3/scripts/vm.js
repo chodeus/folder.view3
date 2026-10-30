@@ -770,7 +770,8 @@ window.loadlist = (x) => {
             $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error')).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise()
         ];
-        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
+        // Only clears the flag: each request's banner and createFolders' catch report a failure
+        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; }).catch(() => {});
     }
     if (typeof window.loadlist_original === 'function') { loadlist_original(x); }
 };
@@ -825,6 +826,7 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
                 console.error('[FV3] VM: folder rendering failed:', e);
                 // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
                 document.documentElement.classList.add('fv3-vm-ready');
+                fv3IncognitoRefresh();
                 loadedFolder = false;
             }
             $('div.spinner.fixed').hide();

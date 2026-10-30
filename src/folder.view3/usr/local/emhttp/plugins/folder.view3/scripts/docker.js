@@ -1146,6 +1146,7 @@ window.listview = () => {
             console.error('[FV3] Docker: folder rendering failed:', e);
             // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
             document.documentElement.classList.add('fv3-docker-ready');
+            fv3IncognitoRefresh();
             fv3DebugWarn('Patched listview', 'createFolders failed; clearing flag so a later render can retry', e);
             loadedFolder = false;
         });
@@ -1172,7 +1173,8 @@ window.loadlist = () => {
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
             fv3CheckUpdates()
         ];
-        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
+        // Only clears the flag: each request's banner and createFolders' catch report a failure
+        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; }).catch(() => {});
         fv3Debug('Patched loadlist', 'folderReq initialized with 5 promises.');
     } else {
         fv3Debug('Patched loadlist', 'Skipping — requests already pending.');
