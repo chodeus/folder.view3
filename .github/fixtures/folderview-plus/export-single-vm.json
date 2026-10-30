@@ -1,10 +1,10 @@
 {
     "schemaVersion": 1,
-    "pluginVersion": "2026.09.17.03",
-    "exportedAt": "2026-09-23T07:25:23.265Z",
+    "pluginVersion": "2026.10.27.05",
+    "exportedAt": "2026-10-30T02:56:07.023Z",
     "type": "vm",
     "mode": "single",
-    "folderId": "P9uBmb0sBVs01D6sG2oh",
+    "folderId": "WFQFJksuerL8Vn41eM",
     "folder": {
         "name": "Virtual Machines",
         "containers": [
@@ -34,7 +34,7 @@
         "hiddenPreviewMembers": [],
         "parentId": "",
         "actions": [],
-        "createdAt": "2026-09-23T07:25:23+00:00",
-        "updatedAt": "2026-09-23T07:25:23+00:00"
+        "createdAt": "2026-10-30T02:56:06+00:00",
+        "updatedAt": "2026-10-30T02:56:06+00:00"
     }
 }

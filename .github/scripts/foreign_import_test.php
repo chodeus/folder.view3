@@ -86,6 +86,7 @@ check('children and grandchildren merge into the root', $d['Media']['containers'
 check('merged child count', $rep['merged_children'] === 2, $rep['merged_children']);
 check('the report names the folders merged into each top-level folder', array_column($r['report']['types']['docker']['folders'], 'merged', 'name') === ['Media' => ['Media Extras', 'Media Deep'], 'Tools' => [], '<img src=x onerror=alert(1)>' => []], array_column($r['report']['types']['docker']['folders'], 'merged', 'name'));
 check('hidden previews union across the group', $d['Media']['hidden_preview'] === ['app-beta', 'app-gamma'], $d['Media']['hidden_preview']);
+check('a hidden regex member that is not an explicit member is kept', $d['Tools']['hidden_preview'] === ['tool-one', 'tool-three'], $d['Tools']['hidden_preview']);
 check('member identities become containerImages', (array)$d['Media']['containerImages'] === ['app-alpha' => 'example/alpha:latest', 'app-beta' => 'example/beta:1.2'], $d['Media']['containerImages']);
 check('a member in two imported folders stays with the first', $d['Tools']['containers'] === ['tool-one'] && $rep['members_kept_elsewhere'] === 1, [$d['Tools']['containers'], $rep['members_kept_elsewhere']]);
 check('root actions survive', array_column($d['Media']['actions'], 'name') === ['Restart all', 'Notify'], $d['Media']['actions']);
@@ -183,6 +184,14 @@ check('actions past the cap are counted as left out', $capA['report']['types']['
 $manyMembers = array_map(static fn($i) => "ct-$i", range(1, FV3_FOREIGN_MAX_MEMBERS + 7));
 $capM = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => $manyMembers]]], 'docker');
 check('members past the cap are counted as left out', $capM['report']['types']['docker']['dropped_members'] === 7, $capM['report']['types']['docker']['dropped_members']);
+$hid = fv3_convert_foreign_bundle($mk(['regex' => '^app-', 'containers' => ['tool'], 'hiddenPreviewMembers' => ['app-x', 'tool', 'app-x', '']]), 'docker')['folders']['docker'][0];
+check('hidden names outside the explicit members are kept once each', $hid['hidden_preview'] === ['app-x', 'tool'], $hid['hidden_preview']);
+$manyHidden = array_map(static fn($i) => "app-$i", range(1, FV3_FOREIGN_MAX_MEMBERS + 7));
+$hidCap = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => [
+    'p' => ['name' => 'P', 'containers' => [], 'hiddenPreviewMembers' => array_slice($manyHidden, 0, 4000)],
+    'c' => ['name' => 'C', 'containers' => [], 'parentId' => 'p', 'hiddenPreviewMembers' => array_slice($manyHidden, 4000)],
+]], 'docker')['folders']['docker'][0]['hidden_preview'];
+check('hidden names merged past the cap stop at the cap', count($hidCap) === FV3_FOREIGN_MAX_MEMBERS && end($hidCap) === 'app-' . FV3_FOREIGN_MAX_MEMBERS, [count($hidCap), end($hidCap)]);
 
 // A merged child keeps only its members; what it loses must reach the preview
 $nest = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => [

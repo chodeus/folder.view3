@@ -372,7 +372,8 @@
 
                 $folder = [
                     'name' => $candidate, 'icon' => $icon, 'regex' => $regex, 'containers' => $members,
-                    'hidden_preview' => array_values(array_intersect(array_unique($hidden), $members)),
+                    // Not limited to explicit members: the editor also hides regex- and label-matched ones
+                    'hidden_preview' => array_slice(array_values(array_unique($hidden)), 0, FV3_FOREIGN_MAX_MEMBERS),
                     'actions' => $actions, 'settings' => (object)$settings,
                 ];
                 $idKey = $type === 'docker' ? 'containerImages' : 'containerIds';
