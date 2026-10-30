@@ -283,9 +283,11 @@ window.fv3Incognito = false;
             }
         });
 
-        document.querySelectorAll('.tailscale-ip, [class*="tailscale"]').forEach(function(el) {
-            el.setAttribute('data-fv3-real', el.textContent);
-            el.textContent = '100.x.x.x';
+        // Unraid's Tailscale badge fills its tooltip from data-tstitle on open: hostname, URL and tailnet IPs
+        document.querySelectorAll('.TS_tooltip[data-tstitle]').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real-tstitle')) return;
+            el.setAttribute('data-fv3-real-tstitle', el.getAttribute('data-tstitle'));
+            el.setAttribute('data-tstitle', hiddenLabel());
         });
 
         var extraNames = [];
@@ -405,6 +407,10 @@ window.fv3Incognito = false;
         document.querySelectorAll('[data-fv3-real-html]').forEach(function(el) {
             el.innerHTML = el.getAttribute('data-fv3-real-html');
             el.removeAttribute('data-fv3-real-html');
+        });
+        document.querySelectorAll('[data-fv3-real-tstitle]').forEach(function(el) {
+            el.setAttribute('data-tstitle', el.getAttribute('data-fv3-real-tstitle'));
+            el.removeAttribute('data-fv3-real-tstitle');
         });
         document.querySelectorAll('[data-fv3-scrubbed]').forEach(function(el) {
             var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
