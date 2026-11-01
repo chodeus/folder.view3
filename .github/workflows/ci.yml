@@ -39,6 +39,9 @@ jobs:
           done < <(find src -name '*.php')
           exit $status
 
+      - name: Update status test
+        run: php .github/scripts/update_status_test.php
+
       - name: FolderView Plus import tests
         run: php .github/scripts/foreign_import_test.php
 

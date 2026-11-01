@@ -1616,9 +1616,12 @@
         if (substr($ct['HostConfig']['NetworkMode'] ?? '', -4) === ':???') return false;
         $entry = $cache[$name] ?? null;
         if (is_array($entry) && array_key_exists('updated', $entry)) {
-            return $entry['updated'] === 'true' ? true : ($entry['updated'] === 'false' ? false : null);
+            $updated = $entry['updated'] === 'true' ? true : ($entry['updated'] === 'false' ? false : null);
+        } else {
+            $updated = $DockerUpdate->getUpdateStatus($ct['info']['Config']['Image']);
         }
-        return $DockerUpdate->getUpdateStatus($ct['info']['Config']['Image']);
+        // The status is per tag; Docker's list shows an image ID once the tag has left this container's image
+        return $updated === true && strpos($ct['Image'] ?? '', 'sha256:') === 0 ? false : $updated;
     }
 
     // Template text read back as Unraid's xml_decode() does (dynamix.docker.manager Helpers.php): most fields are stored encoded twice
