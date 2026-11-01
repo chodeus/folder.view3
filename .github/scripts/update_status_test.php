@@ -17,10 +17,15 @@ foreach (['webGui/include/Helpers.php' => '<?php', 'plugins/dynamix.docker.manag
 }
 $_SERVER['DOCUMENT_ROOT'] = "$fv3tTmp/docroot";
 require "$fv3tPlugin/server/lib.php";
+set_exception_handler(function (Throwable $e): void {
+    fwrite(STDERR, $e . "\n");
+    exit(1);
+});
 
 $tag = 'ghcr.io/example/app:nightly';
 $moved = 'sha256:141c253bc4c3fd0a201d32dc1f493bcf3fff003b6df416dea4f41046e0f37d47';
-$ct = fn(string $listImage, string $mode = 'bridge') => ['Image' => $listImage, 'HostConfig' => ['NetworkMode' => $mode], 'info' => ['Config' => ['Image' => $tag]]];
+$digest = 'ghcr.io/example/app@sha256:7b3ccabffc97de872a30dfd234fd972a66d247c8cfc69b0550f276481852627c';
+$ct = fn(string $listImage, string $mode = 'bridge', ?string $configImage = null) => ['Image' => $listImage, 'HostConfig' => ['NetworkMode' => $mode], 'info' => ['Config' => ['Image' => $configImage ?? $tag]]];
 $cache = fn(string $updated) => ['app' => ['updated' => $updated]];
 
 $cases = [
@@ -32,7 +37,7 @@ $cases = [
     ['no saved row, tag status true, tag current', $ct($tag), [], true, true],
     ['no saved row, tag status true, tag moved', $ct($moved), [], true, false],
     ['no saved row, tag status unknown, tag moved', $ct($moved), [], null, null],
-    ['digest-pinned stays as saved', $ct('ghcr.io/example/app@sha256:7b3c'), $cache('true'), null, true],
+    ['digest-pinned stays as saved', $ct($digest, 'bridge', $digest), $cache('true'), null, true],
     ['rebuild ready beats everything', $ct($tag, 'container:???'), $cache('true'), null, false],
 ];
 $failed = 0;
