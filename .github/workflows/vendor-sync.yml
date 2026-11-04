@@ -42,7 +42,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      # A push made with GITHUB_TOKEN starts no workflow, so the required check is dispatched by hand.
+      # CI on a GITHUB_TOKEN push waits for an approval nobody gives, so it is dispatched; ci.yml's report job posts the PR's status.
       - name: Commit and re-run the required check
         if: steps.sync.outputs.changed == 'true'
         env:

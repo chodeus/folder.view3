@@ -120,9 +120,30 @@ jobs:
           python -m unittest discover -s .github/unraid-watch -p 'test_*.py'
           python .github/unraid-watch/watch.py check
 
+  # A dispatched run's checks never reach the PR, so vendor-sync's run reports Lint + build there as a commit status.
+  report:
+    needs: validate
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.base != ''
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post the result on the PR's commit
+        env:
+          RESULT: ${{ needs.validate.result }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state=failure
+          [ "$RESULT" = success ] && state=success
+          gh api "repos/$REPO/statuses/$SHA" -f state="$state" -f context='Lint + build' -f target_url="$RUN_URL" -f description="CI dispatched for this PR: $RESULT" >/dev/null
+
   notify-failure:
     needs: validate
-    if: failure() && github.event_name != 'pull_request'
+    if: failure() && github.event_name != 'pull_request' && !inputs.base
     permissions: {}
     uses: chodeus/chodeus-ops/.github/workflows/notify-discord.yml@cbd544d21103cfe854c8e0ec717ee2be4f097ad7 # main
     with:
