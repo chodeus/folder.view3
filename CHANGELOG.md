@@ -2,6 +2,13 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix(import): keep hidden regex and label members from FolderView Plus backups
+- fix(incognito): cover an open Tailscale tooltip and a failed folder render
+- fix(incognito): hide Unraid's Tailscale tooltip on the Docker page
+- fix(docker): show an update when a container's tag has moved to another image
+
 ## 2026.10.29.2
 
 - Advanced preview CSS fixes when browser is zoomed
