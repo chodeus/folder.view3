@@ -12,4 +12,4 @@ jobs:
       pull-requests: write
       # actions/stale replaces its saved-progress cache via the caches API.
       actions: write
-    uses: chodeus/chodeus-ops/.github/workflows/stale-issues.yml@c36f1a3c7e8108f86b3be0e19c5e0d08502f681f # main
+    uses: chodeus/chodeus-ops/.github/workflows/stale-issues.yml@65484add1113c1bbc00827af7237ebe7a1837bbb # main

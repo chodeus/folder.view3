@@ -107,7 +107,7 @@ jobs:
     needs: watch
     if: needs.watch.outputs.posted == 'true'
     permissions: {}
-    uses: chodeus/chodeus-ops/.github/workflows/notify-discord.yml@2a3b38cf7b999109f780ac960084f5922aae7b9b # main
+    uses: chodeus/chodeus-ops/.github/workflows/notify-discord.yml@65484add1113c1bbc00827af7237ebe7a1837bbb # main
     with:
       event_type: workflow
       status: info
