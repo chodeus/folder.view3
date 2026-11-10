@@ -206,6 +206,24 @@ reviews:
           GraphQL checks in schema.py; flag a second copy of either.
         - TESTS use synthetic versions, shas and handles only; a value captured
           from a live system in a fixture is a finding.
+    - path: ".github/scripts/**"
+      instructions: |
+        CI tests and helpers; nothing here ships in the plugin.
+        - Tests load the shipped source (folderview3.js, lib.php, the page
+          scripts under jsdom) and run it. Flag a test that copies the logic it
+          claims to check. Stubs are for Unraid's side only: HTTP, WebSocket,
+          Nchan, timers, and the two webGui PHP files lib.php requires.
+        - A stub must not hide the behaviour under test: a test of a save,
+          import or update path must reach the real function that does it.
+        - New fixtures hold synthetic names, ids and hosts only. The FolderView
+          Plus corpus under .github/fixtures is that plugin's own output: do
+          not ask for its shape to be tidied.
+        - check-langs.py fails when a language pack no longer matches en.json,
+          or the code uses a key en.json lacks. vendor.py compares the bundled
+          libraries with the sources vendor.json names. Neither may read a
+          failed read or download as "nothing to report".
+        - package.json here is test-only (jquery, jsdom), pinned to exact
+          versions.
     - path: "**"
       instructions: |-
         Applies to every file, whatever the language:
