@@ -1412,6 +1412,8 @@
                 actions.style.cssText = 'text-align:center;padding:8px 0 0';
                 actions.innerHTML = '<button class="confirm" style="background-color:transparent;margin:0 6px">' + escapeAttr(noLabel) + '</button> <button class="confirm" style="background-color:transparent;margin:0 6px">' + escapeAttr(yesLabel) + '</button>';
                 btnContainer.appendChild(actions);
+                // The buttons take their height from the log box
+                scrollToEnd();
                 return new Promise(function(resolve) {
                     var btns = actions.querySelectorAll('button');
                     btns[0].addEventListener('click', function() { actions.remove(); if (dotsEl) dotsEl.style.display = 'block'; resolve(false); });
@@ -1424,6 +1426,7 @@
                 if (spinner) spinner.style.display = 'none';
                 if (dotsEl) dotsEl.style.display = 'none';
                 if (confirmBtn) { confirmBtn.textContent = fv3I18nOr('done', 'Done'); confirmBtn.style.display = ''; }
+                scrollToEnd();
                 return new Promise(function(resolve) {
                     if (confirmBtn) {
                         confirmBtn.addEventListener('click', function() {
