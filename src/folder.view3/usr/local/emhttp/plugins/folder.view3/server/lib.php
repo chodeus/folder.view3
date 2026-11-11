@@ -238,6 +238,7 @@
 
     $folderVersion = 1.0;
     $configDir = "/boot/config/plugins/folder.view3";
+    $fv3DockerManDir = "/boot/config/plugins/dockerMan";
     $sourceDir = "/usr/local/emhttp/plugins/folder.view3";
     $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '/usr/local/emhttp';
 
@@ -482,7 +483,8 @@
     }
 
     function fv3_autostart_file(): string {
-        $dockerManPaths = @parse_ini_file('/boot/config/plugins/dockerMan/dockerMan.cfg') ?: [];
+        global $fv3DockerManDir;
+        $dockerManPaths = @parse_ini_file("$fv3DockerManDir/dockerMan.cfg") ?: [];
         return $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
     }
 
@@ -691,22 +693,25 @@
         return is_array($env) ? array_values(array_filter($env, 'is_string')) : null;
     }
 
-    // Effective membership — explicit > label > regex (issues #46/#55). Single source of
-    // truth shared by syncContainerOrder and read_membership.php (issue #61).
-    // The values of Unraid's saved Docker order (userprefs.cfg), [] when there is none
-    function fv3_docker_prefs(): array {
-        $prefs = @parse_ini_file('/boot/config/plugins/dockerMan/userprefs.cfg');
-        return $prefs ? array_values($prefs) : [];
+    // The values of Unraid's saved Docker order (userprefs.cfg): [] when there is none, null when the file will not parse
+    function fv3_docker_prefs(): ?array {
+        global $fv3DockerManDir;
+        $file = "$fv3DockerManDir/userprefs.cfg";
+        if (!is_file($file)) { return []; }
+        $prefs = @parse_ini_file($file);
+        return $prefs === false ? null : array_values($prefs);
     }
 
-    // Container names in the order read_unraid_order.php hands the page: saved names in userprefs.cfg order, unsaved
-    // ones after them as Docker lists them; A-Z when nothing is saved
+    // Container names in the order read_unraid_order.php hands the page (readUnraidOrder): saved names in userprefs.cfg
+    // order, unsaved ones after them as Docker lists them; A-Z when nothing is saved
     function fv3_live_order(array $names, array $prefs): array {
         if (!$prefs) { usort($names, 'strnatcasecmp'); return $names; }
         $saved = array_values(array_unique(array_filter($prefs, function($p) use ($names) { return in_array($p, $names, true); })));
         return array_merge($saved, array_values(array_filter($names, function($n) use ($saved) { return !in_array($n, $saved, true); })));
     }
 
+    // Effective membership — explicit > label > regex (issues #46/#55). Single source of
+    // truth shared by syncContainerOrder and read_membership.php (issue #61).
     // $prefs orders each folder's regex and label members as the Docker page lists them (fv3_live_order)
     function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels, array $prefs = []): array {
         $live = fv3_live_order($allContainerNames, $prefs);
@@ -812,6 +817,17 @@
         return array_merge($new, $loose, $placed);
     }
 
+    // Autostart lines ("name" or "name delay") in $order's sequence, each once; lines $order does not name follow, in file order
+    function fv3_reorder_autostart(array $lines, array $order): array {
+        $byName = [];
+        foreach ($lines as $line) { $byName[explode(' ', $line, 2)[0]] = $line; }
+        $ordered = [];
+        foreach ($order as $name) {
+            if (isset($byName[$name])) { $ordered[] = $byName[$name]; unset($byName[$name]); }
+        }
+        return array_merge($ordered, array_values($byName));
+    }
+
     function syncContainerOrder(string $type): void {
         // Rewrites the autostart file to match what FV3 renders on screen — top-to-bottom,
         // folder members left-to-right in their editor-chosen order. Render order itself is
@@ -862,6 +878,8 @@
             return;
         }
         $prefs = fv3_docker_prefs();
+        // The page's order cannot be worked out then, so the file stays as it is
+        if ($prefs === null) { fv3_debug_log("syncContainerOrder: userprefs.cfg will not parse, aborting before write"); return; }
         $newOrder = fv3_page_order(fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, $prefs), $allContainerNames, $prefs);
         fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($prefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
 
@@ -871,23 +889,7 @@
         if (file_exists($autoStartFile)) {
             $rawLines = fv3_read_autostart_lines($autoStartFile);
             if ($rawLines === null) { fv3_debug_log("syncContainerOrder: $autoStartFile unreadable, not rewriting"); return; }
-            $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
-            $autoStartMap = [];
-            foreach ($autoStartLines as $line) {
-                $parts = explode(' ', $line, 2);
-                $autoStartMap[$parts[0]] = $line;
-            }
-
-            $newAutoStart = [];
-            foreach ($newOrder as $name) {
-                if (isset($autoStartMap[$name])) {
-                    $newAutoStart[] = $autoStartMap[$name];
-                    unset($autoStartMap[$name]);
-                }
-            }
-            foreach ($autoStartMap as $line) {
-                $newAutoStart[] = $line;
-            }
+            $newAutoStart = fv3_reorder_autostart(fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete), $newOrder);
             file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX);
             fv3_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
         }
@@ -2022,31 +2024,8 @@
         $order = [];
         if ($type == "docker") {
             $dockerClient = new DockerClient();
-            $containersFromUnraid = $dockerClient->getDockerContainers(); 
-            $prefs_file = "$user_prefs_path/dockerMan/userprefs.cfg";
-
-            if (file_exists($prefs_file)) {
-                $prefs_ini = @parse_ini_file($prefs_file);
-                if ($prefs_ini) { 
-                    $prefs_array = array_values($prefs_ini);
-                    $sort = [];
-                    $count_containers = count($containersFromUnraid);
-                    foreach ($containersFromUnraid as $ct_item)  { 
-                        $search = array_search($ct_item['Name'], $prefs_array);
-                        $sort[] = ($search === false) ? ($count_containers + count($sort) + 1) : $search; 
-                    }
-                    if (!empty($sort)) { 
-                         @array_multisort($sort,SORT_NUMERIC,$containersFromUnraid);
-                    } else { 
-                         @usort($containersFromUnraid, function($a, $b) { return strnatcasecmp($a['Name'], $b['Name']); });
-                    }
-                } else { 
-                    @usort($containersFromUnraid, function($a, $b) { return strnatcasecmp($a['Name'], $b['Name']); });
-                }
-            } else { 
-                 @usort($containersFromUnraid, function($a, $b) { return strnatcasecmp($a['Name'], $b['Name']); });
-            }
-            $order = array_column($containersFromUnraid, 'Name');
+            // A userprefs.cfg that will not parse lists A-Z, as one that is absent does
+            $order = fv3_live_order(array_column($dockerClient->getDockerContainers() ?: [], 'Name'), fv3_docker_prefs() ?? []);
 
         } elseif ($type == "vm") {
             if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM Order: libvirt_helpers.php not available."); return []; }

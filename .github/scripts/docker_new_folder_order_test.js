@@ -25,15 +25,14 @@ const ROW = (name, sid) => `<tr class="sortable" id="ct-${name}"><td class="ct-n
         'read.php': () => JSON.stringify(folders),
         'read_order.php': () => JSON.stringify(fixture.prefs),
         'read_info.php': () => JSON.stringify(info),
-        'read_unraid_order.php': () => JSON.stringify(listed),
+        // page_order_test.php holds the real readUnraidOrder() to this list
+        'read_unraid_order.php': () => JSON.stringify(fixture.listed),
     } });
     const saved = fixture.prefs.filter((n) => fixture.containers.includes(n));
     const missing = fixture.containers.filter((n) => !fixture.prefs.includes(n));
     // Unraid draws saved containers in userprefs.cfg order and one missing from it on top (DockerContainers.php: array_search
     // false = 0); how it orders several missing ones among themselves is its own tie-break, so the fixture keeps them A-Z
     const shown = missing.concat(saved);
-    // read_unraid_order.php (readUnraidOrder) lists the saved ones first, the missing ones last
-    const listed = saved.concat(missing);
     const info = Object.fromEntries(shown.map((n, i) => [n, p.ct(sid(i), n)]));
     p.$('#docker_containers').prepend(`<thead><tr>${'<th></th>'.repeat(10)}</tr></thead>`);
     shown.forEach((n, i) => p.$(ROW(n, sid(i))).appendTo('#docker_list'));
