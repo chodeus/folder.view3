@@ -199,4 +199,4 @@ const check = (label, ok, detail) => {
 };
 const done = () => { console.log(failed ? `\n${failed} FAILED` : '\nall passed'); process.exit(failed ? 1 : 0); };
 
-module.exports = { makePage, check, done, flush };
+module.exports = { makePage, check, done, flush, read };

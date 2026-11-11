@@ -1351,10 +1351,12 @@
         var titleEl = swalEl.querySelector('h2');
         var statusEl = document.getElementById('fv3ProgressTitle');
         var log = document.getElementById('fv3ProgressLog');
-        var scrollParent = log.closest('p') || log.parentElement;
+        var logParent = log.closest('p') || log.parentElement;
         // Unraid's sheet rules beat swal's inline display:block with !important; inline here instead (swal resets both)
         swalEl.style.display = 'flex';
-        scrollParent.style.display = 'flex';
+        logParent.style.display = 'flex';
+        // csstool.css makes the log its own scroll box
+        var scrollToEnd = function() { log.scrollTop = log.scrollHeight; };
         var btnContainer = swalEl.querySelector('.sa-button-container');
         var confirmContainer = swalEl.querySelector('.sa-confirm-button-container');
         var confirmBtn = confirmContainer ? confirmContainer.querySelector('.confirm') : null;
@@ -1380,7 +1382,7 @@
                 s.innerHTML = '<legend>' + escapeAttr(title) + '</legend><p class="logLine"></p>';
                 log.appendChild(s);
                 currentSection = s.querySelector('.logLine');
-                scrollParent.scrollTop = scrollParent.scrollHeight;
+                scrollToEnd();
             },
             log: function(msg, type) {
                 var target = currentSection || log;
@@ -1402,7 +1404,7 @@
                 }
                 target.appendChild(span);
                 target.appendChild(document.createElement('br'));
-                scrollParent.scrollTop = scrollParent.scrollHeight;
+                scrollToEnd();
             },
             confirm: function(yesLabel, noLabel) {
                 if (dotsEl) dotsEl.style.display = 'none';
@@ -1410,6 +1412,8 @@
                 actions.style.cssText = 'text-align:center;padding:8px 0 0';
                 actions.innerHTML = '<button class="confirm" style="background-color:transparent;margin:0 6px">' + escapeAttr(noLabel) + '</button> <button class="confirm" style="background-color:transparent;margin:0 6px">' + escapeAttr(yesLabel) + '</button>';
                 btnContainer.appendChild(actions);
+                // The buttons take their height from the log box
+                scrollToEnd();
                 return new Promise(function(resolve) {
                     var btns = actions.querySelectorAll('button');
                     btns[0].addEventListener('click', function() { actions.remove(); if (dotsEl) dotsEl.style.display = 'block'; resolve(false); });
@@ -1422,6 +1426,7 @@
                 if (spinner) spinner.style.display = 'none';
                 if (dotsEl) dotsEl.style.display = 'none';
                 if (confirmBtn) { confirmBtn.textContent = fv3I18nOr('done', 'Done'); confirmBtn.style.display = ''; }
+                scrollToEnd();
                 return new Promise(function(resolve) {
                     if (confirmBtn) {
                         confirmBtn.addEventListener('click', function() {

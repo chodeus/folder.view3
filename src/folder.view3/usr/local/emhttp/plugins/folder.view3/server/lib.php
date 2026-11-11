@@ -238,6 +238,7 @@
 
     $folderVersion = 1.0;
     $configDir = "/boot/config/plugins/folder.view3";
+    $fv3DockerManDir = "/boot/config/plugins/dockerMan";
     $sourceDir = "/usr/local/emhttp/plugins/folder.view3";
     $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '/usr/local/emhttp';
 
@@ -482,7 +483,8 @@
     }
 
     function fv3_autostart_file(): string {
-        $dockerManPaths = @parse_ini_file('/boot/config/plugins/dockerMan/dockerMan.cfg') ?: [];
+        global $fv3DockerManDir;
+        $dockerManPaths = @parse_ini_file("$fv3DockerManDir/dockerMan.cfg") ?: [];
         return $dockerManPaths['autostart-file'] ?? "/var/lib/docker/unraid-autostart";
     }
 
@@ -691,9 +693,28 @@
         return is_array($env) ? array_values(array_filter($env, 'is_string')) : null;
     }
 
+    // The values of Unraid's saved Docker order (userprefs.cfg): [] when there is none, null when the file will not parse
+    function fv3_docker_prefs(): ?array {
+        global $fv3DockerManDir;
+        $file = "$fv3DockerManDir/userprefs.cfg";
+        if (!is_file($file)) { return []; }
+        $prefs = @parse_ini_file($file);
+        return $prefs === false ? null : array_values($prefs);
+    }
+
+    // Container names in the order read_unraid_order.php hands the page (readUnraidOrder): saved names in userprefs.cfg
+    // order, unsaved ones after them as Docker lists them; A-Z when nothing is saved
+    function fv3_live_order(array $names, array $prefs): array {
+        if (!$prefs) { usort($names, 'strnatcasecmp'); return $names; }
+        $saved = array_values(array_unique(array_filter($prefs, function($p) use ($names) { return in_array($p, $names, true); })));
+        return array_merge($saved, array_values(array_filter($names, function($n) use ($saved) { return !in_array($n, $saved, true); })));
+    }
+
     // Effective membership — explicit > label > regex (issues #46/#55). Single source of
     // truth shared by syncContainerOrder and read_membership.php (issue #61).
-    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): array {
+    // $prefs orders each folder's regex and label members as the Docker page lists them (fv3_live_order)
+    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels, array $prefs = []): array {
+        $live = fv3_live_order($allContainerNames, $prefs);
         // One malformed entry is dropped or filled in, not allowed to abort every folder's sync
         $folders = fv3_normalize_folders($folders);
         $folderNameSet = [];
@@ -709,7 +730,7 @@
         }
         $explicitAssigned = $explicitMembers;
         foreach ($ctLabels as $ctName => $ctLabel) {
-            if (isset($folderNameSet[$ctLabel])) { $explicitAssigned[] = $ctName; }
+            if (isset($folderNameSet[$ctLabel])) { $explicitAssigned[] = (string)$ctName; }
         }
         foreach ($folders as $folderId => $folder) {
             $members = $folder['containers'] ?? [];
@@ -718,26 +739,93 @@
             // keeps a non-string regex from fataling trim() (TypeError on PHP 8).
             if (is_string($folder['regex'] ?? null) && trim($folder['regex']) !== '') {
                 $regex = '/' . str_replace('/', '\/', $folder['regex']) . '/';
-                foreach ($allContainerNames as $name) {
-                    if (@preg_match($regex, $name) && !in_array($name, $members) && !in_array($name, $explicitAssigned)) {
+                foreach ($live as $name) {
+                    if (@preg_match($regex, $name) && !in_array($name, $members, true) && !in_array($name, $explicitAssigned, true)) {
                         $members[] = $name;
                     }
                 }
             }
             // Explicit containers[] entries anywhere win over a label claim (issue #55)
-            foreach ($ctLabels as $ctName => $ctLabel) {
-                if ($ctLabel === ($folder['name'] ?? null) && !in_array($ctName, $members) && !in_array($ctName, $explicitMembers)) {
+            foreach ($live as $ctName) {
+                if (($ctLabels[$ctName] ?? null) === $folder['name'] && !in_array($ctName, $members, true) && !in_array($ctName, $explicitMembers, true)) {
                     $members[] = $ctName;
                 }
             }
             $members = array_values(array_filter($members, function($m) use ($allContainerNames, $assignedContainers) {
-                return in_array($m, $allContainerNames) && !in_array($m, $assignedContainers);
+                return in_array($m, $allContainerNames, true) && !in_array($m, $assignedContainers, true);
             }));
             $folderContainers["folder-$folderId"] = $members;
             $folderNames["folder-$folderId"] = $folder['name'] ?? "folder-$folderId";
             $assignedContainers = array_merge($assignedContainers, $members);
         }
         return ['containers' => $folderContainers, 'names' => $folderNames, 'assigned' => $assignedContainers];
+    }
+
+    // The order JS walks an object's keys in: index-like keys ("7", not "07") first and ascending, then the rest as written
+    function fv3_js_key_order(array $keys): array {
+        $keys = array_map('strval', $keys);
+        $index = array_values(array_filter($keys, function($k) { return preg_match('/^(0|[1-9]\d{0,9})$/D', $k) === 1 && (int)$k < 4294967295; }));
+        sort($index, SORT_NUMERIC);
+        return array_merge($index, array_values(array_diff($keys, $index)));
+    }
+
+    // The Docker page's order, top-down, as container names and folder placeholders, members before their folder.
+    // $prefs is userprefs.cfg's values; with none it is A-Z by name (createFolders() sorts by browser locale, so accents can differ)
+    function fv3_page_order(array $membership, array $allContainerNames, array $prefs): array {
+        $folderContainers = $membership['containers'];
+        $assigned = $membership['assigned'];
+        if (!$prefs) {
+            $entries = [];
+            foreach ($folderContainers as $placeholder => $_members) {
+                $entries[] = ['key' => $placeholder, 'name' => $membership['names'][$placeholder]];
+            }
+            foreach ($allContainerNames as $name) {
+                if (!in_array($name, $assigned, true)) { $entries[] = ['key' => $name, 'name' => $name]; }
+            }
+            usort($entries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
+            $prefs = array_column($entries, 'key');
+        }
+        $placed = [];
+        $seen = [];
+        foreach ($prefs as $item) {
+            if (isset($folderContainers[$item])) {
+                foreach ($folderContainers[$item] as $ct) {
+                    if (!in_array($ct, $seen, true)) { $placed[] = $ct; $seen[] = $ct; }
+                }
+                $placed[] = $item;
+                $seen[] = $item;
+            } elseif (in_array($item, $assigned, true)) {
+                continue;
+            } elseif (in_array($item, $allContainerNames, true) && !in_array($item, $seen, true)) {
+                $placed[] = $item;
+                $seen[] = $item;
+            }
+        }
+        // Not in userprefs.cfg yet: docker.js unshifts each such folder (the last one it meets ends on top); new containers sit below them
+        $new = [];
+        $ids = array_map(function($placeholder) { return substr($placeholder, 7); }, array_keys($folderContainers));
+        foreach (array_reverse(fv3_js_key_order($ids)) as $id) {
+            $placeholder = "folder-$id";
+            if (in_array($placeholder, $seen, true)) { continue; }
+            foreach ($folderContainers[$placeholder] as $ct) { $new[] = $ct; }
+            $new[] = $placeholder;
+        }
+        $loose = array_values(array_filter($allContainerNames, function($name) use ($seen, $assigned) {
+            return !in_array($name, $seen, true) && !in_array($name, $assigned, true);
+        }));
+        usort($loose, 'strnatcasecmp');
+        return array_merge($new, $loose, $placed);
+    }
+
+    // Autostart lines ("name" or "name delay") in $order's sequence, each once; lines $order does not name follow, in file order
+    function fv3_reorder_autostart(array $lines, array $order): array {
+        $byName = [];
+        foreach ($lines as $line) { $byName[explode(' ', $line, 2)[0]] = $line; }
+        $ordered = [];
+        foreach ($order as $name) {
+            if (isset($byName[$name])) { $ordered[] = $byName[$name]; unset($byName[$name]); }
+        }
+        return array_merge($ordered, array_values($byName));
     }
 
     function syncContainerOrder(string $type): void {
@@ -754,7 +842,6 @@
         // 'off' = FV3 never writes the autostart file — pure stock Unraid behaviour
         if ($autostartMode === 'off') { fv3_debug_log("syncContainerOrder: autostart mode off, skipping"); return; }
 
-        $prefsFile = "/boot/config/plugins/dockerMan/userprefs.cfg";
         $foldersFile = "$configDir/docker.json";
         $folders = fv3_read_json_strict($foldersFile);
         if ($folders === null) {
@@ -790,83 +877,11 @@
             fv3_debug_log("syncContainerOrder: label read unavailable or incomplete, aborting before write");
             return;
         }
-        $membership = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
-        $folderContainers = $membership['containers'];
-        $folderNames = $membership['names'];
-        $assignedContainers = $membership['assigned'];
-
-        // Build $currentOrder. Source:
-        //   - userprefs.cfg if it exists (user has drag-reordered at some point)
-        //   - otherwise alphabetical intermix of folder names + orphan containers (matches the
-        //     alpha synthesis in createFolders() client-side)
-        $currentPrefs = file_exists($prefsFile) ? @parse_ini_file($prefsFile) : false;
-        if ($currentPrefs) {
-            $currentOrder = array_values($currentPrefs);
-            fv3_debug_log("syncContainerOrder: using userprefs.cfg order (" . count($currentOrder) . " entries)");
-        } else {
-            $entries = [];
-            foreach ($folderContainers as $placeholder => $_members) {
-                $entries[] = ['key' => $placeholder, 'name' => $folderNames[$placeholder]];
-            }
-            foreach ($allContainerNames as $name) {
-                if (!in_array($name, $assignedContainers)) {
-                    $entries[] = ['key' => $name, 'name' => $name];
-                }
-            }
-            usort($entries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
-            $currentOrder = array_column($entries, 'key');
-            fv3_debug_log("syncContainerOrder: synthesized alpha-intermix order (" . count($currentOrder) . " entries)");
-        }
-
-        // Walk $currentOrder, build the existing-layout portion of $newOrder.
-        $existingOrder = [];
-        $seen = [];
-        foreach ($currentOrder as $item) {
-            if (isset($folderContainers[$item])) {
-                foreach ($folderContainers[$item] as $ct) {
-                    if (!in_array($ct, $seen)) { $existingOrder[] = $ct; $seen[] = $ct; }
-                }
-                $existingOrder[] = $item;
-                $seen[] = $item;
-            } elseif (in_array($item, $assignedContainers)) {
-                continue;
-            } elseif (in_array($item, $allContainerNames) && !in_array($item, $seen)) {
-                $existingOrder[] = $item;
-                $seen[] = $item;
-            }
-        }
-
-        // New items (not in $currentOrder): mirrors Unraid's render-time placement of
-        // "missing from userprefs.cfg = sort key 0 = top of table". For FV3's folder
-        // client-side rendering, new folder placeholders also land at the top via the
-        // remaining-folders unshift loop. We prepend them in alphabetical order among
-        // themselves so the autostart file matches what's on screen.
-        $newItemEntries = [];
-        foreach ($folderContainers as $placeholder => $members) {
-            if (!in_array($placeholder, $seen)) {
-                $newItemEntries[] = ['key' => $placeholder, 'name' => $folderNames[$placeholder]];
-            }
-        }
-        foreach ($allContainerNames as $name) {
-            if (!in_array($name, $seen) && !in_array($name, $assignedContainers)) {
-                $newItemEntries[] = ['key' => $name, 'name' => $name];
-            }
-        }
-        usort($newItemEntries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
-
-        $newItemsExpanded = [];
-        foreach ($newItemEntries as $entry) {
-            $key = $entry['key'];
-            if (isset($folderContainers[$key])) {
-                foreach ($folderContainers[$key] as $ct) { $newItemsExpanded[] = $ct; }
-                $newItemsExpanded[] = $key;
-            } else {
-                $newItemsExpanded[] = $key;
-            }
-        }
-
-        $newOrder = array_merge($newItemsExpanded, $existingOrder);
-        fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . count($newItemsExpanded) . " new prepended)");
+        $prefs = fv3_docker_prefs();
+        // The page's order cannot be worked out then, so the file stays as it is
+        if ($prefs === null) { fv3_debug_log("syncContainerOrder: userprefs.cfg will not parse, aborting before write"); return; }
+        $newOrder = fv3_page_order(fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, $prefs), $allContainerNames, $prefs);
+        fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($prefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
 
         // Rewrite autostart file in $newOrder sequence. userprefs.cfg is NOT touched —
         // Unraid owns it, and writes it only when the user explicitly drag-reorders.
@@ -874,23 +889,7 @@
         if (file_exists($autoStartFile)) {
             $rawLines = fv3_read_autostart_lines($autoStartFile);
             if ($rawLines === null) { fv3_debug_log("syncContainerOrder: $autoStartFile unreadable, not rewriting"); return; }
-            $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
-            $autoStartMap = [];
-            foreach ($autoStartLines as $line) {
-                $parts = explode(' ', $line, 2);
-                $autoStartMap[$parts[0]] = $line;
-            }
-
-            $newAutoStart = [];
-            foreach ($newOrder as $name) {
-                if (isset($autoStartMap[$name])) {
-                    $newAutoStart[] = $autoStartMap[$name];
-                    unset($autoStartMap[$name]);
-                }
-            }
-            foreach ($autoStartMap as $line) {
-                $newAutoStart[] = $line;
-            }
+            $newAutoStart = fv3_reorder_autostart(fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete), $newOrder);
             file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX);
             fv3_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
         }
@@ -2025,31 +2024,8 @@
         $order = [];
         if ($type == "docker") {
             $dockerClient = new DockerClient();
-            $containersFromUnraid = $dockerClient->getDockerContainers(); 
-            $prefs_file = "$user_prefs_path/dockerMan/userprefs.cfg";
-
-            if (file_exists($prefs_file)) {
-                $prefs_ini = @parse_ini_file($prefs_file);
-                if ($prefs_ini) { 
-                    $prefs_array = array_values($prefs_ini);
-                    $sort = [];
-                    $count_containers = count($containersFromUnraid);
-                    foreach ($containersFromUnraid as $ct_item)  { 
-                        $search = array_search($ct_item['Name'], $prefs_array);
-                        $sort[] = ($search === false) ? ($count_containers + count($sort) + 1) : $search; 
-                    }
-                    if (!empty($sort)) { 
-                         @array_multisort($sort,SORT_NUMERIC,$containersFromUnraid);
-                    } else { 
-                         @usort($containersFromUnraid, function($a, $b) { return strnatcasecmp($a['Name'], $b['Name']); });
-                    }
-                } else { 
-                    @usort($containersFromUnraid, function($a, $b) { return strnatcasecmp($a['Name'], $b['Name']); });
-                }
-            } else { 
-                 @usort($containersFromUnraid, function($a, $b) { return strnatcasecmp($a['Name'], $b['Name']); });
-            }
-            $order = array_column($containersFromUnraid, 'Name');
+            // A userprefs.cfg that will not parse lists A-Z, as one that is absent does
+            $order = fv3_live_order(array_column($dockerClient->getDockerContainers() ?: [], 'Name'), fv3_docker_prefs() ?? []);
 
         } elseif ($type == "vm") {
             if (!fv3_require_libvirt_helpers()) { fv3_debug_log("VM Order: libvirt_helpers.php not available."); return []; }
