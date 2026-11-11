@@ -583,27 +583,18 @@
 
     // Reorders the existing autostart lines to the saved custom sequence. Waits ride along
     // verbatim; enabled-but-unsequenced containers keep their current relative order at the end.
-    function fv3_apply_custom_autostart(array $allContainerNames, bool $ctListComplete): void {
+    // Returns why the autostart file could not be put in the saved sequence, or null
+    function fv3_apply_custom_autostart(array $allContainerNames, bool $ctListComplete): ?string {
         $autoStartFile = fv3_autostart_file();
-        if (!file_exists($autoStartFile)) return;
+        if (!file_exists($autoStartFile)) return null;
         $sequence = readAutostartConfig()['sequence'];
         $rawLines = fv3_read_autostart_lines($autoStartFile);
-        if ($rawLines === null) { fv3_debug_log("fv3_apply_custom_autostart: $autoStartFile unreadable, not rewriting"); return; }
-        $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
-        $autoStartMap = [];
-        foreach ($autoStartLines as $line) {
-            $autoStartMap[explode(' ', $line, 2)[0]] = $line;
-        }
-        $newAutoStart = [];
-        foreach ($sequence as $name) {
-            if (isset($autoStartMap[$name])) {
-                $newAutoStart[] = $autoStartMap[$name];
-                unset($autoStartMap[$name]);
-            }
-        }
-        foreach ($autoStartMap as $line) { $newAutoStart[] = $line; }
-        file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX);
+        if ($rawLines === null) { fv3_debug_log("fv3_apply_custom_autostart: $autoStartFile unreadable, not rewriting"); return 'the autostart file could not be read'; }
+        $newAutoStart = fv3_reorder_autostart(fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete), $sequence);
+        if ($newAutoStart === $rawLines) { return null; }
+        if (@file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX) === false) { return 'the autostart file could not be written'; }
         fv3_debug_log("fv3_apply_custom_autostart: wrote " . count($newAutoStart) . " entries (" . count($sequence) . " sequenced)");
+        return null;
     }
 
     // Container names from getDockerContainers(). 'complete' is false when the read is empty
@@ -828,26 +819,28 @@
         return array_merge($ordered, array_values($byName));
     }
 
-    function syncContainerOrder(string $type): void {
+    // Returns why the autostart file could not be put in order (a file it needs is unreadable or unwritable), else null.
+    // An empty or incomplete answer from Docker is logged only: a server with no containers has nothing to report
+    function syncContainerOrder(string $type): ?string {
         // Rewrites the autostart file to match what FV3 renders on screen — top-to-bottom,
         // folder members left-to-right in their editor-chosen order. Render order itself is
         // owned by Unraid (userprefs.cfg if user drag-reordered, alphabetical otherwise);
         // FV3 no longer auto-writes userprefs.cfg from this function.
         global $configDir;
         fv3_debug_log("syncContainerOrder called for type: $type");
+        $stop = function (string $why): string { fv3_debug_log("syncContainerOrder: $why, aborting before write"); return $why; };
 
-        if ($type !== 'docker') { return; }
+        if ($type !== 'docker') { return null; }
 
         $autostartMode = readAutostartConfig()['mode'];
         // 'off' = FV3 never writes the autostart file — pure stock Unraid behaviour
-        if ($autostartMode === 'off') { fv3_debug_log("syncContainerOrder: autostart mode off, skipping"); return; }
+        if ($autostartMode === 'off') { fv3_debug_log("syncContainerOrder: autostart mode off, skipping"); return null; }
 
         $foldersFile = "$configDir/docker.json";
         $folders = fv3_read_json_strict($foldersFile);
         if ($folders === null) {
             // Corrupt folder config must not rewrite the autostart file as if no folders exist
-            fv3_debug_log("syncContainerOrder: $foldersFile unreadable, aborting before write");
-            return;
+            return $stop('the folder config could not be read');
         }
 
         $dockerClient = new DockerClient();
@@ -858,8 +851,7 @@
 
         // 'custom' = the Autostart tab's saved sequence overrides folder-derived order entirely
         if ($autostartMode === 'custom') {
-            fv3_apply_custom_autostart($allContainerNames, $ctListComplete);
-            return;
+            return fv3_apply_custom_autostart($allContainerNames, $ctListComplete);
         }
 
         // Folder-derived order needs the WHOLE list: containers missing from a partial read are
@@ -867,7 +859,7 @@
         // Custom mode above is exempt — its order comes from the saved sequence, not this list.
         if (!$ctListComplete) {
             fv3_debug_log("syncContainerOrder: container list empty or incomplete, aborting before write");
-            return;
+            return null;
         }
 
         $ctLabels = fv3_read_container_labels($dockerClient, $allContainerNames);
@@ -875,11 +867,11 @@
         // containers back out as unassigned — the same hazard $ctListComplete guards above.
         if ($ctLabels === null) {
             fv3_debug_log("syncContainerOrder: label read unavailable or incomplete, aborting before write");
-            return;
+            return null;
         }
         $prefs = fv3_docker_prefs();
         // The page's order cannot be worked out then, so the file stays as it is
-        if ($prefs === null) { fv3_debug_log("syncContainerOrder: userprefs.cfg will not parse, aborting before write"); return; }
+        if ($prefs === null) { return $stop("Unraid's saved Docker order (userprefs.cfg) could not be read"); }
         $newOrder = fv3_page_order(fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, $prefs), $allContainerNames, $prefs);
         fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($prefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
 
@@ -888,11 +880,14 @@
         $autoStartFile = fv3_autostart_file();
         if (file_exists($autoStartFile)) {
             $rawLines = fv3_read_autostart_lines($autoStartFile);
-            if ($rawLines === null) { fv3_debug_log("syncContainerOrder: $autoStartFile unreadable, not rewriting"); return; }
-            $newAutoStart = fv3_reorder_autostart(fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete), $newOrder);
-            file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX);
+            if ($rawLines === null) { return $stop('the autostart file could not be read'); }
+            $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
+            $newAutoStart = fv3_reorder_autostart($autoStartLines, $newOrder);
+            if ($newAutoStart === $rawLines) { fv3_debug_log("syncContainerOrder: autostart file already in order"); return null; }
+            if (@file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX) === false) { return $stop('the autostart file could not be written'); }
             fv3_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
         }
+        return null;
     }
 
     // A container may be explicit in at most one folder (issue #62). $winnerId's list survives

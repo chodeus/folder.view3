@@ -41,7 +41,8 @@
         echo json_encode(['error' => 'container label read unavailable']);
         exit;
     }
-    $m = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, fv3_docker_prefs() ?? []);
+    // The map does not depend on the saved order (page_order_test.php), so userprefs.cfg is not read here
+    $m = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
     $out = [];
     foreach ($m['containers'] as $placeholder => $members) {
         foreach ($members as $ct) { $out[$ct] = $m['names'][$placeholder]; }
