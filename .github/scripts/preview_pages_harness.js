@@ -191,6 +191,60 @@ dockerload.on('message', function(msg){
     return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow };
 };
 
+const FOLDER_SETTINGS = {
+    folder_webui: false, folder_webui_url: '', preview: 0, preview_hover: false, preview_update: true, preview_update_folder: false, preview_text_width: '',
+    preview_grayscale: false, preview_status: 'none', preview_webui: true, preview_logs: true, preview_console: true, preview_vertical_bars: false,
+    preview_overflow: 0, preview_row_separator: false, context: 0, context_trigger: 0, context_graph: 0, context_graph_time: 60, preview_border: false,
+    lock_colors: true, update_column: false, use_global_defaults: false, default_action: false, expand_tab: false, override_default_actions: false, expand_dashboard: false,
+};
+// Unraid's row for one container (DockerContainers.php), cut to the cells docker.js reads
+const dockerRow = (name, sid) => `<tr class="sortable" id="ct-${name}"><td class="ct-name"><span class="outer"><span id="${sid}" class="hand"><img class="img" src=""></span>` +
+    `<span class="inner"><span class="appname"><a class="exec">${name}</a></span><br><i id="load-${sid}" class="fa fa-play started green-text"></i><span class="state">started</span></span></span></td>` +
+    '<td class="updatecolumn"><span class="green-text">up-to-date</span></td><td></td><td></td><td></td><td></td><td></td><td class="advanced"></td>' +
+    `<td><input type="checkbox" class="autostart" container="${name}"></td><td></td></tr>`;
+
+// The Docker page drawn by the real createFolders() from docker.json's folders, Docker's container names and userprefs.cfg's values
+const drawDocker = async ({ folders, containers, prefs, listed }) => {
+    const sid = (i) => String(i).padStart(12, 'a');
+    const defs = Object.fromEntries(Object.entries(folders).map(([id, f]) => [id, { ...f, icon: '', settings: { ...FOLDER_SETTINGS }, hidden_preview: [], actions: [] }]));
+    const saved = prefs.filter((n) => containers.includes(n));
+    const missing = containers.filter((n) => !prefs.includes(n));
+    // Unraid draws saved containers in userprefs.cfg order and one missing from it on top (DockerContainers.php: array_search
+    // false = 0); how it orders several missing ones among themselves is its own tie-break, so they stay as given
+    const shown = missing.concat(saved);
+    const info = {};
+    const p = await makePage({ page: 'docker', api: false, answers: {
+        'read.php': () => JSON.stringify(defs),
+        'read_order.php': () => JSON.stringify(prefs),
+        'read_info.php': () => JSON.stringify(info),
+        // read_unraid_order.php lists the saved ones first, the missing ones last; page_order_test.php holds the real
+        // readUnraidOrder() to the fixture's own list
+        'read_unraid_order.php': () => JSON.stringify(listed || saved.concat(missing)),
+    } });
+    shown.forEach((n, i) => { info[n] = p.ct(sid(i), n); });
+    const posts = [];
+    p.$.post = (url, data) => { posts.push({ url, data }); return p.$.Deferred().resolve('ok'); };
+    p.$('#docker_containers').prepend(`<thead><tr>${'<th></th>'.repeat(10)}</tr></thead>`);
+    // One list load: Unraid replaces the rows, then the page builds its folders. The harness clock is manual, so tick() moves it
+    const draw = async () => {
+        p.$('#docker_list').empty();
+        shown.forEach((n, i) => p.$(dockerRow(n, sid(i))).appendTo('#docker_list'));
+        p.g('loadlist()');
+        let built = false;
+        p.g('createFolders()').then(() => { built = true; }, (e) => p.errors.push(`createFolders: ${e && e.stack || e}`));
+        for (let i = 0; i < 50 && !built && !p.errors.length; i++) await p.tick(100);
+        return built;
+    };
+    const rows = () => p.$('#docker_list > tr.sortable, #docker_list > tr.folder').toArray().map((tr) => {
+        const m = tr.className.match(/folder-id-(\S+)/);
+        return m ? `folder-${m[1]}` : tr.id.replace(/^ct-/, '');
+    });
+    const members = (id) => p.$(`#docker_list tr.folder-${id}-element`).toArray().map((tr) => tr.id.replace(/^ct-/, ''));
+    // Every row top-down, a folder's members ahead of its placeholder: the shape fv3_page_order() returns
+    const drawn = () => rows().flatMap((r) => (r.startsWith('folder-') ? [...members(r.slice(7)), r] : [r]));
+    return { p, posts, draw, rows, members, drawn };
+};
+
 let failed = 0;
 const check = (label, ok, detail) => {
     if (ok) { console.log(`ok   ${label}`); return; }
@@ -199,4 +253,4 @@ const check = (label, ok, detail) => {
 };
 const done = () => { console.log(failed ? `\n${failed} FAILED` : '\nall passed'); process.exit(failed ? 1 : 0); };
 
-module.exports = { makePage, check, done, flush, read };
+module.exports = { makePage, drawDocker, check, done, flush, read };

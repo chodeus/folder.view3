@@ -57,17 +57,8 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'containersInfo keys', Object.keys(containersInfo));
 
 
-    const newOnes = order.filter(x => !unraidOrder.includes(x));
+    const newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
     fv3Debug('createFolders', 'newOnes (containers not in unraidOrder)', newOnes);
-
-
-    for (let index = 0; index < unraidOrder.length; index++) {
-        const element = unraidOrder[index];
-        if((folderRegex.test(element) && folders[element.slice(7)])) {
-            fv3Debug('createFolders', `Splicing folder ${element} into order at index ${index + newOnes.length}`);
-            order.splice(index+newOnes.length, 0, element);
-        }
-    }
     fv3Debug('createFolders', 'Order after inserting Unraid-ordered folders', [...order]);
 
 
