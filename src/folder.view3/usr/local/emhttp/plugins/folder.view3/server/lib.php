@@ -709,7 +709,7 @@
         }
         $explicitAssigned = $explicitMembers;
         foreach ($ctLabels as $ctName => $ctLabel) {
-            if (isset($folderNameSet[$ctLabel])) { $explicitAssigned[] = $ctName; }
+            if (isset($folderNameSet[$ctLabel])) { $explicitAssigned[] = (string)$ctName; }
         }
         foreach ($folders as $folderId => $folder) {
             $members = $folder['containers'] ?? [];
@@ -719,25 +719,82 @@
             if (is_string($folder['regex'] ?? null) && trim($folder['regex']) !== '') {
                 $regex = '/' . str_replace('/', '\/', $folder['regex']) . '/';
                 foreach ($allContainerNames as $name) {
-                    if (@preg_match($regex, $name) && !in_array($name, $members) && !in_array($name, $explicitAssigned)) {
+                    if (@preg_match($regex, $name) && !in_array($name, $members, true) && !in_array($name, $explicitAssigned, true)) {
                         $members[] = $name;
                     }
                 }
             }
             // Explicit containers[] entries anywhere win over a label claim (issue #55)
             foreach ($ctLabels as $ctName => $ctLabel) {
-                if ($ctLabel === ($folder['name'] ?? null) && !in_array($ctName, $members) && !in_array($ctName, $explicitMembers)) {
+                $ctName = (string)$ctName;
+                if ($ctLabel === ($folder['name'] ?? null) && !in_array($ctName, $members, true) && !in_array($ctName, $explicitMembers, true)) {
                     $members[] = $ctName;
                 }
             }
             $members = array_values(array_filter($members, function($m) use ($allContainerNames, $assignedContainers) {
-                return in_array($m, $allContainerNames) && !in_array($m, $assignedContainers);
+                return in_array($m, $allContainerNames, true) && !in_array($m, $assignedContainers, true);
             }));
             $folderContainers["folder-$folderId"] = $members;
             $folderNames["folder-$folderId"] = $folder['name'] ?? "folder-$folderId";
             $assignedContainers = array_merge($assignedContainers, $members);
         }
         return ['containers' => $folderContainers, 'names' => $folderNames, 'assigned' => $assignedContainers];
+    }
+
+    // The order JS walks an object's keys in: index-like keys ("7", not "07") first and ascending, then the rest as written
+    function fv3_js_key_order(array $keys): array {
+        $keys = array_map('strval', $keys);
+        $index = array_values(array_filter($keys, function($k) { return preg_match('/^(0|[1-9]\d{0,9})$/D', $k) === 1 && (int)$k < 4294967295; }));
+        sort($index, SORT_NUMERIC);
+        return array_merge($index, array_values(array_diff($keys, $index)));
+    }
+
+    // The Docker page's order, top-down, as container names and folder placeholders, members before their folder.
+    // $prefs is userprefs.cfg's values; with none, folder names and loose containers are mixed A-Z as createFolders() does
+    function fv3_page_order(array $membership, array $allContainerNames, array $prefs): array {
+        $folderContainers = $membership['containers'];
+        $assigned = $membership['assigned'];
+        if (!$prefs) {
+            $entries = [];
+            foreach ($folderContainers as $placeholder => $_members) {
+                $entries[] = ['key' => $placeholder, 'name' => $membership['names'][$placeholder]];
+            }
+            foreach ($allContainerNames as $name) {
+                if (!in_array($name, $assigned, true)) { $entries[] = ['key' => $name, 'name' => $name]; }
+            }
+            usort($entries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
+            $prefs = array_column($entries, 'key');
+        }
+        $placed = [];
+        $seen = [];
+        foreach ($prefs as $item) {
+            if (isset($folderContainers[$item])) {
+                foreach ($folderContainers[$item] as $ct) {
+                    if (!in_array($ct, $seen, true)) { $placed[] = $ct; $seen[] = $ct; }
+                }
+                $placed[] = $item;
+                $seen[] = $item;
+            } elseif (in_array($item, $assigned, true)) {
+                continue;
+            } elseif (in_array($item, $allContainerNames, true) && !in_array($item, $seen, true)) {
+                $placed[] = $item;
+                $seen[] = $item;
+            }
+        }
+        // Not in userprefs.cfg yet: docker.js unshifts each such folder (the last one it meets ends on top); new containers sit below them
+        $new = [];
+        $ids = array_map(function($placeholder) { return substr($placeholder, 7); }, array_keys($folderContainers));
+        foreach (array_reverse(fv3_js_key_order($ids)) as $id) {
+            $placeholder = "folder-$id";
+            if (in_array($placeholder, $seen, true)) { continue; }
+            foreach ($folderContainers[$placeholder] as $ct) { $new[] = $ct; }
+            $new[] = $placeholder;
+        }
+        $loose = array_values(array_filter($allContainerNames, function($name) use ($seen, $assigned) {
+            return !in_array($name, $seen, true) && !in_array($name, $assigned, true);
+        }));
+        usort($loose, 'strnatcasecmp');
+        return array_merge($new, $loose, $placed);
     }
 
     function syncContainerOrder(string $type): void {
@@ -791,82 +848,9 @@
             return;
         }
         $membership = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
-        $folderContainers = $membership['containers'];
-        $folderNames = $membership['names'];
-        $assignedContainers = $membership['assigned'];
-
-        // Build $currentOrder. Source:
-        //   - userprefs.cfg if it exists (user has drag-reordered at some point)
-        //   - otherwise alphabetical intermix of folder names + orphan containers (matches the
-        //     alpha synthesis in createFolders() client-side)
         $currentPrefs = file_exists($prefsFile) ? @parse_ini_file($prefsFile) : false;
-        if ($currentPrefs) {
-            $currentOrder = array_values($currentPrefs);
-            fv3_debug_log("syncContainerOrder: using userprefs.cfg order (" . count($currentOrder) . " entries)");
-        } else {
-            $entries = [];
-            foreach ($folderContainers as $placeholder => $_members) {
-                $entries[] = ['key' => $placeholder, 'name' => $folderNames[$placeholder]];
-            }
-            foreach ($allContainerNames as $name) {
-                if (!in_array($name, $assignedContainers)) {
-                    $entries[] = ['key' => $name, 'name' => $name];
-                }
-            }
-            usort($entries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
-            $currentOrder = array_column($entries, 'key');
-            fv3_debug_log("syncContainerOrder: synthesized alpha-intermix order (" . count($currentOrder) . " entries)");
-        }
-
-        // Walk $currentOrder, build the existing-layout portion of $newOrder.
-        $existingOrder = [];
-        $seen = [];
-        foreach ($currentOrder as $item) {
-            if (isset($folderContainers[$item])) {
-                foreach ($folderContainers[$item] as $ct) {
-                    if (!in_array($ct, $seen)) { $existingOrder[] = $ct; $seen[] = $ct; }
-                }
-                $existingOrder[] = $item;
-                $seen[] = $item;
-            } elseif (in_array($item, $assignedContainers)) {
-                continue;
-            } elseif (in_array($item, $allContainerNames) && !in_array($item, $seen)) {
-                $existingOrder[] = $item;
-                $seen[] = $item;
-            }
-        }
-
-        // New items (not in $currentOrder): mirrors Unraid's render-time placement of
-        // "missing from userprefs.cfg = sort key 0 = top of table". For FV3's folder
-        // client-side rendering, new folder placeholders also land at the top via the
-        // remaining-folders unshift loop. We prepend them in alphabetical order among
-        // themselves so the autostart file matches what's on screen.
-        $newItemEntries = [];
-        foreach ($folderContainers as $placeholder => $members) {
-            if (!in_array($placeholder, $seen)) {
-                $newItemEntries[] = ['key' => $placeholder, 'name' => $folderNames[$placeholder]];
-            }
-        }
-        foreach ($allContainerNames as $name) {
-            if (!in_array($name, $seen) && !in_array($name, $assignedContainers)) {
-                $newItemEntries[] = ['key' => $name, 'name' => $name];
-            }
-        }
-        usort($newItemEntries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
-
-        $newItemsExpanded = [];
-        foreach ($newItemEntries as $entry) {
-            $key = $entry['key'];
-            if (isset($folderContainers[$key])) {
-                foreach ($folderContainers[$key] as $ct) { $newItemsExpanded[] = $ct; }
-                $newItemsExpanded[] = $key;
-            } else {
-                $newItemsExpanded[] = $key;
-            }
-        }
-
-        $newOrder = array_merge($newItemsExpanded, $existingOrder);
-        fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . count($newItemsExpanded) . " new prepended)");
+        $newOrder = fv3_page_order($membership, $allContainerNames, $currentPrefs ? array_values($currentPrefs) : []);
+        fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($currentPrefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
 
         // Rewrite autostart file in $newOrder sequence. userprefs.cfg is NOT touched —
         // Unraid owns it, and writes it only when the user explicitly drag-reorders.

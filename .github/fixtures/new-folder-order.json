@@ -1,0 +1,13 @@
+{
+  "folders": {
+    "old": {"name": "Old", "containers": ["o1"], "regex": ""},
+    "zulu": {"name": "Zulu", "containers": ["z1", "z2"], "regex": ""},
+    "yankee": {"name": "Yankee", "containers": [], "regex": "^y"},
+    "42": {"name": "Numbers", "containers": ["n1"], "regex": ""},
+    "7": {"name": "Seven", "containers": ["s1"], "regex": ""}
+  },
+  "containers": ["alpha", "mid", "n1", "o1", "s1", "y1", "y2", "z1", "z2"],
+  "prefs": ["folder-old", "o1"],
+  "rows": ["folder-yankee", "folder-zulu", "folder-42", "folder-7", "alpha", "mid", "folder-old"],
+  "autostart": ["y1", "y2", "folder-yankee", "z1", "z2", "folder-zulu", "n1", "folder-42", "s1", "folder-7", "alpha", "mid", "o1", "folder-old"]
+}
