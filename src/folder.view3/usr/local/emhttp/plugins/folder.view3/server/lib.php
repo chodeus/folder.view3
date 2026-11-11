@@ -612,6 +612,8 @@
 
     function fv3_read_container_names(DockerClient $dockerClient): array {
         $cts = fv3_docker_quiet(fn() => $dockerClient->getDockerContainers());
+        // [] is "no containers", or Docker not running: Unraid's client answers [] for both
+        $empty = $cts === [];
         if (!is_array($cts)) { $cts = []; }
         $names = [];
         $complete = !empty($cts);
@@ -621,7 +623,7 @@
             if (!is_string($n) || $n === '') { $complete = false; continue; }
             $names[] = $n;
         }
-        return ['names' => $names, 'complete' => $complete];
+        return ['names' => $names, 'complete' => $complete, 'empty' => $empty];
     }
 
     // The one definition of "drop autostart entries whose container is gone". A degraded Docker
@@ -819,8 +821,8 @@
         return array_merge($ordered, array_values($byName));
     }
 
-    // Returns why the autostart file could not be put in order (a file it needs is unreadable or unwritable), else null.
-    // An empty or incomplete answer from Docker is logged only: a server with no containers has nothing to report
+    // Returns why the autostart file could not be put in order (a file or a Docker read it needs failed), else null.
+    // An empty container list is logged only: a server with no containers, or with Docker off, has nothing to report
     function syncContainerOrder(string $type): ?string {
         // Rewrites the autostart file to match what FV3 renders on screen — top-to-bottom,
         // folder members left-to-right in their editor-chosen order. Render order itself is
@@ -836,13 +838,6 @@
         // 'off' = FV3 never writes the autostart file — pure stock Unraid behaviour
         if ($autostartMode === 'off') { fv3_debug_log("syncContainerOrder: autostart mode off, skipping"); return null; }
 
-        $foldersFile = "$configDir/docker.json";
-        $folders = fv3_read_json_strict($foldersFile);
-        if ($folders === null) {
-            // Corrupt folder config must not rewrite the autostart file as if no folders exist
-            return $stop('the folder config could not be read');
-        }
-
         $dockerClient = new DockerClient();
         $ctNames = fv3_read_container_names($dockerClient);
         $allContainerNames = $ctNames['names'];
@@ -854,21 +849,22 @@
             return fv3_apply_custom_autostart($allContainerNames, $ctListComplete);
         }
 
+        $folders = fv3_read_json_strict("$configDir/docker.json");
+        // Corrupt folder config must not rewrite the autostart file as if no folders exist
+        if ($folders === null) { return $stop('the folder config could not be read'); }
+
         // Folder-derived order needs the WHOLE list: containers missing from a partial read are
         // skipped by the order walk and land appended at the end, silently reordering the file.
         // Custom mode above is exempt — its order comes from the saved sequence, not this list.
         if (!$ctListComplete) {
-            fv3_debug_log("syncContainerOrder: container list empty or incomplete, aborting before write");
-            return null;
+            if ($ctNames['empty']) { fv3_debug_log("syncContainerOrder: no containers, nothing to sync"); return null; }
+            return $stop("Docker's container list could not be read");
         }
 
         $ctLabels = fv3_read_container_labels($dockerClient, $allContainerNames);
         // Fail closed: without label claims the order below would write label-assigned
         // containers back out as unassigned — the same hazard $ctListComplete guards above.
-        if ($ctLabels === null) {
-            fv3_debug_log("syncContainerOrder: label read unavailable or incomplete, aborting before write");
-            return null;
-        }
+        if ($ctLabels === null) { return $stop('the container labels could not be read'); }
         $prefs = fv3_docker_prefs();
         // The page's order cannot be worked out then, so the file stays as it is
         if ($prefs === null) { return $stop("Unraid's saved Docker order (userprefs.cfg) could not be read"); }

@@ -79,6 +79,7 @@ jobs:
           node incognito_test.js
           node docker_new_folder_order_test.js
           node docker_saved_places_test.js
+          node docker_reset_order_test.js
           node theme_import_dialog_test.js
 
       - name: Validate plugin manifest (XML)

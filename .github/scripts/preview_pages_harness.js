@@ -131,6 +131,8 @@ const makePage = async (opts = {}) => {
     // Unraid's Docker page globals (facts file): dockerload subscriber + its message handler
     const nchan = [];
     if (opts.page === 'docker') {
+        // Unraid's own Reset Order handler: docker.js only patches it when it is there
+        w.resetSorting = () => {};
         w.NchanSubscriber = class {
             constructor(url) { this.url = url; this.h = {}; nchan.push(this); }
             on(ev, fn) { (this.h[ev] = this.h[ev] || []).push(fn); }
@@ -223,7 +225,12 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     } });
     shown.forEach((n, i) => { info[n] = p.ct(sid(i), n); });
     const posts = [];
-    p.$.post = (url, data) => { posts.push({ url, data }); return p.$.Deferred().resolve('ok'); };
+    // A request whose url holds an entry of `failing` is refused (503)
+    const failing = new Set();
+    p.$.post = (url, data) => {
+        posts.push({ url, data });
+        return [...failing].some((part) => url.includes(part)) ? p.$.Deferred().reject({ status: 503 }) : p.$.Deferred().resolve('ok');
+    };
     p.$('#docker_containers').prepend(`<thead><tr>${'<th></th>'.repeat(10)}</tr></thead>`);
     // One list load: Unraid replaces the rows, then the page builds its folders. The harness clock is manual, so tick() moves it
     const draw = async () => {
@@ -242,7 +249,7 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     const members = (id) => p.$(`#docker_list tr.folder-${id}-element`).toArray().map((tr) => tr.id.replace(/^ct-/, ''));
     // Every row top-down, a folder's members ahead of its placeholder: the shape fv3_page_order() returns
     const drawn = () => rows().flatMap((r) => (r.startsWith('folder-') ? [...members(r.slice(7)), r] : [r]));
-    return { p, posts, draw, rows, members, drawn };
+    return { p, posts, failing, draw, rows, members, drawn };
 };
 
 let failed = 0;

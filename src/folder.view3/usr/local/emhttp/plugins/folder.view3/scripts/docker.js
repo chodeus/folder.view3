@@ -1336,9 +1336,10 @@ if (typeof resetSorting === 'function') {
     window.resetSorting = function() {
         if ($.cookie('lockbutton') == null) return;
         $('input[type=button]').prop('disabled', true);
-        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck
+        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck.
+        // A refused sync is not a failed reset, so it does not show the banner below
         $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true})
-            .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}))
+            .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}).then(null, () => $.Deferred().resolve()))
             .fail(() => fv3ShowBanner(fv3I18nOr('reset-order-failed', 'Could not reset the folder order. Try again.')))
             .always(() => loadlist());
     };
