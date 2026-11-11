@@ -41,7 +41,7 @@
         echo json_encode(['error' => 'container label read unavailable']);
         exit;
     }
-    $m = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
+    $m = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, fv3_docker_prefs());
     $out = [];
     foreach ($m['containers'] as $placeholder => $members) {
         foreach ($members as $ct) { $out[$ct] = $m['names'][$placeholder]; }

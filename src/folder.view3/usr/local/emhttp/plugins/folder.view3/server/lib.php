@@ -693,7 +693,23 @@
 
     // Effective membership — explicit > label > regex (issues #46/#55). Single source of
     // truth shared by syncContainerOrder and read_membership.php (issue #61).
-    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels): array {
+    // The values of Unraid's saved Docker order (userprefs.cfg), [] when there is none
+    function fv3_docker_prefs(): array {
+        $prefs = @parse_ini_file('/boot/config/plugins/dockerMan/userprefs.cfg');
+        return $prefs ? array_values($prefs) : [];
+    }
+
+    // Container names in the order read_unraid_order.php hands the page: saved names in userprefs.cfg order, unsaved
+    // ones after them as Docker lists them; A-Z when nothing is saved
+    function fv3_live_order(array $names, array $prefs): array {
+        if (!$prefs) { usort($names, 'strnatcasecmp'); return $names; }
+        $saved = array_values(array_unique(array_filter($prefs, function($p) use ($names) { return in_array($p, $names, true); })));
+        return array_merge($saved, array_values(array_filter($names, function($n) use ($saved) { return !in_array($n, $saved, true); })));
+    }
+
+    // $prefs orders each folder's regex and label members as the Docker page lists them (fv3_live_order)
+    function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels, array $prefs = []): array {
+        $live = fv3_live_order($allContainerNames, $prefs);
         // One malformed entry is dropped or filled in, not allowed to abort every folder's sync
         $folders = fv3_normalize_folders($folders);
         $folderNameSet = [];
@@ -718,16 +734,15 @@
             // keeps a non-string regex from fataling trim() (TypeError on PHP 8).
             if (is_string($folder['regex'] ?? null) && trim($folder['regex']) !== '') {
                 $regex = '/' . str_replace('/', '\/', $folder['regex']) . '/';
-                foreach ($allContainerNames as $name) {
+                foreach ($live as $name) {
                     if (@preg_match($regex, $name) && !in_array($name, $members, true) && !in_array($name, $explicitAssigned, true)) {
                         $members[] = $name;
                     }
                 }
             }
             // Explicit containers[] entries anywhere win over a label claim (issue #55)
-            foreach ($ctLabels as $ctName => $ctLabel) {
-                $ctName = (string)$ctName;
-                if ($ctLabel === ($folder['name'] ?? null) && !in_array($ctName, $members, true) && !in_array($ctName, $explicitMembers, true)) {
+            foreach ($live as $ctName) {
+                if (($ctLabels[$ctName] ?? null) === $folder['name'] && !in_array($ctName, $members, true) && !in_array($ctName, $explicitMembers, true)) {
                     $members[] = $ctName;
                 }
             }
@@ -811,7 +826,6 @@
         // 'off' = FV3 never writes the autostart file — pure stock Unraid behaviour
         if ($autostartMode === 'off') { fv3_debug_log("syncContainerOrder: autostart mode off, skipping"); return; }
 
-        $prefsFile = "/boot/config/plugins/dockerMan/userprefs.cfg";
         $foldersFile = "$configDir/docker.json";
         $folders = fv3_read_json_strict($foldersFile);
         if ($folders === null) {
@@ -847,10 +861,9 @@
             fv3_debug_log("syncContainerOrder: label read unavailable or incomplete, aborting before write");
             return;
         }
-        $membership = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
-        $currentPrefs = file_exists($prefsFile) ? @parse_ini_file($prefsFile) : false;
-        $newOrder = fv3_page_order($membership, $allContainerNames, $currentPrefs ? array_values($currentPrefs) : []);
-        fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($currentPrefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
+        $prefs = fv3_docker_prefs();
+        $newOrder = fv3_page_order(fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, $prefs), $allContainerNames, $prefs);
+        fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($prefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
 
         // Rewrite autostart file in $newOrder sequence. userprefs.cfg is NOT touched —
         // Unraid owns it, and writes it only when the user explicitly drag-reorders.

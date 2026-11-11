@@ -24,7 +24,7 @@ set_exception_handler(function (Throwable $e): void {
 $fixture = json_decode(file_get_contents(dirname(__DIR__) . '/fixtures/new-folder-order.json'), true);
 // $prefs = the values of userprefs.cfg, $labels = container name => its folder.view3 label
 $order = function (array $folders, array $names, array $prefs, array $labels = []): array {
-    return fv3_page_order(fv3_compute_folder_membership($folders, $names, $labels), $names, $prefs);
+    return fv3_page_order(fv3_compute_folder_membership($folders, $names, $labels, $prefs), $names, $prefs);
 };
 $folder = fn(string $name, array $containers = [], string $regex = '') => ['name' => $name, 'containers' => $containers, 'regex' => $regex];
 
@@ -55,6 +55,16 @@ $cases = [
         $order(['f' => $folder('F', ['010'])], ['10'], ['folder-f', '10']), ['folder-f', '10']],
     ['a regex takes a name that only looks like another folder\'s member',
         $order(['a' => $folder('A', ['10']), 'b' => $folder('B', [], '^0')], ['10', '010'], ['folder-a', 'folder-b']), ['10', 'folder-a', '010', 'folder-b']],
+    ['regex members follow the saved order, not the order Docker lists them in',
+        $order(['r' => $folder('Rx', [], '^web')], ['web1', 'web2', 'db'], ['db', 'web2', 'web1', 'folder-r']), ['db', 'web2', 'web1', 'folder-r']],
+    ['label members follow the saved order too',
+        $order(['l' => $folder('Lab')], ['a', 'b'], ['folder-l', 'b', 'a'], ['a' => 'Lab', 'b' => 'Lab']), ['b', 'a', 'folder-l']],
+    ['an unsaved regex member comes after the saved ones',
+        $order(['r' => $folder('Rx', [], '^web')], ['web1', 'web2'], ['web2', 'folder-r']), ['web2', 'web1', 'folder-r']],
+    ['explicit members keep the editor\'s order, ahead of regex members',
+        $order(['f' => $folder('F', ['b', 'a'], '^c')], ['a', 'b', 'c2', 'c1'], ['folder-f', 'c1', 'c2']), ['b', 'a', 'c1', 'c2', 'folder-f']],
+    ['no userprefs.cfg: regex members sort naturally, whatever order Docker lists them in',
+        $order(['r' => $folder('Rx', [], '^web')], ['web10', 'web2'], []), ['web2', 'web10', 'folder-r']],
     ['a name in userprefs.cfg that Docker no longer has is skipped',
         $order([], ['a'], ['ghost', 'a']), ['a']],
     ['a look-alike of a live name in userprefs.cfg is still skipped',

@@ -20,9 +20,9 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
     w.fv3I18nOr = (key, fallback, ...args) => args.reduce((s, a, i) => s.replace(`$${i + 1}`, a), fallback);
     w.fv3SwalError = (text) => errors.push(`swal error: ${text}`);
 
-    // Unraid's sweetalert markup. jsdom has no layout, so each box gets a content height and records where the script scrolls it;
-    // csstool.css makes the <pre> the scroll box (overflow-y on #fv3ProgressLog)
-    const scrolled = {};
+    // Unraid's sweetalert markup. jsdom has no layout, so the log's height is its text length (it grows with every line) and
+    // each scroll of it is recorded; csstool.css makes the <pre> the scroll box (overflow-y on #fv3ProgressLog)
+    const scrolls = [];
     w.swal = (o) => {
         w.swal.close();
         const el = w.document.createElement('div');
@@ -32,10 +32,9 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
         el.querySelector('h2').innerHTML = o.title;
         el.querySelector('p').innerHTML = o.text;
         w.document.body.appendChild(el);
-        for (const [name, node, height] of [['pre', el.querySelector('pre'), 500], ['p', el.querySelector('p'), 300]]) {
-            Object.defineProperty(node, 'scrollHeight', { get: () => height });
-            Object.defineProperty(node, 'scrollTop', { get: () => scrolled[name] ?? 0, set: (v) => { scrolled[name] = v; } });
-        }
+        const pre = el.querySelector('pre');
+        Object.defineProperty(pre, 'scrollHeight', { get: () => pre.textContent.length });
+        Object.defineProperty(pre, 'scrollTop', { get: () => scrolls[scrolls.length - 1] ?? 0, set: (v) => { scrolls.push(v); } });
     };
     w.swal.close = () => { const el = w.document.querySelector('.sweet-alert'); if (el) el.remove(); };
 
@@ -61,7 +60,8 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
     check('the import ran and the dialog is open', !!dialog && posts.length === 1, { dialog: !!dialog, posts });
     const lines = dialog ? dialog.querySelector('#fv3ProgressLog').textContent : '';
     check('the log lists the files and the count', /a\.css/.test(lines) && /b\.css/.test(lines) && /2 file\(s\) downloaded/.test(lines), lines);
-    check('the log box is at its newest line', scrolled.pre === 500, scrolled);
+    // One section and three lines (two files, the count): each scrolls, and the last scroll is the log's full height
+    check('every section and line scrolls the log box to its newest line', scrolls.length === 4 && scrolls[3] === lines.length && scrolls.every((v, i) => i === 0 || v > scrolls[i - 1]), { scrolls, height: lines.length });
     check('the stylesheet makes the log box the one that scrolls', /\.sweet-alert\.fv3-progress #fv3ProgressLog \{[^}]*overflow-y: auto;/.test(fs.readFileSync(path.join(plugin, 'styles/csstool.css'), 'utf8')));
     const doneBtn = dialog && dialog.querySelector('button.confirm');
     check('the dialog ends on Finished with a Done button', !!dialog && /Finished/.test(dialog.querySelector('h2').textContent) && doneBtn.textContent === 'Done' && doneBtn.style.display !== 'none',
