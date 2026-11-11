@@ -264,7 +264,10 @@
     padding: 0;
 }
 
+/* The log is the dialog's scroll box: csstool.js keeps it at its newest line */
 .sweet-alert.fv3-progress #fv3ProgressLog {
+    min-height: 0;
+    overflow-y: auto;
     text-align: left;
     white-space: pre-wrap;
     word-break: break-all;

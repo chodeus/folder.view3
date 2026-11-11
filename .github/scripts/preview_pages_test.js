@@ -1,6 +1,6 @@
 // node .github/scripts/preview_pages_test.js — the advanced preview's CPU/MEM on the Docker page and the Dashboard, through the real page scripts in jsdom (npm ci in this folder first)
 'use strict';
-const { makePage, check, done } = require('./preview_pages_harness.js');
+const { makePage, check, done, read } = require('./preview_pages_harness.js');
 
 const A = 'a0a0a0a0a0a0';
 const B = 'b0b0b0b0b0b0';
@@ -315,6 +315,11 @@ const addRow = (p, id) => p.$(`<table><tr><td><span class="cpu-${id}">0%</span><
         await p.tick(0);
         check('Docker, stream drop: the feed fills the graph after the fallback', p.samples[A].CPU.length === 1, p.samples[A].CPU);
         tip.close();
+    }
+
+    // Unraid 7.4 makes .tooltipster-content white-space: pre-line; the popup's markup is written over many lines
+    for (const sheet of ['docker.css', 'dashboard.css']) {
+        check(`${sheet}: the popup resets the tooltip's white-space`, /(^|\n)\.preview-outbox \{[^}]*white-space: normal;/.test(read(`styles/${sheet}`)));
     }
 
     done();
