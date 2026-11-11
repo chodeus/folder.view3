@@ -1351,10 +1351,12 @@
         var titleEl = swalEl.querySelector('h2');
         var statusEl = document.getElementById('fv3ProgressTitle');
         var log = document.getElementById('fv3ProgressLog');
-        var scrollParent = log.closest('p') || log.parentElement;
+        var logParent = log.closest('p') || log.parentElement;
         // Unraid's sheet rules beat swal's inline display:block with !important; inline here instead (swal resets both)
         swalEl.style.display = 'flex';
-        scrollParent.style.display = 'flex';
+        logParent.style.display = 'flex';
+        // csstool.css makes the log its own scroll box
+        var scrollToEnd = function() { log.scrollTop = log.scrollHeight; };
         var btnContainer = swalEl.querySelector('.sa-button-container');
         var confirmContainer = swalEl.querySelector('.sa-confirm-button-container');
         var confirmBtn = confirmContainer ? confirmContainer.querySelector('.confirm') : null;
@@ -1380,7 +1382,7 @@
                 s.innerHTML = '<legend>' + escapeAttr(title) + '</legend><p class="logLine"></p>';
                 log.appendChild(s);
                 currentSection = s.querySelector('.logLine');
-                scrollParent.scrollTop = scrollParent.scrollHeight;
+                scrollToEnd();
             },
             log: function(msg, type) {
                 var target = currentSection || log;
@@ -1402,7 +1404,7 @@
                 }
                 target.appendChild(span);
                 target.appendChild(document.createElement('br'));
-                scrollParent.scrollTop = scrollParent.scrollHeight;
+                scrollToEnd();
             },
             confirm: function(yesLabel, noLabel) {
                 if (dotsEl) dotsEl.style.display = 'none';

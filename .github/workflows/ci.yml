@@ -74,6 +74,7 @@ jobs:
           node folder_editor_dom_test.js
           node preview_pages_test.js
           node incognito_test.js
+          node theme_import_dialog_test.js
 
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
