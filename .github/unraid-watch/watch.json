@@ -46,7 +46,9 @@
         "emhttp/plugins/dynamix/include/DefaultPageLayout/HeadInlineJS.php": "openDocker, openBox and openTerminal",
         "emhttp/plugins/dynamix/include/OpenTerminal.php": "console and log windows behind openTerminal",
         "emhttp/plugins/dynamix/include/DefaultPageLayout/BodyInlineJS.php": "task tray openDocker runs through from 7.4",
-        "emhttp/plugins/dynamix/include/TaskCommand.php": "task tray endpoint behind openDocker from 7.4"
+        "emhttp/plugins/dynamix/include/TaskCommand.php": "task tray endpoint behind openDocker from 7.4",
+        "emhttp/plugins/dynamix/styles/default-dynamix.css": "tooltipster rules the advanced preview popup is drawn inside (7.4 added white-space: pre-line)",
+        "emhttp/plugins/dynamix/styles/default-base.css": "sweet-alert, table and menu rules the plugin's dialogs and rows sit in"
       }
     },
     {
