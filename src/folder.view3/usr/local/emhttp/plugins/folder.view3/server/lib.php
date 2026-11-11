@@ -750,7 +750,7 @@
     }
 
     // The Docker page's order, top-down, as container names and folder placeholders, members before their folder.
-    // $prefs is userprefs.cfg's values; with none, folder names and loose containers are mixed A-Z as createFolders() does
+    // $prefs is userprefs.cfg's values; with none it is A-Z by name (createFolders() sorts by browser locale, so accents can differ)
     function fv3_page_order(array $membership, array $allContainerNames, array $prefs): array {
         $folderContainers = $membership['containers'];
         $assigned = $membership['assigned'];
