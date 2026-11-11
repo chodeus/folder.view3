@@ -646,7 +646,9 @@ body[data-fv3-toggle] .fv3-styled-switch .switch-button-label {
 }
 
 /* --- Tooltip Content Layout (Theme-agnostic) --- */
+/* Unraid 7.4 gives .tooltipster-content white-space: pre-line, which would draw every line break in the popup's markup */
 .preview-outbox {
+    white-space: normal;
     min-width: min(var(--fv3-tooltip-min-width), 90vw);
     max-width: 90vw;
     min-height: 400px;
