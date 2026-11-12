@@ -8,9 +8,13 @@ $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-page-order-test-' . bin2hex(rand
 $fv3tDockerClient = <<<'PHP'
 <?php
 class DockerClient {
-    public static $names = [];
-    function getDockerContainers() { return array_map(fn($n) => ['Name' => $n], self::$names); }
-    function getDockerJSON($url) { return array_map(fn($n) => ['Names' => ["/$n"], 'Labels' => []], self::$names); }
+    // fv3tDown = Docker is not answering
+    function getDockerContainers() { return ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Name' => $n], $GLOBALS['fv3tNames'] ?? []); }
+    // fv3tLabels = container name => its folder.view3 label
+    function getDockerJSON($url) {
+        if (($GLOBALS['fv3tLabelsDown'] ?? false) || ($GLOBALS['fv3tDown'] ?? false)) return null;
+        return array_map(fn($n) => ['Names' => ["/$n"], 'Labels' => array_filter(['folder.view3' => $GLOBALS['fv3tLabels'][$n] ?? null])], $GLOBALS['fv3tNames'] ?? []);
+    }
 }
 class DockerUpdate {}
 PHP;
@@ -52,17 +56,82 @@ $setPrefs = function (?string $cfg) use ($fv3DockerManDir): void {
     if ($cfg !== null) file_put_contents("$fv3DockerManDir/userprefs.cfg", $cfg);
 };
 $prefsOf = function (?string $cfg) use ($setPrefs): ?array { $setPrefs($cfg); return fv3_docker_prefs(); };
-$listed = function (array $names, ?string $cfg) use ($setPrefs): array { DockerClient::$names = $names; $setPrefs($cfg); return readUnraidOrder('docker'); };
-// The autostart file's lines after a real syncContainerOrder()
-$sync = function (array $folders, array $names, ?string $cfg, array $autostart) use ($setPrefs, $configDir, $fv3tAutostart): array {
-    DockerClient::$names = $names;
+$listed = function (?array $names, ?string $cfg) use ($setPrefs): array {
+    $GLOBALS['fv3tNames'] = $names ?? [];
+    $GLOBALS['fv3tDown'] = $names === null;
     $setPrefs($cfg);
-    file_put_contents("$configDir/docker.json", json_encode($folders));
-    file_put_contents($fv3tAutostart, implode("\n", $autostart) . "\n");
-    syncContainerOrder('docker');
-    return file($fv3tAutostart, FILE_IGNORE_NEW_LINES);
+    try { return readUnraidOrder('docker'); } finally { $GLOBALS['fv3tDown'] = false; }
+};
+// What a real syncContainerOrder() answers (null, or why the file could not be put in order) and the autostart file it left. $break
+// sets a failure up. null = that file does not exist ($names: Docker not answering); a string $autostart is written as is
+$sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?callable $break = null) use ($setPrefs, $configDir, $fv3tAutostart): array {
+    $GLOBALS['fv3tNames'] = $names ?? [];
+    $GLOBALS['fv3tDown'] = $names === null;
+    $setPrefs($cfg);
+    @unlink("$configDir/docker.json");
+    @unlink($fv3tAutostart);
+    if ($folders !== null) file_put_contents("$configDir/docker.json", json_encode((object)$folders));
+    if ($autostart !== null) file_put_contents($fv3tAutostart, is_array($autostart) ? implode("\n", $autostart) . "\n" : $autostart);
+    if ($break) $break();
+    try {
+        $answer = syncContainerOrder('docker');
+        if (!file_exists($fv3tAutostart)) return [$answer, null];
+        return [$answer, is_array($autostart) ? file($fv3tAutostart, FILE_IGNORE_NEW_LINES) : file_get_contents($fv3tAutostart)];
+    } finally {
+        @chmod($fv3tAutostart, 0644);
+        @unlink("$configDir/autostart.json");
+        $GLOBALS['fv3tLabelsDown'] = false;
+        $GLOBALS['fv3tDown'] = false;
+    }
+};
+// updateAutostartConfig() as the Autostart tab calls it, with the folder config as given
+$autostartSave = function (string $mode, string $foldersJson, array $waits = [], bool $readOnly = false) use ($setPrefs, $configDir, $fv3tAutostart): array {
+    $GLOBALS['fv3tNames'] = ['a', 'b'];
+    $setPrefs(null);
+    file_put_contents("$configDir/docker.json", $foldersJson);
+    file_put_contents($fv3tAutostart, "b\na\n");
+    if ($readOnly) chmod($fv3tAutostart, 0444);
+    try { return updateAutostartConfig($mode, [], $waits); } finally { @chmod($fv3tAutostart, 0644); @unlink("$configDir/autostart.json"); }
+};
+// syncContainerOrder() with the plugin's config folder gone, as when the flash is not mounted
+$syncWithoutConfigDir = function (array $names) use ($sync, $configDir): array {
+    try { return $sync([], $names, null, ['b', 'a'], fn() => rename($configDir, "$configDir.gone")); } finally { rename("$configDir.gone", $configDir); }
+};
+// A shipped endpoint as its own process (it exits, and its require is an absolute Unraid path), on the same temp files.
+// $globals feed the DockerClient stub; `swapped` = the require was pointed at this plugin copy
+$endpoint = function (string $name, string $method, array $fields, array $globals) use ($fv3tPlugin, $fv3tTmp, $configDir, $fv3DockerManDir): array {
+    $copy = "$fv3tTmp/$name";
+    file_put_contents($copy, str_replace('require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");',
+        'require_once(' . var_export("$fv3tPlugin/server/lib.php", true) . '); $configDir = ' . var_export($configDir, true) . '; $fv3DockerManDir = ' . var_export($fv3DockerManDir, true) . ';',
+        file_get_contents("$fv3tPlugin/server/$name"), $swapped));
+    $boot = '$_SERVER["DOCUMENT_ROOT"] = ' . var_export("$fv3tTmp/docroot", true) . '; $_SERVER["REQUEST_METHOD"] = ' . var_export($method, true) . '; $_' . $method . ' = ' . var_export($fields, true) . ';'
+        . ' foreach (' . var_export($globals, true) . ' as $k => $v) { $GLOBALS[$k] = $v; }'
+        . ' register_shutdown_function(function () { fwrite(STDERR, (string)(http_response_code() ?: 200)); });'
+        . ' include ' . var_export($copy, true) . ';';
+    $proc = proc_open([PHP_BINARY, '-r', $boot], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    $body = stream_get_contents($pipes[1]);
+    $status = stream_get_contents($pipes[2]);
+    proc_close($proc);
+    return ['swapped' => $swapped, 'status' => $status, 'body' => json_decode($body, true) ?? $body];
+};
+$post = function (array $fields, array $names, ?string $cfg, ?string $foldersJson = '{}') use ($setPrefs, $configDir, $fv3tAutostart, $endpoint): array {
+    $setPrefs($cfg);
+    @unlink("$configDir/docker.json");
+    if ($foldersJson !== null) file_put_contents("$configDir/docker.json", $foldersJson);
+    file_put_contents($fv3tAutostart, "b\na\n");
+    return $endpoint('sync_order.php', 'POST', $fields, ['fv3tNames' => $names]) + ['file' => file($fv3tAutostart, FILE_IGNORE_NEW_LINES)];
 };
 $containersOf = fn(array $order): array => array_values(array_filter($order, fn($n) => !str_starts_with($n, 'folder-')));
+// What the shipped read_membership.php answers (status, then container => folder name A-Z) with the given userprefs.cfg;
+// an overlapping regex and two labels make which folder wins a real contest
+$membership = function (?string $cfg) use ($setPrefs, $configDir, $endpoint, $fixture, $folder): array {
+    $setPrefs($cfg);
+    file_put_contents("$configDir/docker.json", json_encode($fixture['folders'] + ['dup' => $folder('Dup', [], '^(r|y|alpha)')]));
+    $r = $endpoint('read_membership.php', 'GET', ['type' => 'docker'], ['fv3tNames' => $fixture['containers'], 'fv3tLabels' => ['mid' => 'Zulu', 's1' => 'Old']]);
+    $map = $r['body']['membership'] ?? $r['body'];
+    if (is_array($map)) ksort($map);
+    return [$r['swapped'], $r['status'], $map];
+};
 $wait = fn(array $names): array => array_map(fn($n) => $n === 'z1' ? 'z1 30' : $n, $names);
 
 $cases = [
@@ -112,6 +181,11 @@ $cases = [
         $order(['b' => $folder('Beta', ['x'])], ['x', 'alpha', 'zed'], []), ['alpha', 'x', 'folder-b', 'zed']],
     ['no userprefs.cfg: a look-alike of a folder member keeps its own A-Z place',
         $order(['f' => $folder('F', ['10'])], ['10', '1e1', '0first'], []), ['0first', '1e1', '10', 'folder-f']],
+    ['read_membership.php: an explicit entry beats a label (s1), a label places a loose container (mid), the first folder whose regex matches wins (r1, y1)',
+        $membership(null), [1, '200', ['alpha' => 'Dup', 'mid' => 'Zulu', 'n1' => 'Numbers', 'o1' => 'Old', 'r1' => 'Rex', 'r2' => 'Rex', 's1' => 'Seven', 'y1' => 'Yankee', 'y2' => 'Yankee', 'z1' => 'Zulu', 'z2' => 'Zulu']]],
+    ['and its answer does not depend on userprefs.cfg: the saved order, a reversed one, a file cut off mid-save',
+        [$membership($userprefs($fixture['prefs'])), $membership($userprefs(array_reverse($fixture['containers']))), $membership($cutOff)],
+        array_fill(0, 3, $membership(null))],
     ['autostart lines follow the order and keep their wait value',
         fv3_reorder_autostart(['a 5', 'b', 'c 10'], ['c', 'folder-f', 'a', 'a']), ['c 10', 'a 5', 'b']],
     ['a line the order does not name stays after the others, in file order',
@@ -121,9 +195,9 @@ $cases = [
     ['an order that names nothing in the file changes nothing',
         fv3_reorder_autostart(['a', 'b'], ['z']), ['a', 'b']],
     ['no userprefs.cfg reads as nothing saved', $prefsOf(null), []],
-    ['an empty userprefs.cfg reads as nothing saved', $prefsOf(''), []],
     ['userprefs.cfg values come back in file order', $prefsOf($userprefs(['b', 'folder-x', '010', 'a'])), ['b', 'folder-x', '010', 'a']],
     ['a userprefs.cfg cut off mid-line is not "nothing saved"', $prefsOf($cutOff), null],
+    ['an empty userprefs.cfg reads as nothing saved', $prefsOf(''), []],
     ['read_unraid_order.php lists the fixture as the page test is fed it',
         $listed($fixture['containers'], $userprefs($fixture['prefs'])), $fixture['listed']],
     ['read_unraid_order.php: no userprefs.cfg lists naturally, case ignored',
@@ -137,20 +211,92 @@ $cases = [
     ['read_unraid_order.php: an unsaved look-alike of a saved name is still listed',
         $listed(['10', '010'], $userprefs(['010'])), ['010', '10']],
     ['syncContainerOrder writes the fixture\'s order to the file, each line once, wait values kept',
-        $sync($fixture['folders'], $fixture['containers'], $userprefs($fixture['prefs']), $wait($fixture['containers'])), $wait($containersOf($fixture['autostart']))],
-    ['syncContainerOrder: a container that does not autostart stays out, a removed one\'s line goes',
-        $sync($fixture['folders'], $fixture['containers'], $userprefs($fixture['prefs']), ['ghost', 'alpha', 'z2']), ['z2', 'alpha']],
-    ['syncContainerOrder: no userprefs.cfg writes A-Z',
-        $sync([], ['b', 'a', 'c'], null, ['c', 'b 5', 'a']), ['a', 'b 5', 'c']],
-    ['syncContainerOrder: a cut-off userprefs.cfg leaves the file as it is',
-        $sync([], ['b', 'a', 'c'], $cutOff, ['c', 'ghost', 'b 5', 'a']), ['c', 'ghost', 'b 5', 'a']],
+        $sync($fixture['folders'], $fixture['containers'], $userprefs($fixture['prefs']), $wait($fixture['containers'])), [null, $wait($containersOf($fixture['autostart']))]],
+    ['a container that does not autostart stays out, a removed one\'s line goes',
+        $sync($fixture['folders'], $fixture['containers'], $userprefs($fixture['prefs']), ['ghost', 'alpha', 'z2']), [null, ['z2', 'alpha']]],
+    ['no userprefs.cfg writes A-Z',
+        $sync([], ['b', 'a', 'c'], null, ['c', 'b 5', 'a']), [null, ['a', 'b 5', 'c']]],
+    ['a file already in order is not written again',
+        $sync([], ['a', 'b'], null, "a\nb"), [null, "a\nb"]],
+    ['a cut-off userprefs.cfg leaves the file as it is and is reported',
+        $sync([], ['b', 'a', 'c'], $cutOff, ['c', 'ghost', 'b 5', 'a']), ["Unraid's saved Docker order (userprefs.cfg) could not be read", ['c', 'ghost', 'b 5', 'a']]],
+    ['an empty userprefs.cfg writes A-Z, as no userprefs.cfg does',
+        $sync([], ['b', 'a', 'c'], '', ['c', 'b 5', 'a']), [null, ['a', 'b 5', 'c']]],
+    ['no containers, or Docker not running (Unraid\'s client answers an empty list): nothing is written, nothing is reported',
+        $sync([], [], null, ['b', 'a']), [null, ['b', 'a']]],
+    ['a container list with an unnamed entry: nothing is written, and it is reported',
+        $sync([], ['a', ''], null, ['b', 'a']), ["Docker's container list could not be read", ['b', 'a']]],
+    ['a failed label read: nothing is written, and it is reported',
+        $sync([], ['a', 'b'], null, ['b', 'a'], function () { $GLOBALS['fv3tLabelsDown'] = true; }), ['the container labels could not be read', ['b', 'a']]],
+    ['custom mode does not read the folder config, so a damaged one does not stop it',
+        $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir) {
+            file_put_contents("$configDir/docker.json", '{');
+            file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}');
+        }), [null, ['a', 'b']]],
+    ['a missing plugin config folder (deleted by hand under an open tab) is "no folders", not a failure: the sync runs and reports nothing',
+        [$syncWithoutConfigDir(['b', 'a']), $syncWithoutConfigDir([]), is_dir($configDir)], [[null, ['a', 'b']], [null, ['b', 'a']], true]],
+    ['a damaged folder config is reported',
+        $sync([], ['a', 'b'], null, ['b', 'a'], fn() => file_put_contents("$configDir/docker.json", '{')), ['the folder config could not be read', ['b', 'a']]],
+    ['autostart mode off reads nothing and reports nothing',
+        $sync([], ['a', 'b'], $cutOff, ['b', 'a'], fn() => file_put_contents("$configDir/autostart.json", '{"mode":"off"}')), [null, ['b', 'a']]],
+    ['custom mode writes its saved sequence, the rest after it in file order',
+        $sync([], ['a', 'b', 'c'], null, ['b 5', 'a', 'ghost', 'c'], fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["c","a"]}')), [null, ['c', 'a', 'b 5']]],
+    ['custom mode: a file already in its sequence is not written again',
+        $sync([], ['a', 'b'], null, "b\na", fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["b","a"]}')), [null, "b\na"]],
+    // New setups: no containers, no VMs, nothing set to autostart, nothing saved yet
+    ['a fresh install with no containers: nothing is reported and no file is created',
+        [$sync(null, [], null, null), file_exists("$configDir/docker.json"), file_exists("$configDir/order-docker.json"), file_exists("$fv3DockerManDir/userprefs.cfg")], [[null, null], false, false, false]],
+    ['containers but nothing set to autostart: the autostart file is not created',
+        $sync(null, ['b', 'a'], null, null), [null, null]],
+    ['an empty autostart file stays empty',
+        $sync([], ['b', 'a'], null, ''), [null, '']],
+    ['no containers and a damaged folder config: still nothing to report',
+        $sync([], [], null, ['b', 'a'], fn() => file_put_contents("$configDir/docker.json", '{')), [null, ['b', 'a']]],
+    ['the Autostart tab\'s save: saved either way, with a warning when the order could not be applied',
+        [$autostartSave('folder', '{'), $autostartSave('folder', '{}'), $autostartSave('off', '{')],
+        [['success' => true, 'mode' => 'folder', 'sequence' => [], 'warning' => 'the folder config could not be read'],
+         ['success' => true, 'mode' => 'folder', 'sequence' => []], ['success' => true, 'mode' => 'off', 'sequence' => []]]],
+    ['folders saved but Docker has no containers: the file is left as it is',
+        $sync(['f' => $folder('F', ['gone'], '^x')], [], $userprefs(['folder-f', 'gone']), ['gone 5']), [null, ['gone 5']]],
+    ['an answer from Docker that is not a list: the file is left as it is, and it is reported',
+        $sync([], null, null, ['b', 'a']), ["Docker's container list could not be read", ['b', 'a']]],
+    ['custom mode with nothing set to autostart: no file is created',
+        $sync([], ['a'], null, null, fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a"]}')), [null, null]],
+    ['custom mode with an empty autostart file and no saved sequence: the file stays empty',
+        $sync([], ['a'], null, '', fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom"}')), [null, '']],
+    ['the page\'s order list is empty with no containers, and with Docker not answering',
+        [$listed([], null), $listed([], $userprefs(['folder-f', 'gone'])), $listed(null, null)], [[], [], []]],
+    ['no folders and no containers work out to an empty order',
+        [$order([], [], []), $order([], [], ['ghost']), fv3_reorder_autostart([], ['a']), fv3_reorder_autostart([], [])], [[], [], [], []]],
+    ['VMs: no order to sync, and no order list when the VM service is not there',
+        [syncContainerOrder('vm'), readUnraidOrder('vm')], [null, []]],
+    ['sync_order.php answers 200 and nothing on a fresh install',
+        (function () use ($post, $configDir, $fv3tAutostart) { $r = $post(['type' => 'docker'], [], null, null); return [$r['status'], $r['body'], file_exists("$configDir/docker.json")]; })(), ['200', '', false]],
+    ['sync_order.php answers 200 and nothing when the sync went through',
+        $post(['type' => 'docker'], ['b', 'a'], null), ['swapped' => 1, 'status' => '200', 'body' => '', 'file' => ['a', 'b']]],
+    ['sync_order.php answers 503 with the reason when a read the sync needs failed',
+        [$post(['type' => 'docker'], ['a', 'b'], null, '{'), $post(['type' => 'docker'], ['a', 'b'], $cutOff), $post(['type' => 'docker'], ['a', ''], null)],
+        [['swapped' => 1, 'status' => '503', 'body' => ['error' => 'the folder config could not be read'], 'file' => ['b', 'a']],
+         ['swapped' => 1, 'status' => '503', 'body' => ['error' => "Unraid's saved Docker order (userprefs.cfg) could not be read"], 'file' => ['b', 'a']],
+         ['swapped' => 1, 'status' => '503', 'body' => ['error' => "Docker's container list could not be read"], 'file' => ['b', 'a']]]],
 ];
+if (!function_exists('posix_geteuid') || posix_geteuid() !== 0) {
+    $cases[] = ['an autostart file that cannot be written is reported',
+        $sync([], ['a', 'b'], null, ['b', 'a'], fn() => chmod($fv3tAutostart, 0444)), ['the autostart file could not be written', ['b', 'a']]];
+    $cases[] = ['the Autostart tab\'s save: a wait edit that cannot be written is a warning, in Off mode too, ahead of the sync\'s own reason',
+        [$autostartSave('off', '{}', ['a' => 30], true), $autostartSave('folder', '{}', ['a' => 30], true), $autostartSave('off', '{}', ['a' => 30]), file($fv3tAutostart, FILE_IGNORE_NEW_LINES)],
+        [['success' => true, 'mode' => 'off', 'sequence' => [], 'warning' => 'the wait edits could not be written to the autostart file'],
+         ['success' => true, 'mode' => 'folder', 'sequence' => [], 'warning' => 'the wait edits could not be written to the autostart file; the autostart file could not be written'],
+         ['success' => true, 'mode' => 'off', 'sequence' => []], ['b', 'a 30']]];
+    $cases[] = ['custom mode reports it too',
+        $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir, $fv3tAutostart) { file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}'); chmod($fv3tAutostart, 0444); }), ['the autostart file could not be written', ['b', 'a']]];
+}
 $failed = 0;
 foreach ($cases as [$label, $got, $want]) {
     if ($got !== $want) { $failed++; echo "FAIL $label: got " . json_encode($got) . ', want ' . json_encode($want) . "\n"; }
 }
 $setPrefs(null);
 array_map('unlink', ["$fv3tTmp/docroot/webGui/include/Helpers.php", "$fv3tTmp/docroot/plugins/dynamix.docker.manager/include/DockerClient.php",
-    "$configDir/docker.json", "$fv3DockerManDir/dockerMan.cfg", $fv3tAutostart]);
+    "$configDir/docker.json", "$fv3DockerManDir/dockerMan.cfg", $fv3tAutostart, "$fv3tTmp/sync_order.php", "$fv3tTmp/read_membership.php"]);
 echo count($cases) . " cases, $failed failed\n";
 exit($failed ? 1 : 0);

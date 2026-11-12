@@ -26,14 +26,7 @@ const createFolders = async () => {
     const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : []);
     Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
 
-    let newOnes = order.filter(x => !unraidOrder.includes(x));
-
-    for (let index = 0; index < unraidOrder.length; index++) {
-        const element = unraidOrder[index];
-        if((folderRegex.test(element) && folders[element.slice(7)])) {
-            order.splice(index+newOnes.length, 0, element);
-        }
-    }
+    let newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
 
     if(window.FV3_DEBUG) {
         window.fv3DebugPayloads['VM'] = JSON.stringify({

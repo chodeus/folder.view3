@@ -78,6 +78,10 @@ jobs:
           node preview_pages_test.js
           node incognito_test.js
           node docker_new_folder_order_test.js
+          node docker_saved_places_test.js
+          node docker_reset_order_test.js
+          node autostart_save_test.js
+          node empty_pages_test.js
           node theme_import_dialog_test.js
 
       - name: Validate plugin manifest (XML)

@@ -57,17 +57,8 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'containersInfo keys', Object.keys(containersInfo));
 
 
-    const newOnes = order.filter(x => !unraidOrder.includes(x));
+    const newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
     fv3Debug('createFolders', 'newOnes (containers not in unraidOrder)', newOnes);
-
-
-    for (let index = 0; index < unraidOrder.length; index++) {
-        const element = unraidOrder[index];
-        if((folderRegex.test(element) && folders[element.slice(7)])) {
-            fv3Debug('createFolders', `Splicing folder ${element} into order at index ${index + newOnes.length}`);
-            order.splice(index+newOnes.length, 0, element);
-        }
-    }
     fv3Debug('createFolders', 'Order after inserting Unraid-ordered folders', [...order]);
 
 
@@ -1345,9 +1336,13 @@ if (typeof resetSorting === 'function') {
     window.resetSorting = function() {
         if ($.cookie('lockbutton') == null) return;
         $('input[type=button]').prop('disabled', true);
-        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck
+        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck.
+        // A refused sync is not a failed reset: it gets its own banner, with the server's reason
         $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true})
-            .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}))
+            .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}).then(null, (err) => {
+                fv3ShowBanner(fv3I18nOr('reset-order-sync-failed', 'The order was reset, but the Docker start order could not be updated: $1', fv3FailReason(err)));
+                return $.Deferred().resolve();
+            }))
             .fail(() => fv3ShowBanner(fv3I18nOr('reset-order-failed', 'Could not reset the folder order. Try again.')))
             .always(() => loadlist());
     };
@@ -1366,7 +1361,9 @@ $(document).ajaxComplete((event, jqXHR, settings) => {
         && data.indexOf('names=') !== -1;
     if (isAutostartToggle || isOrderSave) {
         fv3Debug('autostartSync', 'Rebuilding autostart after Unraid event', {url, sample: data.slice(0, 80)});
-        $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'});
+        // a refused sync leaves the start order stale: fv3ShowBanner shows the same message once until it is closed
+        $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'})
+            .fail((err) => fv3ShowBanner(fv3I18nOr('autostart-sync-failed', 'The Docker start order could not be updated: $1', fv3FailReason(err))));
     }
 });
 

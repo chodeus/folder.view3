@@ -74,6 +74,21 @@ window.fv3ApplyDefaults = (folder) => {
     }
 };
 
+// Puts each saved folder into the row order at its place among the userprefs.cfg entries that still exist, so a deleted
+// folder or removed container left in that file cannot push later folders down. Returns the rows not saved yet.
+window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
+    if (!Array.isArray(savedOrder)) savedOrder = [];
+    const rows = new Set(order);
+    const newOnes = order.filter(x => !savedOrder.includes(x));
+    let live = 0;
+    for (const element of savedOrder) {
+        const isFolder = folderRegex.test(element) && !!folders[element.slice(7)];
+        if (isFolder) order.splice(live + newOnes.length, 0, element);
+        if (isFolder || rows.has(element)) live++;
+    }
+    return newOnes;
+};
+
 // Resource cleanup
 window.fv3Cleanups = [];
 window.addEventListener('beforeunload', () => {
