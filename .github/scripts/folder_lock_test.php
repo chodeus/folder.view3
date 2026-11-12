@@ -1,7 +1,6 @@
 <?php
-// php .github/scripts/folder_lock_test.php [plugin-dir] — every writer of docker.json / vm.json reads and writes under the file's lock, so a
-// save never writes the file as it was before another save, and Apply defaults and the id update send changes, not copies. A folder editor
-// still saves its whole folder. Each request is a shipped endpoint in its own process
+// php .github/scripts/folder_lock_test.php [plugin-dir] — every writer of docker.json / vm.json reads and writes under the file's lock, and
+// Apply defaults and the id update send changes, not copies (a folder editor still saves its whole folder). Each request is its own process
 $fv3tPlugin = $argv[1] ?? dirname(__DIR__, 2) . '/src/folder.view3/usr/local/emhttp/plugins/folder.view3';
 $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-folder-lock-test-' . bin2hex(random_bytes(4));
 
