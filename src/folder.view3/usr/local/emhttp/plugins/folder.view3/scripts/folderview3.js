@@ -1059,14 +1059,6 @@ const fv3AsApiEntries = (want, lines, containers) => {
     return entries;
 };
 
-// The dialog after an Autostart save: update_autostart.php adds `warning` when the order was saved but could not be applied
-const fv3AsSavedDialog = (saved) => {
-    const warning = saved && typeof saved === 'object' ? saved.warning : null;
-    return warning
-        ? { title: fv3I18nOr('warning', 'Warning'), text: fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', warning), type: 'warning' }
-        : { title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('autostart-saved', 'Start order saved and applied.'), type: 'success', timer: 1800 };
-};
-
 // true once the mutation was sent, even if it then failed: the file may have changed. Failures are only logged;
 // the UpdateConfig.php calls that follow repair a skipped or failed write
 const fv3AsApiSave = async (want, lines) => {
@@ -1108,13 +1100,18 @@ const fv3SubmitAutostart = async () => {
                 csrf_token: typeof csrf_token !== 'undefined' ? csrf_token : ''
             }).promise();
         }
-        const saved = await $.ajax({
+        const saved = fv3SafeParse(await $.ajax({
             url: '/plugins/folder.view3/server/update_autostart.php',
             method: 'POST',
             data: { mode: cur.mode, sequence: JSON.stringify(cur.sequence), waits: JSON.stringify(fv3AsChangedWaits(cur, fv3AsSnapshot)) }
-        }).promise();
+        }).promise(), null);
+        // Unraid before 7.4 answers a POST with a stale csrf_token with an empty 200: no JSON answer is not a save
+        if (!saved || typeof saved !== 'object') throw new Error('update_autostart.php returned no JSON answer');
         await fv3LoadAutostart();
-        swal(fv3AsSavedDialog(typeof saved === 'string' ? fv3SafeParse(saved, null) : saved));
+        // `warning`: the mode and sequence were saved, but the start order could not be applied
+        swal(saved.warning
+            ? { title: fv3I18nOr('warning', 'Warning'), text: fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', saved.warning), type: 'warning' }
+            : { title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('autostart-saved', 'Start order saved and applied.'), type: 'success', timer: 1800 });
     } catch (e) {
         var msg = fv3FailReason(e);
         console.error('[FV3] Failed to save autostart:', msg);
