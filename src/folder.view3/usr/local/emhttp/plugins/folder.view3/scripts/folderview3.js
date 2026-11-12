@@ -1108,9 +1108,9 @@ const fv3SubmitAutostart = async () => {
         // Unraid before 7.4 answers a POST with a stale csrf_token with an empty 200: no JSON answer is not a save
         if (!saved || typeof saved !== 'object') throw new Error('update_autostart.php returned no JSON answer');
         await fv3LoadAutostart();
-        // `warning`: the mode and sequence were saved, but the start order could not be applied
+        // `warning`: the mode and sequence were saved, but a wait edit or the start order could not be applied
         swal(saved.warning
-            ? { title: fv3I18nOr('warning', 'Warning'), text: fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', saved.warning), type: 'warning' }
+            ? { title: fv3I18nOr('warning', 'Warning'), text: fv3I18nOr('autostart-partly-applied', 'Saved, but not everything could be applied: $1', saved.warning), type: 'warning' }
             : { title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('autostart-saved', 'Start order saved and applied.'), type: 'success', timer: 1800 });
     } catch (e) {
         var msg = fv3FailReason(e);

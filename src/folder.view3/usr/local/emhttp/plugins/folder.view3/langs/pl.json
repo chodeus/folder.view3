@@ -192,6 +192,7 @@
     "order-sync-failed": "Zapisano, ale nie można zaktualizować kolejności uruchamiania Dockera: $1",
     "reset-order-sync-failed": "Kolejność została zresetowana, ale nie można zaktualizować kolejności uruchamiania Dockera: $1",
     "autostart-sync-failed": "Nie można zaktualizować kolejności uruchamiania Dockera: $1",
+    "autostart-partly-applied": "Zapisano, ale nie wszystko udało się zastosować: $1",
     "docker-folders-load-failed": "Nie można wczytać danych folderów Dockera. Odśwież stronę.",
     "vm-folders-load-failed": "Nie można wczytać danych folderów VM. Odśwież stronę.",
     "container-details-load-failed": "Nie można wczytać szczegółów kontenerów. Odśwież stronę.",

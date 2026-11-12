@@ -1,4 +1,4 @@
-// The Docker and Dashboard pages in jsdom: the real customEvents, debug, shared, advanced-preview and docker.js or dashboard.js, in page order.
+// The Docker, VMs and Dashboard pages in jsdom: the real customEvents, debug, shared, advanced-preview and docker.js, vm.js or dashboard.js, in page order.
 // Stubbed: HTTP ($.get/$.ajax), fetch (/graphql), WebSocket, NchanSubscriber (Unraid's dockerload), tooltipster, timers (a manual clock).
 'use strict';
 const fs = require('fs');
@@ -12,13 +12,15 @@ const JQUERY = fs.readFileSync(require.resolve('jquery/dist/jquery.js'), 'utf8')
 
 const flush = () => new Promise((r) => setImmediate(r));
 
-// opts: page 'dashboard'|'docker'; api true|false; graphqlHangs; unraidDivisor (Unraid's Docker page handler); decimal '.'|','; cpuPhp; answers
+// opts: page 'dashboard'|'docker'|'vm'; api true|false; graphqlHangs; unraidDivisor (Unraid's Docker page handler); decimal '.'|','; cpuPhp; answers
 const makePage = async (opts = {}) => {
     const errors = [];
     const vc = new VirtualConsole();
     vc.on('error', (...a) => errors.push(a.map(String).join(' ')));
     vc.on('jsdomError', (e) => { if (!/navigation|Not implemented/i.test(String(e.message))) errors.push(`jsdom: ${e.message}`); });
-    const body = opts.page === 'docker'
+    const body = opts.page === 'vm'
+        ? '<table id="kvm_table"><thead><tr><th class="th1"></th><th></th><th></th></tr></thead><tbody id="kvm_list"></tbody></table>'
+        : opts.page === 'docker'
         ? '<table id="docker_containers"><tbody id="docker_list"></tbody></table>'
         : '<div class="Dashboard"><table><tbody id="docker_view"></tbody></table></div>';
     const dom = new JSDOM(`<!doctype html><html><head></head><body>${body}</body></html>`, {
@@ -167,7 +169,9 @@ dockerload.on('message', function(msg){
     // A community extension from /boot/config/plugins/folder.view3/scripts (custom.php runs right after shared.js)
     if (opts.extension) run(opts.extension, 'extension.js');
     run(read('scripts/advanced-preview.js'), 'advanced-preview.js');
-    if (opts.page === 'docker') run(read('scripts/docker.js'), 'docker.js');
+    // Unraid's own VM list loader, which vm.js patches
+    if (opts.page === 'vm') { w.loadlist = () => {}; run(read('scripts/vm.js'), 'vm.js'); }
+    else if (opts.page === 'docker') run(read('scripts/docker.js'), 'docker.js');
     else run(read('scripts/dashboard.js'), 'dashboard.js');
     await tick(0);
 

@@ -82,7 +82,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     for (const [how, answer] of [['parsed by jQuery', warning], ['as text', JSON.stringify(warning)]]) {
         const r = await save(answer);
         check(`a save whose sync stopped, answered ${how}: a warning with the reason, no timer, and the tab is read again`,
-            r.dialogs === 1 && r.dialog.type === 'warning' && r.dialog.text === 'Saved, but the Docker start order could not be updated: the autostart file could not be written'
+            r.dialogs === 1 && r.dialog.type === 'warning' && r.dialog.text === 'Saved, but not everything could be applied: the autostart file could not be written'
             && !('timer' in r.dialog) && r.reads === 2, r);
     }
     const clean = await save({ success: true, mode: 'folder', sequence: [] });
