@@ -25,6 +25,40 @@
     };
     // The server's JSON error when it sent one, else the HTTP status (HTTP/2 carries no status text)
     window.fv3FailReason = (err) => err?.responseJSON?.error || (err?.status ? 'HTTP ' + err.status : err?.statusText || err?.message || fv3I18nOr('unknown-error', 'Unknown error'));
+    // True when a POST to the plugin's server never reached it: no X-FV3-Answer header (fv3_post_init), and either a success that is
+    // not JSON (Unraid's empty 200 for a stale csrf_token before 7.4, or its login page) or 7.4's own 403 for that token
+    window.fv3NotPluginAnswer = (status, marker, body) => {
+        if (marker) return false;
+        let json;
+        try { json = JSON.parse(body); } catch (e) { return status >= 200 && status < 300; }
+        return status === 403 && /csrf_token$/.test(json?.error || '');
+    };
+    window.fv3DroppedAnswer = () => ({ error: fv3I18nOr('request-dropped', 'Unraid did not accept the request. Reload the page and try again.') });
+    // $.post to the plugin's server then fails with that reason, marked fv3Dropped; fetch callers get it as the 403 Unraid 7.4 answers
+    $.ajaxPrefilter((options, originalOptions, jqXHR) => {
+        if (options.type?.toUpperCase() !== 'POST' || !options.url?.includes('/plugins/folder.view3/server/')) return;
+        const answered = $.Deferred();
+        const dropped = (xhr) => fv3NotPluginAnswer(xhr.status, xhr.getResponseHeader('X-FV3-Answer'), xhr.responseText);
+        jqXHR.done(function(data, status, xhr) {
+            if (!dropped(xhr)) { answered.resolveWith(this, arguments); return; }
+            xhr.fv3Dropped = true;
+            xhr.responseJSON = fv3DroppedAnswer();
+            // jQuery counts it a success, so debug.js's ajaxError hook never sees it
+            if (window.fv3RecordFailure) fv3RecordFailure('POST', options.url, xhr.status, 'not answered by the plugin', '');
+            answered.rejectWith(this, [xhr, 'error', 'not answered by the plugin']);
+        }).fail(function(xhr) {
+            // jQuery's own parse failure (dataType json) of such an answer, and Unraid 7.4's 403, are the same drop
+            if (dropped(xhr)) { xhr.fv3Dropped = true; xhr.responseJSON = fv3DroppedAnswer(); }
+            answered.rejectWith(this, arguments);
+        });
+        // from here every handler, the caller's included, hangs off `answered`
+        answered.promise(jqXHR);
+    });
+    window.fv3FetchAnswer = async (resp) => {
+        if (resp.headers.get('X-FV3-Answer') || !fv3NotPluginAnswer(resp.status, null, await resp.clone().text())) return resp;
+        if (window.fv3RecordFailure) fv3RecordFailure('POST', resp.url, resp.status, 'not answered by the plugin', '');
+        return new Response(JSON.stringify(fv3DroppedAnswer()), { status: 403 });
+    };
     // switchButton labels in the pack's words, upper-cased like the English OFF/ON
     window.fv3SwitchLabels = () => ({ off_label: fv3I18nOr('off', 'Off').toUpperCase(), on_label: fv3I18nOr('on', 'On').toUpperCase() });
     if(typeof folderi18n === 'undefined' ) {

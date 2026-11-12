@@ -1,7 +1,6 @@
 <?php
-// php .github/scripts/post_answers_test.php [plugin-dir] — every endpoint that takes a POST answers JSON when it succeeds and never after
-// a write that failed: langs/script.php reads a success that is not the plugin's as a POST Unraid dropped. Each endpoint runs as its
-// own process on four states of the config folder.
+// php .github/scripts/post_answers_test.php [plugin-dir] — every POST endpoint, run as its own process on four states of the config folder,
+// answers JSON when it succeeds and never after a write that failed: langs/script.php reads any other success as a POST Unraid dropped
 $fv3tPlugin = $argv[1] ?? dirname(__DIR__, 2) . '/src/folder.view3/usr/local/emhttp/plugins/folder.view3';
 $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-post-answers-test-' . bin2hex(random_bytes(4));
 

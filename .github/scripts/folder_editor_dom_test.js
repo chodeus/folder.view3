@@ -1,9 +1,10 @@
-// node .github/scripts/folder_editor_dom_test.js [plugin-dir] — the folder editor's regex-held rows, run through the real Folder.page and folder.js in jsdom (npm ci in this folder first)
+// node .github/scripts/folder_editor_dom_test.js [plugin-dir] — the folder editor's regex-held rows and its Save, run through the real Folder.page and folder.js in jsdom (npm ci in this folder first)
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { JSDOM, VirtualConsole } = require('jsdom');
+const { fakeXhr, scriptHelpers } = require('./preview_pages_harness.js');
 
 const plugin = process.argv[2] || path.join(__dirname, '..', '..', 'src/folder.view3/usr/local/emhttp/plugins/folder.view3');
 const read = (rel) => fs.readFileSync(path.join(plugin, rel), 'utf8');
@@ -18,12 +19,15 @@ const pageHtml = () => {
     return page.slice(start, end).replace(/<\?(php|=)?[\s\S]*?\?>/g, '');
 };
 
-// Only the server reads are stubbed: read.php gives `folders`, read_info.php the containers
-const openEditor = async ({ id, folders, containers }) => {
+// Only Unraid's side is stubbed: read.php gives `folders`, read_info.php the containers, and `answers` (file name => { status, body })
+// is what a save gets back through jQuery's own $.post; a save not named there is answered {"success":true}
+const openEditor = async ({ id, folders, containers, answers = {} }) => {
     const errors = [];
+    // jsdom cannot leave the page: each try to (the editor going back to its tab) is counted instead
+    let left = 0;
     const vc = new VirtualConsole();
     vc.on('error', (...a) => errors.push(a.map(String).join(' ')));
-    vc.on('jsdomError', (e) => { if (!/navigation/i.test(String(e.message))) errors.push(`jsdom: ${e.message}`); });
+    vc.on('jsdomError', (e) => { if (/navigation/i.test(String(e.message))) left++; else errors.push(`jsdom: ${e.message}`); });
     const dom = new JSDOM(`<!doctype html><html><head></head><body>${pageHtml()}</body></html>`, {
         url: `http://tower.local/Docker/Folder?type=docker&id=${id}`, runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: vc,
     });
@@ -45,12 +49,15 @@ const openEditor = async ({ id, folders, containers }) => {
         else d.reject({ status: 404 });
         return d;
     };
-    $.post = () => $.Deferred().resolve('ok');
+    const posts = [];
+    fakeXhr(w, (method, url) => {
+        const name = url.split('/').pop();
+        posts.push(name);
+        return answers[name] || { status: 200, body: '{"success":true}', type: 'application/json' };
+    });
     w.fetch = async () => ({ json: async () => ({}) });
     $.i18n = (key) => key;
-    run(read('langs/script.php').match(/^(\s*)window\.fv3I18nOr = [\s\S]*?^\1};/m)[0]);
-    w.fv3FailReason = (err) => `HTTP ${err?.status}`;
-    w.fv3SwitchLabels = () => ({ off_label: 'OFF', on_label: 'ON' });
+    run(scriptHelpers(read('langs/script.php')));
     w.swal = (o) => errors.push(`swal: ${JSON.stringify(o)}`);
     w.fv3SwalError = (text) => errors.push(`swal: ${text}`);
     $.fn.switchButton = function () { return this; };
@@ -71,6 +78,13 @@ const openEditor = async ({ id, folders, containers }) => {
         tick: (name, on = true) => change(doc.querySelector(`table.sortable input.container-switch[value="${name}"]`), on),
         // Typing in the regex field calls updateRegex, which rebuilds the list
         typeRegex: (value) => { const input = doc.querySelector('input[name="regex"]'); input.value = value; run('updateRegex')(input); },
+        // Submits the form as Save does: the requests it sent, the dialogs it showed, and whether it went back to the tab
+        save: async () => {
+            const [sent, shown, before] = [posts.length, errors.length, left];
+            await run('submitForm')(form);
+            await new Promise((r) => setTimeout(r, 20));
+            return { posts: posts.slice(sent), dialogs: errors.splice(shown), back: left > before };
+        },
     };
 };
 
@@ -107,6 +121,33 @@ const check = (label, ok, detail) => {
     check('a held row never ticked stays hidden after the regex edit', !e.row('immich_postgres').visible);
     check("the edited regex captures its match", e.row('plex').checked && e.row('plex').disabled, e.row('plex'));
     check('no errors after the edits', e.errors.length === 0, e.errors);
+
+    const editor = (answers) => openEditor({ id: 'A', folders, containers: ['plex', 'sonarr'], answers });
+    const saved = await (await editor({})).save();
+    check('Save sends the folder, then the start-order sync, and goes back to the tab',
+        saved.posts.join() === 'update.php,sync_order.php' && saved.dialogs.length === 0 && saved.back, saved);
+    // Unraid before 7.4 answers a POST with a stale csrf_token with an empty 200
+    const dropped = await (await editor({ 'update.php': { status: 200, body: '' } })).save();
+    check('a Save that Unraid dropped says so, sends no sync, and stays in the editor',
+        dropped.posts.join() === 'update.php' && dropped.dialogs.length === 1 && !dropped.back
+        && dropped.dialogs[0].includes('Could not save the folder: Unraid did not accept the request. Reload the page and try again.'), dropped);
+    // a signed-out page: Unraid redirects the POST to its login page, which comes back as a 200
+    const signedOut = await (await editor({ 'update.php': { status: 200, body: '<!DOCTYPE html><html><body>Login</body></html>', type: 'text/html' } })).save();
+    check('a Save that got the login page back says so, sends no sync, and stays in the editor',
+        signedOut.posts.join() === 'update.php' && signedOut.dialogs.length === 1 && !signedOut.back
+        && signedOut.dialogs[0].includes('Could not save the folder: Unraid did not accept the request. Reload the page and try again.'), signedOut);
+    // Unraid 7.4 answers the stale csrf_token itself
+    const stale74 = await (await editor({ 'update.php': { status: 403, body: '{"error":"wrong csrf_token"}', type: 'application/json' } })).save();
+    check('a Save that Unraid 7.4 refused for its csrf_token says to reload, not "wrong csrf_token"',
+        stale74.posts.join() === 'update.php' && stale74.dialogs.length === 1 && !stale74.back
+        && stale74.dialogs[0].includes('Could not save the folder: Unraid did not accept the request. Reload the page and try again.'), stale74);
+    const refused = await (await editor({ 'update.php': { status: 500, body: '{"error":"docker.json is unreadable"}', type: 'application/json' } })).save();
+    check('a refused Save shows the server\'s reason and stays in the editor',
+        refused.posts.join() === 'update.php' && refused.dialogs.length === 1 && !refused.back && refused.dialogs[0].includes('Could not save the folder: docker.json is unreadable'), refused);
+    const unsynced = await (await editor({ 'sync_order.php': { status: 503, body: '{"error":"the autostart file could not be written"}', type: 'application/json' } })).save();
+    check('a Save whose start-order sync was refused warns with the reason before it goes back',
+        unsynced.posts.join() === 'update.php,sync_order.php' && unsynced.dialogs.length === 1 && !unsynced.back
+        && unsynced.dialogs[0].includes('Saved, but the Docker start order could not be updated: the autostart file could not be written'), unsynced);
 
     console.log(failed ? `\n${failed} FAILED` : '\nall passed');
     process.exit(failed ? 1 : 0);

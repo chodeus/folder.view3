@@ -187,6 +187,7 @@
     "import-failed": "Échec de l'importation : $1",
     "folder-order-load-failed": "Impossible de charger l'ordre des dossiers. Rechargez la page.",
     "reset-order-failed": "Impossible de réinitialiser l'ordre des dossiers. Réessayez.",
+    "request-dropped": "Unraid n'a pas accepté la requête. Rechargez la page et réessayez.",
     "dashboard-settings-load-failed": "Impossible de charger les paramètres du tableau de bord, les dispositions par défaut sont donc affichées. Rechargez la page.",
     "invalid-folder-export": "Ce fichier n'est pas un export de dossiers.",
     "order-sync-failed": "Enregistré, mais l'ordre de démarrage Docker n'a pas pu être mis à jour : $1",

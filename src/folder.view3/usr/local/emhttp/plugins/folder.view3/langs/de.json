@@ -187,6 +187,7 @@
     "import-failed": "Import fehlgeschlagen: $1",
     "folder-order-load-failed": "Die Ordnerreihenfolge konnte nicht geladen werden. Lade die Seite neu.",
     "reset-order-failed": "Die Ordnerreihenfolge konnte nicht zurückgesetzt werden. Versuche es erneut.",
+    "request-dropped": "Unraid hat die Anfrage nicht angenommen. Lade die Seite neu und versuche es erneut.",
     "dashboard-settings-load-failed": "Die Dashboard-Einstellungen konnten nicht geladen werden, daher werden die Standardlayouts angezeigt. Lade die Seite neu.",
     "invalid-folder-export": "Diese Datei ist kein Ordnerexport.",
     "order-sync-failed": "Gespeichert, aber die Docker-Startreihenfolge konnte nicht aktualisiert werden: $1",

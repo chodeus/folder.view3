@@ -86,6 +86,7 @@ jobs:
           node autostart_save_test.js
           node empty_pages_test.js
           node theme_import_dialog_test.js
+          node dropped_post_test.js
 
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg

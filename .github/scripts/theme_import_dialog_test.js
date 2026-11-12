@@ -5,7 +5,7 @@ const path = require('path');
 const vm = require('vm');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const { check, done } = require('./preview_pages_harness.js');
+const { check, done, read, scriptHelpers } = require('./preview_pages_harness.js');
 
 const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/folder.view3/usr/local/emhttp/plugins/folder.view3');
 
@@ -14,18 +14,32 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
     const vc = new VirtualConsole();
     vc.on('jsdomError', (e) => errors.push(`jsdom: ${e.message}`));
     const dom = new JSDOM('<!doctype html><html><body><div id="fv3-tier-themes"><div class="fv3-theme-import">' +
-        '<input id="fv3-theme-repo"><button id="fv3-theme-import-btn">Import from GitHub</button></div></div></body></html>',
+        '<input id="fv3-theme-repo"><button id="fv3-theme-import-btn">Import from GitHub</button></div><div id="fv3-theme-list"></div></div></body></html>',
     { url: 'http://tower.local/Settings/FolderView3', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: vc });
     const w = dom.window;
-    w.fv3I18nOr = (key, fallback, ...args) => args.reduce((s, a, i) => s.replace(`$${i + 1}`, a), fallback);
-    w.fv3SwalError = (text) => errors.push(`swal error: ${text}`);
+    // script.php's inline helpers as the settings page has them (fv3I18nOr, fv3FetchAnswer), with no language pack loaded
+    w.eval(fs.readFileSync(require.resolve('jquery/dist/jquery.js'), 'utf8'));
+    w.$.i18n = (key) => key;
+    w.Response = Response;
+    const run = (src, filename) => new vm.Script(src, { filename }).runInContext(dom.getInternalVMContext());
+    run(scriptHelpers(read('langs/script.php')), 'script.php');
+    // debug.js gives fv3SwalError; its escapeHtml comes from folderview3.js on the settings page
+    const settingsJs = read('scripts/folderview3.js');
+    run(settingsJs.slice(settingsJs.indexOf('const escapeHtml = '), settingsJs.indexOf('const rgbToHex = ')), 'folderview3.js');
+    run(read('scripts/debug.js'), 'debug.js');
+    // the text of every error dialog shown, without its debug-download button
+    const errorDialogs = [];
 
     // Unraid's sweetalert markup. jsdom has no layout, so the log's height is its text length (it grows with every line) and
     // each scroll of it is recorded with the buttons on show at that moment; csstool.css makes the <pre> the scroll box
     const scrolls = [];
-    w.swal = (o) => {
+    w.swal = (o, answer) => {
         w.swal.close();
+        // a confirm dialog's callback for the test to answer, and whether it was opened to stay up until closed
+        if (answer) { w.swal.answer = answer; w.swal.stays = o.showLoaderOnConfirm === true && o.closeOnConfirm === false; }
+        if (o.type === 'error') errorDialogs.push(String(o.text).replace(/<div[\s\S]*$/, '').replace(/<br>/g, '\n'));
         const el = w.document.createElement('div');
+        el.dataset.kind = o.type || '';
         el.className = `sweet-alert ${o.customClass || ''}`;
         el.innerHTML = '<h2></h2><p></p><div class="sa-button-container"><button class="cancel"></button>' +
             '<div class="sa-confirm-button-container"><button class="confirm"></button><div class="la-ball-fall"></div></div></div>';
@@ -33,6 +47,7 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
         el.querySelector('p').innerHTML = o.text;
         w.document.body.appendChild(el);
         const pre = el.querySelector('pre');
+        if (!pre) return;
         Object.defineProperty(pre, 'scrollHeight', { get: () => pre.textContent.length });
         const shown = () => ({ ask: el.querySelectorAll('.sa-button-container > div:not(.sa-confirm-button-container) button').length, done: el.querySelector('button.confirm').style.display !== 'none' });
         Object.defineProperty(pre, 'scrollTop', { get: () => (scrolls[scrolls.length - 1] || { v: 0 }).v, set: (v) => { scrolls.push({ v, ...shown() }); } });
@@ -41,12 +56,24 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
 
     const posts = [];
     let warnings = [];
-    const json = (v) => ({ ok: true, status: 200, json: async () => v, text: async () => JSON.stringify(v) });
+    // the plugin's own answers carry fv3_post_init()'s header; what Unraid sends instead does not
+    const answer = (status, text, ours) => ({ ok: status >= 200 && status < 300, status, url: '', headers: { get: (name) => (ours && name === 'X-FV3-Answer' ? '1' : null) },
+        json: async () => JSON.parse(text), text: async () => text, clone() { return this; } });
+    const json = (v) => answer(200, JSON.stringify(v), true);
+    // what delete_theme.php answers: the empty 200 is a POST Unraid before 7.4 dropped (stale csrf_token), the page is its login page
+    let deleted = json({ success: true });
+    const droppedAnswer = answer(200, '', false);
+    const loginPage = answer(200, '<!DOCTYPE html><html><body>Login</body></html>', false);
+    let themes = [];
+    // answers for the next delete_theme.php calls, in order, and how many there have been
+    let deletes = [];
+    let deleteCalls = 0;
     w.fetch = async (url, init) => {
         const u = String(url);
         if (u.startsWith('https://api.github.com/repos/demo/theme/contents/')) return json([{ type: 'file', name: 'a.css' }]);
         if (u.includes('/import_theme.php')) { posts.push(String(init && init.body)); return json({ success: true, name: 'demo-theme', entry: 'demo-theme.disabled', files: ['a.css', 'b.css'], is_update: false, warnings }); }
-        if (u.includes('/list_themes.php')) return json([]);
+        if (u.includes('/list_themes.php')) return json(themes);
+        if (u.includes('/delete_theme.php')) { deleteCalls++; return deletes.length ? deletes.shift() : deleted; }
         return json({});
     };
 
@@ -92,6 +119,68 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
     check('Keep ends the import on a Done button', !!asking && asking.querySelector('button.confirm').style.display !== 'none' && scrolls[scrolls.length - 1].done, scrolls[scrolls.length - 1]);
     if (asking) asking.querySelector('button.confirm').click();
     await settle();
+
+    // The same import again, answered Delete: the log's last word comes from delete_theme.php's answer
+    const importThenDelete = async (answer) => {
+        deleted = answer;
+        w.document.getElementById('fv3-theme-repo').value = 'demo/theme';
+        w.document.getElementById('fv3-theme-import-btn').click();
+        await settle();
+        const open = w.document.querySelector('.sweet-alert.fv3-progress');
+        const buttons = open ? [...open.querySelectorAll('.sa-button-container > div:not(.sa-confirm-button-container) button')] : [];
+        if (buttons[0]) buttons[0].click();
+        await settle();
+        const log = open ? open.querySelector('#fv3ProgressLog').textContent : '';
+        if (open) open.querySelector('button.confirm').click();
+        await settle();
+        return log;
+    };
+    const deletedLog = await importThenDelete(json({ success: true }));
+    check('Delete says the theme was deleted when delete_theme.php answers', /Theme deleted\./.test(deletedLog) && !/Could not delete/.test(deletedLog), deletedLog);
+    const droppedLog = await importThenDelete(droppedAnswer);
+    check('Delete says the theme could not be deleted when Unraid dropped the request', /Could not delete the theme\./.test(droppedLog) && !/Theme deleted/.test(droppedLog), droppedLog);
+
+    // Theme cards and the bulk delete bar. csstool.js draws the list again after every import, so one more import puts an imported
+    // theme and a hand-made one on the page; each confirm stays open until delete_theme.php answers, then closes or gives way to the reason
+    themes = [{ name: 'gh-theme', entry: 'gh-theme', isDir: true, enabled: false, files: ['a.css'], source: { repo: 'demo/theme' } },
+        { name: 'own-theme', entry: 'own-theme', isDir: true, enabled: false, files: ['b.css'] }];
+    await importThenDelete(json({ success: true }));
+    const card = (entry) => [...w.document.querySelectorAll('#fv3-theme-list .fv3-theme-card')].find((c) => c.dataset.entry === entry);
+    // Clicks `button`, answers the confirm with yes, and reports what the user is left looking at
+    const confirmDelete = async (button, replies) => {
+        deletes = [...replies];
+        errorDialogs.length = 0;
+        const before = deleteCalls;
+        if (!button) return { button: false };
+        button.click();
+        const asked = typeof w.swal.answer === 'function';
+        if (asked) await w.swal.answer(true);
+        await settle();
+        const open = w.document.querySelector('.sweet-alert');
+        // `left`: what is on screen afterwards, nothing or the kind of dialog; `stays`: the confirm was opened to wait for the answer
+        return { button: true, asked, stays: w.swal.stays, errors: [...errorDialogs], left: open ? open.dataset.kind : 'nothing', sent: deleteCalls - before };
+    };
+    const why = 'Could not delete the theme. Unraid did not accept the request. Reload the page and try again.';
+    for (const [kind, entry] of [['an imported theme', 'gh-theme'], ['a hand-made theme', 'own-theme']]) {
+        const gone = await confirmDelete(card(entry)?.querySelector('.fv3-theme-delete'), [json({ success: true })]);
+        check(`Delete on the card of ${kind} that goes through closes the confirm and shows no error`, gone.button && gone.asked && gone.stays && gone.sent === 1 && gone.errors.length === 0 && gone.left === 'nothing', gone);
+        for (const [how, reply] of [['Unraid dropped', droppedAnswer], ['got the login page back', loginPage]]) {
+            const r = await confirmDelete(card(entry)?.querySelector('.fv3-theme-delete'), [reply]);
+            check(`Delete on the card of ${kind} that ${how} says why, in an error dialog that stays up`, r.button && r.asked && r.errors.join('|') === why && r.left === 'error', r);
+        }
+    }
+    const refusedDelete = await confirmDelete(card('own-theme')?.querySelector('.fv3-theme-delete'), [answer(404, '', true)]);
+    check('a card\'s Delete the server refused shows its status', refusedDelete.errors.join('|') === 'Could not delete the theme. HTTP 404', refusedDelete);
+
+    // Delete Selected: both boxes ticked, as the list's own change handler enables the button
+    const tickAll = () => {
+        for (const box of w.document.querySelectorAll('#fv3-theme-list .fv3-theme-select')) { box.checked = true; box.dispatchEvent(new w.Event('change', { bubbles: true })); }
+        return w.document.querySelector('#fv3-theme-list .fv3-theme-delete-selected');
+    };
+    const bulkGone = await confirmDelete(tickAll(), [json({ success: true }), json({ success: true })]);
+    check('Delete Selected that goes through deletes both, closes the confirm and shows no error', bulkGone.button && bulkGone.asked && bulkGone.stays && bulkGone.sent === 2 && bulkGone.errors.length === 0 && bulkGone.left === 'nothing', bulkGone);
+    const bulkDropped = await confirmDelete(tickAll(), [droppedAnswer, json({ success: true })]);
+    check('Delete Selected stops at the first one Unraid dropped and says why once, in an error dialog that stays up', bulkDropped.sent === 1 && bulkDropped.errors.join('|') === why && bulkDropped.left === 'error', bulkDropped);
     check('no page errors', errors.length === 0, errors);
     done();
 })();
