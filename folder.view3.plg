@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.10.29.1">
-<!ENTITY md5 "aa146016edff08a0fa515ce71fe2a337">
+<!ENTITY version "2026.11.12.1">
+<!ENTITY md5 "77d4422b02aa084789e04f6ec02d6cb4">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,18 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.11.12.1
+- FolderView Plus imports now keep hidden regex and label members
+- Incognito mode now hides Unraid's Tailscale tooltip on the Docker page
+- Docker page shows an update when a container's tag moves to another image
+- Advanced preview menu keeps its spacing on Unraid 7.4
+- Theme import log now stays on its newest line
+- Autostart order of new folders now matches the Docker page
+- A damaged or leftover userprefs.cfg no longer moves folders or reorders autostart
+- Folder saves and Reset Order now warn if the start order was not updated
+- Saves from a stale or signed-out tab now say to reload the page
+- A save that cannot be written to flash no longer reports success
 
 ###2026.10.29.2
 - Advanced preview CSS fixes when browser is zoomed
