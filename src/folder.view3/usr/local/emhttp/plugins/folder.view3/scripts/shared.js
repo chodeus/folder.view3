@@ -93,10 +93,13 @@ window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
 window.fv3ListDrawer = (rows, draw, onFail) => {
     let drawn = new WeakSet();
     let running = false;
+    // Every call leaves a line in fv3DrawLog, so a report of missing folders shows what became of each list
+    const note = (outcome) => fv3RecordDraw(rows, outcome, $(rows).length, $(rows).filter('.folder').length);
     return () => {
-        if (running || $(rows).toArray().some((row) => drawn.has(row))) return;
+        if (running) return note('running');
+        if ($(rows).toArray().some((row) => drawn.has(row))) return note('kept');
         running = true;
-        new Promise((resolve) => resolve(draw())).catch(onFail).finally(() => {
+        new Promise((resolve) => resolve(draw())).then(() => note('drawn'), (e) => { note('failed'); onFail(e); }).finally(() => {
             drawn = new WeakSet($(rows).toArray());
             running = false;
         });
@@ -1136,7 +1139,8 @@ window.fv3CollectEnv = () => {
         // tableLayout/previewGeom above captured the original (pre-rerun) locked state.
         renderSignals: collectRenderSignals(),
         traceBuffer: [...(window.fv3TraceBuffer || [])],
-        recentFailures: [...(window.fv3FailureBuffer || [])]
+        recentFailures: [...(window.fv3FailureBuffer || [])],
+        listDraws: [...(window.fv3DrawLog || [])]
     };
 };
 

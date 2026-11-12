@@ -4,6 +4,8 @@
 const { makePage, drawDocker, check, done } = require('./preview_pages_harness.js');
 
 const folder = (name, containers) => ({ name, containers, regex: '' });
+// The page's draw record; a page from before it has none, and the checks on it then fail
+const record = (t) => t.p.w.fv3DrawLog || [];
 const FOLDERS = { f: folder('F', ['m']), g: folder('G', ['x']) };
 
 // The Docker page with Unraid's side of a reload held by the test: land(i) renders list i and calls listview(), as Unraid's
@@ -106,6 +108,9 @@ const vms = async ({ hold = false } = {}) => {
         await t.answer(0, FOLDERS);
         await t.answer(1, FOLDERS);
         check('Docker, lists land before the folder data: drawn once, each folder once', t.folders() === 'f,g' && t.draws.length === 1, { folders: t.folders(), draws: t.draws.length });
+        const log = record(t).map((d) => `${d.outcome} ${d.rows}/${d.folders}`).join();
+        check('Docker, lists land before the folder data: the draw record names the list that waited and the draw', log === 'running 3/0,drawn 3/2', log);
+        check('Docker, lists land before the folder data: the record is in the debug download', t.p.w.fv3CollectEnv().listDraws.length === 2, t.p.w.fv3CollectEnv().listDraws);
     }
     {
         // Unraid's Advanced View switch calls listview() with no new list: a reload in flight must not make that a draw
@@ -116,6 +121,7 @@ const vms = async ({ hold = false } = {}) => {
         t.p.g('listview()');
         await t.p.tick(300);
         check('Docker, view switch during a reload: the drawn list is not drawn again', t.folders() === 'f,g' && t.draws.length === 1, { folders: t.folders(), draws: t.draws.length });
+        check('Docker, view switch during a reload: the record says the list was kept', record(t).map((d) => d.outcome).join() === 'drawn,kept', t.p.w.fv3DrawLog);
         await t.land(1);
         check('Docker, view switch during a reload: the reloaded list is drawn', t.folders() === 'f,g' && t.draws.length === 2, { folders: t.folders(), draws: t.draws.length });
     }
@@ -155,6 +161,7 @@ const vms = async ({ hold = false } = {}) => {
         await t.answer(0, new Error('500'));
         check('Docker, folder data fails: Unraid\'s own list is shown, with the banner', t.folders() === '' && banners(t) === 1
             && t.p.w.document.documentElement.classList.contains('fv3-docker-ready'), { folders: t.folders(), errors: t.p.errors });
+        check('Docker, folder data fails: the record says the draw failed', record(t).map((d) => `${d.outcome} ${d.folders}`).join() === 'failed 0', t.p.w.fv3DrawLog);
         t.reload();
         await t.land(1);
         await t.answer(1, FOLDERS);
@@ -181,6 +188,12 @@ const vms = async ({ hold = false } = {}) => {
         const early = t.used.length;
         await t.answer(0, { old: vmFolder, gone: vmFolder });
         check('VMs, a newer answer is in first: the draw waits for its own batch and uses the newer one', early === 0 && t.used.join('|') === 'old', { early, used: t.used });
+    }
+    {
+        const t = await docker();
+        const add = t.p.w.fv3RecordDraw || (() => {});
+        for (let i = 0; i < 35; i++) add('#docker_list > tr', 'drawn', i, 0);
+        check('the draw record keeps the newest 30 lines', record(t).length === 30 && record(t)[29].rows === 34 && record(t)[0].rows === 5, record(t).length);
     }
     {
         const t = await vms();
