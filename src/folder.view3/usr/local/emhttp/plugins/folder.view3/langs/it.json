@@ -191,6 +191,7 @@
     "invalid-folder-export": "Questo file non è un'esportazione di cartelle.",
     "order-sync-failed": "Salvato, ma non è stato possibile aggiornare l'ordine di avvio di Docker: $1",
     "reset-order-sync-failed": "L'ordine è stato reimpostato, ma non è stato possibile aggiornare l'ordine di avvio di Docker: $1",
+    "autostart-sync-failed": "Non è stato possibile aggiornare l'ordine di avvio di Docker: $1",
     "docker-folders-load-failed": "Impossibile caricare i dati delle cartelle Docker. Ricarica la pagina.",
     "vm-folders-load-failed": "Impossibile caricare i dati delle cartelle VM. Ricarica la pagina.",
     "container-details-load-failed": "Impossibile caricare i dettagli dei container. Ricarica la pagina.",

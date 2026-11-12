@@ -85,12 +85,17 @@ $sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?cal
     }
 };
 // updateAutostartConfig() as the Autostart tab calls it, with the folder config as given
-$autostartSave = function (string $mode, string $foldersJson) use ($setPrefs, $configDir, $fv3tAutostart): array {
+$autostartSave = function (string $mode, string $foldersJson, array $waits = [], bool $readOnly = false) use ($setPrefs, $configDir, $fv3tAutostart): array {
     $GLOBALS['fv3tNames'] = ['a', 'b'];
     $setPrefs(null);
     file_put_contents("$configDir/docker.json", $foldersJson);
     file_put_contents($fv3tAutostart, "b\na\n");
-    try { return updateAutostartConfig($mode, [], []); } finally { @unlink("$configDir/autostart.json"); }
+    if ($readOnly) chmod($fv3tAutostart, 0444);
+    try { return updateAutostartConfig($mode, [], $waits); } finally { @chmod($fv3tAutostart, 0644); @unlink("$configDir/autostart.json"); }
+};
+// syncContainerOrder() with the plugin's config folder gone, as when the flash is not mounted
+$syncWithoutConfigDir = function (array $names) use ($sync, $configDir): array {
+    try { return $sync([], $names, null, ['b', 'a'], fn() => rename($configDir, "$configDir.gone")); } finally { rename("$configDir.gone", $configDir); }
 };
 // A shipped endpoint as its own process (it exits, and its require is an absolute Unraid path), on the same temp files.
 // $globals feed the DockerClient stub; `swapped` = the require was pointed at this plugin copy
@@ -228,6 +233,8 @@ $cases = [
             file_put_contents("$configDir/docker.json", '{');
             file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}');
         }), [null, ['a', 'b']]],
+    ['a missing plugin config folder is reported, not read as "no folders"; with no containers there is still nothing to report',
+        [$syncWithoutConfigDir(['b', 'a']), $syncWithoutConfigDir([])], [['the plugin config folder is missing', ['b', 'a']], [null, ['b', 'a']]]],
     ['a damaged folder config is reported',
         $sync([], ['a', 'b'], null, ['b', 'a'], fn() => file_put_contents("$configDir/docker.json", '{')), ['the folder config could not be read', ['b', 'a']]],
     ['autostart mode off reads nothing and reports nothing',
@@ -276,6 +283,11 @@ $cases = [
 if (!function_exists('posix_geteuid') || posix_geteuid() !== 0) {
     $cases[] = ['an autostart file that cannot be written is reported',
         $sync([], ['a', 'b'], null, ['b', 'a'], fn() => chmod($fv3tAutostart, 0444)), ['the autostart file could not be written', ['b', 'a']]];
+    $cases[] = ['the Autostart tab\'s save: a wait edit that cannot be written is a warning, in Off mode too, ahead of the sync\'s own reason',
+        [$autostartSave('off', '{}', ['a' => 30], true), $autostartSave('folder', '{}', ['a' => 30], true), $autostartSave('off', '{}', ['a' => 30]), file($fv3tAutostart, FILE_IGNORE_NEW_LINES)],
+        [['success' => true, 'mode' => 'off', 'sequence' => [], 'warning' => 'the wait edits could not be written to the autostart file'],
+         ['success' => true, 'mode' => 'folder', 'sequence' => [], 'warning' => 'the wait edits could not be written to the autostart file; the autostart file could not be written'],
+         ['success' => true, 'mode' => 'off', 'sequence' => []], ['b', 'a 30']]];
     $cases[] = ['custom mode reports it too',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir, $fv3tAutostart) { file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}'); chmod($fv3tAutostart, 0444); }), ['the autostart file could not be written', ['b', 'a']]];
 }

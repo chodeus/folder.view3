@@ -191,6 +191,7 @@
     "invalid-folder-export": "此文件不是文件夹导出文件。",
     "order-sync-failed": "已保存，但无法更新 Docker 启动顺序：$1",
     "reset-order-sync-failed": "顺序已重置，但无法更新 Docker 启动顺序：$1",
+    "autostart-sync-failed": "无法更新 Docker 启动顺序：$1",
     "docker-folders-load-failed": "无法加载 Docker 文件夹数据。请刷新页面。",
     "vm-folders-load-failed": "无法加载虚拟机文件夹数据。请刷新页面。",
     "container-details-load-failed": "无法加载容器详情。请刷新页面。",

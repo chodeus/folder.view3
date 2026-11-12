@@ -191,6 +191,7 @@
     "invalid-folder-export": "Diese Datei ist kein Ordnerexport.",
     "order-sync-failed": "Gespeichert, aber die Docker-Startreihenfolge konnte nicht aktualisiert werden: $1",
     "reset-order-sync-failed": "Die Reihenfolge wurde zurückgesetzt, aber die Docker-Startreihenfolge konnte nicht aktualisiert werden: $1",
+    "autostart-sync-failed": "Die Docker-Startreihenfolge konnte nicht aktualisiert werden: $1",
     "docker-folders-load-failed": "Die Docker-Ordnerdaten konnten nicht geladen werden. Lade die Seite neu.",
     "vm-folders-load-failed": "Die VM-Ordnerdaten konnten nicht geladen werden. Lade die Seite neu.",
     "container-details-load-failed": "Die Container-Details konnten nicht geladen werden. Lade die Seite neu.",

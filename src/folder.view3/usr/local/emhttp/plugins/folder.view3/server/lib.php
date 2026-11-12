@@ -563,6 +563,7 @@
         if (!$ok) return ['error' => 'Failed to write autostart config'];
 
         // Fold wait edits into the live file — a name only matches a line that already has autostart enabled
+        $waitFailed = null;
         if ($lines !== null) {
             $changed = false;
             foreach ($lines as $i => $line) {
@@ -573,13 +574,15 @@
                     if ($newLine !== $line) { $lines[$i] = $newLine; $changed = true; }
                 }
             }
-            if ($changed) file_put_contents($autoStartFile, implode("\n", $lines) . "\n", LOCK_EX);
+            if ($changed && @file_put_contents($autoStartFile, implode("\n", $lines) . "\n", LOCK_EX) === false) {
+                $waitFailed = 'the wait edits could not be written to the autostart file';
+            }
         }
 
         // Re-assert order under the saved mode — saving folder mode instantly restores folder-derived order.
-        // The mode and sequence are saved either way: a sync that stopped comes back as `warning`
-        $failed = $mode !== 'off' ? syncContainerOrder('docker') : null;
-        return ['success' => true, 'mode' => $mode, 'sequence' => $cleanSeq] + ($failed !== null ? ['warning' => $failed] : []);
+        // The mode and sequence are saved either way: wait edits that were not written and a sync that stopped come back as `warning`
+        $warnings = array_filter([$waitFailed, $mode !== 'off' ? syncContainerOrder('docker') : null]);
+        return ['success' => true, 'mode' => $mode, 'sequence' => $cleanSeq] + ($warnings ? ['warning' => implode('; ', $warnings)] : []);
     }
 
     // Reorders the existing autostart lines to the saved custom sequence. Waits ride along
@@ -859,6 +862,8 @@
             return $stop("Docker's container list could not be read");
         }
 
+        // The config folder itself missing means the flash is gone (read_membership.php): that is not "no folders"
+        if (!is_dir($configDir)) { return $stop('the plugin config folder is missing'); }
         $folders = fv3_read_json_strict("$configDir/docker.json");
         // Corrupt folder config must not rewrite the autostart file as if no folders exist
         if ($folders === null) { return $stop('the folder config could not be read'); }

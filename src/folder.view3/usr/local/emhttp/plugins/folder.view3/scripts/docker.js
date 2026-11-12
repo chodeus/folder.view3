@@ -1361,7 +1361,9 @@ $(document).ajaxComplete((event, jqXHR, settings) => {
         && data.indexOf('names=') !== -1;
     if (isAutostartToggle || isOrderSave) {
         fv3Debug('autostartSync', 'Rebuilding autostart after Unraid event', {url, sample: data.slice(0, 80)});
-        $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'});
+        // a refused sync leaves the start order stale: fv3ShowBanner shows the same message once until it is closed
+        $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'})
+            .fail((err) => fv3ShowBanner(fv3I18nOr('autostart-sync-failed', 'The Docker start order could not be updated: $1', fv3FailReason(err))));
     }
 });
 
