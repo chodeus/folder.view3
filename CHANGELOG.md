@@ -2,6 +2,31 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix(import): keep hidden regex and label members from FolderView Plus backups
+- fix(incognito): cover an open Tailscale tooltip and a failed folder render
+- fix(incognito): hide Unraid's Tailscale tooltip on the Docker page
+- fix(docker): show an update when a container's tag has moved to another image
+- fix: a damaged userprefs.cfg no longer reorders autostart
+- fix: the theme import log stays on its last line when buttons appear
+- fix: the advanced preview menu keeps its spacing on Unraid 7.4
+- fix: regex and label members keep the Docker page's order in the autostart file
+- fix: autostart order of new folders matches the Docker page
+- fix: the theme import log scrolls to its newest line
+- fix: the Autostart warning no longer blames the start order for a wait edit, and the pages are tested with nothing to show
+- fix: a missing config folder is read as no folders again, not as a failed sync
+- fix: a start-order sync refused on the Docker page shows a banner, and a wait edit that was not written is a warning
+- fix: Reset Order says when the start order could not be updated after it
+- fix: an Autostart save that gets no JSON answer is reported as failed
+- fix: the Autostart tab warns when a saved order could not be applied
+- fix: Reset Order no longer reports a failed reset when only the start-order sync was refused
+- fix: a folder save warns when the Docker start order could not be updated
+- fix: leftover userprefs.cfg entries no longer push folders down the page
+- fix: the dropped-save rule says what it cannot reach, and its tests read real responses
+- fix: a plugin save that Unraid dropped, or answered with its login page, is reported as failed
+- fix: every POST endpoint answers JSON when its save goes through, and never after a failed write
+
 ## 2026.10.29.2
 
 - Advanced preview CSS fixes when browser is zoomed
