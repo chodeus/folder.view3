@@ -127,10 +127,11 @@ const makePage = (withRule, extension = 'no extension', extensionFirst = false) 
 
 const names = (trace) => trace.map((e) => e[0]);
 const uniq = (list) => [...new Set(list)].sort();
-const isJson = (text) => { try { JSON.parse(text); return true; } catch (e) { return false; } };
-// The rule's own statement, from the answer alone: no plugin header, and either a 2xx whose body is not JSON or Unraid 7.4's 403 for the token
-const notOurs = (a) => a !== null && !(a.headers && a.headers['X-FV3-Answer'])
-    && (isJson(a.body) ? a.status === 403 && /csrf_token$/.test(JSON.parse(a.body).error || '') : a.status >= 200 && a.status < 300);
+// The answers that are not the plugin's, by name: the CSRF drop of each Unraid version, the login page, and the other
+// successes with no plugin header and no JSON. The shipped rule is checked against this list, never the other way round
+const NOT_PLUGIN_ANSWERS = new Set([
+    'Unraid before 7.4, stale csrf_token: an empty 200', 'Unraid 7.4, stale csrf_token: 403 with a JSON error', 'a signed-out page: the login page as a 200',
+    'an empty 200 with a JSON header', 'text that is not JSON', 'broken JSON with a JSON header', 'a PHP warning in front of JSON, header dropped', 'an empty 204']);
 
 // Every shape x address x answer on a page with the rule and on one without it
 const differential = async (extension, extensionFirst) => {
@@ -149,7 +150,7 @@ const differential = async (extension, extensionFirst) => {
 
     // Read off plain jQuery: a POST to the plugin's server whose answer is not the plugin's. Where jQuery called it a success the
     // rule must fail it; where jQuery already failed it with that answer in hand (a body it could not parse, or the 403) the rule only marks it
-    const applies = (c) => sendsPost(c.shape) && URLS[c.url].includes(SERVER) && notOurs(ANSWERS[c.answer]);
+    const applies = (c) => sendsPost(c.shape) && URLS[c.url].includes(SERVER) && NOT_PLUGIN_ANSWERS.has(c.answer);
     const failed = (c) => c.plain.trace.find((e) => e[0] === 'fail');
     const flips = cases.filter((c) => applies(c) && names(c.plain.trace).includes('done'));
     const marks = cases.filter((c) => applies(c) && failed(c) && failed(c)[3] === ANSWERS[c.answer].status);
@@ -180,19 +181,18 @@ const differential = async (extension, extensionFirst) => {
         marks.length >= 40 && notMarked.length === 0, notMarked.slice(0, 2).map((c) => ({ shape: c.shape, url: c.url, answer: c.answer, rule: c.rule.trace })));
     check(`${where}: both groups are POSTs to the three plugin addresses, and the answers are the ones that are not the plugin's`,
         uniq([...flips, ...marks].map((c) => c.url)).join('; ') === 'plugin read; plugin save; plugin save, full address'
-        && JSON.stringify(uniq([...flips, ...marks].map((c) => c.answer))) === JSON.stringify(uniq(Object.keys(ANSWERS).filter((a) => notOurs(ANSWERS[a])))),
+        && JSON.stringify(uniq([...flips, ...marks].map((c) => c.answer))) === JSON.stringify(uniq([...NOT_PLUGIN_ANSWERS])),
         uniq([...flips, ...marks].map((c) => c.answer)));
     check(`${where}: no script errors`, rule.errors.length + plain.errors.length === 0, [...rule.errors, ...plain.errors]);
     return { rule, cases };
 };
 
 (async () => {
-    check('the answers the rule calls not the plugin\'s are the CSRF drop of each Unraid version, the login page and other successes with no header and no JSON',
-        JSON.stringify(uniq(Object.keys(ANSWERS).filter((a) => notOurs(ANSWERS[a])))) === JSON.stringify(uniq([
-            'Unraid before 7.4, stale csrf_token: an empty 200', 'Unraid 7.4, stale csrf_token: 403 with a JSON error', 'a signed-out page: the login page as a 200',
-            'an empty 200 with a JSON header', 'text that is not JSON', 'broken JSON with a JSON header', 'a PHP warning in front of JSON, header dropped', 'an empty 204'])));
-
     const { rule, cases } = await differential('no extension', false);
+    const ruleSays = Object.keys(ANSWERS).filter((a) => ANSWERS[a] !== null
+        && rule.w.fv3NotPluginAnswer(ANSWERS[a].status, ANSWERS[a].headers?.['X-FV3-Answer'] || null, ANSWERS[a].body));
+    check('fv3NotPluginAnswer() calls exactly the listed answers not the plugin\'s',
+        JSON.stringify(uniq(ruleSays)) === JSON.stringify(uniq([...NOT_PLUGIN_ANSWERS])), ruleSays);
     await differential('an extension with ajaxSetup and a prefilter that listens', false);
     await differential('an extension that re-points the promise the same way', false);
     await differential('an extension that re-points the promise the same way', true);
