@@ -182,7 +182,8 @@ const fv3ImportFolderMap = async (content, type) => {
         : Object.entries(content).map(([id, folder]) => ({ url: '/plugins/folder.view3/server/update.php', data: { type: type, content: JSON.stringify(folder), id: id }, label: folder?.name || id }));
     const failed = await postEach(jobs);
     let syncError = null;
-    if (type === 'docker') {
+    // nothing saved, nothing to sync: the dialog must not say "Saved, but"
+    if (type === 'docker' && failed.length < jobs.length) {
         try {
             await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' }).promise();
         } catch (error) {
@@ -283,14 +284,21 @@ const postEach = async (jobs) => {
     return failed;
 };
 
+// The dialog after a restore or a FolderView Plus import: `warning` (the start order could not be applied) makes it a warning
+const fv3ImportedDialog = (title, text, warning) => (warning
+    ? { title: fv3I18nOr('warning', 'Warning'), text: text + '\n' + fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', warning), type: 'warning' }
+    : { title: title, text: text, type: 'success' });
+
 // Replaces the open dialog with one error for a batch: a lone failure with its reason when `one` is given, else the
-// failed names. Returns false, showing nothing, when every job went through
+// failed names and each distinct reason. Returns false, showing nothing, when every job went through
 const showBatchErrors = (failed, many, one = null, extra = '') => {
     if (!failed.length) return false;
-    const text = failed.length === 1 && one
+    const lone = failed.length === 1 && one;
+    const text = lone
         ? fv3I18nOr(one.key, one.text, failed[0].label, failed[0].reason)
         : fv3I18nOr(many.key, many.text, failed.map(f => f.label).join(', '));
-    fv3SwalError(extra ? text + '\n' + extra : text, 'SETTINGS');
+    const reasons = lone ? [] : [...new Set(failed.map(f => f.reason))];
+    fv3SwalError([text, ...reasons, extra].filter(Boolean).join('\n'), 'SETTINGS');
     return true;
 };
 
@@ -717,7 +725,7 @@ const fv3ImportForeignBundle = async (text, type) => {
         if (result.error) { fv3SwalError(fv3ForeignError(result.error), 'SETTINGS'); return; }
         const added = Object.values(result.report.types).reduce((n, r) => n + r.folders.length, 0);
         populateTable();
-        swal({ title: fv3I18nOr('foreign-imported-title', 'Imported'), text: fv3I18nOr('foreign-imported', '$1 folders imported.', added), type: 'success' });
+        swal(fv3ImportedDialog(fv3I18nOr('foreign-imported-title', 'Imported'), fv3I18nOr('foreign-imported', '$1 folders imported.', added), result.warning));
     });
 };
 
@@ -787,8 +795,9 @@ $('#fv3-import-all').on('change', function() {
                 if (result.error) {
                     fv3SwalError(result.error, 'SETTINGS');
                 } else {
-                    swal({ title: fv3I18nOr('restored', 'Restored'), text: fv3I18nOr('items-restored', '$1 items restored.', (result.restored || []).length), type: 'success', timer: 2000 });
-                    setTimeout(function() { location.reload(); }, 2000);
+                    const dialog = fv3ImportedDialog(fv3I18nOr('restored', 'Restored'), fv3I18nOr('items-restored', '$1 items restored.', (result.restored || []).length), result.warning);
+                    // a warning waits to be read before the reload; a plain success reloads by itself
+                    if (result.warning) { swal(dialog, () => location.reload()); } else { swal({ ...dialog, timer: 2000 }); setTimeout(function() { location.reload(); }, 2000); }
                 }
             });
         } catch (err) {
@@ -1105,7 +1114,7 @@ const fv3SubmitAutostart = async () => {
             method: 'POST',
             data: { mode: cur.mode, sequence: JSON.stringify(cur.sequence), waits: JSON.stringify(fv3AsChangedWaits(cur, fv3AsSnapshot)) }
         }).promise(), null);
-        // Unraid before 7.4 answers a POST with a stale csrf_token with an empty 200: no JSON answer is not a save
+        // the dialog below reads `warning`, so an answer that is not a JSON object (a login page, say) is not a save
         if (!saved || typeof saved !== 'object') throw new Error('update_autostart.php returned no JSON answer');
         await fv3LoadAutostart();
         // `warning`: the mode and sequence were saved, but a wait edit or the start order could not be applied

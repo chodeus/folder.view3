@@ -8,6 +8,10 @@
     $rawType = fv3_post_string('type');
     $type = $rawType === '' ? null : fv3_validate_type($rawType);
     $result = importForeignBundle(fv3_post_string('bundle'), $type, $action === 'apply');
-    if (!empty($result['success']) && isset($result['report']['types']['docker'])) syncContainerOrder('docker');
+    // The folders are imported either way: a start-order sync that stopped comes back as `warning`
+    if (!empty($result['success']) && isset($result['report']['types']['docker'])) {
+        $syncFailed = syncContainerOrder('docker');
+        if ($syncFailed !== null) $result['warning'] = $syncFailed;
+    }
     echo json_encode($result);
 ?>

@@ -220,11 +220,20 @@
     function fv3_post_init(): void {
         fv3_security_headers();
         fv3_require_post();
+        // langs/script.php reads this header as "the plugin's own script answered", not Unraid's CSRF drop or its login page
+        header('X-FV3-Answer: 1');
         // CSRF is enforced globally by Unraid's local_prepend.php (php auto_prepend_file):
         // it validates csrf_token against $var['csrf_token'] on every POST and then unsets
         // both $_POST['csrf_token'] and $_SERVER['HTTP_X_CSRF_TOKEN'] before this script runs.
         // A second check here cannot see the token (already consumed) and would 403 every
         // legitimate request, so we rely on Unraid's enforcement.
+    }
+
+    // A save that went through answers JSON: with fv3_post_init()'s header it is how langs/script.php tells the plugin's
+    // answer from a POST that never reached it. Never call it after a write that failed
+    function fv3_ok(): void {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true]);
     }
 
     function fv3_get_init(): void {
@@ -957,8 +966,18 @@
         }
         $fileData[$id] = $decoded;
         $fileData = fv3_dedupe_explicit_members($fileData, $id);
-        $path = "$configDir/$type.json";
-        fv3_atomic_write($path, json_encode($fileData));
+        fv3_write_folders_or_abort($type, $fileData, 'updateFolder');
+    }
+
+    // The folder config written, or a 500 with the reason: the endpoint must not go on to fv3_ok()
+    function fv3_write_folders_or_abort(string $type, array $fileData, string $caller): void {
+        global $configDir;
+        if (fv3_atomic_write("$configDir/$type.json", json_encode($fileData))) return;
+        fv3_error_log($caller, "could not write $type.json");
+        http_response_code(500);
+        header('Content-Type: application/json');
+        echo json_encode(['error' => "Could not write $type.json — nothing was saved"]);
+        exit;
     }
 
     function updateFolderIds(string $type, string $data) : void {
@@ -1000,8 +1019,7 @@
         if ($changed) {
             // A rename can land on a name already explicit elsewhere — re-assert single ownership (issue #62)
             $fileData = fv3_dedupe_explicit_members($fileData);
-            $path = "$configDir/$type.json";
-            fv3_atomic_write($path, json_encode($fileData));
+            fv3_write_folders_or_abort($type, $fileData, 'updateFolderIds');
         }
     }
 
@@ -1020,8 +1038,7 @@
         // Already gone: delete stays idempotent, and there is nothing to rewrite
         if (!array_key_exists($id, $fileData)) { return; }
         unset($fileData[$id]);
-        $path = "$configDir/$type.json";
-        fv3_atomic_write($path, json_encode($fileData));
+        fv3_write_folders_or_abort($type, $fileData, 'deleteFolder');
     }
 
     function readSettings() : string {
@@ -1325,9 +1342,10 @@
         foreach ($result['applied'] as $rel => $hadOld) {
             if (strpos($rel, 'styles/_fv3-generated.') !== 0) $restored[] = isset($files[$rel]) ? $rel : "$rel (cleared)";
         }
-        // apply the restored folder layout / autostart mode to the live start order immediately
-        syncContainerOrder('docker');
-        return ['success' => true, 'restored' => $restored];
+        // apply the restored folder layout / autostart mode to the live start order immediately. The restore is done
+        // either way: a sync that stopped comes back as `warning`
+        $syncFailed = syncContainerOrder('docker');
+        return ['success' => true, 'restored' => $restored] + ($syncFailed !== null ? ['warning' => $syncFailed] : []);
     }
 
     // Writes $files and removes $clear (paths relative to $baseDir) as one step: staged first, then swapped in with the

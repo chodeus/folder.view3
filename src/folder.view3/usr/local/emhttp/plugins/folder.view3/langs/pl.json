@@ -187,6 +187,7 @@
     "import-failed": "Import nie powiódł się: $1",
     "folder-order-load-failed": "Nie można wczytać kolejności folderów. Odśwież stronę.",
     "reset-order-failed": "Nie można zresetować kolejności folderów. Spróbuj ponownie.",
+    "request-dropped": "Unraid nie przyjął żądania. Odśwież stronę i spróbuj ponownie.",
     "dashboard-settings-load-failed": "Nie można wczytać ustawień pulpitu, więc wyświetlane są układy domyślne. Odśwież stronę.",
     "invalid-folder-export": "Ten plik nie jest eksportem folderów.",
     "order-sync-failed": "Zapisano, ale nie można zaktualizować kolejności uruchamiania Dockera: $1",

@@ -4,7 +4,7 @@ const fs = require('fs');
 const vm = require('vm');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const { check, done, read } = require('./preview_pages_harness.js');
+const { check, done, read, fakeXhr, scriptHelpers } = require('./preview_pages_harness.js');
 
 const JQUERY = fs.readFileSync(require.resolve('jquery/dist/jquery.js'), 'utf8');
 // Part of a shipped file, from one of its own lines up to another: the rest of FolderView3.page and folderview3.js needs the whole settings page
@@ -48,13 +48,14 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     $.post = (url) => { calls.push(`POST ${url.split('/').pop()}`); return $.Deferred().resolve(''); };
     let reply;
     const posted = [];
+    const realAjax = $.ajax;
     $.ajax = (o) => {
         posted.push({ url: o.url.split('/').pop(), method: o.method, data: o.data });
         return reply && reply.reject ? $.Deferred().reject(reply.reject) : $.Deferred().resolve(reply);
     };
 
-    // The settings page's scripts in page order: script.php's inline helpers (as preview_pages_harness.js lifts them), debug.js, folderview3.js
-    run(read('langs/script.php').match(/^\s*window\.fv3JsArg = [\s\S]*?window\.fv3SwitchLabels = .*$/m)[0].replace(/<\?=[\s\S]*?\?>/g, '"."'), 'script.php');
+    // The settings page's scripts in page order: script.php's inline helpers, debug.js, folderview3.js
+    run(scriptHelpers(read('langs/script.php')), 'script.php');
     run(read('scripts/debug.js'), 'debug.js');
     run(part('scripts/folderview3.js', 'const escapeHtml = ', 'const rgbToHex = '), 'folderview3.js');
     run(part('scripts/folderview3.js', 'const fv3SafeParse = ', 'if (typeof $ !== \'undefined\' && typeof csrf_token'), 'folderview3.js');
@@ -100,6 +101,14 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     }
     const refused = await save({ reject: { status: 400, responseJSON: { error: 'Invalid payload' } } }, 'custom');
     check('a refused save shows the server\'s reason', refused.dialogs === 1 && refused.dialog.type === 'error' && refused.dialog.text.startsWith('Failed to save start order: Invalid payload') && refused.reads === 1, refused);
+
+    // The same Apply through jQuery's own ajax: script.php's rule turns the empty 200 into the failure the tab shows
+    $.ajax = realAjax;
+    fakeXhr(w, () => ({ status: 200, body: '' }));
+    const stale = await save(undefined, 'custom');
+    check('an Apply that Unraid dropped tells the user to reload, and the tab keeps the unsaved mode',
+        stale.dialogs === 1 && stale.dialog.type === 'error' && stale.dialog.text.startsWith('Failed to save start order: Unraid did not accept the request. Reload the page and try again.')
+        && stale.reads === 1 && stale.mode === 'custom', stale);
 
     check('no script errors', errors.length === 0, errors);
     done();

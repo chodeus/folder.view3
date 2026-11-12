@@ -11,6 +11,33 @@ const read = (rel) => fs.readFileSync(path.join(plugin, rel), 'utf8');
 const JQUERY = fs.readFileSync(require.resolve('jquery/dist/jquery.js'), 'utf8');
 
 const flush = () => new Promise((r) => setImmediate(r));
+// script.php's inline helpers (fv3JsArg … fv3SwitchLabels) from its source, without the PHP or the i18n pack load
+const scriptHelpers = (source, decimal = '.') => source.match(/^\s*window\.fv3JsArg = [\s\S]*?window\.fv3SwitchLabels = .*$/m)[0].replace(/<\?=[\s\S]*?\?>/g, JSON.stringify(decimal));
+
+// Unraid's side of an XMLHttpRequest, for a test that runs jQuery's own ajax: route(method, url, body) gives
+// { status, body, type, headers } and answers on the page's next timer, or null to never answer
+const fakeXhr = (w, route) => {
+    w.XMLHttpRequest = class {
+        constructor() { this.onabort = null; }
+        open(method, url) { this.method = method; this.url = url; }
+        setRequestHeader() {}
+        getAllResponseHeaders() {
+            const headers = { ...(this.answer.type ? { 'Content-Type': this.answer.type } : {}), ...(this.answer.headers || {}) };
+            return Object.entries(headers).map(([name, value]) => `${name}: ${value}\r\n`).join('');
+        }
+        send(body) {
+            this.answer = route(this.method, this.url, body);
+            if (!this.answer) return;
+            w.setTimeout(() => {
+                // jQuery clears onload once it has aborted or timed the request out
+                if (!this.onload) return;
+                Object.assign(this, { status: this.answer.status, statusText: '', responseText: this.answer.body, readyState: 4 });
+                this.onload();
+            }, 0);
+        }
+        abort() {}
+    };
+};
 
 // opts: page 'dashboard'|'docker'|'vm'; api true|false; graphqlHangs; unraidDivisor (Unraid's Docker page handler); decimal '.'|','; cpuPhp; answers
 const makePage = async (opts = {}) => {
@@ -56,6 +83,8 @@ const makePage = async (opts = {}) => {
 
     w.eval(JQUERY);
     const $ = w.$;
+    // jQuery's own ajax, for the one request a test sends through it (fakeXhr above answers it)
+    const realAjax = $.ajax;
 
     // HTTP boundary: every $.get and $.ajax is recorded and answered by the test (or by a default answer)
     const gets = [];
@@ -161,8 +190,7 @@ dockerload.on('message', function(msg){
     }
 
     // Plugin scripts in page order (folder.view3.*.page)
-    // script.php's inline helpers (fv3JsArg … fv3SwitchLabels), without the i18n pack load
-    run(read('langs/script.php').match(/^\s*window\.fv3JsArg = [\s\S]*?window\.fv3SwitchLabels = .*$/m)[0].replace(/<\?=[\s\S]*?\?>/g, JSON.stringify(opts.decimal ?? '.')), 'script.php');
+    run(scriptHelpers(read('langs/script.php'), opts.decimal), 'script.php');
     run(read('scripts/include/customEvents.js'), 'customEvents.js');
     run(read('scripts/debug.js'), 'debug.js');
     run(read('scripts/shared.js'), 'shared.js');
@@ -194,7 +222,7 @@ dockerload.on('message', function(msg){
         mem: tip.el && tip.el.querySelector(`span.fv3-mem-${id}`).textContent,
         bar: tip.el && tip.el.querySelector(`span.fv3-cpu-bar-${id}`).style.width,
     });
-    return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow };
+    return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow, realAjax };
 };
 
 const FOLDER_SETTINGS = {
@@ -229,10 +257,14 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     } });
     shown.forEach((n, i) => { info[n] = p.ct(sid(i), n); });
     const posts = [];
-    // A request whose url holds an entry of `failing` is refused (503, with a reason as sync_order.php gives one)
+    // A request whose url holds an entry of `failing` is refused (503, with a reason as sync_order.php gives one). One in
+    // `dropped` goes through jQuery's own ajax and gets the empty 200 Unraid before 7.4 answers a stale csrf_token with
     const failing = new Set();
+    const dropped = new Set();
+    fakeXhr(p.w, () => ({ status: 200, body: '' }));
     p.$.post = (url, data) => {
         posts.push({ url, data });
+        if ([...dropped].some((part) => url.includes(part))) return p.realAjax({ url, type: 'POST', data });
         return [...failing].some((part) => url.includes(part)) ? p.$.Deferred().reject({ status: 503, responseJSON: { error: 'refused by the test' } }) : p.$.Deferred().resolve('ok');
     };
     p.$('#docker_containers').prepend(`<thead><tr>${'<th></th>'.repeat(10)}</tr></thead>`);
@@ -253,7 +285,7 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     const members = (id) => p.$(`#docker_list tr.folder-${id}-element`).toArray().map((tr) => tr.id.replace(/^ct-/, ''));
     // Every row top-down, a folder's members ahead of its placeholder: the shape fv3_page_order() returns
     const drawn = () => rows().flatMap((r) => (r.startsWith('folder-') ? [...members(r.slice(7)), r] : [r]));
-    return { p, posts, failing, draw, rows, members, drawn };
+    return { p, posts, failing, dropped, draw, rows, members, drawn };
 };
 
 let failed = 0;
@@ -262,6 +294,8 @@ const check = (label, ok, detail) => {
     failed++;
     console.log(`FAIL ${label}${detail === undefined ? '' : ' — ' + JSON.stringify(detail)}`);
 };
+// A run that ends before done() must not pass: an await that never settles just empties the event loop
+process.exitCode = 1;
 const done = () => { console.log(failed ? `\n${failed} FAILED` : '\nall passed'); process.exit(failed ? 1 : 0); };
 
-module.exports = { makePage, drawDocker, check, done, flush, read };
+module.exports = { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, flush, read };

@@ -187,6 +187,7 @@
     "import-failed": "导入失败：$1",
     "folder-order-load-failed": "无法加载文件夹顺序。请刷新页面。",
     "reset-order-failed": "无法重置文件夹顺序。请重试。",
+    "request-dropped": "Unraid 未接受该请求。请刷新页面后重试。",
     "dashboard-settings-load-failed": "无法加载仪表板设置，因此显示默认布局。请刷新页面。",
     "invalid-folder-export": "此文件不是文件夹导出文件。",
     "order-sync-failed": "已保存，但无法更新 Docker 启动顺序：$1",

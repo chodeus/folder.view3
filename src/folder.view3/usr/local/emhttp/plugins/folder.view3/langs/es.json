@@ -187,6 +187,7 @@
     "import-failed": "Error al importar: $1",
     "folder-order-load-failed": "No se pudo cargar el orden de las carpetas. Recarga la página.",
     "reset-order-failed": "No se pudo restablecer el orden de las carpetas. Inténtalo de nuevo.",
+    "request-dropped": "Unraid no aceptó la solicitud. Recarga la página e inténtalo de nuevo.",
     "dashboard-settings-load-failed": "No se pudo cargar la configuración del panel, así que se muestran los diseños predeterminados. Recarga la página.",
     "invalid-folder-export": "Este archivo no es una exportación de carpetas.",
     "order-sync-failed": "Guardado, pero no se pudo actualizar el orden de inicio de Docker: $1",

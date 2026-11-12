@@ -4,4 +4,5 @@
     $type = fv3_validate_type($_POST['type'] ?? '');
     // A missing or non-string id is refused; any existing key stays deletable, '' and ids fv3_is_folder_id() refuses included
     deleteFolder($type, fv3_post_required('id'));
+    fv3_ok();
 ?>

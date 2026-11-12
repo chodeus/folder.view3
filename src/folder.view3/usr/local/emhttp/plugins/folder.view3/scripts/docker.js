@@ -1336,14 +1336,15 @@ if (typeof resetSorting === 'function') {
     window.resetSorting = function() {
         if ($.cookie('lockbutton') == null) return;
         $('input[type=button]').prop('disabled', true);
-        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck.
-        // A refused sync is not a failed reset: it gets its own banner, with the server's reason
+        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck. A refused sync gets its own
+        // banner; a dropped one (script.php) shows the reload reason alone: Unraid's answer to the reset cannot say if it took it
         $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true})
             .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}).then(null, (err) => {
+                if (err?.fv3Dropped) return $.Deferred().reject(err);
                 fv3ShowBanner(fv3I18nOr('reset-order-sync-failed', 'The order was reset, but the Docker start order could not be updated: $1', fv3FailReason(err)));
                 return $.Deferred().resolve();
             }))
-            .fail(() => fv3ShowBanner(fv3I18nOr('reset-order-failed', 'Could not reset the folder order. Try again.')))
+            .fail((err) => fv3ShowBanner(err?.fv3Dropped ? fv3FailReason(err) : fv3I18nOr('reset-order-failed', 'Could not reset the folder order. Try again.')))
             .always(() => loadlist());
     };
     fv3Debug('init', 'resetSorting patched for folder-grouped autostart');
