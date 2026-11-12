@@ -58,9 +58,11 @@ const openEditor = async ({ id, folders, containers, answers = {} }) => {
     w.fetch = async () => ({ json: async () => ({}) });
     $.i18n = (key) => key;
     run(scriptHelpers(read('langs/script.php')));
-    w.swal = (o) => errors.push(`swal: ${JSON.stringify(o)}`);
-    w.fv3SwalError = (text) => errors.push(`swal: ${text}`);
+    // Unraid's dialog: what it was given, and the callback its OK button runs
+    w.swal = (o, closed) => { w.swal.closed = closed || null; errors.push(`swal: ${JSON.stringify(o)}`); };
     $.fn.switchButton = function () { return this; };
+    // page order: debug.js (fv3SwalError), then folder.js
+    run(read('scripts/debug.js'));
     run(read('scripts/folder.js'));
     for (let i = 0; i < 200 && !run('fv3FolderLoaded') && !errors.length; i++) await new Promise((r) => setTimeout(r, 5));
 
@@ -78,12 +80,17 @@ const openEditor = async ({ id, folders, containers, answers = {} }) => {
         tick: (name, on = true) => change(doc.querySelector(`table.sortable input.container-switch[value="${name}"]`), on),
         // Typing in the regex field calls updateRegex, which rebuilds the list
         typeRegex: (value) => { const input = doc.querySelector('input[name="regex"]'); input.value = value; run('updateRegex')(input); },
-        // Submits the form as Save does: the requests it sent, the dialogs it showed, and whether it went back to the tab
+        // Submits the form as Save does: the requests it sent, the dialogs it showed, whether it went back to the tab, and
+        // whether it had once the dialog left up was closed
         save: async () => {
             const [sent, shown, before] = [posts.length, errors.length, left];
+            w.swal.closed = null;
             await run('submitForm')(form);
             await new Promise((r) => setTimeout(r, 20));
-            return { posts: posts.slice(sent), dialogs: errors.splice(shown), back: left > before };
+            const result = { posts: posts.slice(sent), dialogs: errors.splice(shown), back: left > before };
+            if (w.swal.closed) w.swal.closed();
+            await new Promise((r) => setTimeout(r, 20));
+            return { ...result, backOnceClosed: left > before };
         },
     };
 };
@@ -129,25 +136,26 @@ const check = (label, ok, detail) => {
     // Unraid before 7.4 answers a POST with a stale csrf_token with an empty 200
     const dropped = await (await editor({ 'update.php': { status: 200, body: '' } })).save();
     check('a Save that Unraid dropped says so, sends no sync, and stays in the editor',
-        dropped.posts.join() === 'update.php' && dropped.dialogs.length === 1 && !dropped.back
+        dropped.posts.join() === 'update.php' && dropped.dialogs.length === 1 && !dropped.backOnceClosed && dropped.dialogs[0].includes('"type":"error"')
         && dropped.dialogs[0].includes('Could not save the folder: Unraid did not accept the request. Reload the page and try again.'), dropped);
     // a signed-out page: Unraid redirects the POST to its login page, which comes back as a 200
     const signedOut = await (await editor({ 'update.php': { status: 200, body: '<!DOCTYPE html><html><body>Login</body></html>', type: 'text/html' } })).save();
     check('a Save that got the login page back says so, sends no sync, and stays in the editor',
-        signedOut.posts.join() === 'update.php' && signedOut.dialogs.length === 1 && !signedOut.back
+        signedOut.posts.join() === 'update.php' && signedOut.dialogs.length === 1 && !signedOut.backOnceClosed && signedOut.dialogs[0].includes('"type":"error"')
         && signedOut.dialogs[0].includes('Could not save the folder: Unraid did not accept the request. Reload the page and try again.'), signedOut);
     // Unraid 7.4 answers the stale csrf_token itself
     const stale74 = await (await editor({ 'update.php': { status: 403, body: '{"error":"wrong csrf_token"}', type: 'application/json' } })).save();
     check('a Save that Unraid 7.4 refused for its csrf_token says to reload, not "wrong csrf_token"',
-        stale74.posts.join() === 'update.php' && stale74.dialogs.length === 1 && !stale74.back
+        stale74.posts.join() === 'update.php' && stale74.dialogs.length === 1 && !stale74.backOnceClosed && stale74.dialogs[0].includes('"type":"error"')
         && stale74.dialogs[0].includes('Could not save the folder: Unraid did not accept the request. Reload the page and try again.'), stale74);
     const refused = await (await editor({ 'update.php': { status: 500, body: '{"error":"docker.json is unreadable"}', type: 'application/json' } })).save();
     check('a refused Save shows the server\'s reason and stays in the editor',
-        refused.posts.join() === 'update.php' && refused.dialogs.length === 1 && !refused.back && refused.dialogs[0].includes('Could not save the folder: docker.json is unreadable'), refused);
+        refused.posts.join() === 'update.php' && refused.dialogs.length === 1 && !refused.backOnceClosed && refused.dialogs[0].includes('"type":"error"')
+        && refused.dialogs[0].includes('Could not save the folder: docker.json is unreadable'), refused);
     const unsynced = await (await editor({ 'sync_order.php': { status: 503, body: '{"error":"the autostart file could not be written"}', type: 'application/json' } })).save();
-    check('a Save whose start-order sync was refused warns with the reason before it goes back',
-        unsynced.posts.join() === 'update.php,sync_order.php' && unsynced.dialogs.length === 1 && !unsynced.back
-        && unsynced.dialogs[0].includes('Saved, but the Docker start order could not be updated: the autostart file could not be written'), unsynced);
+    check('a Save whose start-order sync was refused warns with the reason, and goes back to the tab only once that warning is closed',
+        unsynced.posts.join() === 'update.php,sync_order.php' && unsynced.dialogs.length === 1 && !unsynced.back && unsynced.backOnceClosed
+        && unsynced.dialogs[0].includes('"type":"warning"') && unsynced.dialogs[0].includes('Saved, but the Docker start order could not be updated: the autostart file could not be written'), unsynced);
 
     console.log(failed ? `\n${failed} FAILED` : '\nall passed');
     process.exit(failed ? 1 : 0);
