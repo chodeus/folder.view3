@@ -1,7 +1,6 @@
 // Global variables
 // Kept for extensions that scale fv3-stats-update by it; follows a late cpu.php answer
 Object.defineProperty(window, 'cpus', { configurable: true, get: () => window.fv3CpuThreads });
-let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
@@ -19,7 +18,7 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
     if (window.fv3Mark) window.fv3Mark('createFolders-start');
     await fv3LoadFolderDefaults();
-    const prom = await Promise.all(folderReq);
+    const prom = await fv3LatestAnswers(() => folderReq);
     if (window.fv3Mark) window.fv3Mark('folderReq-resolved');
     fv3Debug('createFolders', 'Promises resolved', prom);
 
@@ -1120,6 +1119,12 @@ const addDockerFolderContext = (id) => {
 };
 
 // Unraid listview/loadlist patches — inject folder rendering after containers render
+const fv3DrawList = fv3ListDrawer('#docker_list > tr', () => createFolders(), (e) => {
+    console.error('[FV3] Docker: folder rendering failed:', e);
+    // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
+    document.documentElement.classList.add('fv3-docker-ready');
+    fv3IncognitoRefresh();
+});
 window.listview_original = window.listview;
 window.listview = () => {
     fv3Debug('Patched listview', 'Entry.');
@@ -1130,46 +1135,23 @@ window.listview = () => {
         fv3DebugWarn('Patched listview', 'window.listview_original is not a function!');
     }
 
-    if (!loadedFolder) {
-        fv3Debug('Patched listview', 'loadedFolder is false. Calling createFolders.');
-        loadedFolder = true;
-        createFolders().catch((e) => {
-            console.error('[FV3] Docker: folder rendering failed:', e);
-            // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
-            document.documentElement.classList.add('fv3-docker-ready');
-            fv3IncognitoRefresh();
-            fv3DebugWarn('Patched listview', 'createFolders failed; clearing flag so a later render can retry', e);
-            loadedFolder = false;
-        });
-    } else {
-        fv3Debug('Patched listview', 'loadedFolder is true. Skipped createFolders.');
-    }
+    fv3DrawList();
     fv3Debug('Patched listview', 'Exit.');
 };
 
 window.loadlist_original = window.loadlist;
-let fv3FolderReqPending = false;
 window.loadlist = () => {
     fv3Debug('Patched loadlist', 'Entry.');
 
-    if (!fv3FolderReqPending) {
-        fv3FolderReqPending = true;
-        loadedFolder = false;
-        fv3OrganizerSyncDone = false;
-        fv3Debug('Patched loadlist', 'Set loadedFolder to false.');
-        folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-            fv3CheckUpdates()
-        ];
-        // Only clears the flag: each request's banner and createFolders' catch report a failure
-        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; }).catch(() => {});
-        fv3Debug('Patched loadlist', 'folderReq initialized with 5 promises.');
-    } else {
-        fv3Debug('Patched loadlist', 'Skipping — requests already pending.');
-    }
+    fv3OrganizerSyncDone = false;
+    folderReq = [
+        $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
+        $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
+        $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error')).promise(),
+        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
+        fv3CheckUpdates()
+    ];
+    fv3Debug('Patched loadlist', 'folderReq initialized with 5 promises.');
 
     if (typeof window.loadlist_original === 'function') {
         window.loadlist_original();
@@ -1253,7 +1235,7 @@ Promise.all([fv3DetectApiWithin(), fv3LoadCpuThreads()]).then(() => {
 
 
 fv3Debug('init', 'globals', {
-    cpuThreads: fv3CpuThreads, loadedFolder, globalFolders: {...globalFolders}, folderRegex: folderRegex.toString(),
+    cpuThreads: fv3CpuThreads, globalFolders: {...globalFolders}, folderRegex: folderRegex.toString(),
     folderDebugMode, folderobserverConfig: {...folderobserverConfig}, folderReq: [...folderReq]
 });
 

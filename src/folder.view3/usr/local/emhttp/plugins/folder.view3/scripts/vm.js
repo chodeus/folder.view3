@@ -13,7 +13,7 @@ const applyVmZebra = () => {
 // Render all VM folders.
 const createFolders = async () => {
     await fv3LoadFolderDefaults();
-    const prom = await Promise.all(folderReq);
+    const prom = await fv3LatestAnswers(() => folderReq);
     let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
     const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
     const vmInfo = fv3SafeParse(prom[2], {});
@@ -743,29 +743,32 @@ const addVMFolderContext = (id) => {
 };
 
 // Global variables
-let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
 window.fv3DebugSource = 'VM';
 let folderReq = [];
 
+const fv3DrawList = fv3ListDrawer('#kvm_list > tr', async () => {
+    await createFolders();
+    $('div.spinner.fixed').hide();
+}, (e) => {
+    console.error('[FV3] VM: folder rendering failed:', e);
+    // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
+    document.documentElement.classList.add('fv3-vm-ready');
+    fv3IncognitoRefresh();
+    $('div.spinner.fixed').hide();
+});
+
 // Unraid loadlist patch — inject folder rendering after VMs render
 window.loadlist_original = window.loadlist;
-let fv3FolderReqPending = false;
 window.loadlist = (x) => {
-    if (!fv3FolderReqPending) {
-        fv3FolderReqPending = true;
-        loadedFolder = false;
-        folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise()
-        ];
-        // Only clears the flag: each request's banner and createFolders' catch report a failure
-        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; }).catch(() => {});
-    }
+    folderReq = [
+        $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
+        $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
+        $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error')).promise(),
+        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise()
+    ];
     if (typeof window.loadlist_original === 'function') { loadlist_original(x); }
 };
 
@@ -811,18 +814,7 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
             console.warn('[FV3] VM order snapshot save failed; layout restore after a reinstall may use an older order.');
         });
         $('.unhide').show();
-    } else if (options.url === "/plugins/dynamix.vm.manager/include/VMMachines.php" && !loadedFolder) {
-        jqXHR.promise().then(async () => {
-            loadedFolder = true;
-            try { await createFolders(); }
-            catch (e) {
-                console.error('[FV3] VM: folder rendering failed:', e);
-                // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
-                document.documentElement.classList.add('fv3-vm-ready');
-                fv3IncognitoRefresh();
-                loadedFolder = false;
-            }
-            $('div.spinner.fixed').hide();
-        });
+    } else if (options.url === "/plugins/dynamix.vm.manager/include/VMMachines.php") {
+        jqXHR.promise().then(fv3DrawList);
     }
 });

@@ -89,6 +89,34 @@ window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
     return newOnes;
 };
 
+// One draw per list Unraid renders, one at a time: `rows` selects the rows Unraid replaces on a reload
+window.fv3ListDrawer = (rows, draw, onFail) => {
+    let drawn = new WeakSet();
+    let running = false;
+    return () => {
+        if (running || $(rows).toArray().some((row) => drawn.has(row))) return;
+        running = true;
+        new Promise((resolve) => resolve(draw())).catch(onFail).finally(() => {
+            drawn = new WeakSet($(rows).toArray());
+            running = false;
+        });
+    };
+};
+
+// Answers of the newest folder requests: a reload that starts while they are awaited replaces them, failed or not.
+// Each caller gets its own copy: a draw empties the folder list it works from
+window.fv3LatestAnswers = async (requests) => {
+    for (;;) {
+        const asked = requests();
+        try {
+            const answers = await Promise.all(asked);
+            if (asked === requests()) return answers.map((answer) => (answer && typeof answer === 'object' ? JSON.parse(JSON.stringify(answer)) : answer));
+        } catch (e) {
+            if (asked === requests()) throw e;
+        }
+    }
+};
+
 // Resource cleanup
 window.fv3Cleanups = [];
 window.addEventListener('beforeunload', () => {
