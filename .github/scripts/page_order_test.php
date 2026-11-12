@@ -80,6 +80,14 @@ $sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?cal
         $GLOBALS['fv3tDown'] = false;
     }
 };
+// updateAutostartConfig() as the Autostart tab calls it, with the folder config as given
+$autostartSave = function (string $mode, string $foldersJson) use ($setPrefs, $configDir, $fv3tAutostart): array {
+    $GLOBALS['fv3tNames'] = ['a', 'b'];
+    $setPrefs(null);
+    file_put_contents("$configDir/docker.json", $foldersJson);
+    file_put_contents($fv3tAutostart, "b\na\n");
+    try { return updateAutostartConfig($mode, [], []); } finally { @unlink("$configDir/autostart.json"); }
+};
 // sync_order.php as its own process (it exits, and its require is an absolute Unraid path), on the same temp files
 $fv3tEndpoint = "$fv3tTmp/sync_order.php";
 file_put_contents($fv3tEndpoint, str_replace('require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");',
@@ -223,6 +231,12 @@ $cases = [
         $sync(null, ['b', 'a'], null, null), [null, null]],
     ['an empty autostart file stays empty',
         $sync([], ['b', 'a'], null, ''), [null, '']],
+    ['no containers and a damaged folder config: still nothing to report',
+        $sync([], [], null, ['b', 'a'], fn() => file_put_contents("$configDir/docker.json", '{')), [null, ['b', 'a']]],
+    ['the Autostart tab\'s save: saved either way, with a warning when the order could not be applied',
+        [$autostartSave('folder', '{'), $autostartSave('folder', '{}'), $autostartSave('off', '{')],
+        [['success' => true, 'mode' => 'folder', 'sequence' => [], 'warning' => 'the folder config could not be read'],
+         ['success' => true, 'mode' => 'folder', 'sequence' => []], ['success' => true, 'mode' => 'off', 'sequence' => []]]],
     ['folders saved but Docker has no containers: the file is left as it is',
         $sync(['f' => $folder('F', ['gone'], '^x')], [], $userprefs(['folder-f', 'gone']), ['gone 5']), [null, ['gone 5']]],
     ['an answer from Docker that is not a list: the file is left as it is, and it is reported',

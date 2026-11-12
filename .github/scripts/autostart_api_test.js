@@ -13,11 +13,12 @@ const lift = (name) => {
     const end = source.findIndex((l, i) => i > start && l === '};');
     return source.slice(start, end + 1).join('\n');
 };
-const names = ['fv3AsFileWaits', 'fv3AsChangedWaits', 'fv3AsWant', 'fv3AsUpdateConfigCalls', 'fv3AsApiEntries', 'fv3AsApiSave'];
+const names = ['fv3AsFileWaits', 'fv3AsChangedWaits', 'fv3AsWant', 'fv3AsUpdateConfigCalls', 'fv3AsApiEntries', 'fv3AsApiSave', 'fv3AsSavedDialog'];
 let gql = () => Promise.reject(new Error('no answer set'));
 const sentQueries = [];
-const page = vm.createContext({ fv3GraphQL: (q, v) => { sentQueries.push({ q, v }); return gql(q, v); }, fv3DebugWarn: () => {} });
-const { fv3AsWant, fv3AsUpdateConfigCalls, fv3AsApiEntries, fv3AsChangedWaits, fv3AsApiSave } =
+const page = vm.createContext({ fv3GraphQL: (q, v) => { sentQueries.push({ q, v }); return gql(q, v); }, fv3DebugWarn: () => {},
+    fv3I18nOr: (key, fallback, ...args) => args.reduce((text, arg, i) => text.replace('$' + (i + 1), arg), fallback) });
+const { fv3AsWant, fv3AsUpdateConfigCalls, fv3AsApiEntries, fv3AsChangedWaits, fv3AsApiSave, fv3AsSavedDialog } =
     vm.runInContext(names.map(lift).join('\n') + `\n({ ${names.join(', ')} })`, page);
 
 let failed = 0;
@@ -170,6 +171,13 @@ check('a name shaped like an Object property is no id', fv3AsApiEntries({ constr
     sentQueries.length = 0;
     gql = () => Promise.reject(new Error('Cannot query field "containers"'));
     check('a failed container read answers false', (await fv3AsApiSave(want, liveWithE)) === false && !sentQueries.some((c) => isMutation(c.q)));
+
+    // update_autostart.php answers { success, warning? }: the order is saved either way, `warning` says it was not applied
+    const warned = fv3AsSavedDialog({ success: true, warning: 'the autostart file could not be written' });
+    check('a save whose sync stopped shows a warning with the reason, and no timer',
+        warned.type === 'warning' && /could not be updated: the autostart file could not be written$/.test(warned.text) && !('timer' in warned), warned);
+    check('a clean save, or an answer that is not an object, shows the saved-and-applied message',
+        [{ success: true }, null, 'ok'].every((r) => { const d = fv3AsSavedDialog(r); return d.type === 'success' && /saved and applied/.test(d.text) && d.timer === 1800; }));
 
     console.log(failed ? `\n${failed} FAILED` : '\nall passed');
     process.exit(failed ? 1 : 0);

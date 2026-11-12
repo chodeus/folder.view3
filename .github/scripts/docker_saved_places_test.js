@@ -43,21 +43,26 @@ const folder = (name, containers = [], regex = '') => ({ name, containers, regex
 
         // With nothing stale, a folder goes where it always went: its saved index plus the number of unsaved rows
         let seed = 20261112;
-        const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+        // Math.imul: a plain product passes 2^53 and loses its low bits, and every draw below would then come out 0
+        const rnd = (n) => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return (seed >>> 8) % n; };
         const before = (order, saved, folders) => {
             const o = order.slice(), fresh = o.filter((x) => !saved.includes(x));
             for (let i = 0; i < saved.length; i++) if (/^folder-/.test(saved[i]) && folders[saved[i].slice(7)]) o.splice(i + fresh.length, 0, saved[i]);
             return [o, fresh];
         };
         const differ = [];
+        const shapes = { folders: 0, unsaved: 0, both: 0 };
         for (let n = 0; n < 200; n++) {
             const rows = Array.from({ length: rnd(7) }, (_, i) => `c${i}`);
             const folders = Object.fromEntries(Array.from({ length: rnd(4) }, (_, i) => [`f${i}`, {}]));
             const all = rows.concat(Object.keys(folders).map((k) => `folder-${k}`));
             for (let i = all.length - 1; i > 0; i--) { const j = rnd(i + 1); [all[i], all[j]] = [all[j], all[i]]; }
             const saved = all.filter(() => rnd(5) > 0);
+            const hasFolder = saved.some((x) => x.startsWith('folder-')), hasUnsaved = rows.some((x) => !saved.includes(x));
+            shapes.folders += hasFolder; shapes.unsaved += hasUnsaved; shapes.both += hasFolder && hasUnsaved;
             if (!same(place(rows, saved, folders), before(rows, saved, folders))) differ.push({ rows, saved, folders });
         }
+        check('the generated orders do place folders, with and without unsaved rows above them', shapes.folders > 50 && shapes.unsaved > 50 && shapes.both > 20, shapes);
         check('200 generated orders with nothing stale place every folder where they did before', differ.length === 0, differ.slice(0, 2));
     }
     done();

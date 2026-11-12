@@ -576,9 +576,10 @@
             if ($changed) file_put_contents($autoStartFile, implode("\n", $lines) . "\n", LOCK_EX);
         }
 
-        // Re-assert order under the saved mode — saving folder mode instantly restores folder-derived order
-        if ($mode !== 'off') syncContainerOrder('docker');
-        return ['success' => true, 'mode' => $mode, 'sequence' => $cleanSeq];
+        // Re-assert order under the saved mode — saving folder mode instantly restores folder-derived order.
+        // The mode and sequence are saved either way: a sync that stopped comes back as `warning`
+        $failed = $mode !== 'off' ? syncContainerOrder('docker') : null;
+        return ['success' => true, 'mode' => $mode, 'sequence' => $cleanSeq] + ($failed !== null ? ['warning' => $failed] : []);
     }
 
     // Reorders the existing autostart lines to the saved custom sequence. Waits ride along
@@ -849,9 +850,6 @@
             return fv3_apply_custom_autostart($allContainerNames, $ctListComplete);
         }
 
-        $folders = fv3_read_json_strict("$configDir/docker.json");
-        // Corrupt folder config must not rewrite the autostart file as if no folders exist
-        if ($folders === null) { return $stop('the folder config could not be read'); }
 
         // Folder-derived order needs the WHOLE list: containers missing from a partial read are
         // skipped by the order walk and land appended at the end, silently reordering the file.
@@ -860,6 +858,10 @@
             if ($ctNames['empty']) { fv3_debug_log("syncContainerOrder: no containers, nothing to sync"); return null; }
             return $stop("Docker's container list could not be read");
         }
+
+        $folders = fv3_read_json_strict("$configDir/docker.json");
+        // Corrupt folder config must not rewrite the autostart file as if no folders exist
+        if ($folders === null) { return $stop('the folder config could not be read'); }
 
         $ctLabels = fv3_read_container_labels($dockerClient, $allContainerNames);
         // Fail closed: without label claims the order below would write label-assigned
