@@ -283,13 +283,13 @@ $check('defaults that are already there, and an empty map, answer success withou
     [$again, $empty, fileinode("$configDir/docker.json")] === [$ok, $ok, $inode], [$again, $empty]);
 
 $refused = [];
-foreach (['[1,2]', '{"preview":{"deep":1}}', '{"preview":[1]}', 'not json', '7'] as $bad) {
+foreach (['[1,2]', '{"preview":{"deep":1}}', '{"preview":[1]}', 'not json', '7', '{"preview":2,"not_a_folder_setting":"x"}'] as $bad) {
     $answer = $post('apply_defaults.php', ['type' => 'docker', 'settings' => $bad]);
-    if ($answer !== ['400', ['error' => 'The defaults must be a map of plain values']]) $refused[$bad] = $answer;
+    if ($answer !== ['400', ['error' => 'The defaults must be a map of folder settings to plain values']]) $refused[$bad] = $answer;
 }
 $missing = $post('apply_defaults.php', ['type' => 'docker']);
 clearstatcache();
-$check('a list, a nested value, text or a missing field is a 400 and writes nothing',
+$check('a list, a nested value, text, a key that is not a folder setting or a missing field is a 400 and writes nothing',
     $refused === [] && $missing === ['400', ['error' => 'Missing field: settings']] && fileinode("$configDir/docker.json") === $inode, [$refused, $missing]);
 
 $prepare([]);

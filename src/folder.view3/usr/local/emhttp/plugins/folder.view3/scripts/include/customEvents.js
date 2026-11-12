@@ -35,8 +35,8 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
         }
     }
     // What this pass found, per folder: the server applies it to the folder as it is on disk, never this page's copy
-    const found = {};
-    const note = (folderId) => (found[folderId] = found[folderId] || { renames: {}, identity: {} });
+    const found = Object.create(null);
+    const note = (folderId) => (found[folderId] = found[folderId] || { renames: Object.create(null), identity: Object.create(null) });
     for (const [folderId, folder] of Object.entries(folders)) {
         if (!Array.isArray(folder.containers)) continue;
         for (let i = 0; i < folder.containers.length; i++) {
@@ -45,7 +45,8 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
             let newName = null;
             if (type === 'vm') {
                 const storedId = folder.containerIds?.[oldName];
-                if (storedId) newName = uuidIndex[storedId];
+                const candidate = storedId ? uuidIndex[storedId] : null;
+                if (candidate && !claimedNames.has(candidate)) newName = candidate;
             } else {
                 const storedImage = folder.containerImages?.[oldName];
                 if (storedImage) {

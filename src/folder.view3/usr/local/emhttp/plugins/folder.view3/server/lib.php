@@ -976,7 +976,7 @@
         $fileData = fv3_read_json_strict("$configDir/$type.json");
         if ($fileData === null) $abort("$type.json is unreadable, $refusal", "$type.json is unreadable — $refusal");
         $changed = $apply($fileData);
-        // Nothing is written without the lock. A request that changes nothing needs neither, and answers as it always did
+        // Nothing is written without the lock; a request that changes nothing never fails for want of it
         if ($changed !== null && !$lock) $abort("could not lock $type.json", "Could not lock $type.json — nothing was saved");
         if ($changed !== null && !fv3_atomic_write("$configDir/$type.json", json_encode($changed))) {
             $abort("could not write $type.json", "Could not write $type.json — nothing was saved");
@@ -989,10 +989,11 @@
     function applyFolderDefaults(string $type, string $settings) : void {
         $patch = json_decode($settings, true);
         $isMap = is_array($patch) && ($patch === [] || !array_is_list($patch));
-        if (!$isMap || array_filter($patch, fn($value) => $value !== null && !is_scalar($value))) {
+        // Only settings a folder has (the editor's list) and plain values: one bad request must not stamp junk on every folder
+        if (!$isMap || array_diff_key($patch, fv3_foreign_setting_rules()) || array_filter($patch, fn($value) => $value !== null && !is_scalar($value))) {
             http_response_code(400);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'The defaults must be a map of plain values']);
+            echo json_encode(['error' => 'The defaults must be a map of folder settings to plain values']);
             exit;
         }
         if (!$patch) { return; }

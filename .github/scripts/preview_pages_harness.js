@@ -2,8 +2,10 @@
 // Stubbed: HTTP ($.get/$.ajax), fetch (/graphql), WebSocket, NchanSubscriber (Unraid's dockerload), tooltipster, timers (a manual clock).
 'use strict';
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const vm = require('vm');
+const { execFileSync } = require('child_process');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
 const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/folder.view3/usr/local/emhttp/plugins/folder.view3');
@@ -298,4 +300,29 @@ const check = (label, ok, detail) => {
 process.exitCode = 1;
 const done = () => { console.log(failed ? `\n${failed} FAILED` : '\nall passed'); process.exit(failed ? 1 : 0); };
 
-module.exports = { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, flush, read };
+// The shipped PHP endpoints on a temp config folder, each request its own `php` process, for a test that sends on what a page
+// really posts: server(name, method, fields) gives the body it answers, `config` is the folder, cleanup() removes it all
+const phpServer = (label) => {
+    const tmp = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), `fv3-${label}-`));
+    const config = path.join(tmp, 'config');
+    // lib.php requires these two Unraid host files at load time
+    for (const [rel, src] of [['webGui/include/Helpers.php', '<?php'],
+        ['plugins/dynamix.docker.manager/include/DockerClient.php', '<?php class DockerClient { function getDockerContainers() { return []; } function getDockerJSON($url) { return []; } } class DockerUpdate {}']]) {
+        fs.mkdirSync(path.dirname(path.join(tmp, 'docroot', rel)), { recursive: true });
+        fs.writeFileSync(path.join(tmp, 'docroot', rel), src);
+    }
+    fs.mkdirSync(config);
+    fs.mkdirSync(path.join(tmp, 'dockerMan'));
+    const quote = (text) => `'${String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+    const server = (name, method, fields) => {
+        const copy = path.join(tmp, name);
+        fs.writeFileSync(copy, read(`server/${name}`).replace('require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");',
+            `require_once(${quote(path.join(plugin, 'server/lib.php'))}); $configDir = ${quote(config)}; $fv3DockerManDir = ${quote(path.join(tmp, 'dockerMan'))};`));
+        const boot = `$_SERVER["DOCUMENT_ROOT"] = ${quote(path.join(tmp, 'docroot'))}; $_SERVER["REQUEST_METHOD"] = ${quote(method)};`
+            + ` $_${method} = json_decode(${quote(JSON.stringify(fields))}, true); include ${quote(copy)};`;
+        return execFileSync('php', ['-d', 'display_errors=0', '-r', boot], { encoding: 'utf8' });
+    };
+    return { config, server, cleanup: () => fs.rmSync(tmp, { recursive: true, force: true }) };
+};
+
+module.exports = { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, flush, read, phpServer };

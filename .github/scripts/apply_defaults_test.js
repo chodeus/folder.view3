@@ -2,10 +2,11 @@
 // the real $.post and the page's own loader: never a whole folder from the copy the page loaded (npm ci in this folder first)
 'use strict';
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
-const { fakeXhr, scriptHelpers, check, done, read } = require('./preview_pages_harness.js');
+const { fakeXhr, scriptHelpers, check, done, read, phpServer } = require('./preview_pages_harness.js');
 
 const dom = new JSDOM('<!doctype html><html><body><button id="fv3-apply-defaults"></button></body></html>',
     { url: 'http://tower.local/Settings/FolderView3', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: new VirtualConsole() });
@@ -75,6 +76,15 @@ const apply = async (dockers, vms, answers, { saved = true, reloads = true } = {
         [sent[0].preview_border_color, sent[0].preview_vertical_bars_color, sent[0].preview_row_separator_color].join() === '#abcdef,#123456,#654321', sent[0]);
     check('then the page loads its folders again (four reads at load, four after) and says the defaults were applied',
         both.reads === 8 && both.dialog === 'success: Defaults applied to all folders.', both);
+
+    // That request sent on to the shipped endpoint: every key the page posts is a folder setting the server takes
+    const { config, server, cleanup } = phpServer('apply-defaults-test');
+    fs.writeFileSync(path.join(config, 'docker.json'), JSON.stringify({ a1: { name: 'Apps', containers: [], settings: { lock_colors: true, preview_border_color: '#000000' } } }));
+    const answer = server('apply_defaults.php', 'POST', both.posted[0].fields);
+    const landed = JSON.parse(fs.readFileSync(path.join(config, 'docker.json'), 'utf8')).a1.settings;
+    cleanup();
+    check('the server takes the request as the page sent it: the defaults land, and the folder that locks its colours keeps its own',
+        answer === '{"success":true}' && landed.preview === 2 && landed.use_global_defaults === true && landed.preview_border_color === '#000000', { answer, landed });
 
     const none = await apply({}, {}, [OK, OK]);
     check('a page that shows no folders still asks for both types: another tab may have made some since it loaded',
