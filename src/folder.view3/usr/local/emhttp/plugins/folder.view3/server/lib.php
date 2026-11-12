@@ -823,7 +823,7 @@
     }
 
     // Returns why the autostart file could not be put in order (a file or a Docker read it needs failed), else null.
-    // An empty container list is logged only: a server with no containers, or with Docker off, has nothing to report
+    // Folder mode only logs an empty container list: a server with no containers, or with Docker off, has nothing to report
     function syncContainerOrder(string $type): ?string {
         // Rewrites the autostart file to match what FV3 renders on screen — top-to-bottom,
         // folder members left-to-right in their editor-chosen order. Render order itself is

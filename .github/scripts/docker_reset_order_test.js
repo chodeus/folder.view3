@@ -1,5 +1,5 @@
-// node .github/scripts/docker_reset_order_test.js — Reset Order on the Docker page: only a failed reset shows the "could not reset"
-// banner, a refused autostart sync does not, and the list reloads either way (npm ci in this folder first)
+// node .github/scripts/docker_reset_order_test.js — Reset Order on the Docker page: a failed reset shows the "could not reset" banner,
+// a refused autostart sync its own banner with the reason, and the list reloads either way (npm ci in this folder first)
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -30,10 +30,11 @@ const reset = async (refused) => {
     check('a reset that works: the order is reset, the autostart file synced, the list reloaded, no banner',
         ok.banners.length === 0 && ok.urls.join() === 'UserPrefs.php,sync_order.php' && ok.reloads === 1 && ok.errors.length === 0, ok);
     const syncRefused = await reset(['sync_order.php']);
-    check('a refused autostart sync is not reported as a failed reset, and the list still reloads',
-        syncRefused.banners.length === 0 && syncRefused.urls.join() === 'UserPrefs.php,sync_order.php' && syncRefused.reloads === 1 && syncRefused.errors.length === 0, syncRefused);
+    check('a refused autostart sync shows its own banner with the reason, not the failed-reset one, and the list still reloads',
+        syncRefused.banners.join('|') === 'The order was reset, but the Docker start order could not be updated: refused by the test'
+        && syncRefused.urls.join() === 'UserPrefs.php,sync_order.php' && syncRefused.reloads === 1 && syncRefused.errors.length === 0, syncRefused);
     const resetRefused = await reset(['UserPrefs.php']);
     check('a failed reset shows the banner, skips the sync, and the list still reloads',
-        resetRefused.banners.length === 1 && /reset/i.test(resetRefused.banners[0]) && resetRefused.urls.join() === 'UserPrefs.php' && resetRefused.reloads === 1, resetRefused);
+        resetRefused.banners.join('|') === 'Could not reset the folder order. Try again.' && resetRefused.urls.join() === 'UserPrefs.php' && resetRefused.reloads === 1, resetRefused);
     done();
 })();

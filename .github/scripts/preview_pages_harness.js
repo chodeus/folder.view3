@@ -225,11 +225,11 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     } });
     shown.forEach((n, i) => { info[n] = p.ct(sid(i), n); });
     const posts = [];
-    // A request whose url holds an entry of `failing` is refused (503)
+    // A request whose url holds an entry of `failing` is refused (503, with a reason as sync_order.php gives one)
     const failing = new Set();
     p.$.post = (url, data) => {
         posts.push({ url, data });
-        return [...failing].some((part) => url.includes(part)) ? p.$.Deferred().reject({ status: 503 }) : p.$.Deferred().resolve('ok');
+        return [...failing].some((part) => url.includes(part)) ? p.$.Deferred().reject({ status: 503, responseJSON: { error: 'refused by the test' } }) : p.$.Deferred().resolve('ok');
     };
     p.$('#docker_containers').prepend(`<thead><tr>${'<th></th>'.repeat(10)}</tr></thead>`);
     // One list load: Unraid replaces the rows, then the page builds its folders. The harness clock is manual, so tick() moves it

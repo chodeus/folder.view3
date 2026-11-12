@@ -190,6 +190,7 @@
     "dashboard-settings-load-failed": "Nie można wczytać ustawień pulpitu, więc wyświetlane są układy domyślne. Odśwież stronę.",
     "invalid-folder-export": "Ten plik nie jest eksportem folderów.",
     "order-sync-failed": "Zapisano, ale nie można zaktualizować kolejności uruchamiania Dockera: $1",
+    "reset-order-sync-failed": "Kolejność została zresetowana, ale nie można zaktualizować kolejności uruchamiania Dockera: $1",
     "docker-folders-load-failed": "Nie można wczytać danych folderów Dockera. Odśwież stronę.",
     "vm-folders-load-failed": "Nie można wczytać danych folderów VM. Odśwież stronę.",
     "container-details-load-failed": "Nie można wczytać szczegółów kontenerów. Odśwież stronę.",
