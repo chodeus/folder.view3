@@ -930,8 +930,6 @@
     }
 
     function updateFolder(string $type, string $content, ?string $id = null) : void {
-        global $configDir;
-        if(!file_exists("$configDir/$type.json")) { createFile($type); }
         $decoded = json_decode($content, true);
         // A folder must be an object/array — reject scalars so a full-backup bundle can't pollute $type.json
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
@@ -945,15 +943,6 @@
             echo json_encode(['error' => "The folder name 'root' is reserved by Unraid's Docker organizer"]);
             exit;
         }
-        $fileData = fv3_read_json_strict("$configDir/$type.json");
-        if ($fileData === null) {
-            // Corrupt config must fail closed — merging onto empty would wipe every other folder
-            fv3_error_log('updateFolder', "$type.json is unreadable, refusing to save");
-            http_response_code(500);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
-            exit;
-        }
         // Only create.php omits the id; importAll() re-keys its own bad ids, so a malformed one here is a bad
         // request, never a new folder
         if ($id === null) {
@@ -964,81 +953,133 @@
             echo json_encode(['error' => 'Folder id may only contain letters, digits, _ and -']);
             exit;
         }
-        $fileData[$id] = $decoded;
-        $fileData = fv3_dedupe_explicit_members($fileData, $id);
-        fv3_write_folders_or_abort($type, $fileData, 'updateFolder');
+        fv3_write_folders($type, 'updateFolder', function (array $fileData) use ($decoded, $id): array {
+            $fileData[$id] = $decoded;
+            return fv3_dedupe_explicit_members($fileData, $id);
+        });
     }
 
-    // The folder config written, or a 500 with the reason: the endpoint must not go on to fv3_ok()
-    function fv3_write_folders_or_abort(string $type, array $fileData, string $caller): void {
+    // Every change to docker.json / vm.json goes through here, one request at a time: $apply gets the folders as they
+    // are on disk ([] when there is no file) and returns them changed, or null to leave the file alone. A failure is a 500
+    function fv3_write_folders(string $type, string $caller, callable $apply, string $refusal = 'refusing to save so existing folders are not wiped'): void {
         global $configDir;
-        if (fv3_atomic_write("$configDir/$type.json", json_encode($fileData))) return;
-        fv3_error_log($caller, "could not write $type.json");
-        http_response_code(500);
-        header('Content-Type: application/json');
-        echo json_encode(['error' => "Could not write $type.json — nothing was saved"]);
-        exit;
-    }
-
-    function updateFolderIds(string $type, string $data) : void {
-        global $configDir;
-        if(!file_exists("$configDir/$type.json")) { return; }
-        $updates = json_decode($data, true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($updates)) { http_response_code(400); exit; }
-        // Strict, like updateFolder: the dedupe below rewrites every folder, so a
-        // corrupt-as-empty read must abort rather than persist a pruned file
-        $fileData = fv3_read_json_strict("$configDir/$type.json");
-        if ($fileData === null) {
-            fv3_error_log('updateFolderIds', "$type.json is unreadable, refusing to save");
+        $lock = fv3_config_lock("$type.json");
+        $abort = function (string $logged, string $error) use ($caller, $lock): void {
+            if ($lock) fv3_config_unlock($lock);
+            fv3_error_log($caller, $logged);
             http_response_code(500);
             header('Content-Type: application/json');
-            echo json_encode(['error' => "$type.json is unreadable — refusing to save so existing folders are not wiped"]);
+            echo json_encode(['error' => $error]);
+            exit;
+        };
+        // Corrupt config must fail closed: merging onto empty would wipe every other folder
+        $fileData = fv3_read_json_strict("$configDir/$type.json");
+        if ($fileData === null) $abort("$type.json is unreadable, $refusal", "$type.json is unreadable — $refusal");
+        $changed = $apply($fileData);
+        // Nothing is written without the lock. A request that changes nothing needs neither, and answers as it always did
+        if ($changed !== null && !$lock) $abort("could not lock $type.json", "Could not lock $type.json — nothing was saved");
+        if ($changed !== null && !fv3_atomic_write("$configDir/$type.json", json_encode($changed))) {
+            $abort("could not write $type.json", "Could not write $type.json — nothing was saved");
+        }
+        if ($lock) fv3_config_unlock($lock);
+    }
+
+    // Apply defaults: $settings merged into the settings of every folder as it is on disk, so nothing a page loaded
+    // earlier is written back. A folder that locks its colours keeps them
+    function applyFolderDefaults(string $type, string $settings) : void {
+        $patch = json_decode($settings, true);
+        $isMap = is_array($patch) && ($patch === [] || !array_is_list($patch));
+        if (!$isMap || array_filter($patch, fn($value) => $value !== null && !is_scalar($value))) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'The defaults must be a map of plain values']);
             exit;
         }
-        $changed = false;
-        foreach ($updates as $folderId => $patch) {
-            if (!fv3_is_folder_id($folderId)) continue;
-            if (!is_array($fileData[$folderId] ?? null)) continue;
-            if (isset($patch['containers']) && is_array($patch['containers'])) {
-                $fileData[$folderId]['containers'] = $patch['containers'];
+        if (!$patch) { return; }
+        $unlocked = array_diff_key($patch, array_flip(['preview_vertical_bars_color', 'preview_border_color', 'preview_row_separator_color']));
+        fv3_write_folders($type, 'applyFolderDefaults', function (array $fileData) use ($patch, $unlocked): ?array {
+            $changed = false;
+            foreach ($fileData as $folderId => $folder) {
+                if (!is_array($folder)) continue;
+                $old = is_array($folder['settings'] ?? null) ? $folder['settings'] : [];
+                // what the pages call locked: any value JavaScript reads as true
+                $locked = !in_array($old['lock_colors'] ?? false, [false, null, 0, 0.0, ''], true);
+                $new = array_replace($old, $locked ? $unlocked : $patch);
+                if ($new === $old) continue;
+                $fileData[$folderId]['settings'] = $new;
                 $changed = true;
             }
-            if (isset($patch['containerIds']) && is_array($patch['containerIds'])) {
-                $fileData[$folderId]['containerIds'] = $patch['containerIds'];
+            return $changed ? $fileData : null;
+        });
+    }
+
+    // What a Docker, VMs or Dashboard page found at load, per folder: `renames` (old name => new) and `identity` (name => the
+    // image or UUID to know it by), applied to the folder as it is on disk. Whole lists from a page's copy are not taken
+    function updateFolderIds(string $type, string $data) : void {
+        $updates = json_decode($data, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($updates)) { http_response_code(400); exit; }
+        if (!$updates) { return; }
+        $identity = $type === 'vm' ? 'containerIds' : 'containerImages';
+        fv3_write_folders($type, 'updateFolderIds', function (array $fileData) use ($updates, $identity): ?array {
+            // Every name that is a member of some folder by now: a rename never takes one from where it was put
+            $claimed = [];
+            foreach ($fileData as $folder) {
+                foreach (is_array($folder) && is_array($folder['containers'] ?? null) ? $folder['containers'] : [] as $member) {
+                    if (is_scalar($member)) $claimed[(string)$member] = true;
+                }
+            }
+            $changed = false;
+            foreach ($updates as $folderId => $patch) {
+                if (!fv3_is_folder_id($folderId)) continue;
+                if (!is_array($fileData[$folderId] ?? null) || !is_array($patch)) continue;
+                $folder = fv3_apply_member_changes($fileData[$folderId], $patch, $identity, $claimed);
+                if ($folder === $fileData[$folderId]) continue;
+                $fileData[$folderId] = $folder;
                 $changed = true;
             }
-            if (isset($patch['containerImages']) && is_array($patch['containerImages'])) {
-                $fileData[$folderId]['containerImages'] = $patch['containerImages'];
-                $changed = true;
+            // As before this took renames: one container still listed in two folders stays in the first (issue #62)
+            return $changed ? fv3_dedupe_explicit_members($fileData) : null;
+        });
+    }
+
+    // $folder with a page's renames and identity entries applied to its members as they are now. Mirrors what
+    // fv3ResolveRenamedContainers (customEvents.js) does to the page's own copy, its skip of a $claimed name included
+    function fv3_apply_member_changes(array $folder, array $patch, string $identity, array &$claimed): array {
+        $members = is_array($folder['containers'] ?? null) ? $folder['containers'] : [];
+        $find = function ($name) use (&$members) {
+            foreach ($members as $at => $member) { if (is_scalar($member) && (string)$member === (string)$name) return $at; }
+            return null;
+        };
+        foreach (is_array($patch['renames'] ?? null) ? $patch['renames'] : [] as $old => $new) {
+            $at = is_string($new) && $new !== '' ? $find($old) : null;
+            // a new name that a save since the page loaded made a member somewhere is left there: the next load decides again
+            if ($at === null || isset($claimed[$new])) continue;
+            $claimed[$new] = true;
+            $members[$at] = $new;
+            $folder['containers'] = $members;
+            if (is_array($folder[$identity] ?? null) && array_key_exists($old, $folder[$identity])) {
+                $folder[$identity][$new] = $folder[$identity][$old];
+                unset($folder[$identity][$old]);
             }
-            if (isset($patch['hidden_preview']) && is_array($patch['hidden_preview'])) {
-                $fileData[$folderId]['hidden_preview'] = $patch['hidden_preview'];
-                $changed = true;
-            }
+            $hidden = is_array($folder['hidden_preview'] ?? null) ? array_search((string)$old, $folder['hidden_preview'], true) : false;
+            if ($hidden !== false) $folder['hidden_preview'][$hidden] = $new;
         }
-        if ($changed) {
-            // A rename can land on a name already explicit elsewhere — re-assert single ownership (issue #62)
-            $fileData = fv3_dedupe_explicit_members($fileData);
-            fv3_write_folders_or_abort($type, $fileData, 'updateFolderIds');
+        foreach (is_array($patch['identity'] ?? null) ? $patch['identity'] : [] as $name => $value) {
+            if (!is_string($value) || $value === '' || $find($name) === null) continue;
+            if (is_array($folder[$identity] ?? null) && array_key_exists($name, $folder[$identity])) continue;
+            if (!is_array($folder[$identity] ?? null)) $folder[$identity] = [];
+            $folder[$identity][$name] = $value;
         }
+        return $folder;
     }
 
     function deleteFolder(string $type, string $id) : void {
-        global $configDir;
-        if(!file_exists("$configDir/$type.json")) { createFile($type); return; }
-        $fileData = fv3_read_json_strict("$configDir/$type.json");
-        if ($fileData === null) {
-            // Corrupt config must fail closed — writing the fallback would wipe every folder
-            fv3_error_log('deleteFolder', "$type.json is unreadable, refusing to delete");
-            http_response_code(500);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => "$type.json is unreadable — refusing to delete so the folder config is not wiped"]);
-            exit;
-        }
-        // Already gone: delete stays idempotent, and there is nothing to rewrite
-        if (!array_key_exists($id, $fileData)) { return; }
-        unset($fileData[$id]);
-        fv3_write_folders_or_abort($type, $fileData, 'deleteFolder');
+        fv3_write_folders($type, 'deleteFolder', function (array $fileData) use ($id): ?array {
+            // Already gone: delete stays idempotent, and there is nothing to rewrite
+            if (!array_key_exists($id, $fileData)) { return null; }
+            unset($fileData[$id]);
+            return $fileData;
+        }, 'refusing to delete so the folder config is not wiped');
     }
 
     function readSettings() : string {
@@ -1125,20 +1166,33 @@
         return $clean;
     }
 
-    // Serialises every settings.json writer, imports included. A separate lock file: replacing
-    // settings.json gives it a new inode, so a lock on the file itself would stop serialising
-    function fv3_settings_lock() {
+    // Serialises every writer of one config file (settings.json, docker.json, vm.json), imports included. A separate
+    // lock file: replacing $file gives it a new inode, so a lock on the file itself would stop serialising
+    function fv3_config_lock(string $file) {
         global $configDir;
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
-        $lock = @fopen("$configDir/settings.json.lock", 'c');
+        // 'e': a child process must never inherit the handle, or it keeps the lock after this request ends
+        $lock = @fopen("$configDir/$file.lock", 'ce');
         if (!$lock) return null;
         if (!flock($lock, LOCK_EX)) { fclose($lock); return null; }
         return $lock;
     }
 
-    function fv3_settings_unlock($lock): void {
+    function fv3_config_unlock($lock): void {
         flock($lock, LOCK_UN);
         fclose($lock);
+    }
+
+    // Locks each file that $wanted names, always in this order so two requests can never wait on each other. Returns
+    // the handles, or the name of the file it could not lock with nothing left locked
+    function fv3_config_lock_each(array $wanted): array|string {
+        $locks = [];
+        foreach (array_intersect(['docker.json', 'vm.json', 'settings.json'], $wanted) as $file) {
+            $lock = fv3_config_lock($file);
+            if (!$lock) { array_map('fv3_config_unlock', $locks); return $file; }
+            $locks[] = $lock;
+        }
+        return $locks;
     }
 
     // Every interactive write to settings.json goes through here: the live file is only ever
@@ -1146,7 +1200,7 @@
     function fv3_write_settings(callable $apply): void {
         global $configDir;
         $path = "$configDir/settings.json";
-        $lock = fv3_settings_lock();
+        $lock = fv3_config_lock('settings.json');
         if (!$lock) {
             fv3_error_log('fv3_write_settings', 'could not lock settings.json');
             http_response_code(500);
@@ -1157,7 +1211,7 @@
         $raw = file_exists($path) ? @file_get_contents($path) : '';
         $data = $apply(fv3_normalize_settings(fv3_decode_settings_or_abort($lock, $raw)));
         $ok = fv3_atomic_write($path, json_encode($data));
-        fv3_settings_unlock($lock);
+        fv3_config_unlock($lock);
         if (!$ok) {
             fv3_error_log('fv3_write_settings', 'could not write settings.json');
             http_response_code(500);
@@ -1329,14 +1383,11 @@
                 if ($css !== null) { $files["styles/$name"] = $css; } else { unset($files["styles/$name"]); $clear[] = "styles/$name"; }
             }
         }
-        // An interactive save must not interleave with the swap, so it waits on the same lock
-        $lock = null;
-        if (isset($files['settings.json'])) {
-            $lock = fv3_settings_lock();
-            if (!$lock) return ['error' => 'Could not lock settings.json — nothing was imported'];
-        }
+        // An interactive save must not interleave with the swap, so it waits on the same locks
+        $locks = fv3_config_lock_each(array_keys($files));
+        if (is_string($locks)) return ['error' => "Could not lock $locks — nothing was imported"];
         $result = fv3_replace_files($configDir, $files, $clear);
-        if ($lock) fv3_settings_unlock($lock);
+        array_map('fv3_config_unlock', $locks);
         if (isset($result['error'])) return $result;
         $restored = [];
         foreach ($result['applied'] as $rel => $hadOld) {
@@ -1621,7 +1672,11 @@
         global $configDir;
         if (!is_dir($configDir)) { @mkdir($configDir, 0770, true); }
         $path = "$configDir/$type.json";
-        fv3_atomic_write($path, '{}');
+        // Under the file's lock, and only if it is still missing: a save or an import since the caller's check is never replaced
+        $lock = fv3_config_lock("$type.json");
+        clearstatcache(true, $path);
+        if (!file_exists($path)) { fv3_atomic_write($path, '{}'); }
+        if ($lock) fv3_config_unlock($lock);
     }
 
     // Mirrors DockerContainers.php:82 — ':???' net-ref wins, then Unraid's per-container cache.

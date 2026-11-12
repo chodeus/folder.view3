@@ -128,6 +128,7 @@ const populateTable = async () => {
     const vmCount = document.getElementById('fv3-vm-count');
     if (dockerCount) dockerCount.textContent = `(${dockerIds.length})`;
     if (vmCount) vmCount.textContent = `(${vmIds.length})`;
+    return true;
 };
 
 populateTable();
@@ -568,22 +569,17 @@ $('#fv3-apply-defaults').on('click', function() {
             update_column: settings.default_update_column === 'yes',
             use_global_defaults: true
         };
-        const jobs = [];
-        for (const [type, folders] of [['docker', dockers], ['vm', vms]]) {
-            for (const [id, folder] of Object.entries(folders)) {
-                if (!folder.settings) folder.settings = {};
-                const applyMap = Object.assign({}, defaultMap);
-                if (folder.settings.lock_colors) {
-                    delete applyMap.preview_vertical_bars_color;
-                    delete applyMap.preview_border_color;
-                    delete applyMap.preview_row_separator_color;
-                }
-                Object.assign(folder.settings, applyMap);
-                jobs.push({ url: '/plugins/folder.view3/server/update.php', data: { type, id, content: JSON.stringify(folder) }, label: folder.name || id });
-            }
-        }
+        // One request per type, always both: the server merges the defaults into each folder as it is on disk and keeps the
+        // colours of a folder that locks them. This page's copy may be behind a save, or a new folder, from another tab
+        const jobs = [['docker', dockers, 'Docker folders'], ['vm', vms, 'VM folders']].map(([type, folders, all]) => ({
+            url: '/plugins/folder.view3/server/apply_defaults.php',
+            data: { type, settings: JSON.stringify(defaultMap) },
+            label: Object.entries(folders).map(([id, folder]) => folder.name || id).join(', ') || fv3I18nOr(`${type}-folders`, all)
+        }));
         const failed = await postEach(jobs);
-        if (showBatchErrors(failed, { key: 'defaults-not-applied', text: 'Defaults were not applied to these folders: $1' })) return;
+        // the exports on this page read its copy of the folders; a reload that failed keeps its own error up
+        const reloaded = await populateTable();
+        if (showBatchErrors(failed, { key: 'defaults-not-applied', text: 'Defaults were not applied to these folders: $1' }) || !reloaded) return;
         swal({ title: fv3I18nOr('done', 'Done'), text: fv3I18nOr('defaults-applied', 'Defaults applied to all folders.'), type: 'success', timer: 1500 });
     });
 });

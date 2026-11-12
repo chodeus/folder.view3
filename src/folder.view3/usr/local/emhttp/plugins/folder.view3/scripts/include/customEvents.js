@@ -34,7 +34,9 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
             if (containersInfo[name]) claimedNames.add(name);
         }
     }
-    let dirty = false;
+    // What this pass found, per folder: the server applies it to the folder as it is on disk, never this page's copy
+    const found = {};
+    const note = (folderId) => (found[folderId] = found[folderId] || { renames: {}, identity: {} });
     for (const [folderId, folder] of Object.entries(folders)) {
         if (!Array.isArray(folder.containers)) continue;
         for (let i = 0; i < folder.containers.length; i++) {
@@ -66,12 +68,12 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
                 const hIdx = folder.hidden_preview.indexOf(oldName);
                 if (hIdx !== -1) folder.hidden_preview[hIdx] = newName;
             }
-            dirty = true;
+            note(folderId).renames[oldName] = newName;
         }
     }
     // Backfill identity maps for legacy/migrated folders (e.g. imported from folder.view2,
     // which has no containerImages/containerIds) so rename-tracking works without a manual edit+save.
-    for (const folder of Object.values(folders)) {
+    for (const [folderId, folder] of Object.entries(folders)) {
         if (!Array.isArray(folder.containers)) continue;
         for (const name of folder.containers) {
             const ct = containersInfo[name];
@@ -79,26 +81,17 @@ window.fv3ResolveRenamedContainers = window.fv3ResolveRenamedContainers || ((fol
             if (type === 'vm') {
                 if (!ct.uuid) continue;
                 if (!folder.containerIds) folder.containerIds = {};
-                if (!(name in folder.containerIds)) { folder.containerIds[name] = ct.uuid; dirty = true; }
+                if (!(name in folder.containerIds)) { folder.containerIds[name] = ct.uuid; note(folderId).identity[name] = ct.uuid; }
             } else {
                 const img = ct.info?.Config?.Image || '';
                 if (!img) continue;
                 if (!folder.containerImages) folder.containerImages = {};
-                if (!(name in folder.containerImages)) { folder.containerImages[name] = img; dirty = true; }
+                if (!(name in folder.containerImages)) { folder.containerImages[name] = img; note(folderId).identity[name] = img; }
             }
         }
     }
-    if (dirty && typeof $ !== 'undefined') {
-        const saveData = {};
-        for (const [folderId, folder] of Object.entries(folders)) {
-            if (type === 'vm' && !folder.containerIds) continue;
-            if (type === 'docker' && !folder.containerImages) continue;
-            saveData[folderId] = { containers: folder.containers };
-            if (folder.containerIds) saveData[folderId].containerIds = folder.containerIds;
-            if (folder.containerImages) saveData[folderId].containerImages = folder.containerImages;
-            if (folder.hidden_preview) saveData[folderId].hidden_preview = folder.hidden_preview;
-        }
-        $.post('/plugins/folder.view3/server/update_ids.php', { type: type, data: JSON.stringify(saveData) });
+    if (Object.keys(found).length && typeof $ !== 'undefined') {
+        $.post('/plugins/folder.view3/server/update_ids.php', { type: type, data: JSON.stringify(found) });
     }
 });
 
