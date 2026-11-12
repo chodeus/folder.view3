@@ -1030,7 +1030,8 @@
     // image or UUID to know it by), applied to the folder as it is on disk. Whole lists from a page's copy are not taken
     function updateFolderIds(string $type, string $data) : void {
         $updates = json_decode($data, true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($updates)) { http_response_code(400); exit; }
+        // A JSON list is not a report: its positions would be read as folder ids. Told by the text: a map keyed "0" decodes the same
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($updates) || ($updates && ltrim($data)[0] === '[')) { http_response_code(400); exit; }
         if (!$updates) { return; }
         $identity = $type === 'vm' ? 'containerIds' : 'containerImages';
         fv3_write_folders($type, 'updateFolderIds', function (array $fileData) use ($updates, $identity): ?array {

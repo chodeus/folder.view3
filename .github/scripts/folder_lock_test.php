@@ -1,6 +1,7 @@
 <?php
-// php .github/scripts/folder_lock_test.php [plugin-dir] — every writer of docker.json / vm.json reads and writes under the file's lock, so
-// two saves at once never undo each other, and Apply defaults changes settings only. Each request is a shipped endpoint in its own process
+// php .github/scripts/folder_lock_test.php [plugin-dir] — every writer of docker.json / vm.json reads and writes under the file's lock, so a
+// save never writes the file as it was before another save, and Apply defaults and the id update send changes, not copies. A folder editor
+// still saves its whole folder. Each request is a shipped endpoint in its own process
 $fv3tPlugin = $argv[1] ?? dirname(__DIR__, 2) . '/src/folder.view3/usr/local/emhttp/plugins/folder.view3';
 $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-folder-lock-test-' . bin2hex(random_bytes(4));
 
@@ -226,6 +227,15 @@ foreach ([['abc' => ['renames' => ['never-here' => 'x'], 'identity' => ['app-a' 
 clearstatcache();
 $check('an id update with nothing to apply, or in a shape it does not take, answers success and does not write the file',
     $quiet === [] && fileinode("$configDir/docker.json") === $inode && $dockerMap() === $tracked, $quiet);
+
+// A list is not a report, even when a folder has the id its first position would be read as
+$prepare($savedSetup(['0' => $folder('Numbered', ['app-old'])]));
+$kept = file_get_contents("$configDir/docker.json");
+$listed = $post('update_ids.php', ['type' => 'docker', 'data' => json_encode([['renames' => ['app-old' => 'app-new']]])]);
+$emptyList = $post('update_ids.php', ['type' => 'docker', 'data' => '[]']);
+$byId = $post('update_ids.php', ['type' => 'docker', 'data' => json_encode(['0' => ['renames' => ['app-old' => 'app-new']]], JSON_FORCE_OBJECT)]);
+$check('an id update sent as a list is a 400 and changes nothing, an empty one is a no-op, and folder "0" is still reached by its id',
+    $listed[0] === '400' && $emptyList === $ok && $byId === $ok && $dockerMap()[0]['containers'] === ['app-new'], [$listed, $emptyList, $byId, $kept === file_get_contents("$configDir/docker.json")]);
 
 $prepare($savedSetup());
 $post('delete.php', ['type' => 'docker', 'id' => 'abc']);
