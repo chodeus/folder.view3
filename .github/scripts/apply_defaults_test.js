@@ -121,17 +121,21 @@ const apply = async (dockers, vms, answers, { save = OK, reloads = true } = {}) 
         none.defaults.map((p) => p.fields.type).join() === 'docker,vm' && none.dialog === 'success: Defaults applied to all folders.', none);
 
     const refused = await apply(DOCKERS, VMS, [REFUSED, OK]);
-    check('a refused request names that type\'s folders and the server\'s reason; the other type is still sent',
+    check('a refused request names its folder type, not this page\'s copy of the folders, and the server\'s reason; the other type is still sent',
         refused.defaults.map((p) => p.fields.type).join() === 'docker,vm' && refused.reads === 8
-        && refused.dialog === 'error: Defaults were not applied to these folders: Apps, Media\nCould not write docker.json — nothing was saved', refused);
+        && refused.dialog === 'error: Defaults were not applied to these folders: Docker folders\nCould not write docker.json — nothing was saved', refused);
 
     const dropped = await apply({}, VMS, [DROPPED, DROPPED]);
-    check('requests Unraid dropped say to reload; a type the page knows no folders of is named as a whole',
-        dropped.dialog === 'error: Defaults were not applied to these folders: Docker folders, Desktops\nUnraid did not accept the request. Reload the page and try again.', dropped);
+    check('requests Unraid dropped say to reload, each named by its folder type',
+        dropped.dialog === 'error: Defaults were not applied to these folders: Docker folders, VM folders\nUnraid did not accept the request. Reload the page and try again.', dropped);
 
     const stale = await apply(DOCKERS, VMS, [OK, OK], { reloads: false });
     check('when the reload after it fails, that error stays up instead of "applied": the page still holds the old copy',
         stale.defaults.length === 2 && stale.dialog === 'error: Could not load folder data. Try refreshing the page.', stale);
+
+    const neither = await apply(DOCKERS, VMS, [REFUSED, OK], { reloads: false });
+    check('a refused request and a failed reload are both named in the one dialog',
+        neither.dialog === 'error: Defaults were not applied to these folders: Docker folders\nCould not write docker.json — nothing was saved\nCould not load folder data. Try refreshing the page.', neither);
 
     const unsaved = await apply(DOCKERS, VMS, [], { save: SAVE_REFUSED });
     check('when the settings save before it is refused, its reason is shown and no defaults are sent',

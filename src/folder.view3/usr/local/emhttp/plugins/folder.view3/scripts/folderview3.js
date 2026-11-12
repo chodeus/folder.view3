@@ -571,15 +571,16 @@ $('#fv3-apply-defaults').on('click', function() {
         };
         // One request per type, always both: the server merges the defaults into each folder as it is on disk and keeps the
         // colours of a folder that locks them. This page's copy may be behind a save, or a new folder, from another tab
-        const jobs = [['docker', dockers, 'Docker folders'], ['vm', vms, 'VM folders']].map(([type, folders, all]) => ({
+        const jobs = [['docker', 'Docker folders'], ['vm', 'VM folders']].map(([type, all]) => ({
             url: '/plugins/folder.view3/server/apply_defaults.php',
             data: { type, settings: JSON.stringify(defaultMap) },
-            label: Object.entries(folders).map(([id, folder]) => folder.name || id).join(', ') || fv3I18nOr(`${type}-folders`, all)
+            label: fv3I18nOr(`${type}-folders`, all)
         }));
         const failed = await postEach(jobs);
-        // the exports on this page read its copy of the folders; a reload that failed keeps its own error up
+        // the exports on this page read its copy of the folders; a reload that failed is named with the failed requests
         const reloaded = await populateTable();
-        if (showBatchErrors(failed, { key: 'defaults-not-applied', text: 'Defaults were not applied to these folders: $1' }) || !reloaded) return;
+        const stale = reloaded ? '' : fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.');
+        if (showBatchErrors(failed, { key: 'defaults-not-applied', text: 'Defaults were not applied to these folders: $1' }, null, stale) || !reloaded) return;
         swal({ title: fv3I18nOr('done', 'Done'), text: fv3I18nOr('defaults-applied', 'Defaults applied to all folders.'), type: 'success', timer: 1500 });
     });
 });
