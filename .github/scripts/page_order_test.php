@@ -10,7 +10,11 @@ $fv3tDockerClient = <<<'PHP'
 class DockerClient {
     // fv3tDown = Docker is not answering
     function getDockerContainers() { return ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Name' => $n], $GLOBALS['fv3tNames'] ?? []); }
-    function getDockerJSON($url) { return ($GLOBALS['fv3tLabelsDown'] ?? false) || ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Names' => ["/$n"], 'Labels' => []], $GLOBALS['fv3tNames'] ?? []); }
+    // fv3tLabels = container name => its folder.view3 label
+    function getDockerJSON($url) {
+        if (($GLOBALS['fv3tLabelsDown'] ?? false) || ($GLOBALS['fv3tDown'] ?? false)) return null;
+        return array_map(fn($n) => ['Names' => ["/$n"], 'Labels' => array_filter(['folder.view3' => $GLOBALS['fv3tLabels'][$n] ?? null])], $GLOBALS['fv3tNames'] ?? []);
+    }
 }
 class DockerUpdate {}
 PHP;
@@ -88,34 +92,40 @@ $autostartSave = function (string $mode, string $foldersJson) use ($setPrefs, $c
     file_put_contents($fv3tAutostart, "b\na\n");
     try { return updateAutostartConfig($mode, [], []); } finally { @unlink("$configDir/autostart.json"); }
 };
-// sync_order.php as its own process (it exits, and its require is an absolute Unraid path), on the same temp files
-$fv3tEndpoint = "$fv3tTmp/sync_order.php";
-file_put_contents($fv3tEndpoint, str_replace('require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");',
-    'require_once(' . var_export("$fv3tPlugin/server/lib.php", true) . '); $configDir = ' . var_export($configDir, true) . '; $fv3DockerManDir = ' . var_export($fv3DockerManDir, true) . ';',
-    file_get_contents("$fv3tPlugin/server/sync_order.php"), $fv3tSwapped));
-$post = function (array $fields, array $names, ?string $cfg, ?string $foldersJson = '{}') use ($setPrefs, $configDir, $fv3tAutostart, $fv3tEndpoint, $fv3tTmp, &$fv3tSwapped): array {
-    $setPrefs($cfg);
-    @unlink("$configDir/docker.json");
-    if ($foldersJson !== null) file_put_contents("$configDir/docker.json", $foldersJson);
-    file_put_contents($fv3tAutostart, "b\na\n");
-    $boot = '$_SERVER["DOCUMENT_ROOT"] = ' . var_export("$fv3tTmp/docroot", true) . '; $_SERVER["REQUEST_METHOD"] = "POST"; $_POST = ' . var_export($fields, true) . ';'
-        . ' $GLOBALS["fv3tNames"] = ' . var_export($names, true) . ';'
+// A shipped endpoint as its own process (it exits, and its require is an absolute Unraid path), on the same temp files.
+// $globals feed the DockerClient stub; `swapped` = the require was pointed at this plugin copy
+$endpoint = function (string $name, string $method, array $fields, array $globals) use ($fv3tPlugin, $fv3tTmp, $configDir, $fv3DockerManDir): array {
+    $copy = "$fv3tTmp/$name";
+    file_put_contents($copy, str_replace('require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");',
+        'require_once(' . var_export("$fv3tPlugin/server/lib.php", true) . '); $configDir = ' . var_export($configDir, true) . '; $fv3DockerManDir = ' . var_export($fv3DockerManDir, true) . ';',
+        file_get_contents("$fv3tPlugin/server/$name"), $swapped));
+    $boot = '$_SERVER["DOCUMENT_ROOT"] = ' . var_export("$fv3tTmp/docroot", true) . '; $_SERVER["REQUEST_METHOD"] = ' . var_export($method, true) . '; $_' . $method . ' = ' . var_export($fields, true) . ';'
+        . ' foreach (' . var_export($globals, true) . ' as $k => $v) { $GLOBALS[$k] = $v; }'
         . ' register_shutdown_function(function () { fwrite(STDERR, (string)(http_response_code() ?: 200)); });'
-        . ' include ' . var_export($fv3tEndpoint, true) . ';';
+        . ' include ' . var_export($copy, true) . ';';
     $proc = proc_open([PHP_BINARY, '-r', $boot], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
     $body = stream_get_contents($pipes[1]);
     $status = stream_get_contents($pipes[2]);
     proc_close($proc);
-    return ['swapped' => $fv3tSwapped, 'status' => $status, 'body' => json_decode($body, true) ?? $body, 'file' => file($fv3tAutostart, FILE_IGNORE_NEW_LINES)];
+    return ['swapped' => $swapped, 'status' => $status, 'body' => json_decode($body, true) ?? $body];
+};
+$post = function (array $fields, array $names, ?string $cfg, ?string $foldersJson = '{}') use ($setPrefs, $configDir, $fv3tAutostart, $endpoint): array {
+    $setPrefs($cfg);
+    @unlink("$configDir/docker.json");
+    if ($foldersJson !== null) file_put_contents("$configDir/docker.json", $foldersJson);
+    file_put_contents($fv3tAutostart, "b\na\n");
+    return $endpoint('sync_order.php', 'POST', $fields, ['fv3tNames' => $names]) + ['file' => file($fv3tAutostart, FILE_IGNORE_NEW_LINES)];
 };
 $containersOf = fn(array $order): array => array_values(array_filter($order, fn($n) => !str_starts_with($n, 'folder-')));
-// read_membership.php's answer (container => folder name) for one saved order; an overlapping regex and two labels make it a real contest
-$memberMap = function (array $prefs) use ($fixture, $folder): array {
-    $m = fv3_compute_folder_membership($fixture['folders'] + ['dup' => $folder('Dup', [], '^(r|y|alpha)')], $fixture['containers'], ['mid' => 'Zulu', 's1' => 'Old'], $prefs);
-    $map = [];
-    foreach ($m['containers'] as $placeholder => $members) { foreach ($members as $ct) { $map[$ct] = $m['names'][$placeholder]; } }
-    ksort($map);
-    return $map;
+// What the shipped read_membership.php answers (status, then container => folder name A-Z) with the given userprefs.cfg;
+// an overlapping regex and two labels make which folder wins a real contest
+$membership = function (?string $cfg) use ($setPrefs, $configDir, $endpoint, $fixture, $folder): array {
+    $setPrefs($cfg);
+    file_put_contents("$configDir/docker.json", json_encode($fixture['folders'] + ['dup' => $folder('Dup', [], '^(r|y|alpha)')]));
+    $r = $endpoint('read_membership.php', 'GET', ['type' => 'docker'], ['fv3tNames' => $fixture['containers'], 'fv3tLabels' => ['mid' => 'Zulu', 's1' => 'Old']]);
+    $map = $r['body']['membership'] ?? $r['body'];
+    if (is_array($map)) ksort($map);
+    return [$r['swapped'], $r['status'], $map];
 };
 $wait = fn(array $names): array => array_map(fn($n) => $n === 'z1' ? 'z1 30' : $n, $names);
 
@@ -166,9 +176,11 @@ $cases = [
         $order(['b' => $folder('Beta', ['x'])], ['x', 'alpha', 'zed'], []), ['alpha', 'x', 'folder-b', 'zed']],
     ['no userprefs.cfg: a look-alike of a folder member keeps its own A-Z place',
         $order(['f' => $folder('F', ['10'])], ['10', '1e1', '0first'], []), ['0first', '1e1', '10', 'folder-f']],
-    ['which folder a container is in does not depend on the saved order',
-        [$memberMap($fixture['prefs']), $memberMap(array_reverse($fixture['containers']))], [$memberMap([]), $memberMap([])]],
-    ['and that map is not empty', count($memberMap([])) > 5, true],
+    ['read_membership.php: an explicit entry beats a label (s1), a label places a loose container (mid), the first folder whose regex matches wins (r1, y1)',
+        $membership(null), [1, '200', ['alpha' => 'Dup', 'mid' => 'Zulu', 'n1' => 'Numbers', 'o1' => 'Old', 'r1' => 'Rex', 'r2' => 'Rex', 's1' => 'Seven', 'y1' => 'Yankee', 'y2' => 'Yankee', 'z1' => 'Zulu', 'z2' => 'Zulu']]],
+    ['and its answer does not depend on userprefs.cfg: the saved order, a reversed one, a file cut off mid-save',
+        [$membership($userprefs($fixture['prefs'])), $membership($userprefs(array_reverse($fixture['containers']))), $membership($cutOff)],
+        array_fill(0, 3, $membership(null))],
     ['autostart lines follow the order and keep their wait value',
         fv3_reorder_autostart(['a 5', 'b', 'c 10'], ['c', 'folder-f', 'a', 'a']), ['c 10', 'a 5', 'b']],
     ['a line the order does not name stays after the others, in file order',
@@ -273,6 +285,6 @@ foreach ($cases as [$label, $got, $want]) {
 }
 $setPrefs(null);
 array_map('unlink', ["$fv3tTmp/docroot/webGui/include/Helpers.php", "$fv3tTmp/docroot/plugins/dynamix.docker.manager/include/DockerClient.php",
-    "$configDir/docker.json", "$fv3DockerManDir/dockerMan.cfg", $fv3tAutostart, $fv3tEndpoint]);
+    "$configDir/docker.json", "$fv3DockerManDir/dockerMan.cfg", $fv3tAutostart, "$fv3tTmp/sync_order.php", "$fv3tTmp/read_membership.php"]);
 echo count($cases) . " cases, $failed failed\n";
 exit($failed ? 1 : 0);
