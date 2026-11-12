@@ -34,7 +34,8 @@
         return status === 403 && /csrf_token$/.test(json?.error || '');
     };
     window.fv3DroppedAnswer = () => ({ error: fv3I18nOr('request-dropped', 'Unraid did not accept the request. Reload the page and try again.') });
-    // $.post to the plugin's server then fails with that reason, marked fv3Dropped; fetch callers get it as the 403 Unraid 7.4 answers
+    // $.post to the plugin's server then fails with that reason, marked fv3Dropped; fetch callers get it as the 403 Unraid 7.4 answers.
+    // Out of reach here: jQuery's global ajaxSuccess event and a statusCode[200] option still fire for such a POST
     $.ajaxPrefilter((options, originalOptions, jqXHR) => {
         if (options.type?.toUpperCase() !== 'POST' || !options.url?.includes('/plugins/folder.view3/server/')) return;
         const answered = $.Deferred();

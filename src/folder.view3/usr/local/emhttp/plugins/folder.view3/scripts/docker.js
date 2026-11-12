@@ -1336,8 +1336,8 @@ if (typeof resetSorting === 'function') {
     window.resetSorting = function() {
         if ($.cookie('lockbutton') == null) return;
         $('input[type=button]').prop('disabled', true);
-        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck. A refused sync gets its
-        // own banner; a dropped one (script.php) means Unraid dropped the reset before it too, so it fails the reset
+        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck. A refused sync gets its own
+        // banner; a dropped one (script.php) shows the reload reason alone: Unraid's answer to the reset cannot say if it took it
         $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true})
             .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}).then(null, (err) => {
                 if (err?.fv3Dropped) return $.Deferred().reject(err);

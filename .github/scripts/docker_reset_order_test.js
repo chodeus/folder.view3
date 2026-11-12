@@ -65,7 +65,7 @@ const afterUnraid = async (file, data, refused, dropped) => {
     // Unraid before 7.4 drops every request of a page with a stale csrf_token; only the plugin's own endpoint can show it
     const reload = 'Unraid did not accept the request. Reload the page and try again.';
     const syncDropped = await reset([], ['sync_order.php']);
-    check('a dropped sync after Reset Order means the reset was dropped too: the banner says to reload, and the list still reloads',
+    check('a dropped sync after Reset Order shows the reload reason and claims nothing about the reset, and the list still reloads',
         syncDropped.banners.join('|') === reload && syncDropped.drawn.join('|') === reload && syncDropped.urls.join() === 'UserPrefs.php,sync_order.php' && syncDropped.reloads === 1 && syncDropped.clean, syncDropped);
     const toggleDropped = await afterUnraid('UpdateConfig.php', 'action=autostart&container=o1&auto=true', [], ['sync_order.php']);
     check('a dropped sync after an autostart switch says to reload', toggleDropped.banners.join('|') === `The Docker start order could not be updated: ${reload}` && toggleDropped.clean, toggleDropped);

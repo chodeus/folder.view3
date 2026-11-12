@@ -174,6 +174,12 @@ const differential = async (extension, extensionFirst) => {
             && (!c.shape.includes('error,') || n.includes('error-opt'));
     };
     const notFailed = flips.filter((c) => !failedWell(c));
+    // The limit script.php states: jQuery raises these two from its own reading of the answer, before any handler the rule can reach
+    const ownSignals = (c) => names(c.rule.trace).includes('global-ajaxSuccess') && !names(c.rule.trace).includes('global-ajaxError')
+        && (c.shape !== '$.ajax({ statusCode })' || ANSWERS[c.answer].status !== 200 || names(c.rule.trace).includes('code-200'));
+    const quiet = flips.filter((c) => !ownSignals(c));
+    check(`${where}: for those, jQuery's own global ajaxSuccess event and a statusCode[200] option still fire: the limit script.php states`,
+        quiet.length === 0, quiet.slice(0, 2).map((c) => ({ shape: c.shape, url: c.url, answer: c.answer, rule: c.rule.trace })));
     check(`${where}: ${flips.length} plugin POSTs that came back as a success but not from the plugin each fail, marked fv3Dropped, with the reload reason, and no success callback runs`,
         flips.length >= 100 && notFailed.length === 0, { flips: flips.length, bad: notFailed.slice(0, 2).map((c) => ({ shape: c.shape, url: c.url, answer: c.answer, rule: c.rule.trace })) });
     const notMarked = marks.filter((c) => !same(c) || c.rule.x.fv3Dropped !== true || rule.w.fv3FailReason(c.rule.x) !== REASON);

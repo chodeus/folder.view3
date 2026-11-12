@@ -36,7 +36,8 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
     w.swal = (o, answer) => {
         w.swal.close();
         // a confirm dialog's callback for the test to answer, and whether it was opened to stay up until closed
-        if (answer) { w.swal.answer = answer; w.swal.stays = o.showLoaderOnConfirm === true && o.closeOnConfirm === false; }
+        w.swal.answer = answer || null;
+        w.swal.stays = !!answer && o.showLoaderOnConfirm === true && o.closeOnConfirm === false;
         if (o.type === 'error') errorDialogs.push(String(o.text).replace(/<div[\s\S]*$/, '').replace(/<br>/g, '\n'));
         const el = w.document.createElement('div');
         el.dataset.kind = o.type || '';
@@ -56,9 +57,9 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
 
     const posts = [];
     let warnings = [];
-    // the plugin's own answers carry fv3_post_init()'s header; what Unraid sends instead does not
-    const answer = (status, text, ours) => ({ ok: status >= 200 && status < 300, status, url: '', headers: { get: (name) => (ours && name === 'X-FV3-Answer' ? '1' : null) },
-        json: async () => JSON.parse(text), text: async () => text, clone() { return this; } });
+    // The plugin's own answers carry fv3_post_init()'s header; what Unraid sends instead does not. Each is a recipe: every fetch
+    // gets a new native Response, whose body can be read once, as in a browser
+    const answer = (status, text, ours) => () => new Response(text, { status, headers: ours ? { 'X-FV3-Answer': '1' } : {} });
     const json = (v) => answer(200, JSON.stringify(v), true);
     // what delete_theme.php answers: the empty 200 is a POST Unraid before 7.4 dropped (stale csrf_token), the page is its login page
     let deleted = json({ success: true });
@@ -70,11 +71,11 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
     let deleteCalls = 0;
     w.fetch = async (url, init) => {
         const u = String(url);
-        if (u.startsWith('https://api.github.com/repos/demo/theme/contents/')) return json([{ type: 'file', name: 'a.css' }]);
-        if (u.includes('/import_theme.php')) { posts.push(String(init && init.body)); return json({ success: true, name: 'demo-theme', entry: 'demo-theme.disabled', files: ['a.css', 'b.css'], is_update: false, warnings }); }
-        if (u.includes('/list_themes.php')) return json(themes);
-        if (u.includes('/delete_theme.php')) { deleteCalls++; return deletes.length ? deletes.shift() : deleted; }
-        return json({});
+        if (u.startsWith('https://api.github.com/repos/demo/theme/contents/')) return json([{ type: 'file', name: 'a.css' }])();
+        if (u.includes('/import_theme.php')) { posts.push(String(init && init.body)); return json({ success: true, name: 'demo-theme', entry: 'demo-theme.disabled', files: ['a.css', 'b.css'], is_update: false, warnings })(); }
+        if (u.includes('/list_themes.php')) return json(themes)();
+        if (u.includes('/delete_theme.php')) { deleteCalls++; return (deletes.length ? deletes.shift() : deleted)(); }
+        return json({})();
     };
 
     new vm.Script(fs.readFileSync(path.join(plugin, 'scripts/csstool.js'), 'utf8'), { filename: 'csstool.js' }).runInContext(dom.getInternalVMContext());
@@ -152,13 +153,17 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
         errorDialogs.length = 0;
         const before = deleteCalls;
         if (!button) return { button: false };
+        w.swal.answer = null;
+        w.swal.stays = false;
         button.click();
-        const asked = typeof w.swal.answer === 'function';
-        if (asked) await w.swal.answer(true);
+        // this click's confirm, read before it is answered: the dialog that answers it replaces both
+        const { answer: reply, stays } = w.swal;
+        const asked = typeof reply === 'function';
+        if (asked) await reply(true);
         await settle();
         const open = w.document.querySelector('.sweet-alert');
         // `left`: what is on screen afterwards, nothing or the kind of dialog; `stays`: the confirm was opened to wait for the answer
-        return { button: true, asked, stays: w.swal.stays, errors: [...errorDialogs], left: open ? open.dataset.kind : 'nothing', sent: deleteCalls - before };
+        return { button: true, asked, stays, errors: [...errorDialogs], left: open ? open.dataset.kind : 'nothing', sent: deleteCalls - before };
     };
     const why = 'Could not delete the theme. Unraid did not accept the request. Reload the page and try again.';
     for (const [kind, entry] of [['an imported theme', 'gh-theme'], ['a hand-made theme', 'own-theme']]) {
@@ -171,6 +176,10 @@ const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/f
     }
     const refusedDelete = await confirmDelete(card('own-theme')?.querySelector('.fv3-theme-delete'), [answer(404, '', true)]);
     check('a card\'s Delete the server refused shows its status', refusedDelete.errors.join('|') === 'Could not delete the theme. HTTP 404', refusedDelete);
+    // The rule reads an answer with no header to judge it, and the page reads it again for the reason: a body can be read once
+    const unmarked = await confirmDelete(card('own-theme')?.querySelector('.fv3-theme-delete'), [answer(500, '{"error":"The theme folder could not be removed"}', false)]);
+    check('a refusal whose header was lost on the way still shows the server\'s own reason',
+        unmarked.errors.join('|') === 'Could not delete the theme. The theme folder could not be removed', unmarked);
 
     // Delete Selected: both boxes ticked, as the list's own change handler enables the button
     const tickAll = () => {
