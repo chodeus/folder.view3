@@ -862,8 +862,7 @@
             return $stop("Docker's container list could not be read");
         }
 
-        // The config folder itself missing means the flash is gone (read_membership.php): that is not "no folders"
-        if (!is_dir($configDir)) { return $stop('the plugin config folder is missing'); }
+        // No docker.json, or no config folder at all (deleted by hand under an open tab), is "no folders": never a stop
         $folders = fv3_read_json_strict("$configDir/docker.json");
         // Corrupt folder config must not rewrite the autostart file as if no folders exist
         if ($folders === null) { return $stop('the folder config could not be read'); }

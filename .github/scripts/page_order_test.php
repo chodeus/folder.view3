@@ -233,8 +233,8 @@ $cases = [
             file_put_contents("$configDir/docker.json", '{');
             file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}');
         }), [null, ['a', 'b']]],
-    ['a missing plugin config folder is reported, not read as "no folders"; with no containers there is still nothing to report',
-        [$syncWithoutConfigDir(['b', 'a']), $syncWithoutConfigDir([])], [['the plugin config folder is missing', ['b', 'a']], [null, ['b', 'a']]]],
+    ['a missing plugin config folder (deleted by hand under an open tab) is "no folders", not a failure: the sync runs and reports nothing',
+        [$syncWithoutConfigDir(['b', 'a']), $syncWithoutConfigDir([]), is_dir($configDir)], [[null, ['a', 'b']], [null, ['b', 'a']], true]],
     ['a damaged folder config is reported',
         $sync([], ['a', 'b'], null, ['b', 'a'], fn() => file_put_contents("$configDir/docker.json", '{')), ['the folder config could not be read', ['b', 'a']]],
     ['autostart mode off reads nothing and reports nothing',
