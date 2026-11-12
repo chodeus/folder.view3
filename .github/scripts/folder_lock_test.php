@@ -133,6 +133,14 @@ $prepare([]);
 $check('a read that finds no folder file waits for the lock, then shows the folder a save wrote meanwhile and leaves it in the file',
     $waiting && $answer[0] === '200' && ($answer[1]['abc']['name'] ?? null) === 'Media' && $dockerMap() === $saved, [$waiting, $answer]);
 
+// Without the lock no folder file is made: a read of a missing file answers as it does when the folder cannot be written
+$prepare([]);
+mkdir("$configDir/docker.json.lock");
+$answer = $start('read.php', ['type' => 'docker'], 'GET');
+$answer = $finish($answer);
+$check('a read that finds no folder file and cannot take the lock makes no file',
+    $answer[0] === '500' && !file_exists("$configDir/docker.json"), [$answer, file_exists("$configDir/docker.json")]);
+
 // What must not wait: a read of a file that is there, a preview, settings, the other type's folders, a Docker-only import on the VM lock
 $free = [];
 foreach ([['docker.json.lock', 'read.php', ['type' => 'docker'], 'GET'],
@@ -283,14 +291,23 @@ $check('defaults that are already there, and an empty map, answer success withou
     [$again, $empty, fileinode("$configDir/docker.json")] === [$ok, $ok, $inode], [$again, $empty]);
 
 $refused = [];
-foreach (['[1,2]', '{"preview":{"deep":1}}', '{"preview":[1]}', 'not json', '7', '{"preview":2,"not_a_folder_setting":"x"}'] as $bad) {
+foreach (['[1,2]', '{"preview":{"deep":1}}', '{"preview":[1]}', 'not json', '7', '{"preview":2,"not_a_folder_setting":"x"}', '{"preview_status":"invalid"}',
+          '{"preview":9}', '{"preview":"2"}', '{"preview_hover":"yes"}', '{"preview_overflow":"scroll"}', '{"preview_border_color":"<b>"}', '{"context_graph_time":-1}',
+          '{"context_graph_time":"60"}', '{"preview_text_width":' . json_encode(str_repeat('9', 51)) . '}'] as $bad) {
     $answer = $post('apply_defaults.php', ['type' => 'docker', 'settings' => $bad]);
-    if ($answer !== ['400', ['error' => 'The defaults must be a map of folder settings to plain values']]) $refused[$bad] = $answer;
+    if ($answer !== ['400', ['error' => 'The defaults must be folder settings with values the settings page can send']]) $refused[$bad] = $answer;
 }
 $missing = $post('apply_defaults.php', ['type' => 'docker']);
 clearstatcache();
-$check('a list, a nested value, text, a key that is not a folder setting or a missing field is a 400 and writes nothing',
+$check('a list, a nested value, text, a key that is not a folder setting, a value its setting does not take or a missing field is a 400 and writes nothing',
     $refused === [] && $missing === ['400', ['error' => 'Missing field: settings']] && fileinode("$configDir/docker.json") === $inode, [$refused, $missing]);
+
+// What the settings page saves under its own, looser rules is taken as it is: any colour text, any width, any whole number of seconds
+$loose = ['preview_border_color' => 'red', 'preview_vertical_bars_color' => '#fff', 'preview_row_separator_color' => 'rgba(0,0,0,0.5)', 'preview_text_width' => '10vw',
+    'context_graph_time' => 3, 'preview_status' => 'symbol', 'preview_overflow' => 1, 'context' => 0, 'update_column' => false];
+$prepare($savedSetup(['abc' => $folder('Media', ['app-a'])]));
+$answer = $post('apply_defaults.php', ['type' => 'docker', 'settings' => json_encode($loose)]);
+$check('a colour, a width and a graph time as the settings page saves them are applied as sent', $answer === $ok && $dockerMap()['abc']['settings'] === $loose, [$answer, $dockerMap()]);
 
 $prepare([]);
 $fresh = [$post('apply_defaults.php', $defaults), $post('update_ids.php', $rename), $post('delete.php', ['type' => 'docker', 'id' => 'abc'])];

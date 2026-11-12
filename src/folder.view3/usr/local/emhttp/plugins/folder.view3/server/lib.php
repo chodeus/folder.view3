@@ -984,16 +984,28 @@
         if ($lock) fv3_config_unlock($lock);
     }
 
+    // True for a value the settings page can send as the default of folder setting $key. Colours, the text width and the
+    // graph time are saved there under looser rules than the editor's (fv3_sanitize_setting), so they are judged by those
+    function fv3_default_value_ok(string $key, $value): bool {
+        $rule = fv3_foreign_setting_rules()[$key] ?? null;
+        if ($rule === null) return false;
+        // unset: the page sends '' for an empty field, and null where the form held no number
+        if ($value === null || $value === '') return true;
+        if ($rule[0] === 'color' || $rule[0] === 'width') return is_string($value) && strlen($value) <= 50 && !preg_match('/[<>"\'\\\\]/', $value);
+        if ($key === 'context_graph_time') return is_int($value) && $value >= 0;
+        [$clean, $ok] = fv3_foreign_setting_value($rule, $value);
+        return $ok && $clean === $value;
+    }
+
     // Apply defaults: $settings merged into the settings of every folder as it is on disk, so nothing a page loaded
     // earlier is written back. A folder that locks its colours keeps them
     function applyFolderDefaults(string $type, string $settings) : void {
         $patch = json_decode($settings, true);
-        $isMap = is_array($patch) && ($patch === [] || !array_is_list($patch));
-        // Only settings a folder has (the editor's list) and plain values: one bad request must not stamp junk on every folder
-        if (!$isMap || array_diff_key($patch, fv3_foreign_setting_rules()) || array_filter($patch, fn($value) => $value !== null && !is_scalar($value))) {
+        // One bad request must not stamp an unknown key or value on every folder
+        if (!is_array($patch) || array_filter($patch, fn($value, $key) => !fv3_default_value_ok((string)$key, $value), ARRAY_FILTER_USE_BOTH)) {
             http_response_code(400);
             header('Content-Type: application/json');
-            echo json_encode(['error' => 'The defaults must be a map of folder settings to plain values']);
+            echo json_encode(['error' => 'The defaults must be folder settings with values the settings page can send']);
             exit;
         }
         if (!$patch) { return; }
@@ -1675,9 +1687,10 @@
         $path = "$configDir/$type.json";
         // Under the file's lock, and only if it is still missing: a save or an import since the caller's check is never replaced
         $lock = fv3_config_lock("$type.json");
+        if (!$lock) return;
         clearstatcache(true, $path);
         if (!file_exists($path)) { fv3_atomic_write($path, '{}'); }
-        if ($lock) fv3_config_unlock($lock);
+        fv3_config_unlock($lock);
     }
 
     // Mirrors DockerContainers.php:82 — ':???' net-ref wins, then Unraid's per-container cache.
