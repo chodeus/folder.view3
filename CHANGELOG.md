@@ -2,6 +2,19 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## 2026.11.12.1 (beta)
+
+- FolderView Plus imports now keep hidden regex and label members
+- Incognito mode now hides Unraid's Tailscale tooltip on the Docker page
+- Docker page shows an update when a container's tag moves to another image
+- Advanced preview menu keeps its spacing on Unraid 7.4
+- Theme import log now stays on its newest line
+- Autostart order of new folders now matches the Docker page
+- A damaged or leftover userprefs.cfg no longer moves folders or reorders autostart
+- Folder saves and Reset Order now warn if the start order was not updated
+- Saves from a stale or signed-out tab now say to reload the page
+- A save that cannot be written to flash no longer reports success
+
 ## 2026.10.29.2
 
 - Advanced preview CSS fixes when browser is zoomed
