@@ -395,8 +395,8 @@
     }
 
 
-    // Preview ($apply false), or merge the converted folders into docker.json / vm.json in one swap under the lock of each
-    // file it can write. A bundle that would be refused is refused first, as a preview: no lock or config folder is made
+    // Preview ($apply false), or merge the converted folders into docker.json / vm.json under the lock of each file it can
+    // write; the two files are replaced one after the other. A bundle that would be refused is refused first, as a preview
     function importForeignBundle(string $json, ?string $type, bool $apply): array {
         $preview = fv3_import_foreign_bundle($json, $type, false);
         if (!$apply || isset($preview['error'])) return $preview;

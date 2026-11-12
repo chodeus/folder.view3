@@ -959,8 +959,8 @@
         });
     }
 
-    // Every change to docker.json / vm.json goes through here, one request at a time: $apply gets the folders as they
-    // are on disk ([] when there is no file) and returns them changed, or null to leave the file alone. A failure is a 500
+    // The locked read-modify-write of docker.json / vm.json (imports and createFile() take the same lock themselves): $apply
+    // gets the folders as they are on disk, [] with no file, and returns them changed or null for no write. A failure is a 500
     function fv3_write_folders(string $type, string $caller, callable $apply, string $refusal = 'refusing to save so existing folders are not wiped'): void {
         global $configDir;
         $lock = fv3_config_lock("$type.json");
