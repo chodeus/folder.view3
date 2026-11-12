@@ -3,4 +3,5 @@
     fv3_post_init();
     $type = fv3_validate_type($_POST['type'] ?? '');
     updateFolder($type, fv3_post_string('content'));
+    fv3_ok();
 ?>

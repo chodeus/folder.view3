@@ -3,4 +3,5 @@
     fv3_post_init();
     $type = fv3_validate_type($_POST['type'] ?? '');
     updateFolderIds($type, fv3_post_string('data', '{}'));
+    fv3_ok();
 ?>

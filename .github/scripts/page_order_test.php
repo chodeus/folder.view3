@@ -121,6 +121,20 @@ $post = function (array $fields, array $names, ?string $cfg, ?string $foldersJso
     file_put_contents($fv3tAutostart, "b\na\n");
     return $endpoint('sync_order.php', 'POST', $fields, ['fv3tNames' => $names]) + ['file' => file($fv3tAutostart, FILE_IGNORE_NEW_LINES)];
 };
+// A restore through import_all.php, and a FolderView Plus import through import_foreign.php, with userprefs.cfg as given
+$restore = function (?string $cfg) use ($setPrefs, $configDir, $endpoint, $folder): array {
+    $setPrefs($cfg);
+    $bundle = json_encode(['fv3_export_version' => 1, 'docker' => ['xyz' => $folder('Restored', ['a'])]]);
+    $r = $endpoint('import_all.php', 'POST', ['bundle' => $bundle], ['fv3tNames' => ['a', 'b']]);
+    return [$r['status'], $r['body']['success'] ?? null, $r['body']['restored'] ?? null, $r['body']['warning'] ?? null, isset(json_decode((string)@file_get_contents("$configDir/docker.json"), true)['xyz'])];
+};
+$foreign = function (?string $cfg) use ($setPrefs, $configDir, $endpoint): array {
+    $setPrefs($cfg);
+    file_put_contents("$configDir/docker.json", '{}');
+    $bundle = file_get_contents(dirname(__DIR__) . '/fixtures/folderview-plus/backup-docker.json');
+    $r = $endpoint('import_foreign.php', 'POST', ['bundle' => $bundle, 'type' => 'docker', 'action' => 'apply'], ['fv3tNames' => ['a', 'b']]);
+    return [$r['status'], $r['body']['success'] ?? null, $r['body']['warning'] ?? null, count(json_decode((string)@file_get_contents("$configDir/docker.json"), true) ?: []) > 0];
+};
 $containersOf = fn(array $order): array => array_values(array_filter($order, fn($n) => !str_starts_with($n, 'folder-')));
 // What the shipped read_membership.php answers (status, then container => folder name A-Z) with the given userprefs.cfg;
 // an overlapping regex and two labels make which folder wins a real contest
@@ -270,10 +284,15 @@ $cases = [
         [$order([], [], []), $order([], [], ['ghost']), fv3_reorder_autostart([], ['a']), fv3_reorder_autostart([], [])], [[], [], [], []]],
     ['VMs: no order to sync, and no order list when the VM service is not there',
         [syncContainerOrder('vm'), readUnraidOrder('vm')], [null, []]],
-    ['sync_order.php answers 200 and nothing on a fresh install',
-        (function () use ($post, $configDir, $fv3tAutostart) { $r = $post(['type' => 'docker'], [], null, null); return [$r['status'], $r['body'], file_exists("$configDir/docker.json")]; })(), ['200', '', false]],
-    ['sync_order.php answers 200 and nothing when the sync went through',
-        $post(['type' => 'docker'], ['b', 'a'], null), ['swapped' => 1, 'status' => '200', 'body' => '', 'file' => ['a', 'b']]],
+    ['sync_order.php answers 200 and success on a fresh install',
+        (function () use ($post, $configDir, $fv3tAutostart) { $r = $post(['type' => 'docker'], [], null, null); return [$r['status'], $r['body'], file_exists("$configDir/docker.json")]; })(), ['200', ['success' => true], false]],
+    ['sync_order.php answers 200 and success when the sync went through',
+        $post(['type' => 'docker'], ['b', 'a'], null), ['swapped' => 1, 'status' => '200', 'body' => ['success' => true], 'file' => ['a', 'b']]],
+    ['Import Everything restores either way, and says so when the start order could not then be updated',
+        [$restore(null), $restore($cutOff)],
+        [['200', true, ['docker.json'], null, true], ['200', true, ['docker.json'], "Unraid's saved Docker order (userprefs.cfg) could not be read", true]]],
+    ['a FolderView Plus import does the same',
+        [$foreign(null), $foreign($cutOff)], [['200', true, null, true], ['200', true, "Unraid's saved Docker order (userprefs.cfg) could not be read", true]]],
     ['sync_order.php answers 503 with the reason when a read the sync needs failed',
         [$post(['type' => 'docker'], ['a', 'b'], null, '{'), $post(['type' => 'docker'], ['a', 'b'], $cutOff), $post(['type' => 'docker'], ['a', ''], null)],
         [['swapped' => 1, 'status' => '503', 'body' => ['error' => 'the folder config could not be read'], 'file' => ['b', 'a']],

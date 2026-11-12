@@ -48,6 +48,9 @@ jobs:
       - name: Autostart order tests
         run: php .github/scripts/page_order_test.php
 
+      - name: POST endpoint answer tests
+        run: php .github/scripts/post_answers_test.php
+
       - name: Variables tab tests
         run: |
           php .github/scripts/variables_tab_test.php

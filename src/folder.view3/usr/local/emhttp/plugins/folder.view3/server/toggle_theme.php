@@ -9,4 +9,5 @@
         exit;
     }
     toggleTheme($entry, $enable === 'true', true);
+    fv3_ok();
 ?>
