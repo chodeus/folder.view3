@@ -120,41 +120,55 @@ const vms = async ({ hold = false } = {}) => {
         check('Docker, view switch during a reload: the reloaded list is drawn', t.folders() === 'f,g' && t.draws.length === 2, { folders: t.folders(), draws: t.draws.length });
     }
     {
-        // A folder is deleted between two reloads: the answer asked for before the delete must not draw it back
+        // A folder is deleted between two reloads: the draw that was waiting takes the newest answer that is in
         const t = await docker({ hold: true });
         t.reload();
         await t.land(0);
         t.reload();
-        await t.answer(0, FOLDERS);
-        const early = t.draws.length;
         await t.answer(1, { f: FOLDERS.f });
-        check('Docker, newer folder data asked for: the draw waits for it', early === 0 && t.draws.length === 1, { early, draws: t.draws.length });
-        check('Docker, newer folder data asked for: the deleted folder is not drawn', t.folders() === 'f', t.folders());
+        const early = t.draws.length;
+        await t.answer(0, FOLDERS);
+        check('Docker, a newer answer is in first: the draw still waits for the batch it started with', early === 0 && t.draws.length === 1, { early, draws: t.draws.length });
+        check('Docker, a newer answer is in first: the draw uses it, so the deleted folder is not drawn', t.folders() === 'f', t.folders());
         await t.land(1);
-        check('Docker, newer folder data asked for: the second list shows the same', t.folders() === 'f' && t.draws.length === 2, { folders: t.folders(), draws: t.draws.length });
+        check('Docker, a newer answer is in first: the second list shows the same', t.folders() === 'f' && t.draws.length === 2, { folders: t.folders(), draws: t.draws.length });
     }
     {
+        // Reloads keep coming while the answers are slow: a draw never waits for a batch asked after it started
+        const t = await docker({ hold: true });
+        t.reload();
+        await t.land(0);
+        t.reload();
+        t.reload();
+        await t.answer(0, FOLDERS);
+        check('Docker, reloads keep coming: the draw does not wait for their answers', t.folders() === 'f,g' && t.draws.length === 1, { folders: t.folders(), draws: t.draws.length });
+        await t.answer(1, { f: FOLDERS.f });
+        await t.answer(2, { f: FOLDERS.f });
+        await t.land(2);
+        check('Docker, reloads keep coming: the last list is drawn from the last answer', t.folders() === 'f' && t.draws.length === 2, { folders: t.folders(), draws: t.draws.length });
+    }
+    {
+        const banners = (t) => t.p.errors.filter((e) => /Banner: Could not load folder data/.test(e)).length;
         const t = await docker({ hold: true });
         t.reload();
         await t.land(0);
         await t.answer(0, new Error('500'));
-        check('Docker, folder data fails: Unraid\'s own list is shown', t.folders() === '' && t.p.w.document.documentElement.classList.contains('fv3-docker-ready'), t.folders());
+        check('Docker, folder data fails: Unraid\'s own list is shown, with the banner', t.folders() === '' && banners(t) === 1
+            && t.p.w.document.documentElement.classList.contains('fv3-docker-ready'), { folders: t.folders(), errors: t.p.errors });
         t.reload();
         await t.land(1);
         await t.answer(1, FOLDERS);
         check('Docker, folder data fails: the next reload draws the folders', t.folders() === 'f,g', t.folders());
-    }
-    {
-        // The first folder request fails after a second reload asked again: the draw takes the second answer, with no failure shown
-        const t = await docker({ hold: true });
-        t.reload();
-        await t.land(0);
-        t.reload();
-        await t.answer(0, new Error('500'));
-        const failed = t.p.w.document.documentElement.classList.contains('fv3-docker-ready');
-        await t.answer(1, FOLDERS);
-        check('Docker, a replaced folder request fails: the newer answer is drawn', !failed && t.folders() === 'f,g' && t.draws.length === 1, { failed, folders: t.folders(), draws: t.draws.length });
-        check('Docker, a replaced folder request fails: only the request\'s own banner is shown', t.p.errors.length === 1 && /Could not load folder data/.test(t.p.errors[0]), t.p.errors);
+
+        // The same failure after a newer reload asked again: no banner, the newer batch decides what is shown
+        const r = await docker({ hold: true });
+        r.reload();
+        await r.land(0);
+        r.reload();
+        await r.answer(0, new Error('500'));
+        await r.land(1);
+        await r.answer(1, FOLDERS);
+        check('Docker, a replaced folder request fails: no banner, and the next list is drawn', banners(r) === 0 && r.folders() === 'f,g', { folders: r.folders(), errors: r.p.errors });
     }
     {
         const vmFolder = { name: 'Lab', icon: '', regex: '', containers: ['vm-x'], settings: {}, hidden_preview: [], actions: [] };
@@ -163,10 +177,10 @@ const vms = async ({ hold = false } = {}) => {
         t.land(0);
         await t.p.tick(300);
         t.reload();
-        await t.answer(0, { old: vmFolder, gone: vmFolder });
-        const early = t.used.length;
         await t.answer(1, { old: vmFolder });
-        check('VMs, newer folder data asked for: the draw waits for it and uses it', early === 0 && t.used.join('|') === 'old', { early, used: t.used });
+        const early = t.used.length;
+        await t.answer(0, { old: vmFolder, gone: vmFolder });
+        check('VMs, a newer answer is in first: the draw waits for its own batch and uses the newer one', early === 0 && t.used.join('|') === 'old', { early, used: t.used });
     }
     {
         const t = await vms();

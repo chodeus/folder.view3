@@ -11,6 +11,7 @@ let folderobserverConfig = {
     attributes: true
 };
 let folderReq = [];
+const fv3Folders = fv3FolderData();
 let fv3RemeasureWidths = false;
 
 // Folder rendering — orchestrate (createFolders) and per-folder build (createFolder)
@@ -18,7 +19,7 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
     if (window.fv3Mark) window.fv3Mark('createFolders-start');
     await fv3LoadFolderDefaults();
-    const prom = await fv3LatestAnswers(() => folderReq);
+    const prom = await fv3Folders.answers();
     if (window.fv3Mark) window.fv3Mark('folderReq-resolved');
     fv3Debug('createFolders', 'Promises resolved', prom);
 
@@ -1144,13 +1145,16 @@ window.loadlist = () => {
     fv3Debug('Patched loadlist', 'Entry.');
 
     fv3OrganizerSyncDone = false;
-    folderReq = [
-        $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
-        $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-        $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error')).promise(),
-        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-        fv3CheckUpdates()
-    ];
+    folderReq = fv3Folders.ask((ifLast) => {
+        const failed = (key, text) => ifLast(() => fv3ShowBanner(fv3I18nOr(key, text), 'error'));
+        return [
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(failed('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(failed('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(failed('container-details-load-failed', 'Could not load container details. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(failed('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.')).promise(),
+            fv3CheckUpdates()
+        ];
+    });
     fv3Debug('Patched loadlist', 'folderReq initialized with 5 promises.');
 
     if (typeof window.loadlist_original === 'function') {

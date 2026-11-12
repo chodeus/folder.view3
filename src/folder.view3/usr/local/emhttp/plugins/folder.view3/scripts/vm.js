@@ -13,7 +13,7 @@ const applyVmZebra = () => {
 // Render all VM folders.
 const createFolders = async () => {
     await fv3LoadFolderDefaults();
-    const prom = await fv3LatestAnswers(() => folderReq);
+    const prom = await fv3Folders.answers();
     let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
     const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
     const vmInfo = fv3SafeParse(prom[2], {});
@@ -748,6 +748,7 @@ const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
 window.fv3DebugSource = 'VM';
 let folderReq = [];
+const fv3Folders = fv3FolderData();
 
 const fv3DrawList = fv3ListDrawer('#kvm_list > tr', async () => {
     await createFolders();
@@ -763,12 +764,15 @@ const fv3DrawList = fv3ListDrawer('#kvm_list > tr', async () => {
 // Unraid loadlist patch — inject folder rendering after VMs render
 window.loadlist_original = window.loadlist;
 window.loadlist = (x) => {
-    folderReq = [
-        $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
-        $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-        $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error')).promise(),
-        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise()
-    ];
+    folderReq = fv3Folders.ask((ifLast) => {
+        const failed = (key, text) => ifLast(() => fv3ShowBanner(fv3I18nOr(key, text), 'error'));
+        return [
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(failed('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(failed('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(failed('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(failed('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.')).promise()
+        ];
+    });
     if (typeof window.loadlist_original === 'function') { loadlist_original(x); }
 };
 

@@ -87,8 +87,11 @@ const makePage = async (opts = {}) => {
     const realAjax = $.ajax;
 
     // HTTP boundary: every $.get and $.ajax is recorded and answered by the test (or by a default answer)
-    // The folder endpoints answer application/json, so jQuery hands the page the parsed value, not the text
-    const parsed = (url, v) => (typeof v === 'string' && /\/read(_order|_info|_unraid_order)?\.php/.test(url) ? JSON.parse(v) : v);
+    // The folder endpoints answer application/json: jQuery hands the page the parsed value, or fails the request (parsererror)
+    const parsed = (url, v) => {
+        if (typeof v !== 'string' || !/\/read(_order|_info|_unraid_order)?\.php/.test(url)) return v;
+        try { return JSON.parse(v); } catch (e) { return new Error('parsererror'); }
+    };
     const gets = [];
     const answers = Object.assign({
         'read_settings.php': () => JSON.stringify({ dashboard_context: '2' }),
@@ -100,8 +103,8 @@ const makePage = async (opts = {}) => {
         gets.push(rec);
         const key = Object.keys(answers).find((k) => url.includes(k));
         if (key && answers[key] !== 'manual') {
-            const v = answers[key]();
-            if (v instanceof Error) d.reject({ status: 500, statusText: v.message }); else d.resolve(parsed(url, v));
+            const v = parsed(url, answers[key]());
+            if (v instanceof Error) d.reject({ status: v.message === 'parsererror' ? 200 : 500, statusText: v.message }); else d.resolve(v);
         }
         return d;
     };

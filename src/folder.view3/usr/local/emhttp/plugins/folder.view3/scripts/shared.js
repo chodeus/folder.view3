@@ -103,18 +103,26 @@ window.fv3ListDrawer = (rows, draw, onFail) => {
     };
 };
 
-// Answers of the newest folder requests: a reload that starts while they are awaited replaces them, failed or not.
-// Each caller gets its own copy: a draw empties the folder list it works from
-window.fv3LatestAnswers = async (requests) => {
-    for (;;) {
-        const asked = requests();
-        try {
-            const answers = await Promise.all(asked);
-            if (asked === requests()) return answers.map((answer) => (answer && typeof answer === 'object' ? JSON.parse(JSON.stringify(answer)) : answer));
-        } catch (e) {
-            if (asked === requests()) throw e;
-        }
-    }
+// Folder data for a page's draws. ask() takes each reload's requests; answers() waits for the batch asked last and
+// gives a copy of the newest one that is in: a draw empties the folder list it works from
+window.fv3FolderData = () => {
+    let asked = 0;
+    let last = Promise.resolve();
+    let newest = null;
+    return {
+        // `ifLast` wraps a failure report: a request that fails after a newer batch was asked says nothing
+        ask: (build) => {
+            const seq = ++asked;
+            const requests = build((report) => () => { if (seq === asked) report(); });
+            last = Promise.all(requests).then((answers) => { if (!newest || seq > newest.seq) newest = { seq, answers }; });
+            last.catch(() => {});
+            return requests;
+        },
+        answers: async () => {
+            await last;
+            return (newest ? newest.answers : []).map((answer) => (answer && typeof answer === 'object' ? JSON.parse(JSON.stringify(answer)) : answer));
+        },
+    };
 };
 
 // Resource cleanup
