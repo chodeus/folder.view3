@@ -231,10 +231,13 @@ $check('an id update with nothing to apply, or in a shape it does not take, answ
 $prepare($savedSetup(['0' => $folder('Numbered', ['app-old'])]));
 $kept = file_get_contents("$configDir/docker.json");
 $listed = $post('update_ids.php', ['type' => 'docker', 'data' => json_encode([['renames' => ['app-old' => 'app-new']]])]);
+$afterList = file_get_contents("$configDir/docker.json");
 $emptyList = $post('update_ids.php', ['type' => 'docker', 'data' => '[]']);
+$afterEmpty = file_get_contents("$configDir/docker.json");
 $byId = $post('update_ids.php', ['type' => 'docker', 'data' => json_encode(['0' => ['renames' => ['app-old' => 'app-new']]], JSON_FORCE_OBJECT)]);
 $check('an id update sent as a list is a 400 and changes nothing, an empty one is a no-op, and folder "0" is still reached by its id',
-    $listed[0] === '400' && $emptyList === $ok && $byId === $ok && $dockerMap()[0]['containers'] === ['app-new'], [$listed, $emptyList, $byId, $kept === file_get_contents("$configDir/docker.json")]);
+    $listed[0] === '400' && $afterList === $kept && $emptyList === $ok && $afterEmpty === $kept && $byId === $ok && $dockerMap()[0]['containers'] === ['app-new'],
+    [$listed, $afterList === $kept, $emptyList, $afterEmpty === $kept, $byId]);
 
 $prepare($savedSetup());
 $post('delete.php', ['type' => 'docker', 'id' => 'abc']);

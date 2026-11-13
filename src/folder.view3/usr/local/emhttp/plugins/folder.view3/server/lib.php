@@ -958,8 +958,8 @@
         fclose($lock);
     }
 
-    // Locks each file that $wanted names, always in this order so two requests can never wait on each other. Returns
-    // the handles, or the name of the file it could not lock with nothing left locked
+    // Locks those of docker.json, vm.json and settings.json that $wanted names, always in this order so two requests can
+    // never wait on each other. Returns the handles, or the name of the file it could not lock with nothing left locked
     function fv3_config_lock_each(array $wanted): array|string {
         $locks = [];
         foreach (array_intersect(['docker.json', 'vm.json', 'settings.json'], $wanted) as $file) {
