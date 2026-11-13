@@ -144,7 +144,7 @@ window.fv3FolderData = () => {
     let given = 0;
     let last = Promise.resolve();
     let newest = null;
-    const failed = new Map();
+    let failure = null;
     let waiting = [];
     const settled = () => { const wake = waiting; waiting = []; wake.forEach((resolve) => resolve()); };
     return {
@@ -153,7 +153,7 @@ window.fv3FolderData = () => {
             const seq = ++asked;
             const requests = build((report) => (...args) => { if (seq === asked) report(...args); });
             last = Promise.all(requests);
-            last.then((answers) => { if (!newest || seq > newest.seq) newest = { seq, answers }; }, (e) => { failed.set(seq, e); }).then(settled);
+            last.then((answers) => { if (!newest || seq > newest.seq) newest = { seq, answers }; }, (e) => { if (seq === asked) failure = { seq, e }; }).then(settled);
             return requests;
         },
         answers: async () => {
@@ -161,7 +161,7 @@ window.fv3FolderData = () => {
             if (!start) return [];
             // A hung or failed batch is overtaken by a newer one; only a failure of the batch asked last ends the wait
             while (!(newest && newest.seq >= start)) {
-                if (failed.has(asked)) throw failed.get(asked);
+                if (failure && failure.seq === asked) throw failure.e;
                 await new Promise((resolve) => waiting.push(resolve));
             }
             given = newest.seq;
