@@ -2,6 +2,11 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix: a folder placed past the list's end is logged in debug mode; the VM detail-row rule has one owner
+- fix: every saved folder is shown on the VMs page, also next to another folder, and in lists with nothing else in them
+
 ## 2026.11.13.2 (beta)
 
 - Dashboard folders no longer vanish when the Docker and VMs tiles reload at the same time
