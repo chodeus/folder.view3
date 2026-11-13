@@ -4,8 +4,8 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: a folder placed past the list's end is logged in debug mode; the VM detail-row rule has one owner
-- fix: every saved folder is shown on the VMs page, also next to another folder, and in lists with nothing else in them
+- VMs page folders stay in their saved place, also when two folders sit next to each other, and keep their VMs inside
+- Saved folders now show when the Docker or VMs list has nothing else in it
 
 ## 2026.11.13.2 (beta)
 
