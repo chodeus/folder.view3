@@ -14,8 +14,9 @@ const vmRow = (n) => `<tr class="updated" data-list="${n}"><td><span class="oute
 
 // The Dashboard with the tiles asked for. Unraid's list request goes through jQuery's own ajax and land(i) answers request i; the
 // read.php answers of each type are held until answer(type, i, folders | Error)
-// debug: FV3's debug mode on; failingOrder: the type whose read_unraid_order.php request fails
-const dashboard = async ({ docker = true, vms = true, debug = false, failingOrder = null } = {}) => {
+// debug: FV3's debug mode on; failingDebugOrder: the type whose debug-mode read_unraid_order.php request fails. The reload's
+// own read of that URL comes first and succeeds
+const dashboard = async ({ docker = true, vms = true, debug = false, failingDebugOrder = null } = {}) => {
     const info = {};
     const p = await makePage({ page: 'dashboard', api: false, answers: {
         'read_order.php': () => '[]', 'read_unraid_order.php': (url) => JSON.stringify(['web']), 'docker_load.php': () => '',
@@ -46,16 +47,19 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingOrde
     const reads = { docker: [], vm: [] };
     // Every URL the page asked for, in order
     const urls = [];
+    const orderReads = { docker: 0, vm: 0 };
     const get = p.$.get;
     p.$.get = (url) => {
         urls.push(url);
+        const order = url.match(/read_unraid_order\.php\?type=(docker|vm)/);
+        if (order) orderReads[order[1]]++;
         const read = url.match(/\/read\.php\?type=(docker|vm)/);
         if (read) {
             const d = p.$.Deferred();
             reads[read[1]].push(d);
             return d;
         }
-        if (failingOrder && url.includes(`read_unraid_order.php?type=${failingOrder}`)) return p.$.Deferred().reject({ status: 500, statusText: 'error' });
+        if (order && order[1] === failingDebugOrder && orderReads[order[1]] > 1) return p.$.Deferred().reject({ status: 500, statusText: 'error' });
         if (url.includes('read_info.php?type=vm')) return p.$.Deferred().resolve({ vm1: { uuid: 'u1', state: 'shutoff', autostart: false } });
         if (url.includes('read_unraid_order.php?type=vm')) return p.$.Deferred().resolve(['vm1']);
         return get(url);
@@ -194,14 +198,18 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingOrde
     }
     {
         // Debug mode: a debug read that fails for one tile must not cost the other tile its folders
-        const t = await dashboard({ debug: true, failingOrder: 'vm' });
+        const t = await dashboard({ debug: true, failingDebugOrder: 'vm' });
         t.reload();
         await t.land(0);
         await t.answer('docker', 0, DOCKER_FOLDERS);
         await t.answer('vm', 0, VM_FOLDERS);
+        const vmOrderReads = t.urls.filter((url) => url.includes('read_unraid_order.php?type=vm')).length;
+        check('debug mode, the VM tile\'s debug read fails: its own data was read, then the debug read was made', vmOrderReads === 2, t.urls);
+        check('debug mode, the VM tile\'s debug read fails: only the VM tile fails, as before this branch', t.vms() === ''
+            && t.p.errors.some((e) => /VM folder rendering failed/.test(e)) && !t.p.errors.some((e) => /Docker folder rendering failed/.test(e)), t.p.errors);
         check('debug mode, the VM tile\'s debug read fails: the Docker tile still has its folder', t.docker() === 'apps:web', { docker: t.docker(), errors: t.p.errors });
         check('debug mode, the VM tile\'s debug read fails: the Docker debug payload is stored', !!(t.p.w.fv3DebugPayloads || {})['DASHBOARD-DOCKER'], Object.keys(t.p.w.fv3DebugPayloads || {}));
-        const d = await dashboard({ debug: true, vms: false, failingOrder: 'vm' });
+        const d = await dashboard({ debug: true, vms: false, failingDebugOrder: 'vm' });
         d.reload();
         await d.land(0);
         await d.answer('docker', 0, DOCKER_FOLDERS);
