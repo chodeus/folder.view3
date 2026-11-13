@@ -87,6 +87,11 @@ const makePage = async (opts = {}) => {
     const realAjax = $.ajax;
 
     // HTTP boundary: every $.get and $.ajax is recorded and answered by the test (or by a default answer)
+    // The folder endpoints answer application/json: jQuery hands the page the parsed value, or fails the request (parsererror)
+    const parsed = (url, v) => {
+        if (typeof v !== 'string' || !/\/read(_order|_info|_unraid_order)?\.php/.test(url)) return v;
+        try { return JSON.parse(v); } catch (e) { return new Error('parsererror'); }
+    };
     const gets = [];
     const answers = Object.assign({
         'read_settings.php': () => JSON.stringify({ dashboard_context: '2' }),
@@ -98,8 +103,8 @@ const makePage = async (opts = {}) => {
         gets.push(rec);
         const key = Object.keys(answers).find((k) => url.includes(k));
         if (key && answers[key] !== 'manual') {
-            const v = answers[key]();
-            if (v instanceof Error) d.reject({ status: 500, statusText: v.message }); else d.resolve(v);
+            const v = parsed(url, answers[key]());
+            if (v instanceof Error) d.reject({ status: v.message === 'parsererror' ? 200 : 500, statusText: v.message }); else d.resolve(v);
         }
         return d;
     };
@@ -269,9 +274,12 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     };
     p.$('#docker_containers').prepend(`<thead><tr>${'<th></th>'.repeat(10)}</tr></thead>`);
     // One list load: Unraid replaces the rows, then the page builds its folders. The harness clock is manual, so tick() moves it
-    const draw = async () => {
+    const render = () => {
         p.$('#docker_list').empty();
         shown.forEach((n, i) => p.$(dockerRow(n, sid(i))).appendTo('#docker_list'));
+    };
+    const draw = async () => {
+        render();
         p.g('loadlist()');
         let built = false;
         p.g('createFolders()').then(() => { built = true; }, (e) => p.errors.push(`createFolders: ${e && e.stack || e}`));
@@ -285,7 +293,7 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     const members = (id) => p.$(`#docker_list tr.folder-${id}-element`).toArray().map((tr) => tr.id.replace(/^ct-/, ''));
     // Every row top-down, a folder's members ahead of its placeholder: the shape fv3_page_order() returns
     const drawn = () => rows().flatMap((r) => (r.startsWith('folder-') ? [...members(r.slice(7)), r] : [r]));
-    return { p, posts, failing, dropped, draw, rows, members, drawn };
+    return { p, posts, failing, dropped, render, draw, rows, members, drawn };
 };
 
 let failed = 0;

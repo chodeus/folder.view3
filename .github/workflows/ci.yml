@@ -85,6 +85,7 @@ jobs:
           node docker_reset_order_test.js
           node autostart_save_test.js
           node empty_pages_test.js
+          node list_reload_test.js
           node theme_import_dialog_test.js
           node dropped_post_test.js
 

@@ -89,6 +89,78 @@ window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
     return newOnes;
 };
 
+// Draws each list Unraid renders into folders, one draw at a time; only a list whose draw failed is drawn again.
+// `rows` selects the rows Unraid replaces on a reload, `data` is the page's fv3FolderData
+window.fv3ListDrawer = (rows, draw, onFail, data) => {
+    let drawn = new WeakSet();
+    let sinceReload = false;
+    let running = null;
+    let landed = false;
+    let lists = 0;
+    // Every call leaves a line in fv3DrawLog, so a report of missing folders shows what became of each list
+    const note = (outcome) => fv3RecordDraw(rows, outcome, $(rows).length, $(rows).filter('.folder').length);
+    // A list that landed during the draw may have asked for newer folder data than the draw had: once that data is
+    // in, and unless another list or draw came first, the page loads the list again
+    const refresh = () => {
+        const newer = landed && data.behind();
+        const at = lists;
+        if (newer) newer.then((ok) => { if (ok && at === lists && !running) { note('refresh'); window.loadlist(); } });
+    };
+    const run = () => {
+        const list = $(rows).toArray();
+        if (running) {
+            if (list.some((row) => !running.has(row))) { landed = true; lists++; }
+            return note('running');
+        }
+        if (list.length ? list.some((row) => drawn.has(row)) : sinceReload) return note('kept');
+        running = new WeakSet(list);
+        landed = false;
+        lists++;
+        new Promise((resolve) => resolve(draw())).then(() => {
+            note('drawn');
+            drawn = new WeakSet($(rows).toArray());
+            sinceReload = true;
+            running = null;
+            refresh();
+        }, (e) => {
+            note('failed');
+            running = null;
+            onFail(e);
+            // Only drawn rows are remembered. A list that landed during the failed draw is drawn from its own answers
+            if (landed) run();
+        });
+    };
+    // An empty list has no rows to tell a new one by, so the page says when a reload begins
+    run.reload = () => { sinceReload = false; };
+    return run;
+};
+
+// Folder data for a page's draws. ask() takes each reload's requests; answers() waits for the batch asked last and
+// gives a copy of the newest one that is in: a draw empties the folder list it works from
+window.fv3FolderData = () => {
+    let asked = 0;
+    let given = 0;
+    let last = Promise.resolve();
+    let newest = null;
+    return {
+        // `ifLast` wraps a failure report: a request that fails after a newer batch was asked says nothing
+        ask: (build) => {
+            const seq = ++asked;
+            const requests = build((report) => () => { if (seq === asked) report(); });
+            last = Promise.all(requests).then((answers) => { if (!newest || seq > newest.seq) newest = { seq, answers }; });
+            last.catch(() => {});
+            return requests;
+        },
+        answers: async () => {
+            await last;
+            given = newest ? newest.seq : 0;
+            return (newest ? newest.answers : []).map((answer) => (answer && typeof answer === 'object' ? JSON.parse(JSON.stringify(answer)) : answer));
+        },
+        // Null when the answers last given were those of the batch asked last, else resolves true once that batch is in
+        behind: () => (given === asked ? null : last.then(() => true, () => false)),
+    };
+};
+
 // Resource cleanup
 window.fv3Cleanups = [];
 window.addEventListener('beforeunload', () => {
@@ -1100,7 +1172,8 @@ window.fv3CollectEnv = () => {
         // tableLayout/previewGeom above captured the original (pre-rerun) locked state.
         renderSignals: collectRenderSignals(),
         traceBuffer: [...(window.fv3TraceBuffer || [])],
-        recentFailures: [...(window.fv3FailureBuffer || [])]
+        recentFailures: [...(window.fv3FailureBuffer || [])],
+        listDraws: [...(window.fv3DrawLog || [])]
     };
 };
 
