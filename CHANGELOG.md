@@ -23,7 +23,8 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Imports keep the file's folder order; settings lists folders in page order
 - FolderView Plus migration fixes: hidden members, branch exports, script arguments, icons
 - Docker page shows an update when a container's tag moves to another image
-- Display fixes: incognito Tailscale tooltip, advanced preview menu, theme import log
+- Advanced preview menu keeps its spacing on Unraid 7.4
+- Display fixes: incognito Tailscale tooltip, theme import log
 
 ## 2026.11.13.3 (beta)
 
