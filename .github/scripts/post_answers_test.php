@@ -72,6 +72,7 @@ $requests = [
     'update.php' => ['type' => 'docker', 'content' => $folder, 'id' => 'abc'],
     'delete.php' => ['type' => 'docker', 'id' => 'abc'],
     'update_ids.php' => ['type' => 'docker', 'data' => '{}'],
+    'apply_defaults.php' => ['type' => 'docker', 'settings' => '{"preview":2}'],
     'update_settings.php' => ['key' => 'dashboard_docker_layout', 'value' => 'classic'],
     'update_css_config.php' => ['config' => '{}'],
     'toggle_theme.php' => ['entry' => 'demo.css', 'enable' => 'false'],
@@ -133,12 +134,14 @@ $check('the nine endpoints that used to answer nothing answer {"success":true} w
 $check('a theme that is not there is still a 404, not a success', [$answers['a fresh install | toggle_theme.php | as sent'][0], $answers['a fresh install | delete_theme.php | as sent'][0]] === ['404', '404'],
     [$answers['a fresh install | toggle_theme.php | as sent'], $answers['a fresh install | delete_theme.php | as sent']]);
 
-// A write that fails must not be followed by fv3_ok(): the folder config made read-only, in a read-only folder
+// A write that fails must not be followed by fv3_ok(): the folder config made read-only, in a read-only folder. The lock
+// file is there from an earlier save, so the lock is taken and the write is what fails (folder_lock_test.php has the other case)
 if (!function_exists('posix_geteuid') || posix_geteuid() !== 0) {
     $refused = [];
     foreach (['create.php', 'update.php', 'delete.php'] as $name) {
         $prepare($setups['a saved setup']);
         $before = file_get_contents("$configDir/docker.json");
+        touch("$configDir/docker.json.lock");
         chmod("$configDir/docker.json", 0444);
         chmod($configDir, 0555);
         [$status, $body] = $post($name, $requests[$name]);
