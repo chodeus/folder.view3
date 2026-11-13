@@ -768,13 +768,13 @@
             }
         });
         try {
-            const resp = await fetch(API + '/update_css_config.php', {
+            const resp = await fv3FetchAnswer(await fetch(API + '/update_css_config.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'config=' + encodeURIComponent(JSON.stringify(cssConfig)) +
                       '&csrf_token=' + encodeURIComponent(document.querySelector('input[name="csrf_token"]')?.value ||
                       (typeof csrf_token !== 'undefined' ? csrf_token : ''))
-            });
+            }));
             if (resp.ok) {
                 dirty = false;
                 if (!silent) swal({ title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('css-saved', 'CSS configuration saved.'), type: 'success', timer: 1500 });
@@ -1038,9 +1038,9 @@
                     await checkThemeUpdates([theme], container);
                 });
                 card.querySelector('.fv3-theme-delete')?.addEventListener('click', () => {
-                    swal({ title: fv3I18nOr('delete-theme-confirm-title', 'Delete theme?'), text: fv3I18nOr('delete-theme-confirm-text', 'Remove "$1" permanently?', escapeAttr(theme.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, async (ok) => {
+                    swal({ title: fv3I18nOr('delete-theme-confirm-title', 'Delete theme?'), text: fv3I18nOr('delete-theme-confirm-text', 'Remove "$1" permanently?', escapeAttr(theme.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel'), showLoaderOnConfirm: true, closeOnConfirm: false }, async (ok) => {
                         if (!ok) return;
-                        await postForm(API + '/delete_theme.php', { entry: theme.entry });
+                        if (await removeTheme(theme.entry)) swal.close();
                         loadThemes();
                     });
                 });
@@ -1121,9 +1121,9 @@
                         loadThemes();
                     });
                     card.querySelector('.fv3-theme-delete')?.addEventListener('click', () => {
-                        swal({ title: fv3I18nOr('delete-theme-confirm-title', 'Delete theme?'), text: fv3I18nOr('delete-theme-confirm-text', 'Remove "$1" permanently?', escapeAttr(theme.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, async (ok) => {
+                        swal({ title: fv3I18nOr('delete-theme-confirm-title', 'Delete theme?'), text: fv3I18nOr('delete-theme-confirm-text', 'Remove "$1" permanently?', escapeAttr(theme.name)), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel'), showLoaderOnConfirm: true, closeOnConfirm: false }, async (ok) => {
                             if (!ok) return;
-                            await postForm(API + '/delete_theme.php', { entry: theme.entry });
+                            if (await removeTheme(theme.entry)) swal.close();
                             loadThemes();
                         });
                     });
@@ -1139,12 +1139,15 @@
                     const selected = container.querySelectorAll('.fv3-theme-select:checked');
                     if (!selected.length) return;
                     const names = Array.from(selected).map(cb => cb.closest('.fv3-theme-card').dataset.themeName);
-                    swal({ title: fv3I18nOr('delete-themes-confirm', 'Delete $1 theme(s)?', selected.length), text: names.join(', '), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel') }, async (ok) => {
+                    swal({ title: fv3I18nOr('delete-themes-confirm', 'Delete $1 theme(s)?', selected.length), text: names.join(', '), type: 'warning', showCancelButton: true, confirmButtonText: fv3I18nOr('delete', 'Delete'), cancelButtonText: fv3I18nOr('cancel', 'Cancel'), showLoaderOnConfirm: true, closeOnConfirm: false }, async (ok) => {
                         if (!ok) return;
+                        // stops at the first one that fails: its reason is on screen, the rest stay
+                        let removed = true;
                         for (const cb of selected) {
-                            const entry = cb.closest('.fv3-theme-card').dataset.entry;
-                            await postForm(API + '/delete_theme.php', { entry });
+                            removed = await removeTheme(cb.closest('.fv3-theme-card').dataset.entry);
+                            if (!removed) break;
                         }
+                        if (removed) swal.close();
                         loadThemes();
                     });
                 });
@@ -1351,10 +1354,12 @@
         var titleEl = swalEl.querySelector('h2');
         var statusEl = document.getElementById('fv3ProgressTitle');
         var log = document.getElementById('fv3ProgressLog');
-        var scrollParent = log.closest('p') || log.parentElement;
+        var logParent = log.closest('p') || log.parentElement;
         // Unraid's sheet rules beat swal's inline display:block with !important; inline here instead (swal resets both)
         swalEl.style.display = 'flex';
-        scrollParent.style.display = 'flex';
+        logParent.style.display = 'flex';
+        // csstool.css makes the log its own scroll box
+        var scrollToEnd = function() { log.scrollTop = log.scrollHeight; };
         var btnContainer = swalEl.querySelector('.sa-button-container');
         var confirmContainer = swalEl.querySelector('.sa-confirm-button-container');
         var confirmBtn = confirmContainer ? confirmContainer.querySelector('.confirm') : null;
@@ -1380,7 +1385,7 @@
                 s.innerHTML = '<legend>' + escapeAttr(title) + '</legend><p class="logLine"></p>';
                 log.appendChild(s);
                 currentSection = s.querySelector('.logLine');
-                scrollParent.scrollTop = scrollParent.scrollHeight;
+                scrollToEnd();
             },
             log: function(msg, type) {
                 var target = currentSection || log;
@@ -1402,7 +1407,7 @@
                 }
                 target.appendChild(span);
                 target.appendChild(document.createElement('br'));
-                scrollParent.scrollTop = scrollParent.scrollHeight;
+                scrollToEnd();
             },
             confirm: function(yesLabel, noLabel) {
                 if (dotsEl) dotsEl.style.display = 'none';
@@ -1410,6 +1415,8 @@
                 actions.style.cssText = 'text-align:center;padding:8px 0 0';
                 actions.innerHTML = '<button class="confirm" style="background-color:transparent;margin:0 6px">' + escapeAttr(noLabel) + '</button> <button class="confirm" style="background-color:transparent;margin:0 6px">' + escapeAttr(yesLabel) + '</button>';
                 btnContainer.appendChild(actions);
+                // The buttons take their height from the log box
+                scrollToEnd();
                 return new Promise(function(resolve) {
                     var btns = actions.querySelectorAll('button');
                     btns[0].addEventListener('click', function() { actions.remove(); if (dotsEl) dotsEl.style.display = 'block'; resolve(false); });
@@ -1422,6 +1429,7 @@
                 if (spinner) spinner.style.display = 'none';
                 if (dotsEl) dotsEl.style.display = 'none';
                 if (confirmBtn) { confirmBtn.textContent = fv3I18nOr('done', 'Done'); confirmBtn.style.display = ''; }
+                scrollToEnd();
                 return new Promise(function(resolve) {
                     if (confirmBtn) {
                         confirmBtn.addEventListener('click', function() {
@@ -1488,21 +1496,31 @@
     async function postForm(url, data) {
         const csrfToken = document.querySelector('input[name="csrf_token"]')?.value || (typeof csrf_token !== 'undefined' ? csrf_token : '');
         const body = Object.entries({ ...data, csrf_token: csrfToken }).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
-        return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+        return fv3FetchAnswer(await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body }));
     }
 
-    // A refused or failed toggle shows why instead of passing silently; returns whether it went through
-    async function setThemeEnabled(entry, enable) {
-        let reason;
+    // One theme POST: null when it went through, else why it did not
+    async function themePostFailure(file, data) {
         try {
-            const resp = await postForm(API + '/toggle_theme.php', { entry: entry, enable: enable ? 'true' : 'false' });
-            if (resp.ok) return true;
-            reason = 'HTTP ' + resp.status;
-            try { reason = (await resp.json()).error || reason; } catch (e) {}
+            const resp = await postForm(API + file, data);
+            if (resp.ok) return null;
+            try { return (await resp.json()).error || 'HTTP ' + resp.status; } catch (e) { return 'HTTP ' + resp.status; }
         } catch (e) {
-            reason = e.message || fv3I18nOr('network-error', 'Network error');
+            return e.message || fv3I18nOr('network-error', 'Network error');
         }
+    }
+
+    // A refused or failed toggle or delete shows why instead of passing silently; each returns whether it went through
+    async function setThemeEnabled(entry, enable) {
+        const reason = await themePostFailure('/toggle_theme.php', { entry: entry, enable: enable ? 'true' : 'false' });
+        if (reason === null) return true;
         fv3SwalError(enable ? fv3I18nOr('theme-enable-failed', 'Could not enable the theme: $1', reason) : fv3I18nOr('theme-disable-failed', 'Could not disable the theme: $1', reason), 'SETTINGS');
+        return false;
+    }
+    async function removeTheme(entry) {
+        const reason = await themePostFailure('/delete_theme.php', { entry: entry });
+        if (reason === null) return true;
+        fv3SwalError(fv3I18nOr('theme-delete-failed', 'Could not delete the theme.') + ' ' + reason, 'SETTINGS');
         return false;
     }
 

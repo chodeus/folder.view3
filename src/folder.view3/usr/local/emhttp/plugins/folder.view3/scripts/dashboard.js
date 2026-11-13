@@ -1,5 +1,4 @@
 // Global variables
-let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
@@ -15,7 +14,12 @@ let fv3VmShowLabel = false;
 let fv3AnimationEnabled = false;
 let fv3DashboardUpdateContainer = false;
 let fv3DashboardUpdateFolder = false;
-let fv3LayoutReady = false;
+// Per tile: false from the start of a draw to its panel pass or failure, so opened folders get full-width panels after it
+const fv3LayoutReady = { docker: false, vm: false };
+// Opened folders in this tile get full-width panels at once: the tile is full-width and not mid-draw
+const fv3PanelsNow = (type) => (type === 'docker' ? dockerDashboardLayout : vmDashboardLayout) === 'fullwidth' && fv3LayoutReady[type];
+// Draws started per tile: a draw's panel pass stands down once a newer draw has started
+const fv3TileDraws = { docker: 0, vm: 0 };
 let dashboardContext = 0;
 let dashboardContextTrigger = 0;
 let dashboardContextGraph = 1;
@@ -25,15 +29,28 @@ let folderReq = {
     docker: [],
     vm: []
 };
+const fv3Folders = { docker: fv3FolderData(), vm: fv3FolderData() };
 
 // Builds all docker and vm folders on the dashboard
-const createFolders = async () => {
+const createFolders = async (types = ['docker', 'vm']) => {
     await fv3LoadFolderDefaults();
+    // Every wait comes before the first change to the page: a list that lands meanwhile is drawn whole, never in part.
+    // Awaiting a promise that has settled resumes before any request can land
+    const want = (type) => types.includes(type) && $(`tbody#${type}_view`).length > 0;
+    const answers = {
+        docker: want('docker') ? fv3Folders.docker.answers() : null,
+        vm: want('vm') ? fv3Folders.vm.answers() : null,
+    };
+    // Debug mode: each present tile's extra reads, apart, so one that fails costs only its own tile
+    const debugFor = (type) => (window.FV3_DEBUG && answers[type] ? Promise.all([$.get('/plugins/folder.view3/server/version.php').promise(),
+        $.get(`/plugins/folder.view3/server/read_unraid_order.php?type=${type}`).promise(), fv3CollectCssDebug()]) : null);
+    const debug = { docker: debugFor('docker'), vm: debugFor('vm') };
+    await Promise.allSettled([answers.docker, answers.vm, debug.docker, debug.vm]);
     // DOCKER
 
-    if($('tbody#docker_view').length > 0) { try {
+    if (answers.docker) { try {
 
-        let prom = await Promise.all(folderReq.docker);
+        let prom = await answers.docker;
         let folders = fv3SafeParseWithRecovery(prom[0], 'docker-folders', {});
         const unraidOrder = fv3SafeParse(prom[1], []);
         const containersInfo = fv3SafeParse(prom[2], {});
@@ -45,22 +62,16 @@ const createFolders = async () => {
         fv3ResolveRenamedContainers(folders, containersInfo, 'docker');
         Object.values(folders).forEach(f => fv3ApplyDefaults(f));
 
-        let newOnes = order.filter(x => !unraidOrder.includes(x));
-
-        for (let index = 0; index < unraidOrder.length; index++) {
-            const element = unraidOrder[index];
-            if((folderRegex.test(element) && folders[element.slice(7)])) {
-                order.splice(index+newOnes.length, 0, element);
-            }
-        }
+        let newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
 
         if(window.FV3_DEBUG) {
+            const [version, originalOrder, cssDebug] = await debug.docker;
             window.fv3DebugPayloads['DASHBOARD-DOCKER'] = JSON.stringify({
-                version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
+                version: version.trim(),
                 folders, unraidOrder,
-                originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
+                originalOrder: fv3SafeParse(originalOrder, []),
                 newOnes, order, containersInfo: fv3SanitizeContainersInfo(containersInfo),
-                cssDebug: await fv3CollectCssDebug()
+                cssDebug
             });
             fv3Debug('dashboard', 'Debug payload stored for DASHBOARD-DOCKER; click the FV3 Debug pill to download. Docker Order:', [...order]);
         }
@@ -153,9 +164,9 @@ const createFolders = async () => {
 
     // VMS
 
-    if($('tbody#vm_view').length > 0) { try {
+    if (answers.vm) { try {
 
-        const prom = await Promise.all(folderReq.vm);
+        const prom = await answers.vm;
         let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
         const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
         const vmInfo = fv3SafeParse(prom[2], {});
@@ -168,22 +179,16 @@ const createFolders = async () => {
         const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : []);
         Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
 
-        let newOnes = order.filter(x => !unraidOrder.includes(x));
-
-        for (let index = 0; index < unraidOrder.length; index++) {
-            const element = unraidOrder[index];
-            if((folderRegex.test(element) && folders[element.slice(7)])) {
-                order.splice(index+newOnes.length, 0, element);
-            }
-        }
+        let newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
 
         if(window.FV3_DEBUG) {
+            const [version, originalOrder, cssDebug] = await debug.vm;
             window.fv3DebugPayloads['DASHBOARD-VM'] = JSON.stringify({
-                version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
+                version: version.trim(),
                 folders, unraidOrder,
-                originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), []),
+                originalOrder: fv3SafeParse(originalOrder, []),
                 newOnes, order, vmInfo,
-                cssDebug: await fv3CollectCssDebug()
+                cssDebug
             });
             fv3Debug('dashboard', 'Debug payload stored for DASHBOARD-VM; click the FV3 Debug pill to download. VM Order:', [...order]);
         }
@@ -296,11 +301,8 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
     const fld = `<div class="folder-showcase-outer-${escapeHtml(id)} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${escapeHtml(id)}" onclick='addDockerFolderContext(${fv3JsArg(id)})' class="hand docker folder-hand-docker fv3-folder-hand fv3-folder-hand-docker"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img-docker fv3-folder-icon fv3-folder-icon-docker" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker fv3-folder-inner fv3-folder-inner-docker"><span class="folder-appname-docker fv3-folder-appname fv3-folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker fv3-folder-status-icon fv3-folder-status-icon-docker"></i><span class="state folder-state-docker fv3-folder-state fv3-folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage"></div></span><div class="folder-showcase-${escapeHtml(id)} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
-    if (position === 0) {
-        $('tbody#docker_view > tr.updated > td').children().eq(position).before($(fld));
-    } else {
-        $('tbody#docker_view > tr.updated > td').children().eq(position - 1).after($(fld));
-    }
+    const $tile = $('tbody#docker_view > tr.updated > td');
+    fv3PlaceFolder($tile, $tile.children(), position, $(fld));
 
     let newFolder = {};
 
@@ -511,11 +513,8 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
 
     const fld = `<div class="folder-showcase-outer-${escapeHtml(id)} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${escapeHtml(id)}" onclick='addVMFolderContext(${fv3JsArg(id)})' class="hand vm folder-hand-vm fv3-folder-hand fv3-folder-hand-vm"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img-vm fv3-folder-icon fv3-folder-icon-vm" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm fv3-folder-inner fv3-folder-inner-vm"><span class="folder-appname-vm fv3-folder-appname fv3-folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm fv3-folder-status-icon fv3-folder-status-icon-vm"></i><span class="state folder-state-vm fv3-folder-state fv3-folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage" style="display:none"></div></span><div class="folder-showcase-${escapeHtml(id)} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
-    if (position === 0) {
-        $('tbody#vm_view > tr.updated > td').children().eq(position).before($(fld));
-    } else {
-        $('tbody#vm_view > tr.updated > td').children().eq(position - 1).after($(fld));
-    }
+    const $tile = $('tbody#vm_view > tr.updated > td');
+    fv3PlaceFolder($tile, $tile.children(), position, $(fld));
 
     let newFolder = {};
 
@@ -738,7 +737,7 @@ const expandFolderDocker = (id) => {
         if(globalFolders.docker && globalFolders.docker[id]) {
             globalFolders.docker[id].status.expanded = true;
         }
-        if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady) {
+        if (fv3PanelsNow('docker')) {
             fv3FullwidthExpand(id, 'docker');
         }
         fv3InjectCollapseToggles();
@@ -786,7 +785,7 @@ const expandFolderVM = (id) => {
         if(globalFolders.vms && globalFolders.vms[id]) {
             globalFolders.vms[id].status.expanded = true;
         }
-        if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady) {
+        if (fv3PanelsNow('vm')) {
             fv3FullwidthExpand(id, 'vm');
         }
         fv3InjectCollapseToggles();
@@ -1617,8 +1616,8 @@ let fv3FullwidthRaf = null;
 const fv3FullwidthReflowSync = (onlyType) => {
     const types = onlyType ? [onlyType] : ['docker', 'vm'];
     types.forEach(type => {
-        const layout = type === 'docker' ? dockerDashboardLayout : vmDashboardLayout;
-        if (layout !== 'fullwidth') return;
+        // A tile mid-draw is left to its own panel pass (fv3TileDrawer), which runs after its layout
+        if (!fv3PanelsNow(type)) return;
         const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
         const parentTd = $(`tbody#${tbody} > tr.updated > td`);
         const expandedOuters = $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).toArray();
@@ -1673,7 +1672,7 @@ const fv3FullwidthReflowSync = (onlyType) => {
     });
 };
 const fv3FullwidthReflow = (onlyType) => {
-    if (fv3FullwidthRaf || !fv3LayoutReady) return;
+    if (fv3FullwidthRaf) return;
     fv3FullwidthRaf = requestAnimationFrame(() => {
         fv3FullwidthRaf = null;
         fv3FullwidthReflowSync(onlyType);
@@ -1713,6 +1712,8 @@ const fv3UpdateHidden = () => {
         const isStopped = $(this).hasClass('stopped');
         $(this).toggle(!(vmChecked && isStopped));
     });
+    // An opened folder shown again on a full-width tile not mid-draw gets its panel now (the reflow skips hidden folders)
+    fv3FullwidthReflowSync();
 };
 
 const fv3AutoWidthTiles = () => {
@@ -1759,7 +1760,8 @@ const fv3FullwidthExpand = (id, type) => {
     const showcase = outer.find('.folder-showcase');
     const expanded = outer.attr('expanded') === 'true';
 
-    if (expanded && showcase.children().length > 0) {
+    // A folder hidden by "hide stopped" gets no panel until it is shown again (see fv3UpdateHidden)
+    if (expanded && showcase.children().length > 0 && !outer.hasClass('fv3-hidden')) {
         showcase.css('display', 'none');
         const parentTd = $(`tbody#${tbody} > tr.updated > td`);
         const folderTile = outer.children('span.outer').first()[0];
@@ -1784,7 +1786,7 @@ const fv3FullwidthExpand = (id, type) => {
 
         const folderName = showcase.attr('data-folder-name') || '';
         const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
-        if (!fv3LayoutReady) panel.css('display', 'none');
+        if (!fv3LayoutReady[type]) panel.css('display', 'none');
         let insertAfter = lastInRow;
         while (insertAfter.next('.fv3-fullwidth-panel').length) {
             insertAfter = insertAfter.next('.fv3-fullwidth-panel');
@@ -1802,62 +1804,61 @@ const fv3FullwidthExpand = (id, type) => {
     }
 };
 
+// One list drawer (fv3ListDrawer) per tile, each from its own data: a slow or failed read costs only its own tile
+const fv3TileDrawer = (type) => fv3ListDrawer(`tbody#${type}_view > tr.updated`, async () => {
+    const at = ++fv3TileDraws[type];
+    fv3LayoutReady[type] = false;
+    await fv3SettingsReq;
+    await createFolders([type]);
+    applyDashboardLayouts();
+    requestAnimationFrame(() => { requestAnimationFrame(() => {
+        if (at !== fv3TileDraws[type]) return;
+        if ((type === 'docker' ? dockerDashboardLayout : vmDashboardLayout) === 'fullwidth') {
+            $(`tbody#${type}_view .folder-showcase`).css('display', 'none');
+            $(`tbody#${type}_view .folder-showcase-outer[expanded="true"]`).each(function() {
+                const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+                if (id) fv3FullwidthExpand(id, type);
+            });
+            $(`tbody#${type}_view .folder-showcase`).css('display', '');
+            $(`tbody#${type}_view .fv3-fullwidth-panel`).css('display', '');
+        }
+        fv3LayoutReady[type] = true;
+    }); });
+    $('div.spinner.fixed').hide();
+}, (e) => {
+    console.error(`[FV3] Dashboard ${type} folders failed:`, e);
+    // No panel pass follows: folders opened from now on get their panels at once
+    fv3LayoutReady[type] = true;
+    $('div.spinner.fixed').hide();
+}, fv3Folders[type]);
+const fv3DrawLists = { docker: fv3TileDrawer('docker'), vm: fv3TileDrawer('vm') };
+
 // Unraid dashboard patches — inject folder rendering after containers/VMs render
 window.loadlist_original = window.loadlist;
 window.loadlist = (x) => {
-    loadedFolder = false;
+    fv3DrawLists.docker.reload();
+    fv3DrawLists.vm.reload();
     if($('tbody#docker_view').length > 0) {
-        folderReq.docker = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('docker-folders-load-failed', 'Could not load Docker folder data. Try refreshing the page.'), 'error'); }).promise(),
+        folderReq.docker = fv3Folders.docker.ask((ifLast) => [
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(ifLast((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('docker-folders-load-failed', 'Could not load Docker folder data. Try refreshing the page.'), 'error'); })).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(ifLast((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error'); })).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
             fv3CheckUpdates()
-        ];
+        ]);
     }
 
     if($('tbody#vm_view').length > 0) {
-        folderReq.vm = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-folders-load-failed', 'Could not load VM folder data. Try refreshing the page.'), 'error'); }).promise(),
+        folderReq.vm = fv3Folders.vm.ask((ifLast) => [
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(ifLast((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-folders-load-failed', 'Could not load VM folder data. Try refreshing the page.'), 'error'); })).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(ifLast((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error'); })).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
-        ];
+        ]);
     }
     if (typeof window.loadlist_original === 'function') { loadlist_original(x); }
 };
 
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
-    if (options.url === "/webGui/include/DashboardApps.php" && !loadedFolder) {
-        jqXHR.promise().then(async () => {
-            await fv3SettingsReq;
-            loadedFolder = true;
-            try { await createFolders(); }
-            catch (e) { console.error('[FV3] Dashboard createFolders failed:', e); loadedFolder = false; $('div.spinner.fixed').hide(); return; }
-            applyDashboardLayouts();
-            requestAnimationFrame(() => { requestAnimationFrame(() => {
-                if (dockerDashboardLayout === 'fullwidth') {
-                    $('tbody#docker_view .folder-showcase').css('display', 'none');
-                    $('tbody#docker_view .folder-showcase-outer[expanded="true"]').each(function() {
-                        const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
-                        if (id) fv3FullwidthExpand(id, 'docker');
-                    });
-                    $('tbody#docker_view .folder-showcase').css('display', '');
-                    $('tbody#docker_view .fv3-fullwidth-panel').css('display', '');
-                }
-                if (vmDashboardLayout === 'fullwidth') {
-                    $('tbody#vm_view .folder-showcase').css('display', 'none');
-                    $('tbody#vm_view .folder-showcase-outer[expanded="true"]').each(function() {
-                        const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
-                        if (id) fv3FullwidthExpand(id, 'vm');
-                    });
-                    $('tbody#vm_view .folder-showcase').css('display', '');
-                    $('tbody#vm_view .fv3-fullwidth-panel').css('display', '');
-                }
-                fv3LayoutReady = true;
-            }); });
-            $('div.spinner.fixed').hide();
-            loadedFolder = true
-        });
-    }
+    if (options.url === "/webGui/include/DashboardApps.php") jqXHR.promise().then(() => { fv3DrawLists.docker(); fv3DrawLists.vm(); });
 });

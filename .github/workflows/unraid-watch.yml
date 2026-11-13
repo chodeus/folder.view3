@@ -47,7 +47,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
 
       - name: Install graphql-core
         run: pip install --require-hashes -r .github/unraid-watch/requirements.txt
@@ -86,7 +86,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
 
       - name: Install graphql-core
         run: pip install --require-hashes -r .github/unraid-watch/requirements.txt
@@ -107,7 +107,7 @@ jobs:
     needs: watch
     if: needs.watch.outputs.posted == 'true'
     permissions: {}
-    uses: chodeus/chodeus-ops/.github/workflows/notify-discord.yml@2a3b38cf7b999109f780ac960084f5922aae7b9b # main
+    uses: chodeus/chodeus-ops/.github/workflows/notify-discord.yml@65484add1113c1bbc00827af7237ebe7a1837bbb # main
     with:
       event_type: workflow
       status: info

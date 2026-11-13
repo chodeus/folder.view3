@@ -39,8 +39,20 @@ jobs:
           done < <(find src -name '*.php')
           exit $status
 
+      - name: Update status test
+        run: php .github/scripts/update_status_test.php
+
       - name: FolderView Plus import tests
         run: php .github/scripts/foreign_import_test.php
+
+      - name: Autostart order tests
+        run: php .github/scripts/page_order_test.php
+
+      - name: POST endpoint answer tests
+        run: php .github/scripts/post_answers_test.php
+
+      - name: Folder file lock tests
+        run: php .github/scripts/folder_lock_test.php
 
       - name: Variables tab tests
         run: |
@@ -62,7 +74,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: 26
 
       - name: Folder editor DOM tests
         working-directory: .github/scripts
@@ -70,6 +82,23 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           node folder_editor_dom_test.js
           node preview_pages_test.js
+          node incognito_test.js
+          node docker_new_folder_order_test.js
+          node vm_new_folder_order_test.js
+          node docker_saved_places_test.js
+          node docker_reset_order_test.js
+          node autostart_save_test.js
+          node empty_pages_test.js
+          node folder_placement_test.js
+          node list_reload_test.js
+          node dashboard_reload_test.js
+          node theme_import_dialog_test.js
+          node dropped_post_test.js
+          node apply_defaults_test.js
+          node settings_order_test.js
+          node import_order_test.js
+          node name_order_test.js
+          node rename_update_test.js
 
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg
@@ -107,7 +136,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
 
       # Every GraphQL call must stay readable by the upstream watcher: .github/unraid-watch/README.md
       - name: Unraid watch tests and scan
@@ -116,11 +145,32 @@ jobs:
           python -m unittest discover -s .github/unraid-watch -p 'test_*.py'
           python .github/unraid-watch/watch.py check
 
+  # A dispatched run's checks never reach the PR, so vendor-sync's run reports Lint + build there as a commit status.
+  report:
+    needs: validate
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.base != ''
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post the result on the PR's commit
+        env:
+          RESULT: ${{ needs.validate.result }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state=failure
+          [ "$RESULT" = success ] && state=success
+          gh api "repos/$REPO/statuses/$SHA" -f state="$state" -f context='Lint + build' -f target_url="$RUN_URL" -f description="CI dispatched for this PR: $RESULT" >/dev/null
+
   notify-failure:
     needs: validate
-    if: failure() && github.event_name != 'pull_request'
+    if: failure() && github.event_name != 'pull_request' && !inputs.base
     permissions: {}
-    uses: chodeus/chodeus-ops/.github/workflows/notify-discord.yml@cbd544d21103cfe854c8e0ec717ee2be4f097ad7 # main
+    uses: chodeus/chodeus-ops/.github/workflows/notify-discord.yml@65484add1113c1bbc00827af7237ebe7a1837bbb # main
     with:
       event_type: build
       status: failure

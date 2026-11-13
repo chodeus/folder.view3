@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: write
     # Pin to a reviewed chodeus-ops commit.
-    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-test-build.yml@2ef08fcd646d269404bc80d30c249ecac949a724 # main
+    uses: chodeus/chodeus-ops/.github/workflows/unraid-plugin-test-build.yml@65484add1113c1bbc00827af7237ebe7a1837bbb # main
     with:
       plg_file: folder.view3.plg
       version: ${{ inputs.version || '' }}

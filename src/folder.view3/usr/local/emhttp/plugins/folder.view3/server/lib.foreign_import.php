@@ -155,12 +155,11 @@
             return ['name' => $name, 'type' => 0, 'script_icon' => $icon, 'conatiners' => $targets, 'action' => $action, 'modes' => is_int($modes) ? $modes : 0];
         }
         if ($type === 1) {
-            // The script name is spliced into a user.scripts path unencoded; args are encoded by
-            // shared.js fv3RunUserScript, and stay restricted here because the source is untrusted
+            // The script name is spliced into a user.scripts path unencoded; args are URL-encoded by shared.js fv3RunUserScript
             $script = $act['script'] ?? null;
             $args = $act['script_args'] ?? '';
             if (!is_string($script) || !preg_match('/^[A-Za-z0-9 ._()-]{1,128}$/D', $script) || trim($script, '. ') === '') return null;
-            if (!is_string($args) || strlen($args) > 256 || preg_match('/[\x00-\x1F\x7F&#%?]/', $args)) return null;
+            if (!is_string($args) || strlen($args) > 256 || preg_match('/[\x00-\x1F\x7F]/', $args)) return null;
             $sync = $act['script_sync'] ?? false;
             if (!is_bool($sync)) return null;
             return ['name' => $name, 'type' => 1, 'script_icon' => $icon, 'script' => $script, 'script_args' => $args, 'script_sync' => $sync];
@@ -168,7 +167,8 @@
         return null;
     }
 
-    // Returns ['error' => code] (langs key foreign-error-<code>) or ['types' => [type => [foreignId => folder]], 'source' => string, 'skipped' => [...]]
+    // Returns ['error' => code] (langs key foreign-error-<code>) or ['types' => [type => [foreignId => folder]], 'source' => string,
+    // 'skipped' => [...], 'prefs' => [type => the file's plugin preferences, or null]]
     function fv3_foreign_detect(array $raw): array {
         $version = static function ($v): ?string {
             if (!is_int($v)) return 'no-version';
@@ -183,9 +183,11 @@
                 if (is_array($folders)) $types[$t] = $folders;
             }
             if (!$types) return ['error' => 'no-folders'];
-            $skipped = ['prefs'];
+            $prefs = [];
+            foreach ($types as $t => $_) $prefs[$t] = $raw['types'][$t]['prefs'] ?? null;
+            $skipped = array_filter($prefs, 'is_array') ? ['prefs'] : [];
             if (isset($raw['themeWorkspace'])) $skipped[] = 'themes';
-            return ['types' => $types, 'source' => $source, 'skipped' => $skipped];
+            return ['types' => $types, 'source' => $source, 'skipped' => $skipped, 'prefs' => $prefs];
         };
 
         if (array_key_exists('kind', $raw)) {
@@ -202,12 +204,18 @@
         $type = $raw['type'] ?? null;
         if (!in_array($type, ['docker', 'vm'], true)) return ['error' => 'no-type'];
         $mode = $raw['mode'] ?? null;
-        if ($mode === 'full' && is_array($raw['folders'] ?? null)) {
-            $skipped = isset($raw['prefs']) ? ['prefs'] : [];
-            return ['types' => [$type => $raw['folders']], 'source' => isset($raw['reason']) ? 'backup' : 'export', 'skipped' => $skipped];
+        // A branch export is one folder and its nested folders, in the full export's shape
+        if (($mode === 'full' || $mode === 'branch') && is_array($raw['folders'] ?? null)) {
+            $skipped = is_array($raw['prefs'] ?? null) ? ['prefs'] : [];
+            $source = $mode === 'branch' ? 'branch' : (isset($raw['reason']) ? 'backup' : 'export');
+            $folders = $raw['folders'];
+            // A branch's root keeps its parentId from the full map, and that parent is not in the file
+            $root = $raw['branchRootId'] ?? null;
+            if ($mode === 'branch' && is_string($root) && is_array($folders[$root] ?? null)) $folders[$root]['parentId'] = '';
+            return ['types' => [$type => $folders], 'source' => $source, 'skipped' => $skipped, 'prefs' => [$type => $raw['prefs'] ?? null]];
         }
         if ($mode === 'single' && is_array($raw['folder'] ?? null)) {
-            return ['types' => [$type => ['single' => $raw['folder']]], 'source' => 'single', 'skipped' => []];
+            return ['types' => [$type => ['single' => $raw['folder']]], 'source' => 'single', 'skipped' => [], 'prefs' => []];
         }
         return ['error' => 'unsupported'];
     }
@@ -259,6 +267,46 @@
         return $roots;
     }
 
+    // Folder ids in FolderView Plus's display order; follows its orderFoldersByPrefs (utils-ordering.js), names compared as
+    // the browser does (fv3_name_cmp: accented names can sort differently)
+    function fv3_foreign_display_order(array $folders, $prefs, array $roots): array {
+        $ids = array_map('strval', array_keys($folders));
+        if (!is_array($prefs)) return $ids;
+        $idList = static fn($v) => is_array($v) ? array_values(array_unique(array_filter($v, static fn($id) => is_string($id) && $id !== ''))) : [];
+        $index = array_flip($ids);
+        // $key: id => sort key, worked out once per folder
+        $sortBy = static function (array $key, callable $cmp) use ($ids, $index): array {
+            $out = $ids;
+            usort($out, static fn($a, $b) => $cmp($key[$a], $key[$b]) ?: $index[$a] - $index[$b]);
+            return $out;
+        };
+        $mode = $prefs['sortMode'] ?? 'created';
+        if ($mode === 'alpha' || $mode === 'name_desc') {
+            $sign = $mode === 'alpha' ? 1 : -1;
+            $key = [];
+            foreach ($ids as $id) $key[$id] = [is_string($folders[$id]['name'] ?? null) ? $folders[$id]['name'] : $id, $id];
+            $ids = $sortBy($key, static fn($a, $b) => $sign * (fv3_name_cmp($a[0], $b[0]) ?: fv3_name_cmp($a[1], $b[1])));
+        } elseif (in_array($mode, ['created_newest', 'created_oldest', 'updated_newest'], true)) {
+            $field = $mode === 'updated_newest' ? 'updatedAt' : 'createdAt';
+            $sign = $mode === 'created_oldest' ? 1 : -1;
+            $key = [];
+            foreach ($ids as $id) {
+                $v = $folders[$id][$field] ?? null;
+                // Milliseconds, as Date.parse gives them: two folders made in the same second still sort
+                $d = is_string($v) && trim($v) !== '' ? date_create(trim($v)) : false;
+                $key[$id] = $d === false ? null : (int)$d->format('U') * 1000 + (int)$d->format('v');
+            }
+            // FolderView Plus calls an undated folder equal to every other, which no consistent order satisfies: undated go last
+            $ids = $sortBy($key, static fn($ta, $tb) => ($ta === null || $tb === null) ? ($ta === null) <=> ($tb === null) : $sign * ($ta <=> $tb));
+        } elseif ($mode === 'manual') {
+            $ids = array_values(array_unique(array_merge(array_intersect($idList($prefs['manualOrder'] ?? null), $ids), $ids)));
+        }
+        // A pinned nested folder lifts its top-level folder, as FolderView Plus does
+        $pinned = array_values(array_unique(array_filter(array_map(static fn($id) => $roots[$id] ?? null, $idList($prefs['pinnedFolderIds'] ?? null)), 'is_string')));
+        // It shows the result through Object.keys as well: all-digit ids come first, ascending, whatever the sort
+        return fv3_js_key_order(array_values(array_unique(array_merge($pinned, $ids))));
+    }
+
     // $existing: [type => folder map already on disk], used only for name clashes and member ownership
     function fv3_convert_foreign_bundle(array $raw, ?string $onlyType, array $existing = []): array {
         $detected = fv3_foreign_detect($raw);
@@ -270,6 +318,8 @@
             $other = $onlyType === 'docker' ? 'vm' : 'docker';
             if (isset($types[$other]) && count($types[$other])) $report['skipped_sections'][] = $other;
             $types = [$onlyType => $types[$onlyType]];
+            // "Only their folder order is used" holds only when the type kept has preferences
+            if (!is_array($detected['prefs'][$onlyType] ?? null)) $report['skipped_sections'] = array_values(array_diff($report['skipped_sections'], ['prefs']));
         }
 
         $out = [];
@@ -279,7 +329,7 @@
             $folders = array_filter($folders, 'is_array');
             if (count($folders) > FV3_FOREIGN_MAX_FOLDERS) return ['error' => 'too-many-folders'];
             $r = ['folders' => [], 'merged_children' => 0, 'broken_parents' => 0, 'dropped_settings' => 0, 'dropped_keys' => 0,
-                  'dropped_actions' => 0, 'child_actions' => 0, 'dropped_icons' => 0, 'dropped_regex' => 0, 'renamed' => 0, 'members_kept_elsewhere' => 0, 'dropped_members' => 0,
+                  'dropped_actions' => 0, 'child_actions' => 0, 'dropped_icons' => 0, 'plus_icons' => 0, 'dropped_regex' => 0, 'renamed' => 0, 'members_kept_elsewhere' => 0, 'dropped_members' => 0,
                   'dropped_invalid' => $entries - count($folders)];
             $broken = [];
             $roots = fv3_foreign_roots($folders, $broken);
@@ -305,9 +355,8 @@
             }
 
             $converted = [];
-            foreach ($roots as $id => $root) {
-                $id = (string)$id;
-                if ($id !== $root) continue;
+            foreach (fv3_foreign_display_order($folders, $detected['prefs'][$type] ?? null, $roots) as $id) {
+                if ($id !== $roots[$id]) continue;
                 $src = $folders[$id];
                 $r['dropped_keys'] += count(array_diff(array_keys($src), $known));
                 // A merged child's members, hidden entries and identities move up; its regex and unknown fields go
@@ -342,7 +391,8 @@
 
                 $suppliedIcon = $src['icon'] ?? null;
                 $icon = fv3_foreign_icon($suppliedIcon ?? '');
-                if ($icon === '' && $suppliedIcon !== null && !(is_string($suppliedIcon) && trim($suppliedIcon) === '')) $r['dropped_icons']++;
+                if ($icon !== '' && fv3_is_plus_icon($icon)) { $icon = ''; $r['plus_icons']++; }
+                elseif ($icon === '' && $suppliedIcon !== null && !(is_string($suppliedIcon) && trim($suppliedIcon) === '')) $r['dropped_icons']++;
 
                 $suppliedRegex = $src['regex'] ?? null;
                 $regex = is_string($src['regex'] ?? null) && strlen($src['regex']) <= 1024 ? $src['regex'] : '';
@@ -358,6 +408,8 @@
                 if (($src['settings'] ?? null) !== null && !is_array($src['settings'])) $r['dropped_settings']++;
                 foreach ((is_array($src['settings'] ?? null) ? $src['settings'] : []) as $k => $v) {
                     if (!isset($rules[$k])) { $r['dropped_settings']++; continue; }
+                    // An empty colour means "not set" (FolderView Plus saves its default vertical bar colour so): left out, not counted
+                    if ($v === '' && $rules[$k][0] === 'color') continue;
                     [$value, $ok] = fv3_foreign_setting_value($rules[$k], $v);
                     if ($ok) { $settings[$k] = $value; } else { $r['dropped_settings']++; }
                 }
@@ -372,7 +424,8 @@
 
                 $folder = [
                     'name' => $candidate, 'icon' => $icon, 'regex' => $regex, 'containers' => $members,
-                    'hidden_preview' => array_values(array_intersect(array_unique($hidden), $members)),
+                    // Not limited to explicit members: the editor also hides regex- and label-matched ones
+                    'hidden_preview' => array_slice(array_values(array_unique($hidden)), 0, FV3_FOREIGN_MAX_MEMBERS),
                     'actions' => $actions, 'settings' => (object)$settings,
                 ];
                 $idKey = $type === 'docker' ? 'containerImages' : 'containerIds';
@@ -394,8 +447,22 @@
     }
 
 
-    // Preview ($apply false) or merge the converted folders into docker.json / vm.json in one swap
+    // Preview ($apply false), or merge the converted folders into docker.json / vm.json under the lock of each file it can
+    // write; the two files are replaced one after the other. A bundle that would be refused is refused first, as a preview
     function importForeignBundle(string $json, ?string $type, bool $apply): array {
+        $preview = fv3_import_foreign_bundle($json, $type, false);
+        if (!$apply || isset($preview['error'])) return $preview;
+        $locks = fv3_config_lock_each($type === null ? ['docker.json', 'vm.json'] : ["$type.json"]);
+        if (is_string($locks)) {
+            fv3_error_log('importForeignBundle', "could not lock $locks");
+            return ['error' => 'write-failed'];
+        }
+        $result = fv3_import_foreign_bundle($json, $type, true);
+        array_map('fv3_config_unlock', $locks);
+        return $result;
+    }
+
+    function fv3_import_foreign_bundle(string $json, ?string $type, bool $apply): array {
         global $configDir;
         if (strlen($json) > FV3_FOREIGN_MAX_BYTES) return ['error' => 'too-large'];
         $raw = json_decode($json, true);
@@ -428,15 +495,21 @@
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
         if (realpath($configDir) !== $configDir) return ['error' => 'config-unreadable'];
         $files = [];
+        $placed = [];
         foreach ($converted['folders'] as $t => $folders) {
             if (!$folders) continue;
             // The object copy from the single read above: the assoc one would turn an existing
             // folder's empty {} settings/containerImages into []
             $map = $maps[$t];
-            foreach ($folders as $folder) {
+            // Docker folders are saved in FolderView Plus's order, then placed on top of the saved order (import_foreign.php). The VMs page
+            // draws folders its saved order does not name on top, the last one in the map first, so VM folders are saved in reverse
+            $placed[$t] = [];
+            foreach ($t === 'vm' ? array_reverse($folders) : $folders as $folder) {
                 do { $id = generateId(); } while (property_exists($map, $id));
                 $map->$id = $folder;
+                $placed[$t][] = "folder-$id";
             }
+            if ($t === 'vm') $placed[$t] = array_reverse($placed[$t]);
             // No fv3_dedupe_explicit_members here: the converter already skips claimed members, and a
             // whole-map pass would strip members from existing folders that happen to share one
             $encoded = json_encode($map);
@@ -451,6 +524,7 @@
             if (!empty($result['partial'])) return ['error' => 'write-partial'];
             return ['error' => 'write-failed'];
         }
-        return ['success' => true, 'report' => $converted['report']];
+        // placed: [type => the new folders' placeholders in FolderView Plus's order], for import_foreign.php
+        return ['success' => true, 'report' => $converted['report'], 'placed' => $placed];
     }
 ?>

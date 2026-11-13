@@ -1,7 +1,6 @@
 // Global variables
 // Kept for extensions that scale fv3-stats-update by it; follows a late cpu.php answer
 Object.defineProperty(window, 'cpus', { configurable: true, get: () => window.fv3CpuThreads });
-let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
@@ -12,6 +11,7 @@ let folderobserverConfig = {
     attributes: true
 };
 let folderReq = [];
+const fv3Folders = fv3FolderData();
 let fv3RemeasureWidths = false;
 
 // Folder rendering — orchestrate (createFolders) and per-folder build (createFolder)
@@ -19,7 +19,7 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'Entry');
     if (window.fv3Mark) window.fv3Mark('createFolders-start');
     await fv3LoadFolderDefaults();
-    const prom = await Promise.all(folderReq);
+    const prom = await fv3Folders.answers();
     if (window.fv3Mark) window.fv3Mark('folderReq-resolved');
     fv3Debug('createFolders', 'Promises resolved', prom);
 
@@ -57,17 +57,8 @@ const createFolders = async () => {
     fv3Debug('createFolders', 'containersInfo keys', Object.keys(containersInfo));
 
 
-    const newOnes = order.filter(x => !unraidOrder.includes(x));
+    const newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
     fv3Debug('createFolders', 'newOnes (containers not in unraidOrder)', newOnes);
-
-
-    for (let index = 0; index < unraidOrder.length; index++) {
-        const element = unraidOrder[index];
-        if((folderRegex.test(element) && folders[element.slice(7)])) {
-            fv3Debug('createFolders', `Splicing folder ${element} into order at index ${index + newOnes.length}`);
-            order.splice(index+newOnes.length, 0, element);
-        }
-    }
     fv3Debug('createFolders', 'Order after inserting Unraid-ordered folders', [...order]);
 
 
@@ -296,21 +287,8 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     const fld = `<tr class="sortable folder-id-${escapeHtml(id)} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="ct-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${escapeHtml(id)}" onclick="addDockerFolderContext(${fv3JsArg(id)})" class="hand folder-hand"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><span class="appname" style="display: none;"><a>folder-${escapeHtml(id)}</a></span><a class="exec folder-appname" onclick='editFolder(${fv3JsArg(id)})'>${escapeHtml(folder.name)}</a><br><i id="load-folder-${escapeHtml(id)}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${escapeHtml(id)} folder-dropdown" onclick="dropDownButton(${fv3JsArg(id)})" ><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td class="updatecolumn folder-update"><span class="green-text folder-update-text"><i class="fa fa-check fa-fw"></i> ${$.i18n('up-to-date')}</span><div class="advanced" style="display: ${advanced ? 'block' : 'none'};"><a class="exec" onclick="forceUpdateFolder(${fv3JsArg(id)});"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i> ${$.i18n('force-update')}</span></a></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="advanced folder-advanced" ${advanced ? 'style="display: table-cell;"' : ''}><span class="cpu-folder-${escapeHtml(id)} folder-cpu">0%</span><div class="usage-disk mm folder-load"><span id="cpu-folder-${escapeHtml(id)}" class="folder-cpu-bar" style="width:0%"></span><span></span></div><br><span class="mem-folder-${escapeHtml(id)} folder-mem">0 / 0</span></td><td class="folder-autostart"><input type="checkbox" id="folder-${escapeHtml(id)}-auto" class="autostart" style="display:none"><div style="clear:left"></div></td><td></td></tr>`;
     fv3Debug('createFolder', id, `colspan=${colspan}. Generated folder HTML (fld).`);
 
-    if (positionInMainOrder === 0) {
-        fv3Debug('createFolder', id, 'Inserting folder HTML at position 0 (before).');
-        $('#docker_list > tr.sortable').eq(0).before($(fld));
-    } else {
-        if ($('#docker_list > tr.sortable').length > 0 && positionInMainOrder > 0) {
-             fv3Debug('createFolder', id, `Inserting folder HTML at position ${positionInMainOrder} (after eq ${positionInMainOrder-1} of current sortables).`);
-             $('#docker_list > tr.sortable').eq(positionInMainOrder - 1).after($(fld));
-        } else if ($('#docker_list > tr.sortable').length === 0 && positionInMainOrder === 0) {
-             fv3Debug('createFolder', id, 'No sortables found, inserting folder at the beginning of #docker_list.');
-            $('#docker_list').prepend($(fld));
-        } else {
-             fv3DebugWarn('createFolder', id, `Could not determine insertion point for folder. Position: ${positionInMainOrder}, Sortables count: ${$('#docker_list > tr.sortable').length}`);
-             $('#docker_list').append($(fld));
-        }
-    }
+    fv3Debug('createFolder', id, `Inserting folder HTML at position ${positionInMainOrder}.`);
+    fv3PlaceFolder($('#docker_list'), $('#docker_list > tr.sortable'), positionInMainOrder, $(fld));
 
     // switchButton init deferred until autostart state is known — early init can reset container autostart.
     fv3Debug('createFolder', id, 'switchButton init deferred until autostart state is calculated.');
@@ -1129,6 +1107,12 @@ const addDockerFolderContext = (id) => {
 };
 
 // Unraid listview/loadlist patches — inject folder rendering after containers render
+const fv3DrawList = fv3ListDrawer('#docker_list > tr', () => createFolders(), (e) => {
+    console.error('[FV3] Docker: folder rendering failed:', e);
+    // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
+    document.documentElement.classList.add('fv3-docker-ready');
+    fv3IncognitoRefresh();
+}, fv3Folders);
 window.listview_original = window.listview;
 window.listview = () => {
     fv3Debug('Patched listview', 'Entry.');
@@ -1139,44 +1123,27 @@ window.listview = () => {
         fv3DebugWarn('Patched listview', 'window.listview_original is not a function!');
     }
 
-    if (!loadedFolder) {
-        fv3Debug('Patched listview', 'loadedFolder is false. Calling createFolders.');
-        loadedFolder = true;
-        createFolders().catch((e) => {
-            console.error('[FV3] Docker: folder rendering failed:', e);
-            // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
-            document.documentElement.classList.add('fv3-docker-ready');
-            fv3DebugWarn('Patched listview', 'createFolders failed; clearing flag so a later render can retry', e);
-            loadedFolder = false;
-        });
-    } else {
-        fv3Debug('Patched listview', 'loadedFolder is true. Skipped createFolders.');
-    }
+    fv3DrawList();
     fv3Debug('Patched listview', 'Exit.');
 };
 
 window.loadlist_original = window.loadlist;
-let fv3FolderReqPending = false;
 window.loadlist = () => {
     fv3Debug('Patched loadlist', 'Entry.');
 
-    if (!fv3FolderReqPending) {
-        fv3FolderReqPending = true;
-        loadedFolder = false;
-        fv3OrganizerSyncDone = false;
-        fv3Debug('Patched loadlist', 'Set loadedFolder to false.');
-        folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
+    fv3OrganizerSyncDone = false;
+    fv3DrawList.reload();
+    folderReq = fv3Folders.ask((ifLast) => {
+        const failed = (key, text) => ifLast(() => fv3ShowBanner(fv3I18nOr(key, text), 'error'));
+        return [
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(failed('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=docker').fail(failed('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(failed('container-details-load-failed', 'Could not load container details. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').fail(failed('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.')).promise(),
             fv3CheckUpdates()
         ];
-        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
-        fv3Debug('Patched loadlist', 'folderReq initialized with 5 promises.');
-    } else {
-        fv3Debug('Patched loadlist', 'Skipping — requests already pending.');
-    }
+    });
+    fv3Debug('Patched loadlist', 'folderReq initialized with 5 promises.');
 
     if (typeof window.loadlist_original === 'function') {
         window.loadlist_original();
@@ -1260,7 +1227,7 @@ Promise.all([fv3DetectApiWithin(), fv3LoadCpuThreads()]).then(() => {
 
 
 fv3Debug('init', 'globals', {
-    cpuThreads: fv3CpuThreads, loadedFolder, globalFolders: {...globalFolders}, folderRegex: folderRegex.toString(),
+    cpuThreads: fv3CpuThreads, globalFolders: {...globalFolders}, folderRegex: folderRegex.toString(),
     folderDebugMode, folderobserverConfig: {...folderobserverConfig}, folderReq: [...folderReq]
 });
 
@@ -1343,10 +1310,15 @@ if (typeof resetSorting === 'function') {
     window.resetSorting = function() {
         if ($.cookie('lockbutton') == null) return;
         $('input[type=button]').prop('disabled', true);
-        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck
+        // always(): a failed reset or sync must still reload, or the disabled buttons stay stuck. A refused sync gets its own
+        // banner; a dropped one (script.php) shows the reload reason alone: Unraid's answer to the reset cannot say if it took it
         $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php', {reset: true})
-            .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}))
-            .fail(() => fv3ShowBanner(fv3I18nOr('reset-order-failed', 'Could not reset the folder order. Try again.')))
+            .then(() => $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'}).then(null, (err) => {
+                if (err?.fv3Dropped) return $.Deferred().reject(err);
+                fv3ShowBanner(fv3I18nOr('reset-order-sync-failed', 'The order was reset, but the Docker start order could not be updated: $1', fv3FailReason(err)));
+                return $.Deferred().resolve();
+            }))
+            .fail((err) => fv3ShowBanner(err?.fv3Dropped ? fv3FailReason(err) : fv3I18nOr('reset-order-failed', 'Could not reset the folder order. Try again.')))
             .always(() => loadlist());
     };
     fv3Debug('init', 'resetSorting patched for folder-grouped autostart');
@@ -1364,7 +1336,9 @@ $(document).ajaxComplete((event, jqXHR, settings) => {
         && data.indexOf('names=') !== -1;
     if (isAutostartToggle || isOrderSave) {
         fv3Debug('autostartSync', 'Rebuilding autostart after Unraid event', {url, sample: data.slice(0, 80)});
-        $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'});
+        // a refused sync leaves the start order stale: fv3ShowBanner shows the same message once until it is closed
+        $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'})
+            .fail((err) => fv3ShowBanner(fv3I18nOr('autostart-sync-failed', 'The Docker start order could not be updated: $1', fv3FailReason(err))));
     }
 });
 

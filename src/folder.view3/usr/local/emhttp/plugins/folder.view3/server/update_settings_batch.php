@@ -10,5 +10,5 @@
         exit;
     }
     updateSettingsBatch($settings);
-    echo json_encode(['success' => true]);
+    fv3_ok();
 ?>

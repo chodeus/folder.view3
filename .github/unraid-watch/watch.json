@@ -14,6 +14,7 @@
       "namespaces": ["Docker", "DockerMutations", "Vms", "VmMutations"],
       "paths": {
         "api/src/unraid-api/unraid-file-modifier/modifications/docker-containers-page.modification.ts": "switch that replaces the legacy Docker page with the new one",
+        "api/src/unraid-api/unraid-file-modifier/modifications/": "every page swap: a new file here replaces another legacy page",
         "api/src/unraid-api/graph/resolvers/docker/organizer/": "organizer behind the folder mirror",
         "api/src/unraid-api/graph/resolvers/docker/docker-autostart.service.ts": "autostart file handling",
         "api/src/unraid-api/graph/resolvers/docker/docker-stats.service.ts": "stats payload the graphs parse",
@@ -21,7 +22,9 @@
         "api/src/unraid-api/auth/auth.service.ts": "CSRF check every request passes",
         "api/src/unraid-api/auth/cookie.strategy.ts": "cookie session every request uses",
         "api/.env.production": "production feature flags",
-        "web/src/components/Docker/": "the new Docker page"
+        "web/src/components/Docker/": "the new Docker page",
+        "api/docs/developer/api-plugins.md": "how an API plugin is written, where a contract for third-party plugins would appear",
+        "packages/unraid-api-plugin-generator/": "scaffold for API plugins"
       }
     },
     {
@@ -41,13 +44,19 @@
         "emhttp/plugins/dynamix.vm.manager/javascript/vmmanager.js": "VM menu",
         "emhttp/plugins/dynamix/DashStats.page": "Dashboard tiles and loadlist",
         "emhttp/plugins/dynamix/include/DefaultPageLayout/HeadInlineJS.php": "openDocker, openBox and openTerminal",
+        "emhttp/plugins/dynamix/include/OpenTerminal.php": "console and log windows behind openTerminal",
         "emhttp/plugins/dynamix/include/DefaultPageLayout/BodyInlineJS.php": "task tray openDocker runs through from 7.4",
-        "emhttp/plugins/dynamix/include/TaskCommand.php": "task tray endpoint behind openDocker from 7.4"
+        "emhttp/plugins/dynamix/include/TaskCommand.php": "task tray endpoint behind openDocker from 7.4",
+        "emhttp/plugins/dynamix/styles/default-dynamix.css": "tooltipster rules the advanced preview popup is drawn inside (7.4 added white-space: pre-line)",
+        "emhttp/plugins/dynamix/styles/default-base.css": "sweet-alert, table and menu rules the plugin's dialogs and rows sit in"
       }
     },
     {
       "repo": "unraid/docs",
       "branch": "main",
+      "paths": {
+        "docs/API/": "API docs: the roadmap and, once published, the Unraid 8 plugin SDK"
+      },
       "releases": "docs/unraid-os/release-notes/",
       "since": "7.2.0",
       "tags": "unraid/webgui"

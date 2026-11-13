@@ -1,11 +1,11 @@
 {
     "schemaVersion": 1,
-    "pluginVersion": "2026.09.17.03",
-    "exportedAt": "2026-09-23T07:25:23.263Z",
+    "pluginVersion": "2026.10.27.05",
+    "exportedAt": "2026-10-30T02:56:07.019Z",
     "type": "docker",
     "mode": "full",
     "folders": {
-        "gX7Z4LK9337NLCMBv2sM": {
+        "Prve4iJ9reIQsknlGHr": {
             "name": "Media",
             "icon": "/plugins/dynamix.docker.manager/images/question.png",
             "regex": "",
@@ -135,10 +135,10 @@
                 }
             ],
             "parentId": "",
-            "createdAt": "2026-09-23T07:25:23+00:00",
-            "updatedAt": "2026-09-23T07:25:23+00:00"
+            "createdAt": "2026-10-30T02:56:06+00:00",
+            "updatedAt": "2026-10-30T02:56:06+00:00"
         },
-        "jY2itqMmRewVKRU": {
+        "7ncZh0uBk6yJOJ55lqN": {
             "name": "Media Extras",
             "icon": "",
             "containers": [
@@ -173,11 +173,11 @@
             ],
             "regex": "",
             "memberIdentities": [],
-            "parentId": "gX7Z4LK9337NLCMBv2sM",
-            "createdAt": "2026-09-23T07:25:23+00:00",
-            "updatedAt": "2026-09-23T07:25:23+00:00"
+            "parentId": "Prve4iJ9reIQsknlGHr",
+            "createdAt": "2026-10-30T02:56:06+00:00",
+            "updatedAt": "2026-10-30T02:56:06+00:00"
         },
-        "XxSs9SdbcyWn2pInInaa": {
+        "hLLw6OSeZwbX0jjMYgS4": {
             "name": "Media Deep",
             "containers": [
                 "app-delta"
@@ -197,18 +197,22 @@
             "regex": "",
             "hiddenPreviewMembers": [],
             "memberIdentities": [],
-            "parentId": "jY2itqMmRewVKRU",
+            "parentId": "7ncZh0uBk6yJOJ55lqN",
             "actions": [],
-            "createdAt": "2026-09-23T07:25:23+00:00",
-            "updatedAt": "2026-09-23T07:25:23+00:00"
+            "createdAt": "2026-10-30T02:56:06+00:00",
+            "updatedAt": "2026-10-30T02:56:06+00:00"
         },
-        "0bNYAczbQm7nhMfnt9": {
+        "tUynG897oTGtrS2F7ppM": {
             "name": "Tools",
             "icon": "https://example.invalid/icon.png",
             "regex": "^tool-",
             "containers": [
                 "tool-one",
                 "app-beta"
+            ],
+            "hiddenPreviewMembers": [
+                "tool-one",
+                "tool-three"
             ],
             "settings": {
                 "preview": 0,
@@ -222,14 +226,13 @@
                 "child_folder_order": [],
                 "childFolderOrder": []
             },
-            "hiddenPreviewMembers": [],
             "memberIdentities": [],
             "parentId": "",
             "actions": [],
-            "createdAt": "2026-09-23T07:25:23+00:00",
-            "updatedAt": "2026-09-23T07:25:23+00:00"
+            "createdAt": "2026-10-30T02:56:06+00:00",
+            "updatedAt": "2026-10-30T02:56:06+00:00"
         },
-        "GUtplHP6DADBry60y70G": {
+        "0CtZfMeVf5uunyv0hMqA": {
             "name": "<img src=x onerror=alert(1)>",
             "icon": "javascript:alert(1)",
             "containers": [
@@ -276,8 +279,8 @@
             "hiddenPreviewMembers": [],
             "memberIdentities": [],
             "parentId": "",
-            "createdAt": "2026-09-23T07:25:23+00:00",
-            "updatedAt": "2026-09-23T07:25:23+00:00"
+            "createdAt": "2026-10-30T02:56:06+00:00",
+            "updatedAt": "2026-10-30T02:56:06+00:00"
         }
     }
 }

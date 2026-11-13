@@ -55,30 +55,18 @@ if (typeof $ !== 'undefined' && typeof csrf_token !== 'undefined') {
     });
 }
 
-const orderFolderIds = (folders, itemOrder) => {
-    try {
-        const ordered = [];
-        const seen = new Set();
-        for (const name of itemOrder) {
-            for (const [folderId, folder] of Object.entries(folders)) {
-                if (folder.containers && folder.containers.includes(name)) {
-                    if (!seen.has(folderId)) {
-                        ordered.push(folderId);
-                        seen.add(folderId);
-                    }
-                    break;
-                }
-            }
-        }
-        for (const folderId of Object.keys(folders)) {
-            if (!seen.has(folderId)) {
-                ordered.push(folderId);
-            }
-        }
-        return ordered;
-    } catch (error) {
-        return Object.keys(folders);
+// Folder ids in the Docker or VMs page's order (createFolders in docker.js, vm.js): folders not in the saved order on top, the last
+// one first, then the saved ones in saved order. With nothing saved the Docker page sorts by shown name; same-name folders may swap
+const fv3PageFolderIds = (type, folders, savedOrder) => {
+    const ids = Object.keys(folders);
+    const list = Array.isArray(savedOrder) ? savedOrder : [];
+    if (type === 'docker' && Array.isArray(savedOrder) && !list.length) {
+        const shown = (id) => String(folders[id]?.name ?? '').trim();
+        return ids.slice().sort((a, b) => shown(a).localeCompare(shown(b), undefined, { numeric: true, sensitivity: 'base' }));
     }
+    const has = (id) => Object.prototype.hasOwnProperty.call(folders, id);
+    const saved = [...new Set(list.filter((x) => typeof x === 'string' && x.startsWith('folder-') && has(x.slice(7))).map((x) => x.slice(7)))];
+    return ids.filter((id) => !saved.includes(id)).reverse().concat(saved);
 };
 
 const populateTable = async () => {
@@ -87,8 +75,8 @@ const populateTable = async () => {
         proms = await Promise.all([
             $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
             $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
+            $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise()
         ]);
     } catch (e) {
         console.error('[FV3] Failed to load folder data:', e);
@@ -97,8 +85,8 @@ const populateTable = async () => {
     }
     const dockerData = fv3SafeParse(proms[0], {});
     const vmData = fv3SafeParse(proms[1], {});
-    const currentDockerContainerOrder = fv3SafeParse(proms[2], []);
-    const currentVmOrder = fv3SafeParse(proms[3], []);
+    const savedDockerOrder = fv3SafeParse(proms[2], []);
+    const savedVmOrder = fv3SafeParse(proms[3], []);
 
     dockers = dockerData;
     vms = vmData;
@@ -110,14 +98,14 @@ const populateTable = async () => {
     vmsTable.empty();
 
     // Ids reach the inline handlers as escaped JSON literals, so any stored key (quotes included) is passed intact, never run
-    const dockerIds = orderFolderIds(dockers, currentDockerContainerOrder);
+    const dockerIds = fv3PageFolderIds('docker', dockers, savedDockerOrder);
     for (const id of dockerIds) {
         const folder = dockers[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="${escapeHtml(fv3I18nOr('export', 'Export'))}" data-i18n="[title]export" onclick="downloadDocker(${fv3JsArg(id)})"><i class="fa fa-download"></i></button><button title="${escapeHtml(fv3I18nOr('delete', 'Delete'))}" data-i18n="[title]delete" onclick="clearDocker(${fv3JsArg(id)})"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
-    const vmIds = orderFolderIds(vms, currentVmOrder);
+    const vmIds = fv3PageFolderIds('vm', vms, savedVmOrder);
     for (const id of vmIds) {
         const folder = vms[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="${escapeHtml(fv3I18nOr('export', 'Export'))}" data-i18n="[title]export" onclick="downloadVm(${fv3JsArg(id)})"><i class="fa fa-download"></i></button><button title="${escapeHtml(fv3I18nOr('delete', 'Delete'))}" data-i18n="[title]delete" onclick="clearVm(${fv3JsArg(id)})"><i class="fa fa-trash"></i></button></td></tr>`;
@@ -128,13 +116,15 @@ const populateTable = async () => {
     const vmCount = document.getElementById('fv3-vm-count');
     if (dockerCount) dockerCount.textContent = `(${dockerIds.length})`;
     if (vmCount) vmCount.textContent = `(${vmIds.length})`;
+    return true;
 };
 
 populateTable();
 
+// The folders in the page's order, so importing the file shows them as they were (fv3ImportFolderMap)
 const buildOrderedExport = async (folders, type) => {
-    const order = fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_unraid_order.php?type=${type}`).promise(), []);
-    const orderedIds = orderFolderIds(folders, order);
+    const saved = fv3SafeParse(await $.get(`/plugins/folder.view3/server/read_order.php?type=${type}`).promise(), []);
+    const orderedIds = fv3PageFolderIds(type, folders, saved);
     const exportData = {};
     for (const folderId of orderedIds) {
         if (folders[folderId]) {
@@ -177,23 +167,36 @@ const fv3ImportFolderMap = async (content, type) => {
     }
     // Structural test, not `content.name` — an empty name is legal and would otherwise route a
     // single folder down the map path, writing its own keys (name, icon, settings…) as folder ids.
+    // Docker: saved in the file's order, then import_order.php puts the new ones on top of the saved order. VMs: the page draws folders
+    // its saved order does not name on top, the last one in the map first, so they are saved last-first. Folders already there keep their place
+    const known = (type === 'docker' ? dockers : vms) || {};
+    const fresh = fv3IsFolderShaped(content) ? [] : Object.keys(content).filter((id) => !Object.prototype.hasOwnProperty.call(known, id));
     const jobs = fv3IsFolderShaped(content)
         ? [{ url: '/plugins/folder.view3/server/create.php', data: { type: type, content: JSON.stringify(content) }, label: content.name || fv3I18nOr('folder-unnamed', 'folder') }]
-        : Object.entries(content).map(([id, folder]) => ({ url: '/plugins/folder.view3/server/update.php', data: { type: type, content: JSON.stringify(folder), id: id }, label: folder?.name || id }));
+        : (type === 'vm' ? Object.entries(content).reverse() : Object.entries(content)).map(([id, folder]) => ({ url: '/plugins/folder.view3/server/update.php', data: { type: type, content: JSON.stringify(folder), id: id }, label: folder?.name || id, key: id }));
     const failed = await postEach(jobs);
-    let syncError = null;
-    if (type === 'docker') {
+    const outcome = {};
+    // nothing saved, nothing to order: the dialog must not say "Saved, but"
+    if (type === 'docker' && failed.length < jobs.length) {
+        const notSaved = new Set(failed.map((f) => f.key));
+        // a single folder gets its id from create.php's answer
+        const created = fv3IsFolderShaped(content) ? (typeof jobs[0].answer === 'object' ? jobs[0].answer : fv3SafeParse(jobs[0].answer, {})) : null;
+        const ids = created ? [created?.id].filter((id) => typeof id === 'string') : fresh.filter((id) => !notSaved.has(id));
+        if (created && !ids.length) outcome.order_warning = "create.php did not answer with the new folder's id";
         try {
-            await $.post('/plugins/folder.view3/server/sync_order.php', { type: 'docker' }).promise();
+            const answer = await $.post('/plugins/folder.view3/server/import_order.php', { ids: JSON.stringify(ids) }).promise();
+            Object.assign(outcome, answer && typeof answer === 'object' ? answer : fv3SafeParse(answer, {}));
         } catch (error) {
-            console.warn('[FV3] Autostart order sync failed after import:', fv3FailReason(error));
-            syncError = fv3FailReason(error);
+            console.warn('[FV3] Docker order after import failed:', fv3FailReason(error));
+            // the request did neither step: the folders' order and the start order
+            outcome.order_warning = outcome.warning = fv3FailReason(error);
         }
     }
     populateTable();
-    const syncText = syncError ? fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', syncError) : '';
-    if (showBatchErrors(failed, { key: 'import-folders-failed', text: 'These folders could not be imported: $1' }, null, syncText)) return;
-    if (syncText) { swal({ title: fv3I18nOr('warning', 'Warning'), text: syncText, type: 'warning' }); } else { swal.close(); }
+    const warnings = fv3ImportWarnings(outcome);
+    // listed in the file's order, not the last-first order VM folders are saved in
+    if (showBatchErrors(type === 'vm' ? [...failed].reverse() : failed, { key: 'import-folders-failed', text: 'These folders could not be imported: $1' }, null, warnings)) return;
+    if (warnings) { swal({ title: fv3I18nOr('warning', 'Warning'), text: warnings, type: 'warning' }); } else { swal.close(); }
 };
 
 const importDocker = () => {
@@ -270,27 +273,44 @@ const importVm = () => {
 const swalLoaderOpts = { showLoaderOnConfirm: true, closeOnConfirm: false };
 
 // Posts each job in turn, carrying on past failures; returns { label, reason } for each one that failed
+// Each job that went through keeps the server's answer as job.answer
 const postEach = async (jobs) => {
     const failed = [];
-    for (const { url, data, label } of jobs) {
+    for (const job of jobs) {
+        const { url, data, label, key } = job;
         try {
-            await $.post(url, data).promise();
+            job.answer = await $.post(url, data).promise();
         } catch (error) {
             console.error('[FV3] Request failed:', label, error);
-            failed.push({ label, reason: fv3FailReason(error) });
+            failed.push({ label, reason: fv3FailReason(error), key });
         }
     }
     return failed;
 };
 
+// What an import's answer says could not be done: `order_warning` (the folders could not be placed in the saved Docker order),
+// `warning` (the start order could not be applied); '' when both went through
+const fv3ImportWarnings = (result) => [
+    result.order_warning ? fv3I18nOr('import-order-failed', "Saved, but the folders' order could not be saved: $1", result.order_warning) : '',
+    result.warning ? fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', result.warning) : '',
+].filter(Boolean).join('\n');
+
+// The dialog after a restore or a FolderView Plus import: anything fv3ImportWarnings reports makes it a warning
+const fv3ImportedDialog = (title, text, result) => {
+    const warnings = fv3ImportWarnings(result || {});
+    return warnings ? { title: fv3I18nOr('warning', 'Warning'), text: text + '\n' + warnings, type: 'warning' } : { title: title, text: text, type: 'success' };
+};
+
 // Replaces the open dialog with one error for a batch: a lone failure with its reason when `one` is given, else the
-// failed names. Returns false, showing nothing, when every job went through
+// failed names and each distinct reason. Returns false, showing nothing, when every job went through
 const showBatchErrors = (failed, many, one = null, extra = '') => {
     if (!failed.length) return false;
-    const text = failed.length === 1 && one
+    const lone = failed.length === 1 && one;
+    const text = lone
         ? fv3I18nOr(one.key, one.text, failed[0].label, failed[0].reason)
         : fv3I18nOr(many.key, many.text, failed.map(f => f.label).join(', '));
-    fv3SwalError(extra ? text + '\n' + extra : text, 'SETTINGS');
+    const reasons = lone ? [] : [...new Set(failed.map(f => f.reason))];
+    fv3SwalError([text, ...reasons, extra].filter(Boolean).join('\n'), 'SETTINGS');
     return true;
 };
 
@@ -560,22 +580,18 @@ $('#fv3-apply-defaults').on('click', function() {
             update_column: settings.default_update_column === 'yes',
             use_global_defaults: true
         };
-        const jobs = [];
-        for (const [type, folders] of [['docker', dockers], ['vm', vms]]) {
-            for (const [id, folder] of Object.entries(folders)) {
-                if (!folder.settings) folder.settings = {};
-                const applyMap = Object.assign({}, defaultMap);
-                if (folder.settings.lock_colors) {
-                    delete applyMap.preview_vertical_bars_color;
-                    delete applyMap.preview_border_color;
-                    delete applyMap.preview_row_separator_color;
-                }
-                Object.assign(folder.settings, applyMap);
-                jobs.push({ url: '/plugins/folder.view3/server/update.php', data: { type, id, content: JSON.stringify(folder) }, label: folder.name || id });
-            }
-        }
+        // One request per type, always both: the server merges the defaults into each folder as it is on disk and keeps the
+        // colours of a folder that locks them. This page's copy may be behind a save, or a new folder, from another tab
+        const jobs = [['docker', 'Docker folders'], ['vm', 'VM folders']].map(([type, all]) => ({
+            url: '/plugins/folder.view3/server/apply_defaults.php',
+            data: { type, settings: JSON.stringify(defaultMap) },
+            label: fv3I18nOr(`${type}-folders`, all)
+        }));
         const failed = await postEach(jobs);
-        if (showBatchErrors(failed, { key: 'defaults-not-applied', text: 'Defaults were not applied to these folders: $1' })) return;
+        // the exports on this page read its copy of the folders; a reload that failed is named with the failed requests
+        const reloaded = await populateTable();
+        const stale = reloaded ? '' : fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.');
+        if (showBatchErrors(failed, { key: 'defaults-not-applied', text: 'Defaults were not applied to these folders: $1' }, null, stale) || !reloaded) return;
         swal({ title: fv3I18nOr('done', 'Done'), text: fv3I18nOr('defaults-applied', 'Defaults applied to all folders.'), type: 'success', timer: 1500 });
     });
 });
@@ -660,6 +676,7 @@ const fv3ForeignPreviewHtml = (report) => {
             [r.dropped_actions, 'foreign-note-actions', '$1 custom actions left out because FolderView3 cannot run them as they are, or the folder has more than FolderView3 keeps'],
             [r.child_actions, 'foreign-note-child-actions', '$1 custom actions from nested folders left out'],
             [r.dropped_icons, 'foreign-note-icons', '$1 icons left out because FolderView3 cannot use them'],
+            [r.plus_icons, 'foreign-note-plus-icons', '$1 icons left out because they are FolderView Plus files, which are deleted with it. Choose new icons in the folder editor'],
             [r.dropped_regex, 'foreign-note-regex', '$1 folder regexes left out because FolderView3 cannot use them or their folder was merged into a top-level folder'],
             [r.dropped_members, 'foreign-note-members-dropped', '$1 folder members left out because the folder holds more than FolderView3 keeps'],
             [r.dropped_invalid, 'foreign-note-invalid', '$1 malformed entries in the backup left out'],
@@ -669,7 +686,7 @@ const fv3ForeignPreviewHtml = (report) => {
     }
     const notes = [];
     for (const section of report.skipped_sections || []) {
-        if (section === 'prefs') notes.push(fv3I18nOr('foreign-note-prefs', 'Plugin preferences are not imported'));
+        if (section === 'prefs') notes.push(fv3I18nOr('foreign-note-prefs', 'Plugin preferences are not imported; only their folder order is used'));
         if (section === 'themes') notes.push(fv3I18nOr('foreign-note-themes', 'Themes are not imported'));
         if (section === 'docker') notes.push(fv3I18nOr('foreign-note-other-docker', 'Docker folders in this file were not imported — use Import Docker Folders or Import Everything'));
         if (section === 'vm') notes.push(fv3I18nOr('foreign-note-other-vm', 'VM folders in this file were not imported — use Import VM Folders or Import Everything'));
@@ -717,7 +734,7 @@ const fv3ImportForeignBundle = async (text, type) => {
         if (result.error) { fv3SwalError(fv3ForeignError(result.error), 'SETTINGS'); return; }
         const added = Object.values(result.report.types).reduce((n, r) => n + r.folders.length, 0);
         populateTable();
-        swal({ title: fv3I18nOr('foreign-imported-title', 'Imported'), text: fv3I18nOr('foreign-imported', '$1 folders imported.', added), type: 'success' });
+        swal(fv3ImportedDialog(fv3I18nOr('foreign-imported-title', 'Imported'), fv3I18nOr('foreign-imported', '$1 folders imported.', added), result));
     });
 };
 
@@ -787,8 +804,9 @@ $('#fv3-import-all').on('change', function() {
                 if (result.error) {
                     fv3SwalError(result.error, 'SETTINGS');
                 } else {
-                    swal({ title: fv3I18nOr('restored', 'Restored'), text: fv3I18nOr('items-restored', '$1 items restored.', (result.restored || []).length), type: 'success', timer: 2000 });
-                    setTimeout(function() { location.reload(); }, 2000);
+                    const dialog = fv3ImportedDialog(fv3I18nOr('restored', 'Restored'), fv3I18nOr('items-restored', '$1 items restored.', (result.restored || []).length), result);
+                    // a warning waits to be read before the reload; a plain success reloads by itself
+                    if (dialog.type === 'warning') { swal(dialog, () => location.reload()); } else { swal({ ...dialog, timer: 2000 }); setTimeout(function() { location.reload(); }, 2000); }
                 }
             });
         } catch (err) {
@@ -1100,13 +1118,18 @@ const fv3SubmitAutostart = async () => {
                 csrf_token: typeof csrf_token !== 'undefined' ? csrf_token : ''
             }).promise();
         }
-        await $.ajax({
+        const saved = fv3SafeParse(await $.ajax({
             url: '/plugins/folder.view3/server/update_autostart.php',
             method: 'POST',
             data: { mode: cur.mode, sequence: JSON.stringify(cur.sequence), waits: JSON.stringify(fv3AsChangedWaits(cur, fv3AsSnapshot)) }
-        }).promise();
+        }).promise(), null);
+        // the dialog below reads `warning`, so an answer that is not a JSON object (a login page, say) is not a save
+        if (!saved || typeof saved !== 'object') throw new Error('update_autostart.php returned no JSON answer');
         await fv3LoadAutostart();
-        swal({ title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('autostart-saved', 'Start order saved and applied.'), type: 'success', timer: 1800 });
+        // `warning`: the mode and sequence were saved, but a wait edit or the start order could not be applied
+        swal(saved.warning
+            ? { title: fv3I18nOr('warning', 'Warning'), text: fv3I18nOr('autostart-partly-applied', 'Saved, but not everything could be applied: $1', saved.warning), type: 'warning' }
+            : { title: fv3I18nOr('saved', 'Saved'), text: fv3I18nOr('autostart-saved', 'Start order saved and applied.'), type: 'success', timer: 1800 });
     } catch (e) {
         var msg = fv3FailReason(e);
         console.error('[FV3] Failed to save autostart:', msg);
