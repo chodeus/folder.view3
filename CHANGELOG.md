@@ -4,11 +4,8 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: a list drawn from older folder data is loaded again once its own data is in
-- fix: a list that lands during a failed draw is drawn from its own data
-- feat: the debug download records what became of each list draw
-- fix: a draw waits only for the folder data asked last when it starts
-- fix: folders stay drawn when list reloads overlap
+- Folders no longer vanish when the Docker or VMs list reloads twice quickly
+- Debug download now records how each Docker and VMs list was drawn
 
 ## 2026.11.12.1 (beta)
 
