@@ -12,6 +12,19 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - FolderView Plus User Script actions with & # % ? in their arguments now import
 - FolderView Plus icons show the default icon once FolderView Plus is removed
 
+## 2026.11.14
+
+- Folders no longer vanish when the Docker, VMs or Dashboard lists reload
+- VMs page folders keep their saved place, and folders show in empty lists
+- Dashboard tiles load independently, and full-width panels stay in place
+- Folder saves from two tabs, or made at once, no longer overwrite each other
+- Failed or partly applied saves now say so instead of reporting success
+- Autostart order now matches the Docker page, also with a damaged userprefs.cfg
+- Imports keep the file's folder order; settings lists folders in page order
+- FolderView Plus migration fixes: hidden members, branch exports, script arguments, icons
+- Docker page shows an update when a container's tag moves to another image
+- Display fixes: incognito Tailscale tooltip, advanced preview menu, theme import log
+
 ## 2026.11.13.3 (beta)
 
 - VMs page folders stay in their saved place, also when two folders sit next to each other, and keep their VMs inside
