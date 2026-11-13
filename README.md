@@ -79,8 +79,8 @@ a fresh FolderView3, before you create folders of your own.
 
 **Import Everything works with every FolderView Plus file.** FolderView Plus keeps Docker and VM folders in
 separate files: each export and each scheduled or manual backup holds one type, so a server with both has two
-files to import. An environment or rollback snapshot holds both types in one file, and a single-folder export
-holds one folder.
+files to import. An environment or rollback snapshot holds both types in one file, a single-folder export
+holds one folder, and a branch export holds one folder with its nested folders.
 
 **Import Docker Folders** and **Import VM Folders** also accept these files, but take only their own type. The
 preview says when the file holds folders of the other type.
@@ -89,6 +89,9 @@ What the import does:
 
 - **Preview first.** Nothing is saved until you confirm, and the preview lists each folder and everything that
   will be left out.
+- **Order:** folders come in the order FolderView Plus showed them. Backups and snapshots carry its sort setting
+  and pinned folders; an export keeps the order in the file. They appear above the folders you already have. If the
+  Docker list was never reordered, the Docker page lists every folder and container A–Z instead.
 - **Nested folders are merged.** FolderView3 has no nesting, so every nested folder's containers or VMs move into
   its top-level folder. The top-level folder keeps its own name, icon and settings; a nested folder's name, icon,
   settings, regex and custom actions are not kept.
@@ -96,11 +99,12 @@ What the import does:
   and a name already used is imported as `Name (imported)`.
 - **Settings:** only settings FolderView3 has, with valid values, are kept. Plugin preferences and themes are not
   imported.
-- **Icons:** a local path, an `http(s)` link or an embedded image is kept; anything else is dropped.
+- **Icons:** a local path, an `http(s)` link or an embedded image is kept; anything else is dropped. FolderView
+  Plus's own icons (built-in, uploaded or third-party) are files it deletes when it is uninstalled, so they are
+  dropped too: choose new icons in the folder editor.
 - **Regex:** a folder's regex is kept only if it works the same way in FolderView3.
 - **Custom actions** are kept when FolderView3 can run them as they are: a Docker or VM action may only target
-  its own folder's members, and a User Script action needs a plain script name and arguments without `&`, `#`,
-  `%` or `?`.
+  its own folder's members, and a User Script action needs a plain script name.
 - **Newer formats:** a file from a newer FolderView Plus version is refused rather than guessed at.
 
 ## Getting Started

@@ -446,6 +446,7 @@
     "foreign-note-actions": "$1 {{PLURAL:$1|azione personalizzata omessa|azioni personalizzate omesse}} perché FolderView3 non può {{PLURAL:$1|eseguirla così com’è|eseguirle così come sono}} o la cartella ne contiene più di quante FolderView3 ne mantenga",
     "foreign-note-child-actions": "$1 {{PLURAL:$1|azione personalizzata|azioni personalizzate}} da cartelle annidate {{PLURAL:$1|omessa|omesse}}",
     "foreign-note-icons": "$1 {{PLURAL:$1|icona omessa|icone omesse}} perché FolderView3 non può {{PLURAL:$1|usarla|usarle}}",
+    "foreign-note-plus-icons": "$1 {{PLURAL:$1|icona omessa|icone omesse}} perché {{PLURAL:$1|è un file|sono file}} di FolderView Plus, che {{PLURAL:$1|viene eliminato|vengono eliminati}} con esso. Scegli nuove icone nell’editor della cartella",
     "foreign-note-regex": "$1 {{PLURAL:$1|regex di cartella omessa|regex di cartella omesse}} perché FolderView3 non può {{PLURAL:$1|usarla|usarle}} o la {{PLURAL:$1|sua|loro}} cartella è stata unita a una cartella di primo livello",
     "foreign-note-members-dropped": "$1 {{PLURAL:$1|membro della cartella escluso|membri della cartella esclusi}} perché la cartella ne contiene più di quanti FolderView3 ne mantenga",
     "foreign-note-invalid": "$1 {{PLURAL:$1|voce non valida omessa|voci non valide omesse}} dal backup",

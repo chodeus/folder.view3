@@ -446,6 +446,7 @@
     "foreign-note-actions": "已省略 $1 个 FolderView3 无法按原样运行或超出文件夹上限的自定义操作",
     "foreign-note-child-actions": "已省略 $1 个来自嵌套文件夹的自定义操作",
     "foreign-note-icons": "已省略 $1 个 FolderView3 无法使用的图标",
+    "foreign-note-plus-icons": "已省略 $1 个图标：它们是 FolderView Plus 的文件，会随其一起删除。请在文件夹编辑器中选择新图标",
     "foreign-note-regex": "已省略 $1 个 FolderView3 无法使用或所属文件夹已合并到顶级文件夹的文件夹正则表达式",
     "foreign-note-members-dropped": "已省略 $1 个文件夹成员，因为该文件夹包含的数量超过 FolderView3 保留的上限",
     "foreign-note-invalid": "已省略备份中 $1 个格式错误的条目",

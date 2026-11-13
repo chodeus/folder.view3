@@ -155,12 +155,11 @@
             return ['name' => $name, 'type' => 0, 'script_icon' => $icon, 'conatiners' => $targets, 'action' => $action, 'modes' => is_int($modes) ? $modes : 0];
         }
         if ($type === 1) {
-            // The script name is spliced into a user.scripts path unencoded; args are encoded by
-            // shared.js fv3RunUserScript, and stay restricted here because the source is untrusted
+            // The script name is spliced into a user.scripts path unencoded; args are URL-encoded by shared.js fv3RunUserScript
             $script = $act['script'] ?? null;
             $args = $act['script_args'] ?? '';
             if (!is_string($script) || !preg_match('/^[A-Za-z0-9 ._()-]{1,128}$/D', $script) || trim($script, '. ') === '') return null;
-            if (!is_string($args) || strlen($args) > 256 || preg_match('/[\x00-\x1F\x7F&#%?]/', $args)) return null;
+            if (!is_string($args) || strlen($args) > 256 || preg_match('/[\x00-\x1F\x7F]/', $args)) return null;
             $sync = $act['script_sync'] ?? false;
             if (!is_bool($sync)) return null;
             return ['name' => $name, 'type' => 1, 'script_icon' => $icon, 'script' => $script, 'script_args' => $args, 'script_sync' => $sync];
@@ -185,7 +184,9 @@
             if (!$types) return ['error' => 'no-folders'];
             $skipped = ['prefs'];
             if (isset($raw['themeWorkspace'])) $skipped[] = 'themes';
-            return ['types' => $types, 'source' => $source, 'skipped' => $skipped];
+            $prefs = [];
+            foreach ($types as $t => $_) $prefs[$t] = $raw['types'][$t]['prefs'] ?? null;
+            return ['types' => $types, 'source' => $source, 'skipped' => $skipped, 'prefs' => $prefs];
         };
 
         if (array_key_exists('kind', $raw)) {
@@ -202,12 +203,14 @@
         $type = $raw['type'] ?? null;
         if (!in_array($type, ['docker', 'vm'], true)) return ['error' => 'no-type'];
         $mode = $raw['mode'] ?? null;
-        if ($mode === 'full' && is_array($raw['folders'] ?? null)) {
+        // A branch export is one folder and its nested folders, in the full export's shape
+        if (($mode === 'full' || $mode === 'branch') && is_array($raw['folders'] ?? null)) {
             $skipped = isset($raw['prefs']) ? ['prefs'] : [];
-            return ['types' => [$type => $raw['folders']], 'source' => isset($raw['reason']) ? 'backup' : 'export', 'skipped' => $skipped];
+            $source = $mode === 'branch' ? 'branch' : (isset($raw['reason']) ? 'backup' : 'export');
+            return ['types' => [$type => $raw['folders']], 'source' => $source, 'skipped' => $skipped, 'prefs' => [$type => $raw['prefs'] ?? null]];
         }
         if ($mode === 'single' && is_array($raw['folder'] ?? null)) {
-            return ['types' => [$type => ['single' => $raw['folder']]], 'source' => 'single', 'skipped' => []];
+            return ['types' => [$type => ['single' => $raw['folder']]], 'source' => 'single', 'skipped' => [], 'prefs' => []];
         }
         return ['error' => 'unsupported'];
     }
@@ -259,6 +262,45 @@
         return $roots;
     }
 
+    // Folder ids in FolderView Plus's display order; follows its orderFoldersByPrefs (utils-ordering.js), except that
+    // names compare with strnatcasecmp, not the browser's locale, so accented names can sort differently
+    function fv3_foreign_display_order(array $folders, $prefs, array $roots): array {
+        $ids = array_map('strval', array_keys($folders));
+        if (!is_array($prefs)) return $ids;
+        $idList = static fn($v) => is_array($v) ? array_values(array_unique(array_filter($v, static fn($id) => is_string($id) && $id !== ''))) : [];
+        $index = array_flip($ids);
+        $name = static fn(string $id) => is_string($folders[$id]['name'] ?? null) ? $folders[$id]['name'] : $id;
+        $time = static function (string $id, string $field) use ($folders): ?int {
+            $v = $folders[$id][$field] ?? null;
+            $t = is_string($v) && trim($v) !== '' ? strtotime(trim($v)) : false;
+            return $t === false ? null : $t;
+        };
+        $sortBy = static function (callable $cmp) use ($ids, $index): array {
+            $out = $ids;
+            usort($out, static fn($a, $b) => $cmp($a, $b) ?: $index[$a] - $index[$b]);
+            return $out;
+        };
+        $mode = $prefs['sortMode'] ?? 'created';
+        if ($mode === 'alpha' || $mode === 'name_desc') {
+            $sign = $mode === 'alpha' ? 1 : -1;
+            $ids = $sortBy(static fn($a, $b) => $sign * (strnatcasecmp($name($a), $name($b)) ?: strnatcasecmp($a, $b)));
+        } elseif (in_array($mode, ['created_newest', 'created_oldest', 'updated_newest'], true)) {
+            $field = $mode === 'updated_newest' ? 'updatedAt' : 'createdAt';
+            $sign = $mode === 'created_oldest' ? 1 : -1;
+            // FolderView Plus calls an undated folder equal to every other, which no consistent order satisfies: undated go last
+            $ids = $sortBy(static function ($a, $b) use ($time, $field, $sign) {
+                [$ta, $tb] = [$time($a, $field), $time($b, $field)];
+                if ($ta === null || $tb === null) return ($ta === null) <=> ($tb === null);
+                return $sign * ($ta <=> $tb);
+            });
+        } elseif ($mode === 'manual') {
+            $ids = array_values(array_unique(array_merge(array_intersect($idList($prefs['manualOrder'] ?? null), $ids), $ids)));
+        }
+        // A pinned nested folder lifts its top-level folder, as FolderView Plus does
+        $pinned = array_values(array_unique(array_filter(array_map(static fn($id) => $roots[$id] ?? null, $idList($prefs['pinnedFolderIds'] ?? null)), 'is_string')));
+        return array_values(array_unique(array_merge($pinned, $ids)));
+    }
+
     // $existing: [type => folder map already on disk], used only for name clashes and member ownership
     function fv3_convert_foreign_bundle(array $raw, ?string $onlyType, array $existing = []): array {
         $detected = fv3_foreign_detect($raw);
@@ -279,7 +321,7 @@
             $folders = array_filter($folders, 'is_array');
             if (count($folders) > FV3_FOREIGN_MAX_FOLDERS) return ['error' => 'too-many-folders'];
             $r = ['folders' => [], 'merged_children' => 0, 'broken_parents' => 0, 'dropped_settings' => 0, 'dropped_keys' => 0,
-                  'dropped_actions' => 0, 'child_actions' => 0, 'dropped_icons' => 0, 'dropped_regex' => 0, 'renamed' => 0, 'members_kept_elsewhere' => 0, 'dropped_members' => 0,
+                  'dropped_actions' => 0, 'child_actions' => 0, 'dropped_icons' => 0, 'plus_icons' => 0, 'dropped_regex' => 0, 'renamed' => 0, 'members_kept_elsewhere' => 0, 'dropped_members' => 0,
                   'dropped_invalid' => $entries - count($folders)];
             $broken = [];
             $roots = fv3_foreign_roots($folders, $broken);
@@ -305,9 +347,8 @@
             }
 
             $converted = [];
-            foreach ($roots as $id => $root) {
-                $id = (string)$id;
-                if ($id !== $root) continue;
+            foreach (fv3_foreign_display_order($folders, $detected['prefs'][$type] ?? null, $roots) as $id) {
+                if ($id !== $roots[$id]) continue;
                 $src = $folders[$id];
                 $r['dropped_keys'] += count(array_diff(array_keys($src), $known));
                 // A merged child's members, hidden entries and identities move up; its regex and unknown fields go
@@ -342,7 +383,9 @@
 
                 $suppliedIcon = $src['icon'] ?? null;
                 $icon = fv3_foreign_icon($suppliedIcon ?? '');
-                if ($icon === '' && $suppliedIcon !== null && !(is_string($suppliedIcon) && trim($suppliedIcon) === '')) $r['dropped_icons']++;
+                // FolderView Plus's own icons (bundled, uploaded, third-party) are deleted when it is uninstalled
+                if (stripos($icon, '/plugins/folderview.plus/') !== false) { $icon = ''; $r['plus_icons']++; }
+                elseif ($icon === '' && $suppliedIcon !== null && !(is_string($suppliedIcon) && trim($suppliedIcon) === '')) $r['dropped_icons']++;
 
                 $suppliedRegex = $src['regex'] ?? null;
                 $regex = is_string($src['regex'] ?? null) && strlen($src['regex']) <= 1024 ? $src['regex'] : '';
@@ -358,6 +401,8 @@
                 if (($src['settings'] ?? null) !== null && !is_array($src['settings'])) $r['dropped_settings']++;
                 foreach ((is_array($src['settings'] ?? null) ? $src['settings'] : []) as $k => $v) {
                     if (!isset($rules[$k])) { $r['dropped_settings']++; continue; }
+                    // An empty colour means "not set" (FolderView Plus saves its default vertical bar colour so): left out, not counted
+                    if ($v === '' && $rules[$k][0] === 'color') continue;
                     [$value, $ok] = fv3_foreign_setting_value($rules[$k], $v);
                     if ($ok) { $settings[$k] = $value; } else { $r['dropped_settings']++; }
                 }
@@ -434,7 +479,9 @@
             // The object copy from the single read above: the assoc one would turn an existing
             // folder's empty {} settings/containerImages into []
             $map = $maps[$t];
-            foreach ($folders as $folder) {
+            // The pages draw folders missing from userprefs.cfg on top, the last one in the map first (fv3_page_order), so
+            // adding them in reverse shows FolderView Plus's order. With no userprefs.cfg the Docker page goes A-Z instead
+            foreach (array_reverse($folders) as $folder) {
                 do { $id = generateId(); } while (property_exists($map, $id));
                 $map->$id = $folder;
             }

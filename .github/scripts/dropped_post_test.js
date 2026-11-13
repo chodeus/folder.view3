@@ -278,6 +278,12 @@ const differential = async (extension, extensionFirst) => {
     check('and warns, with the reason, when the start order could not then be updated',
         await plusImport({ success: true, report, warning: 'the autostart file could not be written' })
         === 'warning: 2 folders imported.\nSaved, but the Docker start order could not be updated: the autostart file could not be written');
+    dialogs.length = 0;
+    answerWith([{ ...ok, body: JSON.stringify({ success: true, report: { types: { docker: { ...report.types.docker, plus_icons: 2 } } } }) }]);
+    await page.w.fv3ImportForeignBundle('{}', 'docker');
+    check('the preview says how many icons were FolderView Plus files and that new ones are needed',
+        dialogs.length === 1 && dialogs[0].includes('2 icons left out because they are FolderView Plus files, which are deleted with it. Choose new icons in the folder editor'), dialogs);
+    if (confirm) await confirm(false);
 
     // fetch callers (csstool.js) get such an answer as the 403 Unraid 7.4 gives; every other answer comes back untouched
     const fetched = async (status, body, headers) => {

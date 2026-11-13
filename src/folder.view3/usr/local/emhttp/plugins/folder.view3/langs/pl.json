@@ -446,6 +446,7 @@
     "foreign-note-actions": "Pominięto $1 {{PLURAL:$1|akcję własną|akcje własne|akcji własnych}}, bo FolderView3 nie może {{PLURAL:$1|jej|ich|ich}} uruchomić w obecnej postaci lub folder ma ich więcej, niż zachowuje FolderView3",
     "foreign-note-child-actions": "Pominięto $1 {{PLURAL:$1|akcję własną|akcje własne|akcji własnych}} z folderów zagnieżdżonych",
     "foreign-note-icons": "Pominięto $1 {{PLURAL:$1|ikonę|ikony|ikon}}, bo FolderView3 nie może {{PLURAL:$1|jej|ich|ich}} użyć",
+    "foreign-note-plus-icons": "Pominięto $1 {{PLURAL:$1|ikonę|ikony|ikon}}, bo to pliki FolderView Plus, usuwane razem z nim. Wybierz nowe ikony w edytorze folderu",
     "foreign-note-regex": "Pominięto $1 {{PLURAL:$1|regex folderu|regexy folderów|regexów folderów}}, bo FolderView3 nie może {{PLURAL:$1|go|ich|ich}} użyć lub {{PLURAL:$1|jego|ich|ich}} folder scalono z folderem najwyższego poziomu",
     "foreign-note-members-dropped": "Pominięto $1 {{PLURAL:$1|członka folderu|członków folderu|członków folderu}}, ponieważ folder zawiera ich więcej, niż zachowuje FolderView3",
     "foreign-note-invalid": "Pominięto $1 {{PLURAL:$1|nieprawidłowy wpis|nieprawidłowe wpisy|nieprawidłowych wpisów}} w kopii zapasowej",

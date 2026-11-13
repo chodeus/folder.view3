@@ -446,6 +446,7 @@
     "foreign-note-actions": "$1 {{PLURAL:$1|acción personalizada omitida|acciones personalizadas omitidas}} porque FolderView3 no puede {{PLURAL:$1|ejecutarla tal como está|ejecutarlas tal como están}} o la carpeta tiene más de las que FolderView3 conserva",
     "foreign-note-child-actions": "$1 {{PLURAL:$1|acción personalizada|acciones personalizadas}} de carpetas anidadas {{PLURAL:$1|omitida|omitidas}}",
     "foreign-note-icons": "$1 {{PLURAL:$1|icono omitido|iconos omitidos}} porque FolderView3 no {{PLURAL:$1|lo|los}} puede usar",
+    "foreign-note-plus-icons": "$1 {{PLURAL:$1|icono omitido|iconos omitidos}} porque {{PLURAL:$1|es un archivo|son archivos}} de FolderView Plus, que se {{PLURAL:$1|borra|borran}} con él. Elige iconos nuevos en el editor de carpetas",
     "foreign-note-regex": "$1 {{PLURAL:$1|regex de carpeta omitida|regex de carpeta omitidas}} porque FolderView3 no puede {{PLURAL:$1|usarla|usarlas}} o su carpeta se fusionó en una carpeta superior",
     "foreign-note-members-dropped": "$1 {{PLURAL:$1|miembro de carpeta omitido|miembros de carpeta omitidos}} porque la carpeta contiene más de los que FolderView3 conserva",
     "foreign-note-invalid": "$1 {{PLURAL:$1|entrada no válida omitida|entradas no válidas omitidas}} de la copia de seguridad",

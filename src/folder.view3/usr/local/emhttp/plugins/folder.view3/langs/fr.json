@@ -446,6 +446,7 @@
     "foreign-note-actions": "$1 {{PLURAL:$1|action personnalisée ignorée|actions personnalisées ignorées}} car FolderView3 ne peut pas {{PLURAL:$1|l’exécuter telle quelle|les exécuter telles quelles}} ou le dossier en contient plus que FolderView3 n’en garde",
     "foreign-note-child-actions": "$1 {{PLURAL:$1|action personnalisée|actions personnalisées}} de dossiers imbriqués {{PLURAL:$1|ignorée|ignorées}}",
     "foreign-note-icons": "$1 {{PLURAL:$1|icône ignorée|icônes ignorées}} car FolderView3 ne peut pas {{PLURAL:$1|l’utiliser|les utiliser}}",
+    "foreign-note-plus-icons": "$1 {{PLURAL:$1|icône ignorée|icônes ignorées}} car {{PLURAL:$1|c’est un fichier|ce sont des fichiers}} de FolderView Plus, {{PLURAL:$1|supprimé|supprimés}} avec lui. Choisissez de nouvelles icônes dans l’éditeur de dossier",
     "foreign-note-regex": "$1 {{PLURAL:$1|regex de dossier ignorée|regex de dossier ignorées}} car FolderView3 ne peut pas {{PLURAL:$1|l’utiliser|les utiliser}} ou {{PLURAL:$1|son|leur}} dossier a été fusionné dans un dossier de premier niveau",
     "foreign-note-members-dropped": "$1 {{PLURAL:$1|membre de dossier laissé de côté|membres de dossier laissés de côté}} car le dossier en contient plus que FolderView3 n’en garde",
     "foreign-note-invalid": "$1 {{PLURAL:$1|entrée mal formée ignorée|entrées mal formées ignorées}} dans la sauvegarde",

@@ -668,6 +668,7 @@ const fv3ForeignPreviewHtml = (report) => {
             [r.dropped_actions, 'foreign-note-actions', '$1 custom actions left out because FolderView3 cannot run them as they are, or the folder has more than FolderView3 keeps'],
             [r.child_actions, 'foreign-note-child-actions', '$1 custom actions from nested folders left out'],
             [r.dropped_icons, 'foreign-note-icons', '$1 icons left out because FolderView3 cannot use them'],
+            [r.plus_icons, 'foreign-note-plus-icons', '$1 icons left out because they are FolderView Plus files, which are deleted with it. Choose new icons in the folder editor'],
             [r.dropped_regex, 'foreign-note-regex', '$1 folder regexes left out because FolderView3 cannot use them or their folder was merged into a top-level folder'],
             [r.dropped_members, 'foreign-note-members-dropped', '$1 folder members left out because the folder holds more than FolderView3 keeps'],
             [r.dropped_invalid, 'foreign-note-invalid', '$1 malformed entries in the backup left out'],
