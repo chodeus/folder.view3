@@ -2,6 +2,13 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Dashboard folders no longer vanish when the Docker and VMs tiles reload at the same time
+- A slow or failed folder request now holds up only its own Dashboard tile
+- In the full-width Dashboard layout, opened folders get their panel in the right place after every reload
+- A folder hidden by "hide stopped" no longer leaves an empty full-width panel, and gets its panel back when shown
+
 ## 2026.11.13.1 (beta)
 
 - Folders no longer vanish when the Docker or VMs list reloads twice quickly
