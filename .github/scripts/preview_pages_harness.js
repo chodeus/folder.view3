@@ -324,8 +324,12 @@ const phpServer = (label) => {
     const quote = (text) => `'${String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
     const server = (name, method, fields) => {
         const copy = path.join(tmp, name);
-        fs.writeFileSync(copy, read(`server/${name}`).replace('require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");',
-            `require_once(${quote(path.join(plugin, 'server/lib.php'))}); $configDir = ${quote(config)}; $fv3DockerManDir = ${quote(path.join(tmp, 'dockerMan'))};`));
+        const shipped = read(`server/${name}`);
+        const wired = shipped.replace('require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");',
+            `require_once(${quote(path.join(plugin, 'server/lib.php'))}); $configDir = ${quote(config)}; $fv3DockerManDir = ${quote(path.join(tmp, 'dockerMan'))};`);
+        // An endpoint that loads lib.php another way would run on the real config folder
+        if (wired === shipped) throw new Error(`${name} does not require lib.php the way this harness rewrites`);
+        fs.writeFileSync(copy, wired);
         const boot = `$_SERVER["DOCUMENT_ROOT"] = ${quote(path.join(tmp, 'docroot'))}; $_SERVER["REQUEST_METHOD"] = ${quote(method)};`
             + ` $_${method} = json_decode(${quote(JSON.stringify(fields))}, true); include ${quote(copy)};`;
         return execFileSync('php', ['-d', 'display_errors=0', '-r', boot], { encoding: 'utf8' });

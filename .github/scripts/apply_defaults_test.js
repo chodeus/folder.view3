@@ -35,7 +35,7 @@ w.swal = (o, answer) => { confirm = answer || null; dialogs.push(`${o.type}: ${S
 w.swal.close = () => {};
 
 // The shipped script's own code for all of it: the settings form (collect, load, save), the folder loader, the batch helpers and
-// the Apply Defaults handler. Nothing of the page is this test's
+// the Apply Defaults handler. The test adds one line of its own, fv3tLoad, which calls the shipped loaders
 const source = read('scripts/folderview3.js');
 const lift = (name) => source.match(new RegExp(`^const ${name} = [\\s\\S]*?^};`, 'm'))[0];
 run([part('scripts/folderview3.js', 'const escapeHtml = ', '// shared.js is not loaded on this page'),
