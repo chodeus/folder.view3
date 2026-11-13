@@ -270,7 +270,7 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingDebu
         t.reload();
         await t.land(1);
         await t.answer('docker', 1, open(DOCKER_FOLDERS));
-        check('Dashboard full-width, a reload: the opened folder gets its panel after the draw, once, under the tile\'s layout', t.opened('docker') === '0,0'
+        check('Dashboard full-width, a reload: the opened folder gets its panel after the draw, once, and the tile has its layout class', t.opened('docker') === '0,0'
             && t.panels('docker') === 1 && t.laidOut('docker'), { opened: t.opened('docker'), panels: t.panels('docker'), laidOut: t.laidOut('docker') });
 
         // The VM tile's data lands after the Docker tile is drawn and laid out: the VM tile waits for its own draw too

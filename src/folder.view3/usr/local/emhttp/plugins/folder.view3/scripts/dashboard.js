@@ -14,8 +14,10 @@ let fv3VmShowLabel = false;
 let fv3AnimationEnabled = false;
 let fv3DashboardUpdateContainer = false;
 let fv3DashboardUpdateFolder = false;
-// Per tile: false while its draw runs, so opened folders get their full-width panels after it, under the tile's layout
+// Per tile: false from the start of a draw to its panel pass, so opened folders get full-width panels after the draw
 const fv3LayoutReady = { docker: false, vm: false };
+// Draws started per tile: a draw's panel pass stands down once a newer draw has started
+const fv3TileDraws = { docker: 0, vm: 0 };
 let dashboardContext = 0;
 let dashboardContextTrigger = 0;
 let dashboardContextGraph = 1;
@@ -1677,7 +1679,7 @@ const fv3FullwidthReflow = (onlyType) => {
     if (fv3FullwidthRaf) return;
     fv3FullwidthRaf = requestAnimationFrame(() => {
         fv3FullwidthRaf = null;
-        (onlyType ? [onlyType] : ['docker', 'vm']).filter((type) => fv3LayoutReady[type]).forEach((type) => fv3FullwidthReflowSync(type));
+        fv3FullwidthReflowSync(onlyType);
     });
 };
 
@@ -1805,14 +1807,13 @@ const fv3FullwidthExpand = (id, type) => {
 
 // One list drawer (fv3ListDrawer) per tile, each from its own data: a slow or failed read costs only its own tile
 const fv3TileDrawer = (type) => fv3ListDrawer(`tbody#${type}_view > tr.updated`, async () => {
+    const at = ++fv3TileDraws[type];
     fv3LayoutReady[type] = false;
     await fv3SettingsReq;
     await createFolders([type]);
     applyDashboardLayouts();
-    const drawn = $(`tbody#${type}_view > tr.updated > td`)[0];
     requestAnimationFrame(() => { requestAnimationFrame(() => {
-        // A newer list replaced the tile: its own draw places the panels and marks the tile ready
-        if ($(`tbody#${type}_view > tr.updated > td`)[0] !== drawn) return;
+        if (at !== fv3TileDraws[type]) return;
         if ((type === 'docker' ? dockerDashboardLayout : vmDashboardLayout) === 'fullwidth') {
             $(`tbody#${type}_view .folder-showcase`).css('display', 'none');
             $(`tbody#${type}_view .folder-showcase-outer[expanded="true"]`).each(function() {
@@ -1827,6 +1828,8 @@ const fv3TileDrawer = (type) => fv3ListDrawer(`tbody#${type}_view > tr.updated`,
     $('div.spinner.fixed').hide();
 }, (e) => {
     console.error(`[FV3] Dashboard ${type} folders failed:`, e);
+    // No panel pass follows: folders opened from now on get their panels at once
+    fv3LayoutReady[type] = true;
     $('div.spinner.fixed').hide();
 }, fv3Folders[type]);
 const fv3DrawLists = { docker: fv3TileDrawer('docker'), vm: fv3TileDrawer('vm') };
