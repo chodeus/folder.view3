@@ -29,8 +29,11 @@ const docker = async ({ hold = false, setup = { folders: FOLDERS, containers: ['
     const def = (set) => JSON.stringify(Object.fromEntries(Object.entries(set).map(([id, f]) => [id, { ...f, icon: '', settings: {}, hidden_preview: [], actions: [] }])));
     return {
         p, draws, folders,
+        // How many lists Unraid was asked for, the page's own reloads included
+        asked: () => lists.length,
         reload: () => p.g('loadlist()'),
-        land: async (i) => { lists[i](); await p.tick(300); },
+        // A list the page never asked for cannot land: the checks after it then fail
+        land: async (i) => { if (lists[i]) lists[i](); await p.tick(300); },
         // A request the page never sent has no answer to give: the checks after it then fail
         answer: async (i, set) => {
             if (!reads[i]) return;
@@ -40,11 +43,18 @@ const docker = async ({ hold = false, setup = { folders: FOLDERS, containers: ['
     };
 };
 
-// The VMs page with Unraid's own list request sent through jQuery's ajax (the page draws from that request): answer(i) lands list i
+// The VMs page with Unraid's own list request sent through jQuery's ajax (the page draws from that request): land(i) lands
+// list i. The server holds one VM and one folder with that VM in it; `hold` keeps the read.php answers for the test
 const VM_LIST = '/plugins/dynamix.vm.manager/include/VMMachines.php';
-const vms = async ({ hold = false } = {}) => {
+const VM_FOLDERS = { lab: { name: 'Lab', icon: '', regex: '', containers: ['vm-x'], settings: {}, hidden_preview: [], actions: [] } };
+// Unraid's rows for one VM (VMMachines.php), cut to the cells vm.js reads
+const vmRows = (n) => '<tr parent-id="0" class="sortable"><td class="vm-name"><span class="outer"><span id="vm-u1" class="hand"><img class="img" src=""></span>' +
+    `<span class="inner"><a>vm-x</a><br><i class="fa fa-square stopped red-text"></i><span class="state">stopped</span></span></span></td><td class="list">${n}</td>` +
+    '<td><input class="autostart" type="checkbox" uuid="u1"></td></tr><tr child-id="0" id="name-0" style="display:none"><td colspan="3"></td></tr>';
+const vms = async ({ hold = false, empty = false } = {}) => {
     const p = await makePage({ page: 'vm', api: false, answers: {
-        'read.php': () => '{}', 'read_order.php': () => '[]', 'read_info.php': () => '{}', 'read_unraid_order.php': () => '[]',
+        'read.php': () => JSON.stringify(VM_FOLDERS), 'read_order.php': () => '[]', 'read_unraid_order.php': () => JSON.stringify(['vm-x']),
+        'read_info.php': () => JSON.stringify({ 'vm-x': { uuid: 'u1', state: 'shutoff', autostart: false } }),
     } });
     const sent = [];
     p.w.XMLHttpRequest = class {
@@ -55,10 +65,7 @@ const vms = async ({ hold = false } = {}) => {
         abort() {}
     };
     let rendered = 0;
-    p.w.loadlist_original = () => p.realAjax({ url: VM_LIST, data: { show: '' }, success: () => {
-        rendered++;
-        p.$('#kvm_list').html(`<tr parent-id="0" class="sortable"><td class="vm-name">vm ${rendered}</td></tr><tr child-id="0" id="name-0"><td></td></tr>`);
-    } });
+    p.w.loadlist_original = () => p.realAjax({ url: VM_LIST, data: { show: '' }, success: () => { p.$('#kvm_list').html(empty ? '' : vmRows(++rendered)); } });
     const reads = [];
     const get = p.$.get;
     p.$.get = (url) => {
@@ -67,15 +74,16 @@ const vms = async ({ hold = false } = {}) => {
         reads.push(d);
         return d;
     };
+    // Each draw, by the list it was made on
     const draws = [];
-    p.w.folderEvents.addEventListener('vm-post-folders-creation', () => draws.push(p.$('#kvm_list .vm-name').text()));
-    // The folders a draw works from, as extensions get them
-    const used = [];
-    p.w.folderEvents.addEventListener('vm-pre-folders-creation', (e) => used.push(Object.keys(e.detail.folders).join()));
+    p.w.folderEvents.addEventListener('vm-post-folders-creation', () => draws.push(`list ${p.$('#kvm_list td.list').first().text()}`));
+    // The folders on the page with the VMs drawn into each, as `id:vm,vm`
+    const folders = () => p.$('#kvm_list > tr.folder').toArray().map((tr) => `${tr.className.match(/folder-id-(\S+)/)[1]}:` +
+        p.$(tr).find('div.folder-storage > tr td.vm-name span.inner a').toArray().map((a) => a.textContent).join()).join(' ');
     return {
-        p, draws, used, sent,
+        p, draws, folders, sent,
         reload: () => p.g('loadlist()'),
-        land: (i) => { Object.assign(sent[i], { status: 200, statusText: 'OK', responseText: 'rows', readyState: 4 }); sent[i].onload(); },
+        land: (i) => { if (sent[i]) { Object.assign(sent[i], { status: 200, statusText: 'OK', responseText: 'rows', readyState: 4 }); sent[i].onload(); } },
         answer: async (i, set) => {
             if (!reads[i]) return;
             if (set instanceof Error) reads[i].reject({ status: 500 }); else reads[i].resolve(JSON.parse(JSON.stringify(set)));
@@ -156,6 +164,7 @@ const vms = async ({ hold = false } = {}) => {
         await t.answer(2, { f: FOLDERS.f });
         await t.land(2);
         check('Docker, reloads keep coming: the last list is drawn from the last answer', t.folders() === 'f' && t.draws.length === 2, { folders: t.folders(), draws: t.draws.length });
+        check('Docker, reloads keep coming: no list landed during a draw, so the page asks for no extra reload', t.asked() === 3 && !record(t).some((d) => d.outcome === 'refresh'), { asked: t.asked(), log: record(t).map((d) => d.outcome) });
     }
     {
         const banners = (t) => t.p.errors.filter((e) => /Banner: Could not load folder data/.test(e)).length;
@@ -182,16 +191,15 @@ const vms = async ({ hold = false } = {}) => {
         check('Docker, a replaced folder request fails: no banner, and the next list is drawn', banners(r) === 0 && r.folders() === 'f,g', { folders: r.folders(), errors: r.p.errors });
     }
     {
-        const vmFolder = { name: 'Lab', icon: '', regex: '', containers: ['vm-x'], settings: {}, hidden_preview: [], actions: [] };
         const t = await vms({ hold: true });
         t.reload();
         t.land(0);
         await t.p.tick(300);
         t.reload();
-        await t.answer(1, { old: vmFolder });
-        const early = t.used.length;
-        await t.answer(0, { old: vmFolder, gone: vmFolder });
-        check('VMs, a newer answer is in first: the draw waits for its own batch and uses the newer one', early === 0 && t.used.join('|') === 'old', { early, used: t.used });
+        await t.answer(1, {});
+        const early = t.draws.length;
+        await t.answer(0, VM_FOLDERS);
+        check('VMs, a newer answer is in first: the draw waits for its own batch and uses the newer one', early === 0 && t.draws.join() === 'list 1' && t.folders() === '', { early, draws: t.draws, folders: t.folders() });
     }
     {
         // A list lands while a draw waits for folder data that then fails: that list is drawn from its own answer, not left bare
@@ -231,9 +239,9 @@ const vms = async ({ hold = false } = {}) => {
         t.land(1);
         await t.p.tick(300);
         await t.answer(0, new Error('500'));
-        await t.answer(1, {});
-        check('VMs, a list lands during a draw that fails: it is drawn from its own answer', t.draws.join() === 'vm 2'
-            && record(t).map((d) => d.outcome).join() === 'running,failed,drawn', { draws: t.draws, log: record(t) });
+        await t.answer(1, VM_FOLDERS);
+        check('VMs, a list lands during a draw that fails: it gets its folder, with the VM in it', t.draws.join() === 'list 2' && t.folders() === 'lab:vm-x'
+            && record(t).map((d) => d.outcome).join() === 'running,failed,drawn', { draws: t.draws, folders: t.folders(), log: record(t) });
     }
     {
         // No containers and no folders: the list has no rows at all, and a view switch must not draw it again
@@ -254,6 +262,88 @@ const vms = async ({ hold = false } = {}) => {
         check('the draw record keeps the newest 30 lines', record(t).length === 30 && record(t)[29].rows === 34 && record(t)[0].rows === 5, record(t).length);
     }
     {
+        // The second reload's list lands while the first draw waits, and that draw finishes on it with the first reload's data
+        const t = await docker({ hold: true });
+        t.reload();
+        await t.land(0);
+        t.reload();
+        await t.land(1);
+        await t.answer(0, {});
+        const bare = t.folders();
+        await t.answer(1, FOLDERS);
+        const asked = t.asked();
+        await t.land(2);
+        await t.answer(2, FOLDERS);
+        const log = record(t).map((d) => d.outcome).join();
+        check('Docker, a list drawn from older folder data: the page loads it again once its own data is in', bare === '' && asked === 3, { bare, asked });
+        check('Docker, a list drawn from older folder data: it then has its folders', t.folders() === 'f,g' && log === 'running,drawn,refresh,drawn', { folders: t.folders(), log });
+
+        // A newer list lands before that data is in: its own draw covers it, so no extra reload
+        const n = await docker({ hold: true });
+        n.reload();
+        await n.land(0);
+        n.reload();
+        await n.land(1);
+        await n.answer(0, {});
+        n.reload();
+        await n.land(2);
+        await n.answer(2, FOLDERS);
+        const before = n.asked();
+        await n.answer(1, FOLDERS);
+        check('Docker, a list drawn from older folder data: a newer list makes the extra reload needless', before === 3 && n.asked() === 3 && n.folders() === 'f,g'
+            && !record(n).some((d) => d.outcome === 'refresh'), { before, asked: n.asked(), folders: n.folders(), log: record(n).map((d) => d.outcome) });
+
+        // That data fails: nothing newer to show, so no extra reload
+        const f = await docker({ hold: true });
+        f.reload();
+        await f.land(0);
+        f.reload();
+        await f.land(1);
+        await f.answer(0, {});
+        await f.answer(1, new Error('500'));
+        check('Docker, a list drawn from older folder data: no reload when the newer data fails', f.asked() === 2 && !record(f).some((d) => d.outcome === 'refresh'), { asked: f.asked(), log: record(f).map((d) => d.outcome) });
+
+        // A view switch during the draw is not a new list: no extra reload though a newer batch was asked
+        const v = await docker({ hold: true });
+        v.reload();
+        await v.land(0);
+        v.reload();
+        v.p.g('listview()');
+        await v.answer(0, {});
+        await v.answer(1, FOLDERS);
+        check('Docker, a view switch during a draw: the newer data does not cause an extra reload', v.asked() === 2 && !record(v).some((d) => d.outcome === 'refresh'), { asked: v.asked(), log: record(v).map((d) => d.outcome) });
+    }
+    {
+        // No VMs: the list has no rows, and each reload is still drawn once
+        const t = await vms({ empty: true });
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        t.reload();
+        t.land(1);
+        await t.p.tick(300);
+        check('VMs, an empty list: each reload is drawn', t.draws.length === 2 && record(t).map((d) => d.outcome).join() === 'drawn,drawn', { draws: t.draws.length, log: record(t).map((d) => d.outcome) });
+    }
+    {
+        // The VMs page: a list drawn from older folder data is loaded again once its own data is in
+        const t = await vms({ hold: true });
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        t.reload();
+        t.land(1);
+        await t.p.tick(300);
+        await t.answer(0, {});
+        const bare = t.folders();
+        await t.answer(1, VM_FOLDERS);
+        const asked = t.sent.length;
+        t.land(2);
+        await t.p.tick(300);
+        await t.answer(2, VM_FOLDERS);
+        check('VMs, a list drawn from older folder data: loaded again, then it has its folder', bare === '' && asked === 3 && t.folders() === 'lab:vm-x'
+            && record(t).map((d) => d.outcome).join() === 'running,drawn,refresh,drawn', { bare, asked, folders: t.folders(), log: record(t).map((d) => d.outcome) });
+    }
+    {
         const t = await vms();
         t.reload();
         t.reload();
@@ -261,7 +351,8 @@ const vms = async ({ hold = false } = {}) => {
         await t.p.tick(300);
         t.land(1);
         await t.p.tick(300);
-        check('VMs, two reloads at once: each list is drawn', t.draws.join() === 'vm 1,vm 2', t.draws);
+        check('VMs, two reloads at once: each list is drawn', t.draws.join() === 'list 1,list 2', t.draws);
+        check('VMs, two reloads at once: the list on the page has the folder, with the VM in it', t.folders() === 'lab:vm-x', t.folders());
         check('VMs, two reloads at once: no page errors', t.p.errors.length === 0, t.p.errors);
     }
     {
@@ -271,7 +362,7 @@ const vms = async ({ hold = false } = {}) => {
         t.land(0);
         t.land(1);
         await t.p.tick(300);
-        check('VMs, both lists land together: the list on the page is drawn once', t.draws.join() === 'vm 2', t.draws);
+        check('VMs, both lists land together: the list on the page is drawn once, with its folder', t.draws.join() === 'list 2' && t.folders() === 'lab:vm-x', { draws: t.draws, folders: t.folders() });
     }
     done();
 })();

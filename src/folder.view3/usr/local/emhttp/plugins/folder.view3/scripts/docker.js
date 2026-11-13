@@ -1125,7 +1125,7 @@ const fv3DrawList = fv3ListDrawer('#docker_list > tr', () => createFolders(), (e
     // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
     document.documentElement.classList.add('fv3-docker-ready');
     fv3IncognitoRefresh();
-});
+}, fv3Folders);
 window.listview_original = window.listview;
 window.listview = () => {
     fv3Debug('Patched listview', 'Entry.');

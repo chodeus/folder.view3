@@ -759,7 +759,7 @@ const fv3DrawList = fv3ListDrawer('#kvm_list > tr', async () => {
     document.documentElement.classList.add('fv3-vm-ready');
     fv3IncognitoRefresh();
     $('div.spinner.fixed').hide();
-});
+}, fv3Folders);
 
 // Unraid loadlist patch — inject folder rendering after VMs render
 window.loadlist_original = window.loadlist;
