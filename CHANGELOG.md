@@ -2,6 +2,16 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Folder saves from two tabs, or made at once, no longer overwrite each other
+- Apply Defaults accepts only valid values for each setting
+- Imports keep the file's folder order and place new folders above existing ones
+- Settings page lists folders in the same order as the Docker and VMs pages
+- FolderView Plus branch exports (a folder with its subfolders) now import
+- FolderView Plus User Script actions with & # % ? in their arguments now import
+- FolderView Plus icons show the default icon once FolderView Plus is removed
+
 ## 2026.11.13.3 (beta)
 
 - VMs page folders stay in their saved place, also when two folders sit next to each other, and keep their VMs inside
