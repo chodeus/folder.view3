@@ -282,11 +282,7 @@ const createFolderDocker = (folder, id, position, order, containersInfo, folders
 
     const fld = `<div class="folder-showcase-outer-${escapeHtml(id)} folder-showcase-outer"><span class="outer solid apps stopped folder-docker"><span id="folder-id-${escapeHtml(id)}" onclick='addDockerFolderContext(${fv3JsArg(id)})' class="hand docker folder-hand-docker fv3-folder-hand fv3-folder-hand-docker"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img-docker fv3-folder-icon fv3-folder-icon-docker" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';"></span><span class="inner folder-inner-docker fv3-folder-inner fv3-folder-inner-docker"><span class="folder-appname-docker fv3-folder-appname fv3-folder-appname-docker">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-docker fv3-folder-status-icon fv3-folder-status-icon-docker"></i><span class="state folder-state-docker fv3-folder-state fv3-folder-state-docker">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage"></div></span><div class="folder-showcase-${escapeHtml(id)} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
-    if (position === 0) {
-        $('tbody#docker_view > tr.updated > td').children().eq(position).before($(fld));
-    } else {
-        $('tbody#docker_view > tr.updated > td').children().eq(position - 1).after($(fld));
-    }
+    fv3PlaceFolder($('tbody#docker_view > tr.updated > td'), $('tbody#docker_view > tr.updated > td').children(), position, $(fld));
 
     let newFolder = {};
 
@@ -497,11 +493,7 @@ const createFolderVM = (folder, id, position, order, vmInfo, foldersDone) => {
 
     const fld = `<div class="folder-showcase-outer-${escapeHtml(id)} folder-showcase-outer"><span class="outer solid vms stopped folder-vm"><span id="folder-id-${escapeHtml(id)}" onclick='addVMFolderContext(${fv3JsArg(id)})' class="hand vm folder-hand-vm fv3-folder-hand fv3-folder-hand-vm"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img-vm fv3-folder-icon fv3-folder-icon-vm" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner-vm fv3-folder-inner fv3-folder-inner-vm"><span class="folder-appname-vm fv3-folder-appname fv3-folder-appname-vm">${escapeHtml(folder.name)}</span><br><i class="fa fa-square stopped red-text folder-load-status-vm fv3-folder-status-icon fv3-folder-status-icon-vm"></i><span class="state folder-state-vm fv3-folder-state fv3-folder-state-vm">${$.i18n('stopped')}</span></span><div class="folder-storage fv3-folder-storage" style="display:none"></div></span><div class="folder-showcase-${escapeHtml(id)} folder-showcase fv3-folder-showcase" data-folder-name="${escapeHtml(folder.name)}"></div></div>`;
 
-    if (position === 0) {
-        $('tbody#vm_view > tr.updated > td').children().eq(position).before($(fld));
-    } else {
-        $('tbody#vm_view > tr.updated > td').children().eq(position - 1).after($(fld));
-    }
+    fv3PlaceFolder($('tbody#vm_view > tr.updated > td'), $('tbody#vm_view > tr.updated > td').children(), position, $(fld));
 
     let newFolder = {};
 

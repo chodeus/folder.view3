@@ -287,21 +287,8 @@ const createFolder = (folder, id, positionInMainOrder, liveOrderArray, container
     const fld = `<tr class="sortable folder-id-${escapeHtml(id)} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="ct-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${escapeHtml(id)}" onclick="addDockerFolderContext(${fv3JsArg(id)})" class="hand folder-hand"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><span class="appname" style="display: none;"><a>folder-${escapeHtml(id)}</a></span><a class="exec folder-appname" onclick='editFolder(${fv3JsArg(id)})'>${escapeHtml(folder.name)}</a><br><i id="load-folder-${escapeHtml(id)}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${escapeHtml(id)} folder-dropdown" onclick="dropDownButton(${fv3JsArg(id)})" ><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td class="updatecolumn folder-update"><span class="green-text folder-update-text"><i class="fa fa-check fa-fw"></i> ${$.i18n('up-to-date')}</span><div class="advanced" style="display: ${advanced ? 'block' : 'none'};"><a class="exec" onclick="forceUpdateFolder(${fv3JsArg(id)});"><span style="white-space:nowrap;"><i class="fa fa-cloud-download fa-fw"></i> ${$.i18n('force-update')}</span></a></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="advanced folder-advanced" ${advanced ? 'style="display: table-cell;"' : ''}><span class="cpu-folder-${escapeHtml(id)} folder-cpu">0%</span><div class="usage-disk mm folder-load"><span id="cpu-folder-${escapeHtml(id)}" class="folder-cpu-bar" style="width:0%"></span><span></span></div><br><span class="mem-folder-${escapeHtml(id)} folder-mem">0 / 0</span></td><td class="folder-autostart"><input type="checkbox" id="folder-${escapeHtml(id)}-auto" class="autostart" style="display:none"><div style="clear:left"></div></td><td></td></tr>`;
     fv3Debug('createFolder', id, `colspan=${colspan}. Generated folder HTML (fld).`);
 
-    if (positionInMainOrder === 0) {
-        fv3Debug('createFolder', id, 'Inserting folder HTML at position 0 (before).');
-        $('#docker_list > tr.sortable').eq(0).before($(fld));
-    } else {
-        if ($('#docker_list > tr.sortable').length > 0 && positionInMainOrder > 0) {
-             fv3Debug('createFolder', id, `Inserting folder HTML at position ${positionInMainOrder} (after eq ${positionInMainOrder-1} of current sortables).`);
-             $('#docker_list > tr.sortable').eq(positionInMainOrder - 1).after($(fld));
-        } else if ($('#docker_list > tr.sortable').length === 0 && positionInMainOrder === 0) {
-             fv3Debug('createFolder', id, 'No sortables found, inserting folder at the beginning of #docker_list.');
-            $('#docker_list').prepend($(fld));
-        } else {
-             fv3DebugWarn('createFolder', id, `Could not determine insertion point for folder. Position: ${positionInMainOrder}, Sortables count: ${$('#docker_list > tr.sortable').length}`);
-             $('#docker_list').append($(fld));
-        }
-    }
+    fv3Debug('createFolder', id, `Inserting folder HTML at position ${positionInMainOrder} of ${$('#docker_list > tr.sortable').length} sortables.`);
+    fv3PlaceFolder($('#docker_list'), $('#docker_list > tr.sortable'), positionInMainOrder, $(fld));
 
     // switchButton init deferred until autostart state is known — early init can reset container autostart.
     fv3Debug('createFolder', id, 'switchButton init deferred until autostart state is calculated.');
