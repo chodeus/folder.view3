@@ -231,9 +231,10 @@
 
     // A save that went through answers JSON: with fv3_post_init()'s header it is how langs/script.php tells the plugin's
     // answer from a POST that never reached it. Never call it after a write that failed
-    function fv3_ok(): void {
+    // $extra: fields the answer carries beside success (create.php: the new folder's id)
+    function fv3_ok(array $extra = []): void {
         header('Content-Type: application/json');
-        echo json_encode(['success' => true]);
+        echo json_encode(['success' => true] + $extra);
     }
 
     function fv3_get_init(): void {
@@ -991,7 +992,8 @@
         if ($folders === null) return 'the folder config could not be read';
         $labels = fv3_read_container_labels($dockerClient, $names);
         if ($labels === null) return 'the container labels could not be read';
-        $membership = fv3_compute_folder_membership($folders, $names, $labels, []);
+        // A restore's order copy names containers too: regex and label members keep its order, the rest Docker's list order (A-Z with none)
+        $membership = fv3_compute_folder_membership($folders, $names, $labels, array_values(array_filter($first, fn($e) => is_string($e) && in_array($e, $names, true))));
         // Each folder after its members, as the page lists them; the rest as the page draws it with nothing saved (A-Z)
         $out = [];
         foreach ($first as $entry) {
@@ -1005,8 +1007,10 @@
         }
         $out = fv3_sanitize_order_entries(array_values(array_unique(array_merge($out, fv3_page_order($membership, $names, [])))));
         if ($out === null) return 'a name cannot be written to userprefs.cfg';
-        // Stock UserPrefs writes take no lock: an order Unraid saved meanwhile wins
-        if (fv3_docker_prefs() !== []) return null;
+        // Stock UserPrefs writes take no lock: an order Unraid saved meanwhile wins; one that cannot be read now is said
+        $now = fv3_docker_prefs();
+        if ($now === null) return "Unraid's saved Docker order (userprefs.cfg) could not be read";
+        if ($now) return null;
         if (!is_dir($fv3DockerManDir) || !fv3_write_user_prefs("$fv3DockerManDir/userprefs.cfg", $out)) {
             return "Unraid's saved Docker order (userprefs.cfg) could not be written";
         }
@@ -1069,7 +1073,8 @@
         return $folders;
     }
 
-    function updateFolder(string $type, string $content, ?string $id = null) : void {
+    // Returns the folder's id (create.php hands a new one back for the import to place)
+    function updateFolder(string $type, string $content, ?string $id = null) : string {
         $decoded = json_decode($content, true);
         // A folder must be an object/array — reject scalars so a full-backup bundle can't pollute $type.json
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
@@ -1097,6 +1102,7 @@
             $fileData[$id] = $decoded;
             return fv3_dedupe_explicit_members($fileData, $id);
         });
+        return $id;
     }
 
     // The locked read-modify-write of docker.json / vm.json (imports and createFile() take the same lock themselves): $apply

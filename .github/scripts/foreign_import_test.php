@@ -393,17 +393,17 @@ foreach (['docker.json', 'vm.json'] as $emptied) {
     $written = file_get_contents("$configDir/$emptied");
     check("an emptied $emptied ([]) imports into a fresh map", !empty($r['success']) && str_starts_with($written, '{') && count(json_decode($written, true)) > 0, $r);
 }
-// The VMs page draws folders its saved order does not name on top, the last one in the map first, and no VM order is written
+// VM folders are saved last-first after the ones already there (settings_order_test.js draws the result with vm.js); no VM order is written
 resetConfig(['vm.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => []]])]);
 $vmFile = ['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'alpha'],
     'folders' => ['z' => ['name' => 'Zulu VMs', 'containers' => []], 'a' => ['name' => 'Alpha VMs', 'containers' => []], 'm' => ['name' => 'Mike VMs', 'containers' => []]]];
 $r = importForeignBundle(json_encode($vmFile), 'vm', true);
 $vmMap = json_decode(file_get_contents("$configDir/vm.json"), true);
 $vmWant = ['Alpha VMs', 'Mike VMs', 'Zulu VMs'];
-$vmDrawn = array_reverse(array_column(array_slice($vmMap, 1), 'name'));
-check('a VM import: the VMs page shows its folders on top in FolderView Plus\'s order, the folder already there below them, and placed lists them in that order',
-    count($vmWant) > 1 && array_key_first($vmMap) === 'keep' && $vmDrawn === $vmWant
-    && array_map(static fn($p) => $vmMap[substr($p, 7)]['name'], $r['placed']['vm'] ?? []) === $vmWant, [$vmDrawn, $vmWant, $r['placed'] ?? null]);
+$vmSavedReversed = array_reverse(array_column(array_slice($vmMap, 1), 'name'));
+check('a VM import: its folders are saved last-first after the folder already there, and placed lists them in FolderView Plus\'s order',
+    count($vmWant) > 1 && array_key_first($vmMap) === 'keep' && $vmSavedReversed === $vmWant
+    && array_map(static fn($p) => $vmMap[substr($p, 7)]['name'], $r['placed']['vm'] ?? []) === $vmWant, [$vmSavedReversed, $vmWant, $r['placed'] ?? null]);
 resetConfig(['docker.json' => '']);
 $r = importForeignBundle($json, 'docker', true);
 check('an empty config file imports into a fresh map', !empty($r['success']) && count(json_decode(file_get_contents("$configDir/docker.json"), true)) === 3, $r);

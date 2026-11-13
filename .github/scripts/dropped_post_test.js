@@ -269,6 +269,11 @@ const differential = async (extension, extensionFirst) => {
     check('an import whose two folders failed for different reasons lists them in the file\'s order with both reasons, the reload one among them',
         twoReasons.posted.join() === 'update.php,update.php'
         && twoReasons.dialogs.join('|') === `error: These folders could not be imported: Apps, Media\n${REASON}\nthe autostart file could not be written`, twoReasons);
+    // A single folder whose create.php answer carries no id cannot be placed: said, and import_order.php still syncs the start order
+    dialogs.length = 0; posted.length = 0; answerWith([ok, ok]);
+    await page.w.fv3ImportFolderMap({ name: 'Solo', containers: [] }, 'docker');
+    check('a single folder whose create.php answer has no id: the dialog says its order could not be saved',
+        posted.join() === 'create.php,import_order.php' && dialogs.join('|') === "warning: Saved, but the folders' order could not be saved: create.php did not answer with the new folder's id", { posted, dialogs });
     // VM folders are saved last-first (Media, then Apps): the first answer is Media's, and the dialog still lists them in the file's order
     const vmReasons = await importWith([csrfDrop, refused], 'vm');
     check('a VM import whose two folders failed lists them in the file\'s order, each with its own reason, and sends no order request',

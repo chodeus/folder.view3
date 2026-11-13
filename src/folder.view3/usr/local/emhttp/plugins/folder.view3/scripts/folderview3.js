@@ -179,8 +179,12 @@ const fv3ImportFolderMap = async (content, type) => {
     // nothing saved, nothing to order: the dialog must not say "Saved, but"
     if (type === 'docker' && failed.length < jobs.length) {
         const notSaved = new Set(failed.map((f) => f.key));
+        // a single folder gets its id from create.php's answer
+        const created = fv3IsFolderShaped(content) ? (typeof jobs[0].answer === 'object' ? jobs[0].answer : fv3SafeParse(jobs[0].answer, {})) : null;
+        const ids = created ? [created?.id].filter((id) => typeof id === 'string') : fresh.filter((id) => !notSaved.has(id));
+        if (created && !ids.length) outcome.order_warning = "create.php did not answer with the new folder's id";
         try {
-            const answer = await $.post('/plugins/folder.view3/server/import_order.php', { ids: JSON.stringify(fresh.filter((id) => !notSaved.has(id))) }).promise();
+            const answer = await $.post('/plugins/folder.view3/server/import_order.php', { ids: JSON.stringify(ids) }).promise();
             Object.assign(outcome, answer && typeof answer === 'object' ? answer : fv3SafeParse(answer, {}));
         } catch (error) {
             console.warn('[FV3] Docker order after import failed:', fv3FailReason(error));
@@ -269,11 +273,13 @@ const importVm = () => {
 const swalLoaderOpts = { showLoaderOnConfirm: true, closeOnConfirm: false };
 
 // Posts each job in turn, carrying on past failures; returns { label, reason } for each one that failed
+// Each job that went through keeps the server's answer as job.answer
 const postEach = async (jobs) => {
     const failed = [];
-    for (const { url, data, label, key } of jobs) {
+    for (const job of jobs) {
+        const { url, data, label, key } = job;
         try {
-            await $.post(url, data).promise();
+            job.answer = await $.post(url, data).promise();
         } catch (error) {
             console.error('[FV3] Request failed:', label, error);
             failed.push({ label, reason: fv3FailReason(error), key });
@@ -282,8 +288,8 @@ const postEach = async (jobs) => {
     return failed;
 };
 
-// What an import's answer says could not be done: `order_warning` (no saved Docker order could be created), `warning` (the start
-// order could not be applied); '' when both went through
+// What an import's answer says could not be done: `order_warning` (the folders could not be placed in the saved Docker order),
+// `warning` (the start order could not be applied); '' when both went through
 const fv3ImportWarnings = (result) => [
     result.order_warning ? fv3I18nOr('import-order-failed', "Saved, but the folders' order could not be saved: $1", result.order_warning) : '',
     result.warning ? fv3I18nOr('order-sync-failed', 'Saved, but the Docker start order could not be updated: $1', result.warning) : '',

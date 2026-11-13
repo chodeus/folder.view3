@@ -4,7 +4,7 @@
 const fs = require('fs');
 const vm = require('vm');
 const { JSDOM, VirtualConsole } = require('jsdom');
-const { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, read } = require('./preview_pages_harness.js');
+const { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, read, phpServer } = require('./preview_pages_harness.js');
 
 // The settings page's backup panel (the two folder tables) with the shipped code that fills them
 const part = (rel, from, to) => {
@@ -137,5 +137,15 @@ for (let n = 0; n < 40; n++) {
     const oddTable = (await settings({ read: { docker: odd, vm: odd }, read_order: { docker: [], vm: [] } })).docker;
     check('nothing saved, names padded, empty, in either case and with numbers: the settings page sorts them as the Docker page does',
         JSON.stringify(oddTable) === JSON.stringify(oddPage) && JSON.stringify(oddPage) === JSON.stringify(['', 'Alpha 9', 'Alpha 10', 'beta', 'Mike', 'Zulu']), { page: oddPage, table: oddTable });
+    // A FolderView Plus VM import through the shipped import_foreign.php, drawn by the real vm.js: its folders on top in its order (A-Z here)
+    const server = phpServer('vm-import-test');
+    fs.writeFileSync(require('path').join(server.config, 'vm.json'), JSON.stringify({ keep: named('Existing') }));
+    const answer = JSON.parse(server.server('import_foreign.php', 'POST', { type: 'vm', action: 'apply', bundle: JSON.stringify({ schemaVersion: 1, type: 'vm', mode: 'full',
+        reason: 'manual', prefs: { sortMode: 'alpha' }, folders: { z: { name: 'Zulu VMs', containers: [] }, a: { name: 'Alpha VMs', containers: [] }, m: { name: 'Mike VMs', containers: [] } } }) }));
+    const vmFolders = JSON.parse(fs.readFileSync(require('path').join(server.config, 'vm.json'), 'utf8'));
+    server.cleanup();
+    const vmShown = await vmPage({ folders: vmFolders, names: ['win'], prefs: [] });
+    check('a FolderView Plus VM import: the VMs page draws its folders on top in its order, the folder already there below them',
+        answer.success === true && JSON.stringify(vmShown) === JSON.stringify(['Alpha VMs', 'Mike VMs', 'Zulu VMs', 'Existing']), { answer, vmShown });
     done();
 })();

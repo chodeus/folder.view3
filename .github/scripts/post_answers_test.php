@@ -128,10 +128,15 @@ $check('fv3_post_init() sends the X-FV3-Answer header script.php looks for', str
 $wrong = [];
 foreach (['a saved setup' => $silent, 'a fresh install' => array_diff($silent, ['toggle_theme.php', 'delete_theme.php'])] as $setup => $names) {
     foreach ($names as $name) {
-        if ($answers["$setup | $name | as sent"] !== ['200', '{"success":true}']) $wrong["$setup | $name"] = $answers["$setup | $name | as sent"];
+        [$st, $bd] = $answers["$setup | $name | as sent"];
+        // create.php also hands back the new folder's id, which an import places in the saved order
+        $want = $name === 'create.php' ? ['success', 'id'] : ['success'];
+        $got = json_decode($bd, true);
+        if ($st !== '200' || !is_array($got) || array_keys($got) !== $want || $got['success'] !== true
+            || ($name === 'create.php' && !(is_string($got['id']) && preg_match('/^[A-Za-z0-9_-]{8,}$/D', $got['id'])))) $wrong["$setup | $name"] = [$st, $bd];
     }
 }
-$check('the nine endpoints that used to answer nothing answer {"success":true} when the save goes through', $wrong === [], $wrong);
+$check('the nine endpoints that used to answer nothing answer {"success":true} when the save goes through, create.php with the new id', $wrong === [], $wrong);
 $check('a theme that is not there is still a 404, not a success', [$answers['a fresh install | toggle_theme.php | as sent'][0], $answers['a fresh install | delete_theme.php | as sent'][0]] === ['404', '404'],
     [$answers['a fresh install | toggle_theme.php | as sent'], $answers['a fresh install | delete_theme.php | as sent']]);
 

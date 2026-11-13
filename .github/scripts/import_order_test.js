@@ -107,6 +107,21 @@ const FILE = { f3: folder('Charlie'), f1: folder('Alpha'), f2: folder('Bravo'), 
         server.cleanup();
     }
     {
+        // A single-folder export: create.php makes the id and hands it back, and the folder is placed like any other
+        const results = [];
+        for (const [label, prefs] of [['a saved order', ['plex', 'folder-old']], ['none', null]]) {
+            const server = serverWith({ old: folder('Old') }, prefs, ['plex']);
+            const page = await importFile(server, folder('Zulu'));
+            const map = JSON.parse(fs.readFileSync(path.join(server.config, 'docker.json'), 'utf8'));
+            const id = Object.keys(map).find((k) => map[k].name === 'Zulu');
+            const order = page.posted.find((p) => p.name === 'import_order.php');
+            results.push({ label, sent: order && order.data.ids, id, prefs: valuesOf(prefsOf(server)), drawn: await dockerPage(server, ['plex']), dialog: page.dialogs.at(-1) });
+            server.cleanup();
+        }
+        check('a single folder: its new id goes to import_order.php, it is placed on top (with a saved order, and with none), and the page shows it first',
+            results.every((r) => r.id && r.sent === JSON.stringify([r.id]) && r.prefs[0] === `folder-${r.id}` && r.drawn.join() === 'Zulu,Old' && r.dialog === 'closed'), results);
+    }
+    {
         const server = serverWith({}, '0="b"\n1="a', ['a', 'b']);
         const page = await importFile(server, { n1: folder('New') });
         check('a saved order that will not parse: the folders are saved, the dialog says their order could not be saved, and the file is left',

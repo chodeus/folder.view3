@@ -9,7 +9,11 @@ $fv3tDockerClient = <<<'PHP'
 <?php
 class DockerClient {
     // fv3tDown = an answer that is not a list; fv3tOff = Docker stopped, as Unraid's client answers it: the socket error printed, then []
-    function getDockerContainers() { return ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Name' => $n], $this->getDockerJSON('')); }
+    function getDockerContainers() {
+        // fv3tWriteDuringRead = [file, text]: written while Docker is read, as a save landing mid-request would be
+        if (isset($GLOBALS['fv3tWriteDuringRead'])) { file_put_contents(...$GLOBALS['fv3tWriteDuringRead']); unset($GLOBALS['fv3tWriteDuringRead']); }
+        return ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Name' => $n], $this->getDockerJSON(''));
+    }
     // fv3tLabels = container name => its folder.view3 label
     function getDockerJSON($url) {
         if ($GLOBALS['fv3tOff'] ?? false) { echo "Couldn't create socket: [2] No such file or directory"; return []; }
@@ -366,6 +370,20 @@ $cases[] = ['restore with its order copy, no saved order: one is created from th
 $cases[] = ['restore with its order copy, a saved order: it is left exactly as it was', $restoreOrder($keep), ['200', true, null, $keep]];
 $cases[] = ['restore with its order copy, a saved order and Docker stopped: left as it was, and no order warning (there was nothing to create)',
     $restoreOrder($keep, true), ['200', true, null, $keep]];
+// A regex folder's members as the copy lists them (web10 before web2), not A-Z; a container the copy does not name follows Docker's list
+$setPrefs(null);
+$r = $endpoint('import_all.php', 'POST', ['bundle' => json_encode(['fv3_export_version' => 1, 'docker' => ['r' => $folder('Web', [], '^web')],
+    'order_docker' => ['fv3_order_version' => 1, 'entries' => ['web10', 'web2', 'folder-r']]])], ['fv3tNames' => ['web2', 'web3', 'web10']]);
+$cases[] = ['restore with its order copy and a regex folder, no saved order: its members keep the copy\'s order, the one it does not name after them',
+    [$r['body']['order_warning'] ?? null, $savedNow()], [null, $userprefs(['web10', 'web2', 'web3', 'folder-r'])]];
+// userprefs.cfg changes while Docker is read: cut off (unreadable) is said; an order Unraid saved is kept
+foreach (["0=\"a\"\n1=\"b" => "Unraid's saved Docker order (userprefs.cfg) could not be read", "0=\"b\"\n1=\"a\"\n" => null] as $meanwhile => $want) {
+    $setPrefs(null);
+    $r = $endpoint('import_all.php', 'POST', ['bundle' => json_encode(['fv3_export_version' => 1, 'docker' => ['x1' => $folder('One', ['a'])],
+        'order_docker' => ['fv3_order_version' => 1, 'entries' => ['a', 'folder-x1']]])], ['fv3tNames' => ['a', 'b'], 'fv3tWriteDuringRead' => ["$fv3DockerManDir/userprefs.cfg", $meanwhile]]);
+    $cases[] = ['restore, no saved order, and userprefs.cfg written while Docker is read (' . ($want ? 'cut off' : 'a whole order') . '): ' . ($want ? 'said' : 'quiet') . ', and the file is left as written',
+        [$r['body']['order_warning'] ?? null, $savedNow()], [$want, $meanwhile]];
+}
 
 // FV3's own folder import: the new folders (ids, in the file's order) after they are saved
 $importOrder = function (?string $cfg, $ids, ?array $names, string $foldersJson = '') use ($setPrefs, $configDir, $endpoint, $folder, $savedNow): array {
