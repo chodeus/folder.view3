@@ -261,8 +261,11 @@ for ($i = 0; $i < 2; $i++) {
 $answers = array_map($finish, $runs);
 $map = $dockerMap() ?: [];
 $names = array_column($map, 'name');
+// create.php's answer also carries the new folder's id
+$created = array_column(array_filter(array_column($answers, 1), fn($b) => is_array($b) && array_key_exists('id', $b)), 'id');
 $lost = [
-    'answers that are not a success' => count(array_filter($answers, fn(array $a) => $a !== $ok)),
+    'answers that are not a success' => count(array_filter($answers, fn(array $a) => [$a[0], is_array($a[1]) ? array_diff_key($a[1], ['id' => true]) : $a[1]] !== $ok)),
+    'create answers that do not name the folder made' => count($created) === 8 ? count(array_filter($created, fn($id) => !is_string($id) || !str_starts_with($map[$id]['name'] ?? '', 'New '))) : 8,
     'new folders missing' => count(array_filter(range(0, 7), fn(int $i) => !in_array("New $i", $names, true))),
     'renames missing' => count(array_filter(range(0, 3), fn(int $i) => ($map["f$i"]['containers'][0] ?? null) !== "renamed-$i")),
     'deleted folders still there' => count(array_filter(range(100, 103), fn(int $i) => isset($map["f$i"]))),

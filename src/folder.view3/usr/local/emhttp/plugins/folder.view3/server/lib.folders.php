@@ -20,7 +20,7 @@
             http_response_code(500);
             return json_encode(['error' => "$type.json does not contain a folder map"]);
         }
-        $clean = json_encode((object)fv3_normalize_folders($decoded));
+        $clean = json_encode((object)fv3_without_dead_plus_icons(fv3_normalize_folders($decoded)));
         return $clean !== false ? $clean : $raw;
     }
 
@@ -73,7 +73,8 @@
         return $folders;
     }
 
-    function updateFolder(string $type, string $content, ?string $id = null) : void {
+    // Returns the folder's id (create.php hands a new one back for the import to place)
+    function updateFolder(string $type, string $content, ?string $id = null) : string {
         $decoded = json_decode($content, true);
         // A folder must be an object/array — reject scalars so a full-backup bundle can't pollute $type.json
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
@@ -101,6 +102,7 @@
             $fileData[$id] = $decoded;
             return fv3_dedupe_explicit_members($fileData, $id);
         });
+        return $id;
     }
 
     // The locked read-modify-write of docker.json / vm.json (imports and createFile() take the same lock themselves): $apply

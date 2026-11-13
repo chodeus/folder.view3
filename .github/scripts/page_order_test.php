@@ -8,10 +8,16 @@ $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-page-order-test-' . bin2hex(rand
 $fv3tDockerClient = <<<'PHP'
 <?php
 class DockerClient {
-    // fv3tDown = Docker is not answering
-    function getDockerContainers() { return ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Name' => $n], $GLOBALS['fv3tNames'] ?? []); }
+    // fv3tDown = an answer that is not a list; fv3tOff = Docker stopped, as Unraid's client answers it: the socket error printed, then []
+    function getDockerContainers() {
+        // fv3tWriteDuringRead = [file, text]: written while Docker is read, as a save landing mid-request would be
+        if (isset($GLOBALS['fv3tWriteDuringRead'])) { file_put_contents(...$GLOBALS['fv3tWriteDuringRead']); unset($GLOBALS['fv3tWriteDuringRead']); }
+        return ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Name' => $n], $this->getDockerJSON(''));
+    }
     // fv3tLabels = container name => its folder.view3 label
     function getDockerJSON($url) {
+        if ($GLOBALS['fv3tOff'] ?? false) { echo "Couldn't create socket: [2] No such file or directory"; return []; }
+        if ($url === '') return $GLOBALS['fv3tNames'] ?? [];
         if (($GLOBALS['fv3tLabelsDown'] ?? false) || ($GLOBALS['fv3tDown'] ?? false)) return null;
         return array_map(fn($n) => ['Names' => ["/$n"], 'Labels' => array_filter(['folder.view3' => $GLOBALS['fv3tLabels'][$n] ?? null])], $GLOBALS['fv3tNames'] ?? []);
     }
@@ -63,7 +69,7 @@ $listed = function (?array $names, ?string $cfg) use ($setPrefs): array {
     try { return readUnraidOrder('docker'); } finally { $GLOBALS['fv3tDown'] = false; }
 };
 // What a real syncContainerOrder() answers (null, or why the file could not be put in order) and the autostart file it left. $break
-// sets a failure up. null = that file does not exist ($names: Docker not answering); a string $autostart is written as is
+// sets a failure up. null = that file does not exist ($names: an answer that is not a list); a string $autostart is written as is
 $sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?callable $break = null) use ($setPrefs, $configDir, $fv3tAutostart): array {
     $GLOBALS['fv3tNames'] = $names ?? [];
     $GLOBALS['fv3tDown'] = $names === null;
@@ -193,6 +199,9 @@ $cases = [
         $order([], ['10', '010'], ['10', '010']), ['10', '010']],
     ['no userprefs.cfg: folder names and loose containers mixed A-Z',
         $order(['b' => $folder('Beta', ['x'])], ['x', 'alpha', 'zed'], []), ['alpha', 'x', 'folder-b', 'zed']],
+    ['no userprefs.cfg: folder names compared as the page shows them, trimmed of spaces, tabs, no-break spaces and the BOM',
+        $order(['z' => $folder(' Zulu'), 'm' => $folder("\u{A0}Mike"), 'b' => $folder("\tbeta\u{FEFF}"), 'a' => $folder('Alpha')], ['plex'], []),
+        ['folder-a', 'folder-b', 'folder-m', 'plex', 'folder-z']],
     ['no userprefs.cfg: a look-alike of a folder member keeps its own A-Z place',
         $order(['f' => $folder('F', ['10'])], ['10', '1e1', '0first'], []), ['0first', '1e1', '10', 'folder-f']],
     ['read_membership.php: an explicit entry beats a label (s1), a label places a loose container (mid), the first folder whose regex matches wins (r1, y1)',
@@ -210,6 +219,9 @@ $cases = [
         fv3_reorder_autostart(['a', 'b'], ['z']), ['a', 'b']],
     ['no userprefs.cfg reads as nothing saved', $prefsOf(null), []],
     ['userprefs.cfg values come back in file order', $prefsOf($userprefs(['b', 'folder-x', '010', 'a'])), ['b', 'folder-x', '010', 'a']],
+    ['userprefs.cfg values come back by the number before each =, as Unraid\'s page sorts them, whatever the line order',
+        $prefsOf("2=\"c\"\n0=\"a\"\n10=\"d\"\n1=\"b\"\n"), ['a', 'b', 'c', 'd']],
+    ['a userprefs.cfg holding a list line (n[]=) is not read as an order', $prefsOf("0=\"a\"\n1[]=\"b\"\n"), null],
     ['a userprefs.cfg cut off mid-line is not "nothing saved"', $prefsOf($cutOff), null],
     ['an empty userprefs.cfg reads as nothing saved', $prefsOf(''), []],
     ['read_unraid_order.php lists the fixture as the page test is fed it',
@@ -278,7 +290,7 @@ $cases = [
         $sync([], ['a'], null, null, fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a"]}')), [null, null]],
     ['custom mode with an empty autostart file and no saved sequence: the file stays empty',
         $sync([], ['a'], null, '', fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom"}')), [null, '']],
-    ['the page\'s order list is empty with no containers, and with Docker not answering',
+    ['the page\'s order list is empty with no containers, and with an answer that is not a list',
         [$listed([], null), $listed([], $userprefs(['folder-f', 'gone'])), $listed(null, null)], [[], [], []]],
     ['no folders and no containers work out to an empty order',
         [$order([], [], []), $order([], [], ['ghost']), fv3_reorder_autostart([], ['a']), fv3_reorder_autostart([], [])], [[], [], [], []]],
@@ -310,6 +322,107 @@ if (!function_exists('posix_geteuid') || posix_geteuid() !== 0) {
     $cases[] = ['custom mode reports it too',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir, $fv3tAutostart) { file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}'); chmod($fv3tAutostart, 0444); }), ['the autostart file could not be written', ['b', 'a']]];
 }
+// No saved order: names sort as the Docker page sorts them in the browser (fv3_name_cmp, held to the browser by name_order_test.js)
+$cases[] = ['no saved order: the page order sorts names as the browser does, punctuation first, then numbers, then letters',
+    $order(['p' => $folder('_Pinned'), 'a' => $folder('Apps'), 'b' => $folder('[Box]'), 'n' => $folder('2 Two')], ['zed', '-cli'], []), ['folder-p', '-cli', 'folder-b', 'folder-n', 'folder-a', 'zed']];
+
+// Imports keep the order in the file: with no saved Docker order the import creates one, the new folders first in the file's order,
+// the rest as the page draws it (A-Z); a saved order gets the new folders on top, the rest as it was. Each through the shipped endpoint
+$savedNow = fn(): ?string => is_file("$fv3DockerManDir/userprefs.cfg") ? file_get_contents("$fv3DockerManDir/userprefs.cfg") : null;
+$placeholderNames = function (array $prefs) use ($configDir): array {
+    $map = json_decode((string)file_get_contents("$configDir/docker.json"), true);
+    return array_map(fn($e) => str_starts_with($e, 'folder-') ? ($map[substr($e, 7)]['name'] ?? $e) : $e, $prefs);
+};
+$plusBundle = file_get_contents(dirname(__DIR__) . '/fixtures/folderview-plus/backup-docker.json');
+$plusOrder = array_column(fv3_convert_foreign_bundle(json_decode($plusBundle, true), 'docker')['folders']['docker'], 'name');
+$importPlus = function (?string $cfg) use ($setPrefs, $configDir, $endpoint, $plusBundle, $savedNow): array {
+    $setPrefs($cfg);
+    file_put_contents("$configDir/docker.json", '{}');
+    @unlink("$configDir/order-docker.json");
+    $r = $endpoint('import_foreign.php', 'POST', ['bundle' => $plusBundle, 'type' => 'docker', 'action' => 'apply'], ['fv3tNames' => ['zed', 'alpha']]);
+    return [$r['status'], $r['body']['success'] ?? null, $r['body']['order_warning'] ?? null, $r['body']['placed'] ?? 'not sent', $savedNow()];
+};
+[$st, $ok, $warn, $placed, $created] = $importPlus(null);
+$createdPrefs = fv3_docker_prefs();
+$cases[] = ['FolderView Plus import, no saved order: one is created, its folders first in its order, then the containers A-Z',
+    [$st, $ok, $warn, $placed, $placeholderNames($createdPrefs)], ['200', true, null, 'not sent', array_merge($plusOrder, ['alpha', 'zed'])]];
+$cases[] = ['FolderView Plus import, no saved order: the page draws its folders from the created order in its order',
+    array_values(array_filter($placeholderNames($order(json_decode(file_get_contents("$configDir/docker.json"), true), ['zed', 'alpha'], $createdPrefs)), fn($n) => !in_array($n, ['zed', 'alpha'], true))),
+    $plusOrder];
+$cases[] = ['FolderView Plus import, no saved order: FV3 keeps its own copy of the created order',
+    json_decode((string)@file_get_contents("$configDir/order-docker.json"), true)['entries'] ?? null, $createdPrefs];
+$keep = $userprefs(['alpha', 'zed']);
+$plusKept = array_slice($importPlus($keep), 1, 3);
+$cases[] = ['FolderView Plus import, a saved order: its folders go on top in its order, the saved entries after them as they were, and FV3 keeps a copy',
+    [$plusKept, $placeholderNames(fv3_docker_prefs()), json_decode((string)@file_get_contents("$configDir/order-docker.json"), true)['entries'] ?? null],
+    [[true, null, 'not sent'], array_merge($plusOrder, ['alpha', 'zed']), fv3_docker_prefs()]];
+
+$restoreOrder = function (?string $cfg, bool $dockerOff = false) use ($setPrefs, $configDir, $endpoint, $folder, $savedNow): array {
+    $setPrefs($cfg);
+    @unlink("$configDir/order-docker.json");
+    $bundle = json_encode(['fv3_export_version' => 1, 'docker' => ['x1' => $folder('One', ['a']), 'x2' => $folder('Two')],
+        'order_docker' => ['fv3_order_version' => 1, 'entries' => ['b', 'folder-x2', 'a', 'folder-x1']]]);
+    $r = $endpoint('import_all.php', 'POST', ['bundle' => $bundle], ['fv3tNames' => ['a', 'b', 'c'], 'fv3tOff' => $dockerOff]);
+    return [$r['status'], $r['body']['success'] ?? null, $r['body']['order_warning'] ?? null, $savedNow()];
+};
+$cases[] = ['restore with its order copy, no saved order: one is created from the copy, then the rest as the page draws it',
+    $restoreOrder(null), ['200', true, null, $userprefs(['b', 'folder-x2', 'a', 'folder-x1', 'c'])]];
+$cases[] = ['restore with its order copy, a saved order: it is left exactly as it was', $restoreOrder($keep), ['200', true, null, $keep]];
+$cases[] = ['restore with its order copy, a saved order and Docker stopped: left as it was, and no order warning (there was nothing to create)',
+    $restoreOrder($keep, true), ['200', true, null, $keep]];
+// A regex folder's members as the copy lists them (web10 before web2), not A-Z; a container the copy does not name follows Docker's list
+$setPrefs(null);
+$r = $endpoint('import_all.php', 'POST', ['bundle' => json_encode(['fv3_export_version' => 1, 'docker' => ['r' => $folder('Web', [], '^web')],
+    'order_docker' => ['fv3_order_version' => 1, 'entries' => ['web10', 'web2', 'folder-r']]])], ['fv3tNames' => ['web2', 'web3', 'web10']]);
+$cases[] = ['restore with its order copy and a regex folder, no saved order: its members keep the copy\'s order, the one it does not name after them',
+    [$r['body']['order_warning'] ?? null, $savedNow()], [null, $userprefs(['web10', 'web2', 'web3', 'folder-r'])]];
+// userprefs.cfg changes while Docker is read: cut off (unreadable) is said; an order Unraid saved is kept
+foreach (["0=\"a\"\n1=\"b" => "Unraid's saved Docker order (userprefs.cfg) could not be read", "0=\"b\"\n1=\"a\"\n" => null] as $meanwhile => $want) {
+    $setPrefs(null);
+    $r = $endpoint('import_all.php', 'POST', ['bundle' => json_encode(['fv3_export_version' => 1, 'docker' => ['x1' => $folder('One', ['a'])],
+        'order_docker' => ['fv3_order_version' => 1, 'entries' => ['a', 'folder-x1']]])], ['fv3tNames' => ['a', 'b'], 'fv3tWriteDuringRead' => ["$fv3DockerManDir/userprefs.cfg", $meanwhile]]);
+    $cases[] = ['restore, no saved order, and userprefs.cfg written while Docker is read (' . ($want ? 'cut off' : 'a whole order') . '): ' . ($want ? 'said' : 'quiet') . ', and the file is left as written',
+        [$r['body']['order_warning'] ?? null, $savedNow()], [$want, $meanwhile]];
+}
+
+// FV3's own folder import: the new folders (ids, in the file's order) after they are saved
+$importOrder = function (?string $cfg, $ids, ?array $names, string $foldersJson = '') use ($setPrefs, $configDir, $endpoint, $folder, $savedNow): array {
+    $setPrefs($cfg);
+    @unlink("$configDir/order-docker.json");
+    @unlink("$configDir/docker.json");
+    $json = $foldersJson !== '' ? $foldersJson : json_encode(['old' => $folder('Old', ['a']), 'n1' => $folder('New one', ['b']), 'n2' => $folder('New two')]);
+    if ($json !== 'none') file_put_contents("$configDir/docker.json", $json);
+    // $names null: Docker stopped
+    $r = $endpoint('import_order.php', 'POST', ['ids' => is_string($ids) ? $ids : json_encode($ids)], ['fv3tNames' => $names ?? [], 'fv3tOff' => $names === null]);
+    return [$r['status'], $r['body']['success'] ?? $r['body']['error'] ?? null, $r['body']['order_warning'] ?? null, $r['body']['warning'] ?? null, $savedNow()];
+};
+$cases[] = ['folder import, no saved order: the new folders first in the file\'s order, each after its members, then the rest A-Z',
+    $importOrder(null, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'b', 'folder-n1', 'c', 'a', 'folder-old'])]];
+$cases[] = ['folder import, a saved order: the new folders go on top in the file\'s order, the saved entries after them as they were',
+    $importOrder($keep, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'folder-n1', 'alpha', 'zed'])]];
+$cases[] = ['folder import, a saved order that already places one of them: that one keeps its place, an id with no folder is not written',
+    $importOrder($userprefs(['alpha', 'folder-n1', 'zed']), ['n2', 'n1', 'ghost'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'alpha', 'folder-n1', 'zed'])]];
+$cases[] = ['folder import, a saved order holding a list line: said, and left as it was',
+    $importOrder("0=\"a\"\n1[]=\"b\"\n", ['n1'], ['a', 'b']), ['200', true, "Unraid's saved Docker order (userprefs.cfg) could not be read", "Unraid's saved Docker order (userprefs.cfg) could not be read", "0=\"a\"\n1[]=\"b\"\n"]];
+$cases[] = ['folder import, a saved order and a folder config that will not parse: said, and the order left as it was',
+    $importOrder($keep, ['n1'], ['a', 'b'], '{'), ['200', true, 'the folder config could not be read', 'the folder config could not be read', $keep]];
+$cases[] = ['folder import, a saved order that will not parse: said, and left as it was',
+    $importOrder($cutOff, ['n1'], ['a', 'b']), ['200', true, "Unraid's saved Docker order (userprefs.cfg) could not be read", "Unraid's saved Docker order (userprefs.cfg) could not be read", $cutOff]];
+$cases[] = ['folder import, a saved order and Docker stopped: placed all the same (Docker is not needed for it), quiet, and the answer is still JSON',
+    $importOrder($keep, ['n1'], null), ['200', true, null, null, $userprefs(['folder-n1', 'alpha', 'zed'])]];
+$cases[] = ['folder import, no saved order and Docker stopped: said, and nothing written',
+    $importOrder(null, ['n1'], null), ['200', true, 'Docker is not running or lists no containers', null, null]];
+$cases[] = ['folder import, no saved order and a container with no name in Docker\'s list: said, and nothing written',
+    $importOrder(null, ['n1'], ['a', '']), ['200', true, "Docker's container list could not be read", "Docker's container list could not be read", null]];
+$cases[] = ['folder import, ids that are not a list of folder ids: refused, nothing written',
+    [$importOrder(null, '{"a":"n1"}', ['a'])[0], $importOrder(null, ['../x'], ['a'])[0], $importOrder(null, 'nope', ['a'])[0], $savedNow()], ['400', '400', '400', null]];
+// Nothing installed: no containers, no folders, no saved order
+$cases[] = ['folder import, Docker running with no containers: said, nothing written', $importOrder(null, ['n1'], []), ['200', true, 'Docker is not running or lists no containers', null, null]];
+$cases[] = ['folder import, no folder config and no new folders: quiet, nothing written', $importOrder(null, [], ['a'], 'none'), ['200', true, null, null, null]];
+@unlink("$configDir/order-docker.json");
+file_put_contents("$configDir/docker.json", '{}');
+foreach (['import_order.php', 'import_foreign.php', 'import_all.php'] as $copy) @unlink("$fv3tTmp/$copy");
+
 $failed = 0;
 foreach ($cases as [$label, $got, $want]) {
     if ($got !== $want) { $failed++; echo "FAIL $label: got " . json_encode($got) . ', want ' . json_encode($want) . "\n"; }

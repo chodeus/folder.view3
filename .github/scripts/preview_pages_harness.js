@@ -133,7 +133,14 @@ const makePage = async (opts = {}) => {
         send(m) { this.sent.push(m); }
         close() { this.readyState = 3; if (this.onclose) this.onclose({}); }
     };
-    w.ResizeObserver = class { observe() {} disconnect() {} };
+    const observing = [];
+    w.ResizeObserver = class {
+        constructor(cb) { this.cb = cb; }
+        observe(el) { if (!observing.some(([o, t]) => o === this && t === el)) observing.push([this, el]); }
+        disconnect() { for (let i = observing.length - 1; i >= 0; i--) if (observing[i][0] === this) observing.splice(i, 1); }
+    };
+    // Calls back each observer watching el (default: the page), as a resize of el would
+    const resized = (el = w.document.documentElement) => observing.filter(([, t]) => t === el).forEach(([o]) => o.cb([{ target: el }], o));
     $.i18n = (key) => key;
     $.fn.i18n = function () { return this; };
     $.fn.switchButton = function () { return this; };
@@ -229,7 +236,7 @@ dockerload.on('message', function(msg){
         mem: tip.el && tip.el.querySelector(`span.fv3-mem-${id}`).textContent,
         bar: tip.el && tip.el.querySelector(`span.fv3-cpu-bar-${id}`).style.width,
     });
-    return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow, realAjax };
+    return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow, realAjax, resized };
 };
 
 const FOLDER_SETTINGS = {
@@ -310,12 +317,15 @@ const done = () => { console.log(failed ? `\n${failed} FAILED` : '\nall passed')
 
 // The shipped PHP endpoints on a temp config folder, each request its own `php` process, for a test that sends on what a page
 // really posts: server(name, method, fields) gives the body it answers, `config` is the folder, cleanup() removes it all
-const phpServer = (label) => {
+// containers: the names Docker lists (none by default)
+const phpServer = (label, { containers = [] } = {}) => {
     const tmp = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), `fv3-${label}-`));
     const config = path.join(tmp, 'config');
+    const names = `json_decode(${JSON.stringify(JSON.stringify(containers))}, true)`;
     // lib.php requires these two Unraid host files at load time
     for (const [rel, src] of [['webGui/include/Helpers.php', '<?php'],
-        ['plugins/dynamix.docker.manager/include/DockerClient.php', '<?php class DockerClient { function getDockerContainers() { return []; } function getDockerJSON($url) { return []; } } class DockerUpdate {}']]) {
+        ['plugins/dynamix.docker.manager/include/DockerClient.php', `<?php class DockerClient { function getDockerContainers() { return array_map(fn($n) => ['Name' => $n], ${names}); }`
+            + ` function getDockerJSON($url) { return array_map(fn($n) => ['Names' => ["/$n"], 'Labels' => []], ${names}); } } class DockerUpdate {}`]]) {
         fs.mkdirSync(path.dirname(path.join(tmp, 'docroot', rel)), { recursive: true });
         fs.writeFileSync(path.join(tmp, 'docroot', rel), src);
     }

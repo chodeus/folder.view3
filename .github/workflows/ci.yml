@@ -84,14 +84,20 @@ jobs:
           node preview_pages_test.js
           node incognito_test.js
           node docker_new_folder_order_test.js
+          node vm_new_folder_order_test.js
           node docker_saved_places_test.js
           node docker_reset_order_test.js
           node autostart_save_test.js
           node empty_pages_test.js
+          node folder_placement_test.js
           node list_reload_test.js
+          node dashboard_reload_test.js
           node theme_import_dialog_test.js
           node dropped_post_test.js
           node apply_defaults_test.js
+          node settings_order_test.js
+          node import_order_test.js
+          node name_order_test.js
           node rename_update_test.js
 
       - name: Validate plugin manifest (XML)
