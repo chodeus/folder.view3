@@ -191,6 +191,7 @@
     "dashboard-settings-load-failed": "Impossible de charger les paramètres du tableau de bord, les dispositions par défaut sont donc affichées. Rechargez la page.",
     "invalid-folder-export": "Ce fichier n'est pas un export de dossiers.",
     "order-sync-failed": "Enregistré, mais l'ordre de démarrage Docker n'a pas pu être mis à jour : $1",
+    "import-order-failed": "Enregistré, mais l'ordre des dossiers n'a pas pu être enregistré : $1",
     "reset-order-sync-failed": "L'ordre a été réinitialisé, mais l'ordre de démarrage Docker n'a pas pu être mis à jour : $1",
     "autostart-sync-failed": "L'ordre de démarrage Docker n'a pas pu être mis à jour : $1",
     "autostart-partly-applied": "Enregistré, mais tout n'a pas pu être appliqué : $1",

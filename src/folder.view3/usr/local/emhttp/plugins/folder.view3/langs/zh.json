@@ -191,6 +191,7 @@
     "dashboard-settings-load-failed": "无法加载仪表板设置，因此显示默认布局。请刷新页面。",
     "invalid-folder-export": "此文件不是文件夹导出文件。",
     "order-sync-failed": "已保存，但无法更新 Docker 启动顺序：$1",
+    "import-order-failed": "已保存，但无法保存文件夹的顺序：$1",
     "reset-order-sync-failed": "顺序已重置，但无法更新 Docker 启动顺序：$1",
     "autostart-sync-failed": "无法更新 Docker 启动顺序：$1",
     "autostart-partly-applied": "已保存，但未能全部应用：$1",

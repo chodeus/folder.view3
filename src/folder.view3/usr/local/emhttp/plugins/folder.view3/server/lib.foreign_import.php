@@ -492,16 +492,19 @@
         if (!is_dir($configDir)) @mkdir($configDir, 0770, true);
         if (realpath($configDir) !== $configDir) return ['error' => 'config-unreadable'];
         $files = [];
+        $placed = [];
         foreach ($converted['folders'] as $t => $folders) {
             if (!$folders) continue;
             // The object copy from the single read above: the assoc one would turn an existing
             // folder's empty {} settings/containerImages into []
             $map = $maps[$t];
             // The pages draw folders missing from userprefs.cfg on top, the last one in the map first (fv3_page_order), so
-            // adding them in reverse shows FolderView Plus's order. With no userprefs.cfg the Docker page goes A-Z instead
+            // adding them in reverse shows FolderView Plus's order. With no userprefs.cfg, import_foreign.php creates one
+            $placed[$t] = [];
             foreach (array_reverse($folders) as $folder) {
                 do { $id = generateId(); } while (property_exists($map, $id));
                 $map->$id = $folder;
+                array_unshift($placed[$t], "folder-$id");
             }
             // No fv3_dedupe_explicit_members here: the converter already skips claimed members, and a
             // whole-map pass would strip members from existing folders that happen to share one
@@ -517,6 +520,7 @@
             if (!empty($result['partial'])) return ['error' => 'write-partial'];
             return ['error' => 'write-failed'];
         }
-        return ['success' => true, 'report' => $converted['report']];
+        // placed: [type => the new folders' placeholders in FolderView Plus's order], for import_foreign.php
+        return ['success' => true, 'report' => $converted['report'], 'placed' => $placed];
     }
 ?>

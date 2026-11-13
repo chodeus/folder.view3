@@ -929,6 +929,50 @@
         return null;
     }
 
+    // The one write of Unraid's saved Docker order besides the heal: an import on a server with none creates it, $first's entries
+    // (placeholders, names) first. Returns why it stopped, or null: also when an order is saved or Docker lists nothing
+    function fv3_create_docker_order(array $first): ?string {
+        global $configDir, $fv3DockerManDir;
+        if (!$first) return null;
+        $prefs = fv3_docker_prefs();
+        if ($prefs === null) return "Unraid's saved Docker order (userprefs.cfg) could not be read";
+        if ($prefs) return null;
+        $dockerClient = new DockerClient();
+        $ctNames = fv3_read_container_names($dockerClient);
+        // No containers, or Docker off: an order of folders alone would put every container above them once Docker lists them
+        if ($ctNames['empty']) return null;
+        if (!$ctNames['complete']) return "Docker's container list could not be read";
+        $names = $ctNames['names'];
+        $folders = fv3_read_json_strict("$configDir/docker.json");
+        if ($folders === null) return 'the folder config could not be read';
+        $labels = fv3_read_container_labels($dockerClient, $names);
+        if ($labels === null) return 'the container labels could not be read';
+        $membership = fv3_compute_folder_membership($folders, $names, $labels, []);
+        // Each folder after its members, as the page lists them; the rest as the page draws it with nothing saved (A-Z)
+        $out = [];
+        foreach ($first as $entry) {
+            if (!is_string($entry)) continue;
+            if (isset($membership['containers'][$entry])) {
+                array_push($out, ...$membership['containers'][$entry]);
+                $out[] = $entry;
+            } elseif (in_array($entry, $names, true) && !in_array($entry, $membership['assigned'], true)) {
+                $out[] = $entry;
+            }
+        }
+        $out = fv3_sanitize_order_entries(array_values(array_unique(array_merge($out, fv3_page_order($membership, $names, [])))));
+        if ($out === null) return 'a name cannot be written to userprefs.cfg';
+        $lines = [];
+        foreach ($out as $i => $name) { $lines[] = $i . '="' . $name . '"'; }
+        // Stock UserPrefs writes take no lock: an order Unraid saved meanwhile wins
+        if (fv3_docker_prefs() !== []) return null;
+        if (!is_dir($fv3DockerManDir) || !fv3_atomic_write("$fv3DockerManDir/userprefs.cfg", implode("\n", $lines) . "\n")) {
+            return "Unraid's saved Docker order (userprefs.cfg) could not be written";
+        }
+        // FV3's own copy, which the heal restores from after a reinstall
+        if (!saveOrderSnapshot('docker', $out)) fv3_error_log('fv3_create_docker_order', 'the order snapshot could not be written');
+        return null;
+    }
+
     // A container may be explicit in at most one folder (issue #62). $winnerId's list survives
     // intact (the folder just saved wins); elsewhere ties resolve first-wins in key order.
     function fv3_dedupe_explicit_members(array $folders, ?string $winnerId = null): array {
@@ -1435,10 +1479,12 @@
         foreach ($result['applied'] as $rel => $hadOld) {
             if (strpos($rel, 'styles/_fv3-generated.') !== 0) $restored[] = isset($files[$rel]) ? $rel : "$rel (cleared)";
         }
-        // apply the restored folder layout / autostart mode to the live start order immediately. The restore is done
-        // either way: a sync that stopped comes back as `warning`
+        // A restored order copy gives a server with no saved Docker order one. Then the restored folder layout / autostart mode
+        // reach the live start order. The restore is done either way: these come back as `order_warning` and `warning`
+        $orderFailed = isset($files['order-docker.json']) ? fv3_create_docker_order(json_decode($files['order-docker.json'], true)['entries'] ?? []) : null;
         $syncFailed = syncContainerOrder('docker');
-        return ['success' => true, 'restored' => $restored] + ($syncFailed !== null ? ['warning' => $syncFailed] : []);
+        return ['success' => true, 'restored' => $restored] + ($orderFailed !== null ? ['order_warning' => $orderFailed] : [])
+            + ($syncFailed !== null ? ['warning' => $syncFailed] : []);
     }
 
     // Writes $files and removes $clear (paths relative to $baseDir) as one step: staged first, then swapped in with the

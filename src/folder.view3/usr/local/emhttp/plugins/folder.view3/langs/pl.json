@@ -191,6 +191,7 @@
     "dashboard-settings-load-failed": "Nie można wczytać ustawień pulpitu, więc wyświetlane są układy domyślne. Odśwież stronę.",
     "invalid-folder-export": "Ten plik nie jest eksportem folderów.",
     "order-sync-failed": "Zapisano, ale nie można zaktualizować kolejności uruchamiania Dockera: $1",
+    "import-order-failed": "Zapisano, ale nie można zapisać kolejności folderów: $1",
     "reset-order-sync-failed": "Kolejność została zresetowana, ale nie można zaktualizować kolejności uruchamiania Dockera: $1",
     "autostart-sync-failed": "Nie można zaktualizować kolejności uruchamiania Dockera: $1",
     "autostart-partly-applied": "Zapisano, ale nie wszystko udało się zastosować: $1",

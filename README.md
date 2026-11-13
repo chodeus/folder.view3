@@ -35,7 +35,7 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 - **CSS Tool** — built-in theme manager with GitHub import, variable editor, presets, and advanced CSS
 - **Theme update checker** — detects when imported GitHub themes have updates, Docker-style indicators
 - **Folder defaults** — set global defaults for preview, overflow, context, and more — apply to all folders in one click
-- **Full backup/restore** — export everything (folders, settings, CSS config, themes) to a single JSON file
+- **Full backup/restore** — export everything (folders, settings, CSS config, themes) to a single JSON file; a restore or a folder import shows new folders in the file's order, and folders already placed keep their place
 - **Custom CSS/JS extensions** — full theming support with 40+ CSS variables
 - **Security warnings** — CSS imports are scanned for external URLs and flagged for user review
 - **Incognito mode** — blur container names, icons, Tailscale IPs, public IPv6 addresses, MAC addresses, and container references in volume paths for screenshot-safe sharing
@@ -91,7 +91,7 @@ What the import does:
   will be left out.
 - **Order:** folders come in the order FolderView Plus showed them: by its sort setting and pinned folders when
   the file carries them (backups and snapshots do), otherwise (exports) in the order of the file. They appear above the folders you already have. If the
-  Docker list was never reordered, the Docker page lists every folder and container A–Z instead.
+  Docker list was never reordered, the import saves an order for it: these folders first, then everything else as the Docker page listed it (A–Z).
 - **Nested folders are merged.** FolderView3 has no nesting, so every nested folder's containers or VMs move into
   its top-level folder. The top-level folder keeps its own name, icon and settings; a nested folder's name, icon,
   settings, regex and custom actions are not kept.

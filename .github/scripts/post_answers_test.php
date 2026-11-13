@@ -78,6 +78,7 @@ $requests = [
     'toggle_theme.php' => ['entry' => 'demo.css', 'enable' => 'false'],
     'delete_theme.php' => ['entry' => 'old.css'],
     'sync_order.php' => ['type' => 'docker'],
+    'import_order.php' => ['ids' => '["abc"]'],
     'update_settings_batch.php' => ['settings' => '{"dashboard_docker_layout":"classic"}'],
     'update_order.php' => ['type' => 'docker', 'names' => 'app-a;folder-abc'],
     'update_organizer_registry.php' => ['folders' => '[]'],

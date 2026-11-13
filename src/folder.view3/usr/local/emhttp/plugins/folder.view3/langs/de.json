@@ -191,6 +191,7 @@
     "dashboard-settings-load-failed": "Die Dashboard-Einstellungen konnten nicht geladen werden, daher werden die Standardlayouts angezeigt. Lade die Seite neu.",
     "invalid-folder-export": "Diese Datei ist kein Ordnerexport.",
     "order-sync-failed": "Gespeichert, aber die Docker-Startreihenfolge konnte nicht aktualisiert werden: $1",
+    "import-order-failed": "Gespeichert, aber die Reihenfolge der Ordner konnte nicht gespeichert werden: $1",
     "reset-order-sync-failed": "Die Reihenfolge wurde zurückgesetzt, aber die Docker-Startreihenfolge konnte nicht aktualisiert werden: $1",
     "autostart-sync-failed": "Die Docker-Startreihenfolge konnte nicht aktualisiert werden: $1",
     "autostart-partly-applied": "Gespeichert, aber nicht alles konnte angewendet werden: $1",

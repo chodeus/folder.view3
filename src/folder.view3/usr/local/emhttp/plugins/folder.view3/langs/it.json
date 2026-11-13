@@ -191,6 +191,7 @@
     "dashboard-settings-load-failed": "Impossibile caricare le impostazioni della dashboard, quindi vengono mostrati i layout predefiniti. Ricarica la pagina.",
     "invalid-folder-export": "Questo file non è un'esportazione di cartelle.",
     "order-sync-failed": "Salvato, ma non è stato possibile aggiornare l'ordine di avvio di Docker: $1",
+    "import-order-failed": "Salvato, ma non è stato possibile salvare l'ordine delle cartelle: $1",
     "reset-order-sync-failed": "L'ordine è stato reimpostato, ma non è stato possibile aggiornare l'ordine di avvio di Docker: $1",
     "autostart-sync-failed": "Non è stato possibile aggiornare l'ordine di avvio di Docker: $1",
     "autostart-partly-applied": "Salvato, ma non è stato possibile applicare tutto: $1",

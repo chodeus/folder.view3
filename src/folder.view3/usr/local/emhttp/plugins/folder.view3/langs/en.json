@@ -191,6 +191,7 @@
     "dashboard-settings-load-failed": "Could not load Dashboard settings, so the default layouts are shown. Try refreshing the page.",
     "invalid-folder-export": "This file is not a folder export.",
     "order-sync-failed": "Saved, but the Docker start order could not be updated: $1",
+    "import-order-failed": "Saved, but the folders' order could not be saved: $1",
     "reset-order-sync-failed": "The order was reset, but the Docker start order could not be updated: $1",
     "autostart-sync-failed": "The Docker start order could not be updated: $1",
     "autostart-partly-applied": "Saved, but not everything could be applied: $1",

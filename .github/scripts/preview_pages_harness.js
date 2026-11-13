@@ -317,12 +317,15 @@ const done = () => { console.log(failed ? `\n${failed} FAILED` : '\nall passed')
 
 // The shipped PHP endpoints on a temp config folder, each request its own `php` process, for a test that sends on what a page
 // really posts: server(name, method, fields) gives the body it answers, `config` is the folder, cleanup() removes it all
-const phpServer = (label) => {
+// containers: the names Docker lists (none by default)
+const phpServer = (label, { containers = [] } = {}) => {
     const tmp = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), `fv3-${label}-`));
     const config = path.join(tmp, 'config');
+    const names = `json_decode(${JSON.stringify(JSON.stringify(containers))}, true)`;
     // lib.php requires these two Unraid host files at load time
     for (const [rel, src] of [['webGui/include/Helpers.php', '<?php'],
-        ['plugins/dynamix.docker.manager/include/DockerClient.php', '<?php class DockerClient { function getDockerContainers() { return []; } function getDockerJSON($url) { return []; } } class DockerUpdate {}']]) {
+        ['plugins/dynamix.docker.manager/include/DockerClient.php', `<?php class DockerClient { function getDockerContainers() { return array_map(fn($n) => ['Name' => $n], ${names}); }`
+            + ` function getDockerJSON($url) { return array_map(fn($n) => ['Names' => ["/$n"], 'Labels' => []], ${names}); } } class DockerUpdate {}`]]) {
         fs.mkdirSync(path.dirname(path.join(tmp, 'docroot', rel)), { recursive: true });
         fs.writeFileSync(path.join(tmp, 'docroot', rel), src);
     }
