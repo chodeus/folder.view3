@@ -215,6 +215,9 @@ $cases = [
         fv3_reorder_autostart(['a', 'b'], ['z']), ['a', 'b']],
     ['no userprefs.cfg reads as nothing saved', $prefsOf(null), []],
     ['userprefs.cfg values come back in file order', $prefsOf($userprefs(['b', 'folder-x', '010', 'a'])), ['b', 'folder-x', '010', 'a']],
+    ['userprefs.cfg values come back by the number before each =, as Unraid\'s page sorts them, whatever the line order',
+        $prefsOf("2=\"c\"\n0=\"a\"\n10=\"d\"\n1=\"b\"\n"), ['a', 'b', 'c', 'd']],
+    ['a userprefs.cfg holding a list line (n[]=) is not read as an order', $prefsOf("0=\"a\"\n1[]=\"b\"\n"), null],
     ['a userprefs.cfg cut off mid-line is not "nothing saved"', $prefsOf($cutOff), null],
     ['an empty userprefs.cfg reads as nothing saved', $prefsOf(''), []],
     ['read_unraid_order.php lists the fixture as the page test is fed it',
@@ -381,6 +384,8 @@ $cases[] = ['folder import, a saved order: the new folders go on top in the file
     $importOrder($keep, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'folder-n1', 'alpha', 'zed'])]];
 $cases[] = ['folder import, a saved order that already places one of them: that one keeps its place, an id with no folder is not written',
     $importOrder($userprefs(['alpha', 'folder-n1', 'zed']), ['n2', 'n1', 'ghost'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'alpha', 'folder-n1', 'zed'])]];
+$cases[] = ['folder import, a saved order holding a list line: said, and left as it was',
+    $importOrder("0=\"a\"\n1[]=\"b\"\n", ['n1'], ['a', 'b']), ['200', true, "Unraid's saved Docker order (userprefs.cfg) could not be read", "Unraid's saved Docker order (userprefs.cfg) could not be read", "0=\"a\"\n1[]=\"b\"\n"]];
 $cases[] = ['folder import, a saved order and a folder config that will not parse: said, and the order left as it was',
     $importOrder($keep, ['n1'], ['a', 'b'], '{'), ['200', true, 'the folder config could not be read', 'the folder config could not be read', $keep]];
 $cases[] = ['folder import, a saved order that will not parse: said, and left as it was',

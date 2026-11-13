@@ -401,8 +401,17 @@
         // server-side state, is idempotent, and inserts rather than removes — a
         // cross-site-triggered GET can only cause the same heal the next page load would.
         fv3_heal_user_prefs($type, $prefsFilePath);
-        $parsedIni = @parse_ini_file($prefsFilePath);
-        return json_encode(array_values($parsedIni ?: []));
+        $raw = @file_get_contents($prefsFilePath);
+        return json_encode(($raw === false ? null : fv3_parse_user_prefs($raw)) ?? []);
+    }
+
+    // userprefs.cfg's values in Unraid's order (by the number before each =, as its Docker page sorts them); null when the text
+    // will not parse or holds a value that is not a string (a `n[]=` line)
+    function fv3_parse_user_prefs(string $raw): ?array {
+        $parsed = @parse_ini_string($raw);
+        if (!is_array($parsed) || array_filter($parsed, fn($v) => !is_string($v))) return null;
+        uksort($parsed, fn($a, $b) => (int)$a <=> (int)$b);
+        return array_values($parsed);
     }
 
     // userprefs.cfg in the format Unraid writes it, one N="name" line per entry
@@ -475,10 +484,8 @@
         global $configDir;
         $raw = @file_get_contents($prefsFilePath);
         if (!is_string($raw) || $raw === '') return;
-        $parsed = @parse_ini_string($raw);
-        if (!is_array($parsed) || empty($parsed)) return;
-        uksort($parsed, function($a, $b) { return (int)$a <=> (int)$b; });
-        $current = array_values($parsed);
+        $current = fv3_parse_user_prefs($raw);
+        if (!$current) return;
 
         $config = fv3_read_json("$configDir/$type.json");
         if (empty($config)) return;
@@ -732,13 +739,13 @@
         return is_array($env) ? array_values(array_filter($env, 'is_string')) : null;
     }
 
-    // The values of Unraid's saved Docker order (userprefs.cfg): [] when there is none, null when the file will not parse
+    // The values of Unraid's saved Docker order (userprefs.cfg): [] when there is none, null when the file will not be read
     function fv3_docker_prefs(): ?array {
         global $fv3DockerManDir;
         $file = "$fv3DockerManDir/userprefs.cfg";
         if (!is_file($file)) { return []; }
-        $prefs = @parse_ini_file($file);
-        return $prefs === false ? null : array_values($prefs);
+        $raw = @file_get_contents($file);
+        return $raw === false ? null : fv3_parse_user_prefs($raw);
     }
 
     // Container names in the order read_unraid_order.php hands the page (readUnraidOrder): saved names in userprefs.cfg
@@ -849,13 +856,13 @@
         if (!$prefs) {
             $entries = [];
             foreach ($folderContainers as $placeholder => $_members) {
-                $entries[] = ['key' => $placeholder, 'name' => $membership['names'][$placeholder]];
+                // The page's last pass sorts the rows by the trimmed name it shows (docker.js createFolders)
+                $entries[] = ['key' => $placeholder, 'name' => fv3_js_trim($membership['names'][$placeholder])];
             }
             foreach ($allContainerNames as $name) {
                 if (!in_array($name, $assigned, true)) { $entries[] = ['key' => $name, 'name' => $name]; }
             }
-            // The page's last pass sorts the rows by the trimmed name it shows (docker.js createFolders)
-            usort($entries, function($a, $b) { return fv3_name_cmp(fv3_js_trim($a['name']), fv3_js_trim($b['name'])); });
+            usort($entries, function($a, $b) { return fv3_name_cmp($a['name'], $b['name']); });
             $prefs = array_column($entries, 'key');
         }
         $placed = [];
@@ -1016,13 +1023,11 @@
         $read = fn() => is_file($file) ? @file_get_contents($file) : '';
         for ($try = 0; $try < 3; $try++) {
             $raw = $read();
-            $parsed = $raw === false ? false : @parse_ini_string($raw);
-            if ($parsed === false) return "Unraid's saved Docker order (userprefs.cfg) could not be read";
-            if (!$parsed) return fv3_create_docker_order($first);
+            $current = $raw === false ? null : fv3_parse_user_prefs($raw);
+            if ($current === null) return "Unraid's saved Docker order (userprefs.cfg) could not be read";
+            if (!$current) return fv3_create_docker_order($first);
             $folders = fv3_read_json_strict("$configDir/docker.json");
             if ($folders === null) return 'the folder config could not be read';
-            uksort($parsed, fn($a, $b) => (int)$a <=> (int)$b);
-            $current = array_values($parsed);
             $new = array_values(array_unique(array_filter($first, fn($e) => is_string($e) && str_starts_with($e, 'folder-')
                 && array_key_exists(substr($e, 7), $folders) && !in_array($e, $current, true))));
             if (!$new) return null;
