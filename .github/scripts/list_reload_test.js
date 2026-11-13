@@ -1,4 +1,4 @@
-// node .github/scripts/list_reload_test.js — list reloads that overlap on the Docker and VMs pages: every list Unraid renders
+// node .github/scripts/list_reload_test.js — list reloads that overlap on the Docker, VMs and Dashboard pages: every list Unraid renders
 // gets its folders, once, from the newest folder data (npm ci in this folder first)
 'use strict';
 const { makePage, drawDocker, check, done } = require('./preview_pages_harness.js');
@@ -92,7 +92,118 @@ const vms = async ({ hold = false, empty = false } = {}) => {
     };
 };
 
+// The Dashboard with Unraid's own list request sent through jQuery's ajax (the page draws from that request): land(i) lands
+// list i. The server holds one container in one folder; `hold` keeps the read.php answers for the test
+const DASH_LIST = '/webGui/include/DashboardApps.php';
+const DASH_FOLDERS = { apps: { name: 'Apps', icon: '', regex: '', containers: ['web'], settings: {}, hidden_preview: [], actions: [] } };
+// Unraid's Docker tile row (DashboardApps.php), cut to what dashboard.js reads
+const dashRow = (n) => `<tr class="updated" data-list="${n}"><td><span class="outer solid apps started"><span id="aaaaaaaaaaaa" class="hand"><img class="img" src=""></span>` +
+    '<span class="inner"><span>web</span><br><i class="fa fa-play started green-text"></i><span class="state">started</span></span></span></td></tr>';
+const dashboard = async ({ hold = false, empty = false } = {}) => {
+    const info = {};
+    const p = await makePage({ page: 'dashboard', api: false, answers: {
+        'read.php': () => JSON.stringify(DASH_FOLDERS), 'read_order.php': () => '[]', 'read_unraid_order.php': () => JSON.stringify(['web']),
+        'read_info.php': () => JSON.stringify(info), 'docker_load.php': () => '',
+    } });
+    info.web = p.ct('aaaaaaaaaaaa', 'web');
+    const sent = [];
+    p.w.XMLHttpRequest = class {
+        open(method, url) { this.url = url; }
+        setRequestHeader() {}
+        getAllResponseHeaders() { return 'Content-Type: text/html\r\n'; }
+        send() { sent.push(this); }
+        abort() {}
+    };
+    let rendered = 0;
+    p.w.loadlist_original = () => p.realAjax({ url: DASH_LIST, type: 'POST', data: { docker: 'yes' }, success: () => {
+        p.$('#docker_view tr.updated').remove();
+        if (!empty) p.$('#docker_view').append(dashRow(++rendered));
+    } });
+    const reads = [];
+    const get = p.$.get;
+    p.$.get = (url) => {
+        if (!hold || !url.includes('read.php')) return get(url);
+        const d = p.$.Deferred();
+        reads.push(d);
+        return d;
+    };
+    // Each draw, by the list it was made on
+    const draws = [];
+    p.w.folderEvents.addEventListener('docker-post-folders-creation', () => draws.push(`list ${p.$('#docker_view tr.updated').attr('data-list') || '-'}`));
+    // The folder tiles on the page with the containers drawn into each, as `id:name,name`
+    const folders = () => p.$('#docker_view .folder-showcase-outer').toArray().map((el) => `${el.className.match(/folder-showcase-outer-(\S+)/)[1]}:` +
+        p.$(el).find('div.folder-storage span.inner').toArray().map((inner) => p.$(inner).contents().first().text().trim()).join()).join(' ');
+    return {
+        p, draws, folders, sent,
+        reload: () => p.g('loadlist()'),
+        land: (i) => { if (sent[i]) { Object.assign(sent[i], { status: 200, statusText: 'OK', responseText: 'rows', readyState: 4 }); sent[i].onload(); } },
+        answer: async (i, set) => {
+            if (!reads[i]) return;
+            if (set instanceof Error) reads[i].reject({ status: 500 }); else reads[i].resolve(JSON.parse(JSON.stringify(set)));
+            await p.tick(300);
+        },
+    };
+};
+
 (async () => {
+    {
+        const t = await dashboard();
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        check('Dashboard, one reload: the folder tile is drawn with its container', t.folders() === 'apps:web' && t.draws.join() === 'list 1', { folders: t.folders(), draws: t.draws });
+        check('Dashboard, one reload: no page errors', t.p.errors.length === 0, t.p.errors);
+    }
+    {
+        // The case seen on a live server: the second list lands after the first draw, and its draw gets the same answers
+        const t = await dashboard();
+        t.reload();
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        const first = t.folders();
+        t.land(1);
+        await t.p.tick(300);
+        check('Dashboard, two reloads at once: the first list is drawn', first === 'apps:web', first);
+        check('Dashboard, two reloads at once: the second list has the folder tile too', t.folders() === 'apps:web' && t.draws.join() === 'list 1,list 2', { folders: t.folders(), draws: t.draws });
+    }
+    {
+        const t = await dashboard();
+        t.reload();
+        t.reload();
+        t.land(0);
+        t.land(1);
+        await t.p.tick(300);
+        check('Dashboard, both lists land together: drawn once, one tile', t.folders() === 'apps:web' && t.draws.join() === 'list 2', { folders: t.folders(), draws: t.draws });
+    }
+    {
+        const t = await dashboard({ hold: true });
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        t.reload();
+        t.land(1);
+        await t.p.tick(300);
+        await t.answer(0, {});
+        const bare = t.folders();
+        await t.answer(1, DASH_FOLDERS);
+        const asked = t.sent.length;
+        t.land(2);
+        await t.p.tick(300);
+        await t.answer(2, DASH_FOLDERS);
+        check('Dashboard, a list drawn from older folder data: loaded again, then it has its tile', bare === '' && asked === 3 && t.folders() === 'apps:web'
+            && record(t).map((d) => d.outcome).join() === 'running,drawn,refresh,drawn', { bare, asked, folders: t.folders(), log: record(t).map((d) => d.outcome) });
+    }
+    {
+        const t = await dashboard({ empty: true });
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        t.reload();
+        t.land(1);
+        await t.p.tick(300);
+        check('Dashboard, an empty Docker tile: each reload is drawn', t.draws.length === 2 && record(t).map((d) => d.outcome).join() === 'drawn,drawn', { draws: t.draws.length, log: record(t).map((d) => d.outcome) });
+    }
     {
         const t = await docker();
         t.reload();

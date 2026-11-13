@@ -1,5 +1,4 @@
 // Global variables
-let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
@@ -25,6 +24,7 @@ let folderReq = {
     docker: [],
     vm: []
 };
+const fv3Folders = { docker: fv3FolderData(), vm: fv3FolderData() };
 
 // Builds all docker and vm folders on the dashboard
 const createFolders = async () => {
@@ -33,7 +33,7 @@ const createFolders = async () => {
 
     if($('tbody#docker_view').length > 0) { try {
 
-        let prom = await Promise.all(folderReq.docker);
+        let prom = await fv3Folders.docker.answers();
         let folders = fv3SafeParseWithRecovery(prom[0], 'docker-folders', {});
         const unraidOrder = fv3SafeParse(prom[1], []);
         const containersInfo = fv3SafeParse(prom[2], {});
@@ -148,7 +148,7 @@ const createFolders = async () => {
 
     if($('tbody#vm_view').length > 0) { try {
 
-        const prom = await Promise.all(folderReq.vm);
+        const prom = await fv3Folders.vm.answers();
         let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
         const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
         const vmInfo = fv3SafeParse(prom[2], {});
@@ -1788,62 +1788,63 @@ const fv3FullwidthExpand = (id, type) => {
     }
 };
 
+// Draws each list Unraid renders once (fv3ListDrawer): a reload replaces the tr.updated rows of both tiles
+const fv3DrawList = fv3ListDrawer('tbody#docker_view > tr.updated, tbody#vm_view > tr.updated', async () => {
+    await fv3SettingsReq;
+    await createFolders();
+    applyDashboardLayouts();
+    requestAnimationFrame(() => { requestAnimationFrame(() => {
+        if (dockerDashboardLayout === 'fullwidth') {
+            $('tbody#docker_view .folder-showcase').css('display', 'none');
+            $('tbody#docker_view .folder-showcase-outer[expanded="true"]').each(function() {
+                const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+                if (id) fv3FullwidthExpand(id, 'docker');
+            });
+            $('tbody#docker_view .folder-showcase').css('display', '');
+            $('tbody#docker_view .fv3-fullwidth-panel').css('display', '');
+        }
+        if (vmDashboardLayout === 'fullwidth') {
+            $('tbody#vm_view .folder-showcase').css('display', 'none');
+            $('tbody#vm_view .folder-showcase-outer[expanded="true"]').each(function() {
+                const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
+                if (id) fv3FullwidthExpand(id, 'vm');
+            });
+            $('tbody#vm_view .folder-showcase').css('display', '');
+            $('tbody#vm_view .fv3-fullwidth-panel').css('display', '');
+        }
+        fv3LayoutReady = true;
+    }); });
+    $('div.spinner.fixed').hide();
+}, (e) => {
+    console.error('[FV3] Dashboard createFolders failed:', e);
+    $('div.spinner.fixed').hide();
+}, { behind: () => fv3Folders.docker.behind() || fv3Folders.vm.behind() });
+
 // Unraid dashboard patches — inject folder rendering after containers/VMs render
 window.loadlist_original = window.loadlist;
 window.loadlist = (x) => {
-    loadedFolder = false;
+    fv3DrawList.reload();
     if($('tbody#docker_view').length > 0) {
-        folderReq.docker = [
+        folderReq.docker = fv3Folders.docker.ask(() => [
             $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('docker-folders-load-failed', 'Could not load Docker folder data. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
             $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
             fv3CheckUpdates()
-        ];
+        ]);
     }
 
     if($('tbody#vm_view').length > 0) {
-        folderReq.vm = [
+        folderReq.vm = fv3Folders.vm.ask(() => [
             $.get('/plugins/folder.view3/server/read.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-folders-load-failed', 'Could not load VM folder data. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
             $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error'); }).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
-        ];
+        ]);
     }
     if (typeof window.loadlist_original === 'function') { loadlist_original(x); }
 };
 
 $.ajaxPrefilter((options, originalOptions, jqXHR) => {
-    if (options.url === "/webGui/include/DashboardApps.php" && !loadedFolder) {
-        jqXHR.promise().then(async () => {
-            await fv3SettingsReq;
-            loadedFolder = true;
-            try { await createFolders(); }
-            catch (e) { console.error('[FV3] Dashboard createFolders failed:', e); loadedFolder = false; $('div.spinner.fixed').hide(); return; }
-            applyDashboardLayouts();
-            requestAnimationFrame(() => { requestAnimationFrame(() => {
-                if (dockerDashboardLayout === 'fullwidth') {
-                    $('tbody#docker_view .folder-showcase').css('display', 'none');
-                    $('tbody#docker_view .folder-showcase-outer[expanded="true"]').each(function() {
-                        const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
-                        if (id) fv3FullwidthExpand(id, 'docker');
-                    });
-                    $('tbody#docker_view .folder-showcase').css('display', '');
-                    $('tbody#docker_view .fv3-fullwidth-panel').css('display', '');
-                }
-                if (vmDashboardLayout === 'fullwidth') {
-                    $('tbody#vm_view .folder-showcase').css('display', 'none');
-                    $('tbody#vm_view .folder-showcase-outer[expanded="true"]').each(function() {
-                        const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
-                        if (id) fv3FullwidthExpand(id, 'vm');
-                    });
-                    $('tbody#vm_view .folder-showcase').css('display', '');
-                    $('tbody#vm_view .fv3-fullwidth-panel').css('display', '');
-                }
-                fv3LayoutReady = true;
-            }); });
-            $('div.spinner.fixed').hide();
-            loadedFolder = true
-        });
-    }
+    if (options.url === "/webGui/include/DashboardApps.php") jqXHR.promise().then(fv3DrawList);
 });
