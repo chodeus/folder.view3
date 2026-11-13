@@ -764,6 +764,7 @@ const fv3DrawList = fv3ListDrawer('#kvm_list > tr', async () => {
 // Unraid loadlist patch — inject folder rendering after VMs render
 window.loadlist_original = window.loadlist;
 window.loadlist = (x) => {
+    fv3DrawList.reload();
     folderReq = fv3Folders.ask((ifLast) => {
         const failed = (key, text) => ifLast(() => fv3ShowBanner(fv3I18nOr(key, text), 'error'));
         return [

@@ -10,8 +10,8 @@ const FOLDERS = { f: folder('F', ['m']), g: folder('G', ['x']) };
 
 // The Docker page with Unraid's side of a reload held by the test: land(i) renders list i and calls listview(), as Unraid's
 // loadlist callback does. read.php answers are held too when `hold` is set: answer(i, folders) gives request i its answer
-const docker = async ({ hold = false } = {}) => {
-    const page = await drawDocker({ folders: FOLDERS, containers: ['a', 'm', 'x'], prefs: ['folder-f', 'm', 'folder-g', 'x', 'a'] });
+const docker = async ({ hold = false, setup = { folders: FOLDERS, containers: ['a', 'm', 'x'], prefs: ['folder-f', 'm', 'folder-g', 'x', 'a'] } } = {}) => {
+    const page = await drawDocker(setup);
     const { p } = page;
     const lists = [];
     p.w.loadlist_original = () => { lists.push(() => { page.render(); p.g('listview()'); }); };
@@ -76,7 +76,11 @@ const vms = async ({ hold = false } = {}) => {
         p, draws, used, sent,
         reload: () => p.g('loadlist()'),
         land: (i) => { Object.assign(sent[i], { status: 200, statusText: 'OK', responseText: 'rows', readyState: 4 }); sent[i].onload(); },
-        answer: async (i, set) => { if (reads[i]) reads[i].resolve(JSON.parse(JSON.stringify(set))); await p.tick(300); },
+        answer: async (i, set) => {
+            if (!reads[i]) return;
+            if (set instanceof Error) reads[i].reject({ status: 500 }); else reads[i].resolve(JSON.parse(JSON.stringify(set)));
+            await p.tick(300);
+        },
     };
 };
 
@@ -110,7 +114,7 @@ const vms = async ({ hold = false } = {}) => {
         check('Docker, lists land before the folder data: drawn once, each folder once', t.folders() === 'f,g' && t.draws.length === 1, { folders: t.folders(), draws: t.draws.length });
         const log = record(t).map((d) => `${d.outcome} ${d.rows}/${d.folders}`).join();
         check('Docker, lists land before the folder data: the draw record names the list that waited and the draw', log === 'running 3/0,drawn 3/2', log);
-        check('Docker, lists land before the folder data: the record is in the debug download', t.p.w.fv3CollectEnv().listDraws.length === 2, t.p.w.fv3CollectEnv().listDraws);
+        check('Docker, lists land before the folder data: the record is in the debug download', (t.p.w.fv3CollectEnv().listDraws || []).length === 2, t.p.w.fv3CollectEnv().listDraws);
     }
     {
         // Unraid's Advanced View switch calls listview() with no new list: a reload in flight must not make that a draw
@@ -188,6 +192,60 @@ const vms = async ({ hold = false } = {}) => {
         const early = t.used.length;
         await t.answer(0, { old: vmFolder, gone: vmFolder });
         check('VMs, a newer answer is in first: the draw waits for its own batch and uses the newer one', early === 0 && t.used.join('|') === 'old', { early, used: t.used });
+    }
+    {
+        // A list lands while a draw waits for folder data that then fails: that list is drawn from its own answer, not left bare
+        const t = await docker({ hold: true });
+        t.reload();
+        await t.land(0);
+        t.reload();
+        await t.land(1);
+        await t.answer(0, new Error('500'));
+        await t.answer(1, FOLDERS);
+        const log = record(t).map((d) => d.outcome).join();
+        check('Docker, a list lands during a draw that fails: it gets its folders', t.folders() === 'f,g' && log === 'running,failed,drawn', { folders: t.folders(), log });
+        t.p.g('listview()');
+        await t.p.tick(300);
+        check('Docker, a list lands during a draw that fails: a view switch then keeps it', record(t).map((d) => d.outcome).join() === 'running,failed,drawn,kept', record(t));
+
+        // The same when its own answer fails too: Unraid's list with the banner, and the record does not call it kept
+        const b = await docker({ hold: true });
+        b.reload();
+        await b.land(0);
+        b.reload();
+        await b.land(1);
+        await b.answer(0, new Error('500'));
+        await b.answer(1, new Error('500'));
+        b.p.g('listview()');
+        await b.p.tick(300);
+        const outcomes = record(b).map((d) => d.outcome);
+        check('Docker, both answers fail: one banner, and no line of the record says kept', b.folders() === '' && !outcomes.includes('kept')
+            && b.p.errors.filter((e) => /Banner: Could not load folder data/.test(e)).length === 1, { outcomes, errors: b.p.errors });
+    }
+    {
+        const t = await vms({ hold: true });
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        t.reload();
+        t.land(1);
+        await t.p.tick(300);
+        await t.answer(0, new Error('500'));
+        await t.answer(1, {});
+        check('VMs, a list lands during a draw that fails: it is drawn from its own answer', t.draws.join() === 'vm 2'
+            && record(t).map((d) => d.outcome).join() === 'running,failed,drawn', { draws: t.draws, log: record(t) });
+    }
+    {
+        // No containers and no folders: the list has no rows at all, and a view switch must not draw it again
+        const t = await docker({ setup: { folders: {}, containers: [], prefs: [] } });
+        t.reload();
+        await t.land(0);
+        t.p.g('listview()');
+        await t.p.tick(300);
+        check('Docker, an empty list: drawn once, kept on a view switch', t.draws.length === 1 && record(t).map((d) => d.outcome).join() === 'drawn,kept', { draws: t.draws.length, log: record(t) });
+        t.reload();
+        await t.land(1);
+        check('Docker, an empty list: a reload draws again', t.draws.length === 2, t.draws.length);
     }
     {
         const t = await docker();

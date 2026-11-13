@@ -219,7 +219,7 @@ window.fv3RecordFailure = function(method, url, status, statusText, body) {
     } catch (_) {}
 };
 // Always-active record of what became of each list a page was asked to draw into folders, for the debug download:
-// drawn | failed | running (a draw was under way and takes this list) | kept (already drawn, e.g. a view switch)
+// drawn | failed | running (a draw was under way: it takes this list, or the list is drawn after it) | kept (already drawn)
 window.FV3_DRAW_MAX = 30;
 window.fv3DrawLog = [];
 window.fv3RecordDraw = function(list, outcome, rows, folders) {

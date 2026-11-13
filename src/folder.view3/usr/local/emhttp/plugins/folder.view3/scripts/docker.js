@@ -1145,6 +1145,7 @@ window.loadlist = () => {
     fv3Debug('Patched loadlist', 'Entry.');
 
     fv3OrganizerSyncDone = false;
+    fv3DrawList.reload();
     folderReq = fv3Folders.ask((ifLast) => {
         const failed = (key, text) => ifLast(() => fv3ShowBanner(fv3I18nOr(key, text), 'error'));
         return [

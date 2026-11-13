@@ -92,18 +92,33 @@ window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
 // One draw per list Unraid renders, one at a time: `rows` selects the rows Unraid replaces on a reload
 window.fv3ListDrawer = (rows, draw, onFail) => {
     let drawn = new WeakSet();
+    let sinceReload = false;
     let running = false;
+    let landed = false;
     // Every call leaves a line in fv3DrawLog, so a report of missing folders shows what became of each list
     const note = (outcome) => fv3RecordDraw(rows, outcome, $(rows).length, $(rows).filter('.folder').length);
-    return () => {
-        if (running) return note('running');
-        if ($(rows).toArray().some((row) => drawn.has(row))) return note('kept');
+    const run = () => {
+        if (running) { landed = true; return note('running'); }
+        const list = $(rows).toArray();
+        if (list.length ? list.some((row) => drawn.has(row)) : sinceReload) return note('kept');
         running = true;
-        new Promise((resolve) => resolve(draw())).then(() => note('drawn'), (e) => { note('failed'); onFail(e); }).finally(() => {
+        landed = false;
+        new Promise((resolve) => resolve(draw())).then(() => {
+            note('drawn');
             drawn = new WeakSet($(rows).toArray());
+            sinceReload = true;
             running = false;
+        }, (e) => {
+            note('failed');
+            running = false;
+            onFail(e);
+            // Only drawn rows are remembered. A list that landed during the failed draw is drawn from its own answers
+            if (landed) run();
         });
     };
+    // An empty list has no rows to tell a new one by, so the page says when a reload begins
+    run.reload = () => { sinceReload = false; };
+    return run;
 };
 
 // Folder data for a page's draws. ask() takes each reload's requests; answers() waits for the batch asked last and
