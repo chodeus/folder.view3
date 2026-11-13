@@ -14,7 +14,7 @@ let fv3VmShowLabel = false;
 let fv3AnimationEnabled = false;
 let fv3DashboardUpdateContainer = false;
 let fv3DashboardUpdateFolder = false;
-// Per tile: false from the start of a draw to its panel pass, so opened folders get full-width panels after the draw
+// Per tile: false from the start of a draw to its panel pass or failure, so opened folders get full-width panels after it
 const fv3LayoutReady = { docker: false, vm: false };
 // Draws started per tile: a draw's panel pass stands down once a newer draw has started
 const fv3TileDraws = { docker: 0, vm: 0 };
