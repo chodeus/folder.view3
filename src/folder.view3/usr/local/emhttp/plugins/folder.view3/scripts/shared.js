@@ -89,8 +89,8 @@ window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
     return newOnes;
 };
 
-// One draw per list Unraid renders, one at a time: `rows` selects the rows Unraid replaces on a reload, `data` is
-// the page's fv3FolderData
+// Draws each list Unraid renders into folders, one draw at a time; only a list whose draw failed is drawn again.
+// `rows` selects the rows Unraid replaces on a reload, `data` is the page's fv3FolderData
 window.fv3ListDrawer = (rows, draw, onFail, data) => {
     let drawn = new WeakSet();
     let sinceReload = false;
