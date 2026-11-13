@@ -1816,7 +1816,8 @@ const fv3TileDrawer = (type) => fv3ListDrawer(`tbody#${type}_view > tr.updated`,
         if (at !== fv3TileDraws[type]) return;
         if ((type === 'docker' ? dockerDashboardLayout : vmDashboardLayout) === 'fullwidth') {
             $(`tbody#${type}_view .folder-showcase`).css('display', 'none');
-            $(`tbody#${type}_view .folder-showcase-outer[expanded="true"]`).each(function() {
+            // A folder hidden by "hide stopped" gets its panel from the reflow when it is shown again
+            $(`tbody#${type}_view .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).each(function() {
                 const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
                 if (id) fv3FullwidthExpand(id, type);
             });

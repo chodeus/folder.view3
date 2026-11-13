@@ -7,16 +7,17 @@ const DASH_LIST = '/webGui/include/DashboardApps.php';
 const DOCKER_FOLDERS = { apps: { name: 'Apps', icon: '', regex: '', containers: ['web'], settings: {}, hidden_preview: [], actions: [] } };
 const VM_FOLDERS = { lab: { name: 'Lab', icon: '', regex: '', containers: ['vm1'], settings: {}, hidden_preview: [], actions: [] } };
 // Unraid's tile rows (DashboardApps.php), cut to what dashboard.js reads
-const dockerRow = (n) => `<tr class="updated" data-list="${n}"><td><span class="outer solid apps started"><span id="aaaaaaaaaaaa" class="hand"><img class="img" src=""></span>` +
-    '<span class="inner"><span>web</span><br><i class="fa fa-play started green-text"></i><span class="state">started</span></span></span></td></tr>';
+const dockerRow = (n, state = 'started') => `<tr class="updated" data-list="${n}"><td><span class="outer solid apps ${state}"><span id="aaaaaaaaaaaa" class="hand"><img class="img" src=""></span>` +
+    `<span class="inner"><span>web</span><br><i class="fa ${state === 'started' ? 'fa-play started green-text' : 'fa-square stopped red-text'}"></i><span class="state">${state}</span></span></span></td></tr>`;
 const vmRow = (n) => `<tr class="updated" data-list="${n}"><td><span class="outer solid vms stopped"><span id="vm-u1" class="hand"><img class="img" src=""></span>` +
     '<span class="inner">vm1<br><i class="fa fa-square stopped red-text"></i><span class="state">stopped</span></span></span></td></tr>';
 
 // The Dashboard with the tiles asked for. Unraid's list request goes through jQuery's own ajax and land(i) answers request i; the
 // read.php answers of each type are held until answer(type, i, folders | Error)
 // debug: FV3's debug mode on; failingDebugOrder: the type whose debug-mode read_unraid_order.php request fails (the reload's own
-// read of that URL comes first and succeeds); layout: both tiles' Dashboard layout. Animation frames run on the harness clock
-const dashboard = async ({ docker = true, vms = true, debug = false, failingDebugOrder = null, layout = 'classic' } = {}) => {
+// read of that URL comes first and succeeds); layout: both tiles' Dashboard layout; hideStopped: Unraid's "hide stopped" box is ticked
+// and the container is stopped. Animation frames run on the harness clock
+const dashboard = async ({ docker = true, vms = true, debug = false, failingDebugOrder = null, layout = 'classic', hideStopped = false } = {}) => {
     const info = {};
     const p = await makePage({ page: 'dashboard', api: false, answers: {
         'read_order.php': () => '[]', 'read_unraid_order.php': (url) => JSON.stringify(['web']), 'docker_load.php': () => '',
@@ -31,6 +32,10 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingDebu
     ['docker', 'vm'].forEach((type) => p.w.folderEvents.addEventListener(`${type}-post-folder-expansion`, () => opened[type].push(p.$(`#${type}_view .fv3-fullwidth-panel`).length)));
     p.w.FV3_DEBUG = debug;
     info.web = p.ct('aaaaaaaaaaaa', 'web');
+    if (hideStopped) {
+        info.web.info.State.Running = false;
+        p.$('body').append('<input id="apps" type="checkbox" checked>');
+    }
     if (!docker) p.$('tbody#docker_view').remove();
     if (vms) p.$('div.Dashboard table').append('<tbody id="vm_view"></tbody>');
     const sent = [];
@@ -47,7 +52,7 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingDebu
         rendered++;
         p.$('#docker_view tr.updated').remove();
         p.$('#vm_view tr.updated').remove();
-        p.$('#docker_view').append(dockerRow(rendered));
+        p.$('#docker_view').append(dockerRow(rendered, hideStopped ? 'stopped' : 'started'));
         p.$('#vm_view').append(vmRow(rendered));
     } });
     const reads = { docker: [], vm: [] };
@@ -84,6 +89,8 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingDebu
         opened: (type) => opened[type].join(),
         panels: (type) => p.$(`#${type}_view .fv3-fullwidth-panel`).length,
         laidOut: (type) => p.$(`#${type}_view > tr.updated > td`).hasClass(`fv3-layout-${layout}`),
+        hidden: (type) => p.$(`#${type}_view .folder-showcase-outer`).hasClass('fv3-hidden'),
+        shownPanels: (type) => p.$(`#${type}_view .fv3-fullwidth-panel`).toArray().filter((el) => el.style.display !== 'none').length,
         reload: () => p.g('loadlist()'),
         land: async (i) => { if (sent[i]) { Object.assign(sent[i], { status: 200, statusText: 'OK', responseText: 'rows', readyState: 4 }); sent[i].onload(); } await p.tick(300); },
         // wait: how far the clock moves after the answer (0 holds the next animation frames)
@@ -298,6 +305,25 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingDebu
         await u.answer('docker', 0, DOCKER_FOLDERS);
         u.p.g("expandFolderDocker('apps')");
         check('Dashboard full-width, a folder the user opens after the draw: its panel is placed at once', u.opened('docker') === '1', { opened: u.opened('docker') });
+
+        // "Hide stopped" ticked and an opened folder whose container is stopped: the folder is hidden, and so is its panel
+        const h = await dashboard({ layout: 'fullwidth', hideStopped: true });
+        h.reload();
+        await h.land(0);
+        await h.answer('docker', 0, open(DOCKER_FOLDERS));
+        const first = h.shownPanels('docker');
+        h.reload();
+        await h.land(1);
+        await h.answer('docker', 1, open(DOCKER_FOLDERS));
+        check('Dashboard full-width, "hide stopped" and an opened folder of stopped containers: no panel shows for it, also after a reload', h.hidden('docker')
+            && first === 0 && h.shownPanels('docker') === 0, { hidden: h.hidden('docker'), first, shown: h.shownPanels('docker') });
+        // Unticked: the page's resize observer reflows the tile when it reconnects (the harness has no layout, so the test calls it)
+        h.p.$('input#apps').prop('checked', false).trigger('change');
+        await h.p.tick(100);
+        h.p.g('fv3FullwidthReflow()');
+        await h.p.tick(100);
+        check('Dashboard full-width, "hide stopped" unticked again: the folder shows, with its panel', !h.hidden('docker') && h.shownPanels('docker') === 1,
+            { hidden: h.hidden('docker'), shown: h.shownPanels('docker') });
 
         // A newer list lands before the older draw's panel pass runs: that pass leaves the newer tile to its own draw
         const n = await dashboard({ layout: 'fullwidth' });
