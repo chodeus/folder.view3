@@ -1716,6 +1716,8 @@ const fv3UpdateHidden = () => {
         const isStopped = $(this).hasClass('stopped');
         $(this).toggle(!(vmChecked && isStopped));
     });
+    // An opened folder shown again on a full-width tile gets its panel now (the reflow skips hidden folders)
+    fv3FullwidthReflowSync();
 };
 
 const fv3AutoWidthTiles = () => {
@@ -1762,7 +1764,8 @@ const fv3FullwidthExpand = (id, type) => {
     const showcase = outer.find('.folder-showcase');
     const expanded = outer.attr('expanded') === 'true';
 
-    if (expanded && showcase.children().length > 0) {
+    // A folder hidden by "hide stopped" gets no panel until it is shown again (see fv3UpdateHidden)
+    if (expanded && showcase.children().length > 0 && !outer.hasClass('fv3-hidden')) {
         showcase.css('display', 'none');
         const parentTd = $(`tbody#${tbody} > tr.updated > td`);
         const folderTile = outer.children('span.outer').first()[0];
@@ -1816,8 +1819,7 @@ const fv3TileDrawer = (type) => fv3ListDrawer(`tbody#${type}_view > tr.updated`,
         if (at !== fv3TileDraws[type]) return;
         if ((type === 'docker' ? dockerDashboardLayout : vmDashboardLayout) === 'fullwidth') {
             $(`tbody#${type}_view .folder-showcase`).css('display', 'none');
-            // A folder hidden by "hide stopped" gets its panel from the reflow when it is shown again
-            $(`tbody#${type}_view .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).each(function() {
+            $(`tbody#${type}_view .folder-showcase-outer[expanded="true"]`).each(function() {
                 const id = ($(this).attr('class') || '').match(/folder-showcase-outer-(\S+)/)?.[1];
                 if (id) fv3FullwidthExpand(id, type);
             });
