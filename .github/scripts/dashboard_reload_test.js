@@ -14,12 +14,15 @@ const vmRow = (n) => `<tr class="updated" data-list="${n}"><td><span class="oute
 
 // The Dashboard with the tiles asked for. Unraid's list request goes through jQuery's own ajax and land(i) answers request i; the
 // read.php answers of each type are held until answer(type, i, folders | Error)
-const dashboard = async ({ docker = true, vms = true } = {}) => {
+// debug: FV3's debug mode on; failingOrder: the type whose read_unraid_order.php request fails
+const dashboard = async ({ docker = true, vms = true, debug = false, failingOrder = null } = {}) => {
     const info = {};
     const p = await makePage({ page: 'dashboard', api: false, answers: {
         'read_order.php': () => '[]', 'read_unraid_order.php': (url) => JSON.stringify(['web']), 'docker_load.php': () => '',
-        'read_info.php': () => JSON.stringify(info),
+        'read_info.php': () => JSON.stringify(info), 'version.php': () => '2026.11.13.1',
+        'list_themes.php': () => '[]', 'read_css_config.php': () => '{}',
     } });
+    p.w.FV3_DEBUG = debug;
     info.web = p.ct('aaaaaaaaaaaa', 'web');
     if (!docker) p.$('tbody#docker_view').remove();
     if (vms) p.$('div.Dashboard table').append('<tbody id="vm_view"></tbody>');
@@ -41,14 +44,18 @@ const dashboard = async ({ docker = true, vms = true } = {}) => {
         p.$('#vm_view').append(vmRow(rendered));
     } });
     const reads = { docker: [], vm: [] };
+    // Every URL the page asked for, in order
+    const urls = [];
     const get = p.$.get;
     p.$.get = (url) => {
+        urls.push(url);
         const read = url.match(/\/read\.php\?type=(docker|vm)/);
         if (read) {
             const d = p.$.Deferred();
             reads[read[1]].push(d);
             return d;
         }
+        if (failingOrder && url.includes(`read_unraid_order.php?type=${failingOrder}`)) return p.$.Deferred().reject({ status: 500, statusText: 'error' });
         if (url.includes('read_info.php?type=vm')) return p.$.Deferred().resolve({ vm1: { uuid: 'u1', state: 'shutoff', autostart: false } });
         if (url.includes('read_unraid_order.php?type=vm')) return p.$.Deferred().resolve(['vm1']);
         return get(url);
@@ -57,7 +64,7 @@ const dashboard = async ({ docker = true, vms = true } = {}) => {
     const tiles = (tbody) => p.$(`#${tbody} .folder-showcase-outer`).toArray().map((el) => `${el.className.match(/folder-showcase-outer-(\S+)/)[1]}:` +
         p.$(el).find('div.folder-storage span.inner').toArray().map((inner) => p.$(inner).contents().first().text().trim()).join()).join(' ');
     return {
-        p, sent,
+        p, sent, urls,
         docker: () => tiles('docker_view'),
         vms: () => tiles('vm_view'),
         list: () => p.$('#docker_view tr.updated, #vm_view tr.updated').first().attr('data-list'),
@@ -173,6 +180,30 @@ const dashboard = async ({ docker = true, vms = true } = {}) => {
         await n.answer('docker', 1, new Error('500'));
         await n.answer('vm', 1, new Error('500'));
         check('both tiles, both newer requests fail: no extra load', n.sent.length === 2 && !/refresh/.test(n.log()), { sent: n.sent.length, log: n.log() });
+    }
+    {
+        // Debug mode: a debug read that fails for one tile must not cost the other tile its folders
+        const t = await dashboard({ debug: true, failingOrder: 'vm' });
+        t.reload();
+        await t.land(0);
+        await t.answer('docker', 0, DOCKER_FOLDERS);
+        await t.answer('vm', 0, VM_FOLDERS);
+        check('debug mode, the VM tile\'s debug read fails: the Docker tile still has its folder', t.docker() === 'apps:web', { docker: t.docker(), errors: t.p.errors });
+        check('debug mode, the VM tile\'s debug read fails: the Docker debug payload is stored', !!(t.p.w.fv3DebugPayloads || {})['DASHBOARD-DOCKER'], Object.keys(t.p.w.fv3DebugPayloads || {}));
+        const d = await dashboard({ debug: true, vms: false, failingOrder: 'vm' });
+        d.reload();
+        await d.land(0);
+        await d.answer('docker', 0, DOCKER_FOLDERS);
+        check('debug mode, Docker tile only: no VM debug read is made and the tile has its folder', d.docker() === 'apps:web' && d.p.errors.length === 0
+            && !d.urls.some((url) => url.includes('type=vm')) && d.urls.some((url) => url.includes('read_unraid_order.php?type=docker')), { docker: d.docker(), errors: d.p.errors, urls: d.urls });
+        const ok = await dashboard({ debug: true });
+        ok.reload();
+        await ok.land(0);
+        await ok.answer('docker', 0, DOCKER_FOLDERS);
+        await ok.answer('vm', 0, VM_FOLDERS);
+        const payloads = Object.keys(ok.p.w.fv3DebugPayloads || {}).sort().join();
+        check('debug mode, both tiles: both folders drawn and both debug payloads stored', ok.docker() === 'apps:web' && ok.vms() === 'lab:vm1' && payloads === 'DASHBOARD-DOCKER,DASHBOARD-VM',
+            { docker: ok.docker(), vms: ok.vms(), payloads, errors: ok.p.errors });
     }
     {
         // Only one tile, and neither: each reload is drawn, with no errors

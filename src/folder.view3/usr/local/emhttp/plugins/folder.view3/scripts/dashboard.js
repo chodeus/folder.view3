@@ -35,10 +35,11 @@ const createFolders = async () => {
         docker: $('tbody#docker_view').length > 0 ? fv3Folders.docker.answers() : null,
         vm: $('tbody#vm_view').length > 0 ? fv3Folders.vm.answers() : null,
     };
-    const debugExtras = window.FV3_DEBUG ? Promise.all([$.get('/plugins/folder.view3/server/version.php').promise(),
-        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
-        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), fv3CollectCssDebug()]) : null;
-    await Promise.allSettled([answers.docker, answers.vm, debugExtras]);
+    // Debug mode: each present tile's extra reads, apart, so one that fails costs only its own tile
+    const debugFor = (type) => (window.FV3_DEBUG && answers[type] ? Promise.all([$.get('/plugins/folder.view3/server/version.php').promise(),
+        $.get(`/plugins/folder.view3/server/read_unraid_order.php?type=${type}`).promise(), fv3CollectCssDebug()]) : null);
+    const debug = { docker: debugFor('docker'), vm: debugFor('vm') };
+    await Promise.allSettled([answers.docker, answers.vm, debug.docker, debug.vm]);
     // DOCKER
 
     if($('tbody#docker_view').length > 0) { try {
@@ -58,7 +59,7 @@ const createFolders = async () => {
         let newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
 
         if(window.FV3_DEBUG) {
-            const [version, originalOrder, , cssDebug] = await debugExtras;
+            const [version, originalOrder, cssDebug] = await debug.docker;
             window.fv3DebugPayloads['DASHBOARD-DOCKER'] = JSON.stringify({
                 version: version.trim(),
                 folders, unraidOrder,
@@ -175,7 +176,7 @@ const createFolders = async () => {
         let newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
 
         if(window.FV3_DEBUG) {
-            const [version, , originalOrder, cssDebug] = await debugExtras;
+            const [version, originalOrder, cssDebug] = await debug.vm;
             window.fv3DebugPayloads['DASHBOARD-VM'] = JSON.stringify({
                 version: version.trim(),
                 folders, unraidOrder,
