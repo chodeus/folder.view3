@@ -1800,7 +1800,7 @@ const fv3FullwidthExpand = (id, type) => {
     }
 };
 
-// Draws each list Unraid renders once (fv3ListDrawer): a reload replaces the tr.updated rows of both tiles
+// The Dashboard's list drawer (fv3ListDrawer) for both tiles: a reload replaces their tr.updated rows
 const fv3DrawList = fv3ListDrawer('tbody#docker_view > tr.updated, tbody#vm_view > tr.updated', async () => {
     await fv3SettingsReq;
     await createFolders();
