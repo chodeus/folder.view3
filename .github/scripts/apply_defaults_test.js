@@ -39,7 +39,7 @@ w.swal.close = () => {};
 const source = read('scripts/folderview3.js');
 const lift = (name) => source.match(new RegExp(`^const ${name} = [\\s\\S]*?^};`, 'm'))[0];
 run([part('scripts/folderview3.js', 'const escapeHtml = ', '// shared.js is not loaded on this page'),
-    source.match(/^let dockers = .*$/m)[0], source.match(/^let vms = .*$/m)[0], lift('orderFolderIds'), lift('populateTable'),
+    source.match(/^let dockers = .*$/m)[0], source.match(/^let vms = .*$/m)[0], lift('fv3PageFolderIds'), lift('populateTable'),
     source.match(/^const swalLoaderOpts = .*$/m)[0], lift('postEach'), lift('showBatchErrors'),
     part('scripts/folderview3.js', 'const fv3ToggleMap = ', 'const fv3ExportAll'),
     'window.fv3tLoad = async () => { await loadDashboardSettings(); return populateTable(); };'].join('\n'), 'folderview3.js');
@@ -78,7 +78,7 @@ const apply = async (dockers, vms, answers, { save = OK, reloads = true } = {}) 
         if (file === 'read_settings.php') return { status: 200, body: '{}', ...JSON_HEAD };
         reads++;
         if (posted.length && !reloads) return { status: 500, body: '{"error":"docker.json is unreadable"}', ...JSON_HEAD };
-        const data = file === 'read_unraid_order.php' ? [] : url.includes('type=docker') ? dockers : vms;
+        const data = file === 'read_order.php' ? [] : url.includes('type=docker') ? dockers : vms;
         return { status: 200, body: JSON.stringify(data), ...JSON_HEAD };
     });
     await w.fv3tLoad();
