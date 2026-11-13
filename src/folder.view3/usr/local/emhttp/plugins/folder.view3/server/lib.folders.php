@@ -1,5 +1,6 @@
 <?php
-    // The folder files (docker.json, vm.json): how they are read and normalized, and every write, each under fv3_config_lock()
+    // The folder files (docker.json, vm.json): how they are read and normalized, and each folder save, under fv3_config_lock().
+    // Imports and restores replace them whole through fv3_replace_files() in lib.php
 
     function readFolder(string $type) : string {
         global $configDir;
