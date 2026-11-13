@@ -131,7 +131,14 @@ const makePage = async (opts = {}) => {
         send(m) { this.sent.push(m); }
         close() { this.readyState = 3; if (this.onclose) this.onclose({}); }
     };
-    w.ResizeObserver = class { observe() {} disconnect() {} };
+    const observing = [];
+    w.ResizeObserver = class {
+        constructor(cb) { this.cb = cb; }
+        observe(el) { if (!observing.some(([o, t]) => o === this && t === el)) observing.push([this, el]); }
+        disconnect() { for (let i = observing.length - 1; i >= 0; i--) if (observing[i][0] === this) observing.splice(i, 1); }
+    };
+    // Calls back each observer watching el (default: the page), as a resize of el would
+    const resized = (el = w.document.documentElement) => observing.filter(([, t]) => t === el).forEach(([o]) => o.cb([{ target: el }], o));
     $.i18n = (key) => key;
     $.fn.i18n = function () { return this; };
     $.fn.switchButton = function () { return this; };
@@ -227,7 +234,7 @@ dockerload.on('message', function(msg){
         mem: tip.el && tip.el.querySelector(`span.fv3-mem-${id}`).textContent,
         bar: tip.el && tip.el.querySelector(`span.fv3-cpu-bar-${id}`).style.width,
     });
-    return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow, realAjax };
+    return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow, realAjax, resized };
 };
 
 const FOLDER_SETTINGS = {
