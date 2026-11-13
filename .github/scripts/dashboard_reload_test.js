@@ -69,7 +69,8 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingOrde
         vms: () => tiles('vm_view'),
         list: () => p.$('#docker_view tr.updated, #vm_view tr.updated').first().attr('data-list'),
         banners: () => p.errors.filter((e) => /Banner:/.test(e)),
-        log: () => (p.w.fv3DrawLog || []).map((d) => `${d.outcome}:${d.folders}`).join(),
+        // The draw record of one tile's drawer, or of both when no type is given
+        log: (type) => (p.w.fv3DrawLog || []).filter((d) => !type || d.list.includes(`${type}_view`)).map((d) => `${d.outcome}:${d.folders}`).join(),
         reload: () => p.g('loadlist()'),
         land: async (i) => { if (sent[i]) { Object.assign(sent[i], { status: 200, statusText: 'OK', responseText: 'rows', readyState: 4 }); sent[i].onload(); } await p.tick(300); },
         answer: async (type, i, set) => {
@@ -88,7 +89,7 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingOrde
         await t.answer('docker', 0, DOCKER_FOLDERS);
         await t.answer('vm', 0, VM_FOLDERS);
         check('both tiles, one reload: each tile has its folder with its member', t.docker() === 'apps:web' && t.vms() === 'lab:vm1', { docker: t.docker(), vms: t.vms() });
-        check('both tiles, one reload: the draw record counts the two folder tiles', t.log() === 'drawn:2', t.log());
+        check('both tiles, one reload: each tile\'s draw record counts its folder tile', t.log('docker') === 'drawn:1' && t.log('vm') === 'drawn:1', t.log());
         check('both tiles, one reload: no page errors or banners', t.p.errors.length === 0, t.p.errors);
     }
     {
@@ -103,9 +104,18 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingOrde
         await t.land(1);
         await t.answer('vm', 0, VM_FOLDERS);
         await t.answer('vm', 1, VM_FOLDERS);
-        check('both tiles, a list lands while the VM data is still on its way: nothing is drawn before all the data is in', beforeVmData === '', beforeVmData);
+        check('both tiles, a list lands while the VM data is still on its way: the Docker tile is drawn without waiting for it', beforeVmData === 'apps:web', beforeVmData);
         check('both tiles, a list lands while the VM data is still on its way: that list has both folder tiles', t.list() === '2' && t.docker() === 'apps:web' && t.vms() === 'lab:vm1',
             { list: t.list(), docker: t.docker(), vms: t.vms(), log: t.log() });
+    }
+    {
+        // A VM read that never answers (libvirt stuck): the Docker tile is drawn from its own data all the same
+        const t = await dashboard();
+        t.reload();
+        await t.land(0);
+        await t.answer('docker', 0, DOCKER_FOLDERS);
+        check('both tiles, the VM read hangs: the Docker tile has its folder', t.docker() === 'apps:web' && t.log('docker') === 'drawn:1', { docker: t.docker(), log: t.log() });
+        check('both tiles, the VM read hangs: the VM tile waits, with no error', t.vms() === '' && t.p.errors.length === 0, { vms: t.vms(), errors: t.p.errors });
     }
     {
         // A folder request that never answers: the next reload's answers are drawn on its list
@@ -132,7 +142,8 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingOrde
         await t.answer('vm', 1, VM_FOLDERS);
         check('a replaced request fails: no banner, and the newer data is drawn', t.banners().length === 0 && t.docker() === 'apps:web' && t.vms() === 'lab:vm1',
             { banners: t.banners(), docker: t.docker(), vms: t.vms() });
-        check('a replaced request fails: no draw failed on the way (no console error), one draw in the record', t.p.errors.length === 0 && t.log() === 'running:0,drawn:2', { errors: t.p.errors, log: t.log() });
+        check('a replaced request fails: no draw failed on the way (no console error), one draw per tile in the record', t.p.errors.length === 0
+            && t.log('docker') === 'running:0,drawn:1' && t.log('vm') === 'running:0,drawn:1', { errors: t.p.errors, log: t.log() });
     }
     {
         // The Docker request asked last fails: Unraid's own Docker tile and one banner; the VM tile still gets its folder
@@ -214,7 +225,7 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingOrde
         d.reload();
         await d.land(1);
         await d.answer('docker', 1, DOCKER_FOLDERS);
-        check('Docker tile only: two reloads drawn, each with its folder', d.log() === 'drawn:1,drawn:1' && d.docker() === 'apps:web' && d.p.errors.length === 0, { log: d.log(), errors: d.p.errors });
+        check('Docker tile only: two reloads drawn, each with its folder', d.log('docker') === 'drawn:1,drawn:1' && d.docker() === 'apps:web' && d.p.errors.length === 0, { log: d.log(), errors: d.p.errors });
         const v = await dashboard({ docker: false });
         v.reload();
         await v.land(0);
@@ -222,13 +233,13 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingOrde
         v.reload();
         await v.land(1);
         await v.answer('vm', 1, VM_FOLDERS);
-        check('VM tile only: two reloads drawn, each with its folder', v.log() === 'drawn:1,drawn:1' && v.vms() === 'lab:vm1' && v.p.errors.length === 0, { log: v.log(), errors: v.p.errors });
+        check('VM tile only: two reloads drawn, each with its folder', v.log('vm') === 'drawn:1,drawn:1' && v.vms() === 'lab:vm1' && v.p.errors.length === 0, { log: v.log(), errors: v.p.errors });
         const n = await dashboard({ docker: false, vms: false });
         n.reload();
         await n.land(0);
         n.reload();
         await n.land(1);
-        check('no tiles: two reloads drawn, no errors', n.log() === 'drawn:0,drawn:0' && n.p.errors.length === 0, { log: n.log(), errors: n.p.errors });
+        check('no tiles: two reloads drawn, no errors', n.log('docker') === 'drawn:0,drawn:0' && n.log('vm') === 'drawn:0,drawn:0' && n.p.errors.length === 0, { log: n.log(), errors: n.p.errors });
     }
     done();
 })();

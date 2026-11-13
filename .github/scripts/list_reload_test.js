@@ -6,6 +6,8 @@ const { makePage, drawDocker, check, done } = require('./preview_pages_harness.j
 const folder = (name, containers) => ({ name, containers, regex: '' });
 // The page's draw record; a page from before it has none, and the checks on it then fail
 const record = (t) => t.p.w.fv3DrawLog || [];
+// The Dashboard keeps one drawer per tile: the Docker tile's outcomes
+const dockerRecord = (t) => record(t).filter((d) => d.list.includes('docker_view')).map((d) => d.outcome).join();
 const FOLDERS = { f: folder('F', ['m']), g: folder('G', ['x']) };
 
 // The Docker page with Unraid's side of a reload held by the test: land(i) renders list i and calls listview(), as Unraid's
@@ -192,7 +194,7 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         await t.p.tick(300);
         await t.answer(2, DASH_FOLDERS);
         check('Dashboard, a list drawn from older folder data: loaded again, then it has its tile', bare === '' && asked === 3 && t.folders() === 'apps:web'
-            && record(t).map((d) => d.outcome).join() === 'running,drawn,refresh,drawn', { bare, asked, folders: t.folders(), log: record(t).map((d) => d.outcome) });
+            && dockerRecord(t) === 'running,drawn,refresh,drawn', { bare, asked, folders: t.folders(), log: dockerRecord(t) });
     }
     {
         const t = await dashboard({ empty: true });
@@ -202,7 +204,7 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         t.reload();
         t.land(1);
         await t.p.tick(300);
-        check('Dashboard, an empty Docker tile: each reload is drawn', t.draws.length === 2 && record(t).map((d) => d.outcome).join() === 'drawn,drawn', { draws: t.draws.length, log: record(t).map((d) => d.outcome) });
+        check('Dashboard, an empty Docker tile: each reload is drawn', t.draws.length === 2 && dockerRecord(t) === 'drawn,drawn', { draws: t.draws.length, log: dockerRecord(t) });
     }
     {
         const t = await docker();
