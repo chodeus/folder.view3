@@ -87,6 +87,7 @@ jobs:
           node empty_pages_test.js
           node folder_placement_test.js
           node list_reload_test.js
+          node dashboard_reload_test.js
           node theme_import_dialog_test.js
           node dropped_post_test.js
 

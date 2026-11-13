@@ -1,4 +1,4 @@
-// node .github/scripts/list_reload_test.js — list reloads that overlap on the Docker and VMs pages: every list Unraid renders
+// node .github/scripts/list_reload_test.js — list reloads that overlap on the Docker, VMs and Dashboard pages: every list Unraid renders
 // gets its folders, once, from the newest folder data (npm ci in this folder first)
 'use strict';
 const { makePage, drawDocker, check, done } = require('./preview_pages_harness.js');
@@ -6,6 +6,8 @@ const { makePage, drawDocker, check, done } = require('./preview_pages_harness.j
 const folder = (name, containers) => ({ name, containers, regex: '' });
 // The page's draw record; a page from before it has none, and the checks on it then fail
 const record = (t) => t.p.w.fv3DrawLog || [];
+// The Dashboard keeps one drawer per tile: the Docker tile's outcomes
+const dockerRecord = (t) => record(t).filter((d) => d.list.includes('docker_view')).map((d) => d.outcome).join();
 const FOLDERS = { f: folder('F', ['m']), g: folder('G', ['x']) };
 
 // The Docker page with Unraid's side of a reload held by the test: land(i) renders list i and calls listview(), as Unraid's
@@ -92,7 +94,118 @@ const vms = async ({ hold = false, empty = false } = {}) => {
     };
 };
 
+// The Dashboard with Unraid's own list request sent through jQuery's ajax (the page draws from that request): land(i) lands
+// list i. The server holds one container in one folder; `hold` keeps the read.php answers for the test
+const DASH_LIST = '/webGui/include/DashboardApps.php';
+const DASH_FOLDERS = { apps: { name: 'Apps', icon: '', regex: '', containers: ['web'], settings: {}, hidden_preview: [], actions: [] } };
+// Unraid's Docker tile row (DashboardApps.php), cut to what dashboard.js reads
+const dashRow = (n) => `<tr class="updated" data-list="${n}"><td><span class="outer solid apps started"><span id="aaaaaaaaaaaa" class="hand"><img class="img" src=""></span>` +
+    '<span class="inner"><span>web</span><br><i class="fa fa-play started green-text"></i><span class="state">started</span></span></span></td></tr>';
+const dashboard = async ({ hold = false, empty = false } = {}) => {
+    const info = {};
+    const p = await makePage({ page: 'dashboard', api: false, answers: {
+        'read.php': () => JSON.stringify(DASH_FOLDERS), 'read_order.php': () => '[]', 'read_unraid_order.php': () => JSON.stringify(['web']),
+        'read_info.php': () => JSON.stringify(info), 'docker_load.php': () => '',
+    } });
+    info.web = p.ct('aaaaaaaaaaaa', 'web');
+    const sent = [];
+    p.w.XMLHttpRequest = class {
+        open(method, url) { this.url = url; }
+        setRequestHeader() {}
+        getAllResponseHeaders() { return 'Content-Type: text/html\r\n'; }
+        send() { sent.push(this); }
+        abort() {}
+    };
+    let rendered = 0;
+    p.w.loadlist_original = () => p.realAjax({ url: DASH_LIST, type: 'POST', data: { docker: 'yes' }, success: () => {
+        p.$('#docker_view tr.updated').remove();
+        if (!empty) p.$('#docker_view').append(dashRow(++rendered));
+    } });
+    const reads = [];
+    const get = p.$.get;
+    p.$.get = (url) => {
+        if (!hold || !url.includes('read.php')) return get(url);
+        const d = p.$.Deferred();
+        reads.push(d);
+        return d;
+    };
+    // Each draw, by the list it was made on
+    const draws = [];
+    p.w.folderEvents.addEventListener('docker-post-folders-creation', () => draws.push(`list ${p.$('#docker_view tr.updated').attr('data-list') || '-'}`));
+    // The folder tiles on the page with the containers drawn into each, as `id:name,name`
+    const folders = () => p.$('#docker_view .folder-showcase-outer').toArray().map((el) => `${el.className.match(/folder-showcase-outer-(\S+)/)[1]}:` +
+        p.$(el).find('div.folder-storage span.inner').toArray().map((inner) => p.$(inner).contents().first().text().trim()).join()).join(' ');
+    return {
+        p, draws, folders, sent,
+        reload: () => p.g('loadlist()'),
+        land: (i) => { if (sent[i]) { Object.assign(sent[i], { status: 200, statusText: 'OK', responseText: 'rows', readyState: 4 }); sent[i].onload(); } },
+        answer: async (i, set) => {
+            if (!reads[i]) return;
+            if (set instanceof Error) reads[i].reject({ status: 500 }); else reads[i].resolve(JSON.parse(JSON.stringify(set)));
+            await p.tick(300);
+        },
+    };
+};
+
 (async () => {
+    {
+        const t = await dashboard();
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        check('Dashboard, one reload: the folder tile is drawn with its container', t.folders() === 'apps:web' && t.draws.join() === 'list 1', { folders: t.folders(), draws: t.draws });
+        check('Dashboard, one reload: no page errors', t.p.errors.length === 0, t.p.errors);
+    }
+    {
+        // The case seen on a live server: the second list lands after the first draw, and its draw gets the same answers
+        const t = await dashboard();
+        t.reload();
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        const first = t.folders();
+        t.land(1);
+        await t.p.tick(300);
+        check('Dashboard, two reloads at once: the first list is drawn', first === 'apps:web', first);
+        check('Dashboard, two reloads at once: the second list has the folder tile too', t.folders() === 'apps:web' && t.draws.join() === 'list 1,list 2', { folders: t.folders(), draws: t.draws });
+    }
+    {
+        const t = await dashboard();
+        t.reload();
+        t.reload();
+        t.land(0);
+        t.land(1);
+        await t.p.tick(300);
+        check('Dashboard, both lists land together: drawn once, one tile', t.folders() === 'apps:web' && t.draws.join() === 'list 2', { folders: t.folders(), draws: t.draws });
+    }
+    {
+        const t = await dashboard({ hold: true });
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        t.reload();
+        t.land(1);
+        await t.p.tick(300);
+        await t.answer(0, {});
+        const bare = t.folders();
+        await t.answer(1, DASH_FOLDERS);
+        const asked = t.sent.length;
+        t.land(2);
+        await t.p.tick(300);
+        await t.answer(2, DASH_FOLDERS);
+        check('Dashboard, a list drawn from older folder data: loaded again, then it has its tile', bare === '' && asked === 3 && t.folders() === 'apps:web'
+            && dockerRecord(t) === 'running,drawn,refresh,drawn', { bare, asked, folders: t.folders(), log: dockerRecord(t) });
+    }
+    {
+        const t = await dashboard({ empty: true });
+        t.reload();
+        t.land(0);
+        await t.p.tick(300);
+        t.reload();
+        t.land(1);
+        await t.p.tick(300);
+        check('Dashboard, an empty Docker tile: each reload is drawn', t.draws.length === 2 && dockerRecord(t) === 'drawn,drawn', { draws: t.draws.length, log: dockerRecord(t) });
+    }
     {
         const t = await docker();
         t.reload();
@@ -146,7 +259,7 @@ const vms = async ({ hold = false, empty = false } = {}) => {
         await t.answer(1, { f: FOLDERS.f });
         const early = t.draws.length;
         await t.answer(0, FOLDERS);
-        check('Docker, a newer answer is in first: the draw still waits for the batch it started with', early === 0 && t.draws.length === 1, { early, draws: t.draws.length });
+        check('Docker, a newer answer is in first: the draw takes it at once, without waiting for the older batch', early === 1, { early, draws: t.draws.length });
         check('Docker, a newer answer is in first: the draw uses it, so the deleted folder is not drawn', t.folders() === 'f', t.folders());
         await t.land(1);
         check('Docker, a newer answer is in first: the second list shows the same', t.folders() === 'f' && t.draws.length === 2, { folders: t.folders(), draws: t.draws.length });
@@ -199,7 +312,7 @@ const vms = async ({ hold = false, empty = false } = {}) => {
         await t.answer(1, {});
         const early = t.draws.length;
         await t.answer(0, VM_FOLDERS);
-        check('VMs, a newer answer is in first: the draw waits for its own batch and uses the newer one', early === 0 && t.draws.join() === 'list 1' && t.folders() === '', { early, draws: t.draws, folders: t.folders() });
+        check('VMs, a newer answer is in first: the draw takes it at once', early === 1 && t.draws.join() === 'list 1' && t.folders() === '', { early, draws: t.draws, folders: t.folders() });
     }
     {
         // A list lands while a draw waits for folder data that then fails: that list is drawn from its own answer, not left bare
@@ -211,10 +324,10 @@ const vms = async ({ hold = false, empty = false } = {}) => {
         await t.answer(0, new Error('500'));
         await t.answer(1, FOLDERS);
         const log = record(t).map((d) => d.outcome).join();
-        check('Docker, a list lands during a draw that fails: it gets its folders', t.folders() === 'f,g' && log === 'running,failed,drawn', { folders: t.folders(), log });
+        check('Docker, the first request fails after a newer reload: the list is drawn from the newer data', t.folders() === 'f,g' && log === 'running,drawn', { folders: t.folders(), log });
         t.p.g('listview()');
         await t.p.tick(300);
-        check('Docker, a list lands during a draw that fails: a view switch then keeps it', record(t).map((d) => d.outcome).join() === 'running,failed,drawn,kept', record(t));
+        check('Docker, the first request fails after a newer reload: a view switch then keeps the list', record(t).map((d) => d.outcome).join() === 'running,drawn,kept', record(t));
 
         // The same when its own answer fails too: Unraid's list with the banner, and the record does not call it kept
         const b = await docker({ hold: true });
@@ -240,8 +353,28 @@ const vms = async ({ hold = false, empty = false } = {}) => {
         await t.p.tick(300);
         await t.answer(0, new Error('500'));
         await t.answer(1, VM_FOLDERS);
-        check('VMs, a list lands during a draw that fails: it gets its folder, with the VM in it', t.draws.join() === 'list 2' && t.folders() === 'lab:vm-x'
-            && record(t).map((d) => d.outcome).join() === 'running,failed,drawn', { draws: t.draws, folders: t.folders(), log: record(t) });
+        check('VMs, the first request fails after a newer reload: the list gets its folder, with the VM in it', t.draws.join() === 'list 2' && t.folders() === 'lab:vm-x'
+            && record(t).map((d) => d.outcome).join() === 'running,drawn', { draws: t.draws, folders: t.folders(), log: record(t) });
+    }
+    {
+        // The first folder request never answers; the next reload's does: its list is drawn, not stuck behind the hung one
+        const t = await docker({ hold: true });
+        t.reload();
+        await t.land(0);
+        t.reload();
+        await t.land(1);
+        await t.answer(1, FOLDERS);
+        check('Docker, a folder request that never answers: the next reload\'s list is drawn', t.folders() === 'f,g' && record(t).map((d) => d.outcome).join() === 'running,drawn',
+            { folders: t.folders(), log: record(t).map((d) => d.outcome) });
+        const v = await vms({ hold: true });
+        v.reload();
+        v.land(0);
+        await v.p.tick(300);
+        v.reload();
+        v.land(1);
+        await v.p.tick(300);
+        await v.answer(1, VM_FOLDERS);
+        check('VMs, a folder request that never answers: the next reload\'s list is drawn', v.folders() === 'lab:vm-x' && v.draws.join() === 'list 2', { folders: v.folders(), draws: v.draws });
     }
     {
         // No containers and no folders: the list has no rows at all, and a view switch must not draw it again
@@ -254,6 +387,39 @@ const vms = async ({ hold = false, empty = false } = {}) => {
         t.reload();
         await t.land(1);
         check('Docker, an empty list: a reload draws again', t.draws.length === 2, t.draws.length);
+    }
+    {
+        // No containers, but folders: Unraid's list has no rows, and the page draws folders into it
+        const empty = { f: folder('F', []), g: folder('G', []) };
+        const newer = { h: folder('H', []), i: folder('I', []) };
+        const setup = { folders: empty, containers: [], prefs: [] };
+        const t = await docker({ hold: true, setup });
+        t.reload();
+        await t.land(0);
+        t.reload();
+        await t.land(1);
+        await t.answer(0, empty);
+        const stale = t.folders();
+        await t.answer(1, newer);
+        const asked = t.asked();
+        await t.land(2);
+        await t.answer(2, newer);
+        const shown = t.folders();
+        const last = record(t).map((d) => d.outcome).pop();
+        check('Docker, an empty list lands during a draw from older data: loaded again, then it shows only the newer folders', stale !== '' && asked === 3
+            && shown !== '' && shown.split(',').every((id) => newer[id]) && last === 'drawn', { stale, asked, shown, log: record(t).map((d) => d.outcome) });
+
+        // A reload begins during a draw and its empty list lands after the draw: that list is drawn, not kept bare
+        const k = await docker({ hold: true, setup });
+        k.reload();
+        await k.land(0);
+        k.reload();
+        await k.answer(0, empty);
+        const first = k.folders();
+        await k.land(1);
+        await k.answer(1, empty);
+        check('Docker, an empty list after a draw that a reload overtook: it is drawn, with the same folders', first !== '' && k.folders() === first
+            && record(k).map((d) => d.outcome).join() === 'drawn,drawn', { first, folders: k.folders(), log: record(k).map((d) => d.outcome) });
     }
     {
         const t = await docker();
