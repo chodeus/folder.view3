@@ -2,6 +2,11 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- VMs page folders stay in their saved place, also when two folders sit next to each other, and keep their VMs inside
+- Saved folders now show when the Docker or VMs list has nothing else in it
+
 ## 2026.11.13.2 (beta)
 
 - Dashboard folders no longer vanish when the Docker and VMs tiles reload at the same time
