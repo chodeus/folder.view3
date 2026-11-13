@@ -2,6 +2,14 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix: a list drawn from older folder data is loaded again once its own data is in
+- fix: a list that lands during a failed draw is drawn from its own data
+- feat: the debug download records what became of each list draw
+- fix: a draw waits only for the folder data asked last when it starts
+- fix: folders stay drawn when list reloads overlap
+
 ## 2026.11.12.1 (beta)
 
 - FolderView Plus imports now keep hidden regex and label members
