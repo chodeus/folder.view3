@@ -121,7 +121,7 @@ window.fv3ListDrawer = (rows, draw, onFail, data) => {
         new Promise((resolve) => resolve(draw())).then(() => {
             note('drawn');
             drawn = new WeakSet($(rows).toArray());
-            // After a reload that began during the draw, an empty list may be the reload's own and still to draw
+            // A reload began during the draw: its list may land after it, empty, and is then drawn
             if (!reloaded) sinceReload = true;
             running = null;
             refresh();

@@ -389,9 +389,9 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         check('Docker, an empty list: a reload draws again', t.draws.length === 2, t.draws.length);
     }
     {
-        // No containers, but folders: Unraid's list has no rows, and the page draws folders into it (two, as an empty list
-        // shows only some of them: createFolder's insert needs a row to go next to)
+        // No containers, but folders: Unraid's list has no rows, and the page draws folders into it
         const empty = { f: folder('F', []), g: folder('G', []) };
+        const newer = { h: folder('H', []), i: folder('I', []) };
         const setup = { folders: empty, containers: [], prefs: [] };
         const t = await docker({ hold: true, setup });
         t.reload();
@@ -400,12 +400,14 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         await t.land(1);
         await t.answer(0, empty);
         const stale = t.folders();
-        await t.answer(1, {});
+        await t.answer(1, newer);
         const asked = t.asked();
         await t.land(2);
-        await t.answer(2, {});
-        check('Docker, an empty list lands during a draw from older data: loaded again, and the deleted folders are gone', stale !== '' && asked === 3 && t.folders() === '',
-            { stale, asked, folders: t.folders(), log: record(t).map((d) => d.outcome) });
+        await t.answer(2, newer);
+        const shown = t.folders();
+        const last = record(t).map((d) => d.outcome).pop();
+        check('Docker, an empty list lands during a draw from older data: loaded again, then it shows only the newer folders', stale !== '' && asked === 3
+            && shown !== '' && shown.split(',').every((id) => newer[id]) && last === 'drawn', { stale, asked, shown, log: record(t).map((d) => d.outcome) });
 
         // A reload begins during a draw and its empty list lands after the draw: that list is drawn, not kept bare
         const k = await docker({ hold: true, setup });
