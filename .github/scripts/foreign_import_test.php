@@ -160,6 +160,13 @@ $digits = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' 
     '10' => ['name' => 'Ten', 'containers' => []], '0' => ['name' => 'Zero', 'containers' => []], '20' => ['name' => 'Twenty', 'containers' => []],
 ]];
 check('all-digit ids, id 0 among them, sort and pin like any other', $namesOf($digits) === ['Zero', 'Twenty', 'Ten'], $namesOf($digits));
+// FolderView Plus starts from the browser's Object.keys: all-digit ids first, ascending, then the rest in file order
+$keyOrder = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'created'], 'folders' => [
+    'b' => ['name' => 'Bee', 'containers' => []], '10' => ['name' => 'Ten', 'containers' => []], '0' => ['name' => 'Zero', 'containers' => []], 'a' => ['name' => 'Ay', 'containers' => []],
+]];
+check('no dates: the browser key order, all-digit ids first and ascending', $namesOf($keyOrder) === ['Zero', 'Ten', 'Bee', 'Ay'], $namesOf($keyOrder));
+check('a backup whose prefs are not a map does not say their folder order is used', !in_array('prefs', fv3_convert_foreign_bundle($backupOf('alpha'), 'docker')['report']['skipped_sections'], true));
+check('a backup with prefs says only their folder order is used', in_array('prefs', fv3_convert_foreign_bundle($backupOf(['sortMode' => 'alpha']), 'docker')['report']['skipped_sections'], true));
 $branch = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'branch', 'branchRootId' => 'kid', 'folders' => [
     'kid' => $plus['kid'], 'grandkid' => ['name' => 'Grandkid', 'containers' => ['g1'], 'parentId' => 'kid'],
 ]];
@@ -188,7 +195,7 @@ check('with no userprefs.cfg the page shows every folder A-Z', $pageFolders([]) 
 foreach (['/plugins/folderview.plus/images/icons/folder-cloud.svg', '/plugins/folderview.plus/images/custom/my%20icon.png?v=1730000000',
           '/plugins/folderview.plus/images/third-party-icons/Icons/plex.svg', 'http://tower.local/plugins/folderview.plus/images/folder-icon.png',
           '/plugins/FolderView.Plus/images/icons/folder-media.svg', '/plugins//folderview.plus/images/custom/a.png', '/plugins/./folderview.plus/images/icons/x.svg',
-          '/plugins/other/../folderview.plus/images/icons/x.svg'] as $plusIcon) {
+          '/plugins/other/../folderview.plus/images/icons/x.svg', '/plugins/folderview%2Eplus/images/icons/x.svg', '/plugins\\folderview.plus\\images\\x.svg'] as $plusIcon) {
     $ir = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['a' => ['name' => 'A', 'containers' => [], 'icon' => $plusIcon]]], 'docker');
     check("FolderView Plus icon left out: $plusIcon", $ir['folders']['docker'][0]['icon'] === '' && $ir['report']['types']['docker']['plus_icons'] === 1 && $ir['report']['types']['docker']['dropped_icons'] === 0, $ir['report']['types']['docker']);
 }
@@ -475,6 +482,27 @@ check('settings graph time of 0 or empty falls back to the default', $graphTime(
 check('a stored graph time over 600 s reads back as 600', fv3_normalize_settings(['default_context_graph_time' => '7200'])['default_context_graph_time'] === '600');
 check('a graph time that is not whole seconds is refused', array_map($graphTime, ['5x00', 'abc', '62.5', '-5', ' 60']) === [null, null, null, null, null], array_map($graphTime, ['5x00', 'abc', '62.5', '-5', ' 60']));
 check('a stored graph time that is not whole seconds is dropped on read', !isset(fv3_normalize_settings(['dashboard_context_graph_time' => '5x00'])['dashboard_context_graph_time']));
+
+// Folders imported before FolderView Plus icons were left out: once it is uninstalled those icons read as no icon (issue #178)
+$plusSaved = ['p1' => ['name' => 'Bundled', 'icon' => '/plugins/folderview.plus/images/icons/folder-default.svg', 'containers' => []],
+    'p2' => ['name' => 'Uploaded', 'icon' => ' /plugins/folderview.plus/images/custom/my%20icon.png?v=1 ', 'containers' => []],
+    'p3' => ['name' => 'Encoded', 'icon' => '/plugins/folderview%2Eplus/images/icons/plex.svg', 'containers' => []],
+    'k0' => ['name' => 'Other host', 'icon' => 'http://other.local/plugins/folderview.plus/images/icons/plex.svg', 'containers' => []],
+    'k1' => ['name' => 'Unraid icon', 'icon' => '/plugins/dynamix.docker.manager/images/question.png', 'containers' => []],
+    'k2' => ['name' => 'Embedded', 'icon' => 'data:image/png;base64,AAAA', 'containers' => []],
+    'k3' => ['name' => 'No icon', 'icon' => '', 'containers' => []]];
+$plusRaw = json_encode($plusSaved);
+file_put_contents("$configDir/docker.json", $plusRaw);
+$fv3PlusPluginDir = "$fv3tTmp/folderview.plus";
+$icons = static fn(): array => array_column(json_decode(readFolder('docker'), true), 'icon', 'name');
+$gone = $icons();
+check('FolderView Plus not installed: its icons on this server read as no icon, a link to another host and every other icon are kept',
+    $gone === ['Bundled' => '', 'Uploaded' => '', 'Encoded' => '', 'Other host' => 'http://other.local/plugins/folderview.plus/images/icons/plex.svg',
+        'Unraid icon' => '/plugins/dynamix.docker.manager/images/question.png', 'Embedded' => 'data:image/png;base64,AAAA', 'No icon' => ''], $gone);
+mkdir($fv3PlusPluginDir);
+$kept = $icons();
+check('FolderView Plus installed: its icons are kept', $kept === array_column($plusSaved, 'icon', 'name'), $kept);
+check('reading the folders leaves docker.json as it was', file_get_contents("$configDir/docker.json") === $plusRaw);
 
 exec('rm -rf ' . escapeshellarg($fv3tTmp));
 echo $fv3tFailed ? "\n$fv3tFailed FAILED\n" : "\nall passed\n";

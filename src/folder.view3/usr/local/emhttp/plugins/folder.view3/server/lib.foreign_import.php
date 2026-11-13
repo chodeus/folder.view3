@@ -73,19 +73,6 @@
         return '';
     }
 
-    // FolderView Plus serves its own icons (bundled, uploaded, third-party) under /plugins/folderview.plus/; uninstalling deletes them
-    function fv3_foreign_is_plus_icon(string $icon): bool {
-        $path = preg_match('#^https?://#i', $icon) ? (string)parse_url($icon, PHP_URL_PATH) : explode('?', $icon, 2)[0];
-        if (!str_starts_with($path, '/')) return false;
-        $segs = [];
-        foreach (explode('/', strtolower($path)) as $seg) {
-            if ($seg === '' || $seg === '.') continue;
-            if ($seg === '..') { array_pop($segs); continue; }
-            $segs[] = $seg;
-        }
-        return array_slice($segs, 0, 2) === ['plugins', 'folderview.plus'];
-    }
-
     // An allowlist, not a blocklist: every token must mean the same in PCRE and in the flag-less
     // JS new RegExp() the renderers use. Anything unlisted is refused, so no new construct slips in.
     function fv3_foreign_regex_js_safe(string $regex): bool {
@@ -180,7 +167,8 @@
         return null;
     }
 
-    // Returns ['error' => code] (langs key foreign-error-<code>) or ['types' => [type => [foreignId => folder]], 'source' => string, 'skipped' => [...]]
+    // Returns ['error' => code] (langs key foreign-error-<code>) or ['types' => [type => [foreignId => folder]], 'source' => string,
+    // 'skipped' => [...], 'prefs' => [type => the file's plugin preferences, or null]]
     function fv3_foreign_detect(array $raw): array {
         $version = static function ($v): ?string {
             if (!is_int($v)) return 'no-version';
@@ -218,7 +206,7 @@
         $mode = $raw['mode'] ?? null;
         // A branch export is one folder and its nested folders, in the full export's shape
         if (($mode === 'full' || $mode === 'branch') && is_array($raw['folders'] ?? null)) {
-            $skipped = isset($raw['prefs']) ? ['prefs'] : [];
+            $skipped = is_array($raw['prefs'] ?? null) ? ['prefs'] : [];
             $source = $mode === 'branch' ? 'branch' : (isset($raw['reason']) ? 'backup' : 'export');
             $folders = $raw['folders'];
             // A branch's root keeps its parentId from the full map, and that parent is not in the file
@@ -282,7 +270,8 @@
     // Folder ids in FolderView Plus's display order; follows its orderFoldersByPrefs (utils-ordering.js), except that
     // names compare with strnatcasecmp, not the browser's locale, so accented names can sort differently
     function fv3_foreign_display_order(array $folders, $prefs, array $roots): array {
-        $ids = array_map('strval', array_keys($folders));
+        // Its base order is the browser's Object.keys: all-digit ids first, ascending
+        $ids = fv3_js_key_order(array_keys($folders));
         if (!is_array($prefs)) return $ids;
         $idList = static fn($v) => is_array($v) ? array_values(array_unique(array_filter($v, static fn($id) => is_string($id) && $id !== ''))) : [];
         $index = array_flip($ids);
@@ -399,7 +388,7 @@
 
                 $suppliedIcon = $src['icon'] ?? null;
                 $icon = fv3_foreign_icon($suppliedIcon ?? '');
-                if ($icon !== '' && fv3_foreign_is_plus_icon($icon)) { $icon = ''; $r['plus_icons']++; }
+                if ($icon !== '' && fv3_is_plus_icon($icon)) { $icon = ''; $r['plus_icons']++; }
                 elseif ($icon === '' && $suppliedIcon !== null && !(is_string($suppliedIcon) && trim($suppliedIcon) === '')) $r['dropped_icons']++;
 
                 $suppliedRegex = $src['regex'] ?? null;

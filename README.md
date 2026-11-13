@@ -101,7 +101,8 @@ What the import does:
   order) and themes are not imported.
 - **Icons:** a local path, an `http(s)` link or an embedded image is kept; anything else is dropped. FolderView
   Plus's own icons (built-in, uploaded or third-party) are files it deletes when it is uninstalled, so they are
-  dropped too: choose new icons in the folder editor.
+  dropped too: choose new icons in the folder editor. Folders imported before this still name those files; while
+  FolderView Plus is not installed they show the default question-mark icon until you choose a new one.
 - **Regex:** a folder's regex is kept only if it works the same way in FolderView3.
 - **Custom actions** are kept when FolderView3 can run them as they are: a Docker or VM action may only target
   its own folder's members, and a User Script action needs a plain script name.

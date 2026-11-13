@@ -248,6 +248,7 @@
     $folderVersion = 1.0;
     $configDir = "/boot/config/plugins/folder.view3";
     $fv3DockerManDir = "/boot/config/plugins/dockerMan";
+    $fv3PlusPluginDir = "/usr/local/emhttp/plugins/folderview.plus";
     $sourceDir = "/usr/local/emhttp/plugins/folder.view3";
     $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? '/usr/local/emhttp';
 
@@ -336,8 +337,35 @@
             http_response_code(500);
             return json_encode(['error' => "$type.json does not contain a folder map"]);
         }
-        $clean = json_encode((object)fv3_normalize_folders($decoded));
+        $clean = json_encode((object)fv3_without_dead_plus_icons(fv3_normalize_folders($decoded)));
         return $clean !== false ? $clean : $raw;
+    }
+
+    // FolderView Plus serves its own icons (bundled, uploaded, third-party) under /plugins/folderview.plus/; uninstalling deletes them.
+    // Matched after %XX decoding, \ read as /, lower-casing, and . and .. resolved
+    function fv3_is_plus_icon(string $icon): bool {
+        $path = preg_match('#^https?://#i', $icon) ? (string)parse_url($icon, PHP_URL_PATH) : explode('?', $icon, 2)[0];
+        $path = str_replace('\\', '/', rawurldecode($path));
+        if (!str_starts_with($path, '/')) return false;
+        $segs = [];
+        foreach (explode('/', strtolower($path)) as $seg) {
+            if ($seg === '' || $seg === '.') continue;
+            if ($seg === '..') { array_pop($segs); continue; }
+            $segs[] = $seg;
+        }
+        return array_slice($segs, 0, 2) === ['plugins', 'folderview.plus'];
+    }
+
+    // While FolderView Plus is not installed, its icons on this server read as no icon (the question mark). The read writes nothing;
+    // a link to another host may still work, so it is kept
+    function fv3_without_dead_plus_icons(array $folders): array {
+        global $fv3PlusPluginDir;
+        if (is_dir($fv3PlusPluginDir)) return $folders;
+        foreach ($folders as $id => $folder) {
+            $icon = is_string($folder['icon'] ?? null) ? trim($folder['icon']) : '';
+            if (preg_match('#^/(?!/)#', $icon) && fv3_is_plus_icon($icon)) $folders[$id]['icon'] = '';
+        }
+        return $folders;
     }
 
     // Fills the fields every reader dereferences so a hand-edited folder can't break a render
