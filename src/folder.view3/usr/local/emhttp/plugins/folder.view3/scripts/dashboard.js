@@ -29,11 +29,21 @@ const fv3Folders = { docker: fv3FolderData(), vm: fv3FolderData() };
 // Builds all docker and vm folders on the dashboard
 const createFolders = async () => {
     await fv3LoadFolderDefaults();
+    // Every wait comes before the first change to the page: a list that lands meanwhile is drawn whole, never in part.
+    // Awaiting a promise that has settled resumes before any request can land
+    const answers = {
+        docker: $('tbody#docker_view').length > 0 ? fv3Folders.docker.answers() : null,
+        vm: $('tbody#vm_view').length > 0 ? fv3Folders.vm.answers() : null,
+    };
+    const debugExtras = window.FV3_DEBUG ? Promise.all([$.get('/plugins/folder.view3/server/version.php').promise(),
+        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
+        $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), fv3CollectCssDebug()]) : null;
+    await Promise.allSettled([answers.docker, answers.vm, debugExtras]);
     // DOCKER
 
     if($('tbody#docker_view').length > 0) { try {
 
-        let prom = await fv3Folders.docker.answers();
+        let prom = await answers.docker;
         let folders = fv3SafeParseWithRecovery(prom[0], 'docker-folders', {});
         const unraidOrder = fv3SafeParse(prom[1], []);
         const containersInfo = fv3SafeParse(prom[2], {});
@@ -48,12 +58,13 @@ const createFolders = async () => {
         let newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
 
         if(window.FV3_DEBUG) {
+            const [version, originalOrder, , cssDebug] = await debugExtras;
             window.fv3DebugPayloads['DASHBOARD-DOCKER'] = JSON.stringify({
-                version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
+                version: version.trim(),
                 folders, unraidOrder,
-                originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(), []),
+                originalOrder: fv3SafeParse(originalOrder, []),
                 newOnes, order, containersInfo: fv3SanitizeContainersInfo(containersInfo),
-                cssDebug: await fv3CollectCssDebug()
+                cssDebug
             });
             fv3Debug('dashboard', 'Debug payload stored for DASHBOARD-DOCKER; click the FV3 Debug pill to download. Docker Order:', [...order]);
         }
@@ -148,7 +159,7 @@ const createFolders = async () => {
 
     if($('tbody#vm_view').length > 0) { try {
 
-        const prom = await fv3Folders.vm.answers();
+        const prom = await answers.vm;
         let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
         const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
         const vmInfo = fv3SafeParse(prom[2], {});
@@ -164,12 +175,13 @@ const createFolders = async () => {
         let newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
 
         if(window.FV3_DEBUG) {
+            const [version, , originalOrder, cssDebug] = await debugExtras;
             window.fv3DebugPayloads['DASHBOARD-VM'] = JSON.stringify({
-                version: (await $.get('/plugins/folder.view3/server/version.php').promise()).trim(),
+                version: version.trim(),
                 folders, unraidOrder,
-                originalOrder: fv3SafeParse(await $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise(), []),
+                originalOrder: fv3SafeParse(originalOrder, []),
                 newOnes, order, vmInfo,
-                cssDebug: await fv3CollectCssDebug()
+                cssDebug
             });
             fv3Debug('dashboard', 'Debug payload stored for DASHBOARD-VM; click the FV3 Debug pill to download. VM Order:', [...order]);
         }
@@ -1825,20 +1837,20 @@ window.loadlist_original = window.loadlist;
 window.loadlist = (x) => {
     fv3DrawList.reload();
     if($('tbody#docker_view').length > 0) {
-        folderReq.docker = fv3Folders.docker.ask(() => [
-            $.get('/plugins/folder.view3/server/read.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('docker-folders-load-failed', 'Could not load Docker folder data. Try refreshing the page.'), 'error'); }).promise(),
+        folderReq.docker = fv3Folders.docker.ask((ifLast) => [
+            $.get('/plugins/folder.view3/server/read.php?type=docker').fail(ifLast((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('docker-folders-load-failed', 'Could not load Docker folder data. Try refreshing the page.'), 'error'); })).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=docker').fail(ifLast((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('container-details-load-failed', 'Could not load container details. Try refreshing the page.'), 'error'); })).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
             fv3CheckUpdates()
         ]);
     }
 
     if($('tbody#vm_view').length > 0) {
-        folderReq.vm = fv3Folders.vm.ask(() => [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-folders-load-failed', 'Could not load VM folder data. Try refreshing the page.'), 'error'); }).promise(),
+        folderReq.vm = fv3Folders.vm.ask((ifLast) => [
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(ifLast((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-folders-load-failed', 'Could not load VM folder data. Try refreshing the page.'), 'error'); })).promise(),
             $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error'); }).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(ifLast((jq) => { jq.fv3Bannered = true; fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error'); })).promise(),
             $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
         ]);
     }

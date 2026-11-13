@@ -257,7 +257,7 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         await t.answer(1, { f: FOLDERS.f });
         const early = t.draws.length;
         await t.answer(0, FOLDERS);
-        check('Docker, a newer answer is in first: the draw still waits for the batch it started with', early === 0 && t.draws.length === 1, { early, draws: t.draws.length });
+        check('Docker, a newer answer is in first: the draw takes it at once, without waiting for the older batch', early === 1, { early, draws: t.draws.length });
         check('Docker, a newer answer is in first: the draw uses it, so the deleted folder is not drawn', t.folders() === 'f', t.folders());
         await t.land(1);
         check('Docker, a newer answer is in first: the second list shows the same', t.folders() === 'f' && t.draws.length === 2, { folders: t.folders(), draws: t.draws.length });
@@ -310,7 +310,7 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         await t.answer(1, {});
         const early = t.draws.length;
         await t.answer(0, VM_FOLDERS);
-        check('VMs, a newer answer is in first: the draw waits for its own batch and uses the newer one', early === 0 && t.draws.join() === 'list 1' && t.folders() === '', { early, draws: t.draws, folders: t.folders() });
+        check('VMs, a newer answer is in first: the draw takes it at once', early === 1 && t.draws.join() === 'list 1' && t.folders() === '', { early, draws: t.draws, folders: t.folders() });
     }
     {
         // A list lands while a draw waits for folder data that then fails: that list is drawn from its own answer, not left bare
@@ -322,10 +322,10 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         await t.answer(0, new Error('500'));
         await t.answer(1, FOLDERS);
         const log = record(t).map((d) => d.outcome).join();
-        check('Docker, a list lands during a draw that fails: it gets its folders', t.folders() === 'f,g' && log === 'running,failed,drawn', { folders: t.folders(), log });
+        check('Docker, the first request fails after a newer reload: the list is drawn from the newer data', t.folders() === 'f,g' && log === 'running,drawn', { folders: t.folders(), log });
         t.p.g('listview()');
         await t.p.tick(300);
-        check('Docker, a list lands during a draw that fails: a view switch then keeps it', record(t).map((d) => d.outcome).join() === 'running,failed,drawn,kept', record(t));
+        check('Docker, the first request fails after a newer reload: a view switch then keeps the list', record(t).map((d) => d.outcome).join() === 'running,drawn,kept', record(t));
 
         // The same when its own answer fails too: Unraid's list with the banner, and the record does not call it kept
         const b = await docker({ hold: true });
@@ -351,8 +351,28 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         await t.p.tick(300);
         await t.answer(0, new Error('500'));
         await t.answer(1, VM_FOLDERS);
-        check('VMs, a list lands during a draw that fails: it gets its folder, with the VM in it', t.draws.join() === 'list 2' && t.folders() === 'lab:vm-x'
-            && record(t).map((d) => d.outcome).join() === 'running,failed,drawn', { draws: t.draws, folders: t.folders(), log: record(t) });
+        check('VMs, the first request fails after a newer reload: the list gets its folder, with the VM in it', t.draws.join() === 'list 2' && t.folders() === 'lab:vm-x'
+            && record(t).map((d) => d.outcome).join() === 'running,drawn', { draws: t.draws, folders: t.folders(), log: record(t) });
+    }
+    {
+        // The first folder request never answers; the next reload's does: its list is drawn, not stuck behind the hung one
+        const t = await docker({ hold: true });
+        t.reload();
+        await t.land(0);
+        t.reload();
+        await t.land(1);
+        await t.answer(1, FOLDERS);
+        check('Docker, a folder request that never answers: the next reload\'s list is drawn', t.folders() === 'f,g' && record(t).map((d) => d.outcome).join() === 'running,drawn',
+            { folders: t.folders(), log: record(t).map((d) => d.outcome) });
+        const v = await vms({ hold: true });
+        v.reload();
+        v.land(0);
+        await v.p.tick(300);
+        v.reload();
+        v.land(1);
+        await v.p.tick(300);
+        await v.answer(1, VM_FOLDERS);
+        check('VMs, a folder request that never answers: the next reload\'s list is drawn', v.folders() === 'lab:vm-x' && v.draws.join() === 'list 2', { folders: v.folders(), draws: v.draws });
     }
     {
         // No containers and no folders: the list has no rows at all, and a view switch must not draw it again

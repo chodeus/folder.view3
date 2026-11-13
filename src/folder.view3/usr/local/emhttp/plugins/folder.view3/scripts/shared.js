@@ -89,7 +89,7 @@ window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
     return newOnes;
 };
 
-// Draws each list Unraid renders into folders, one draw at a time; only a list whose draw failed is drawn again.
+// Draws each list Unraid renders into folders, one draw at a time; a list whose draw failed is tried again on the next call.
 // `rows` selects the rows Unraid replaces on a reload, `data` is the page's fv3FolderData
 window.fv3ListDrawer = (rows, draw, onFail, data) => {
     let drawn = new WeakSet();
@@ -98,7 +98,7 @@ window.fv3ListDrawer = (rows, draw, onFail, data) => {
     let landed = false;
     let lists = 0;
     // Every call leaves a line in fv3DrawLog, so a report of missing folders shows what became of each list
-    const note = (outcome) => fv3RecordDraw(rows, outcome, $(rows).length, $(rows).filter('.folder').length);
+    const note = (outcome) => fv3RecordDraw(rows, outcome, $(rows).length, $(rows).filter('.folder').length + $(rows).find('.folder-showcase-outer').length);
     // A list that landed during the draw may have asked for newer folder data than the draw had: once that data is
     // in, and unless another list or draw came first, the page loads the list again
     const refresh = () => {
@@ -123,11 +123,10 @@ window.fv3ListDrawer = (rows, draw, onFail, data) => {
             running = null;
             refresh();
         }, (e) => {
+            // Only drawn rows are remembered: the next list, or a view switch, tries again
             note('failed');
             running = null;
             onFail(e);
-            // Only drawn rows are remembered. A list that landed during the failed draw is drawn from its own answers
-            if (landed) run();
         });
     };
     // An empty list has no rows to tell a new one by, so the page says when a reload begins
@@ -135,26 +134,35 @@ window.fv3ListDrawer = (rows, draw, onFail, data) => {
     return run;
 };
 
-// Folder data for a page's draws. ask() takes each reload's requests; answers() waits for the batch asked last and
-// gives a copy of the newest one that is in: a draw empties the folder list it works from
+// Folder data for a page's draws. ask() takes each reload's requests; answers() waits for the batch asked last when it
+// starts, or a newer one that answers first, and gives a copy of the newest that is in: a draw empties what it works from
 window.fv3FolderData = () => {
     let asked = 0;
     let given = 0;
     let last = Promise.resolve();
     let newest = null;
+    const failed = new Map();
+    let waiting = [];
+    const settled = () => { const wake = waiting; waiting = []; wake.forEach((resolve) => resolve()); };
     return {
         // `ifLast` wraps a failure report: a request that fails after a newer batch was asked says nothing
         ask: (build) => {
             const seq = ++asked;
-            const requests = build((report) => () => { if (seq === asked) report(); });
-            last = Promise.all(requests).then((answers) => { if (!newest || seq > newest.seq) newest = { seq, answers }; });
-            last.catch(() => {});
+            const requests = build((report) => (...args) => { if (seq === asked) report(...args); });
+            last = Promise.all(requests);
+            last.then((answers) => { if (!newest || seq > newest.seq) newest = { seq, answers }; }, (e) => { failed.set(seq, e); }).then(settled);
             return requests;
         },
         answers: async () => {
-            await last;
-            given = newest ? newest.seq : 0;
-            return (newest ? newest.answers : []).map((answer) => (answer && typeof answer === 'object' ? JSON.parse(JSON.stringify(answer)) : answer));
+            const start = asked;
+            if (!start) return [];
+            // A hung or failed batch is overtaken by a newer one; only a failure of the batch asked last ends the wait
+            while (!(newest && newest.seq >= start)) {
+                if (failed.has(asked)) throw failed.get(asked);
+                await new Promise((resolve) => waiting.push(resolve));
+            }
+            given = newest.seq;
+            return newest.answers.map((answer) => (answer && typeof answer === 'object' ? JSON.parse(JSON.stringify(answer)) : answer));
         },
         // Null when the answers last given were those of the batch asked last, else resolves true once that batch is in
         behind: () => (given === asked ? null : last.then(() => true, () => false)),
