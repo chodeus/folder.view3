@@ -96,6 +96,7 @@ window.fv3ListDrawer = (rows, draw, onFail, data) => {
     let sinceReload = false;
     let running = null;
     let landed = false;
+    let reloaded = false;
     let lists = 0;
     // Every call leaves a line in fv3DrawLog, so a report of missing folders shows what became of each list
     const note = (outcome) => fv3RecordDraw(rows, outcome, $(rows).length, $(rows).filter('.folder').length + $(rows).find('.folder-showcase-outer').length);
@@ -109,17 +110,19 @@ window.fv3ListDrawer = (rows, draw, onFail, data) => {
     const run = () => {
         const list = $(rows).toArray();
         if (running) {
-            if (list.some((row) => !running.has(row))) { landed = true; lists++; }
+            if (list.length ? list.some((row) => !running.has(row)) : reloaded) { landed = true; lists++; }
             return note('running');
         }
         if (list.length ? list.some((row) => drawn.has(row)) : sinceReload) return note('kept');
         running = new WeakSet(list);
         landed = false;
+        reloaded = false;
         lists++;
         new Promise((resolve) => resolve(draw())).then(() => {
             note('drawn');
             drawn = new WeakSet($(rows).toArray());
-            sinceReload = true;
+            // After a reload that began during the draw, an empty list may be the reload's own and still to draw
+            if (!reloaded) sinceReload = true;
             running = null;
             refresh();
         }, (e) => {
@@ -130,7 +133,7 @@ window.fv3ListDrawer = (rows, draw, onFail, data) => {
         });
     };
     // An empty list has no rows to tell a new one by, so the page says when a reload begins
-    run.reload = () => { sinceReload = false; };
+    run.reload = () => { sinceReload = false; reloaded = true; };
     return run;
 };
 

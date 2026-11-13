@@ -389,6 +389,37 @@ const dashboard = async ({ hold = false, empty = false } = {}) => {
         check('Docker, an empty list: a reload draws again', t.draws.length === 2, t.draws.length);
     }
     {
+        // No containers, but folders: Unraid's list has no rows, and the page draws folders into it (two, as an empty list
+        // shows only some of them: createFolder's insert needs a row to go next to)
+        const empty = { f: folder('F', []), g: folder('G', []) };
+        const setup = { folders: empty, containers: [], prefs: [] };
+        const t = await docker({ hold: true, setup });
+        t.reload();
+        await t.land(0);
+        t.reload();
+        await t.land(1);
+        await t.answer(0, empty);
+        const stale = t.folders();
+        await t.answer(1, {});
+        const asked = t.asked();
+        await t.land(2);
+        await t.answer(2, {});
+        check('Docker, an empty list lands during a draw from older data: loaded again, and the deleted folders are gone', stale !== '' && asked === 3 && t.folders() === '',
+            { stale, asked, folders: t.folders(), log: record(t).map((d) => d.outcome) });
+
+        // A reload begins during a draw and its empty list lands after the draw: that list is drawn, not kept bare
+        const k = await docker({ hold: true, setup });
+        k.reload();
+        await k.land(0);
+        k.reload();
+        await k.answer(0, empty);
+        const first = k.folders();
+        await k.land(1);
+        await k.answer(1, empty);
+        check('Docker, an empty list after a draw that a reload overtook: it is drawn, with the same folders', first !== '' && k.folders() === first
+            && record(k).map((d) => d.outcome).join() === 'drawn,drawn', { first, folders: k.folders(), log: record(k).map((d) => d.outcome) });
+    }
+    {
         const t = await docker();
         const add = t.p.w.fv3RecordDraw || (() => {});
         for (let i = 0; i < 35; i++) add('#docker_list > tr', 'drawn', i, 0);
