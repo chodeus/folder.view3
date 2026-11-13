@@ -310,6 +310,10 @@ if (!function_exists('posix_geteuid') || posix_geteuid() !== 0) {
     $cases[] = ['custom mode reports it too',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir, $fv3tAutostart) { file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}'); chmod($fv3tAutostart, 0444); }), ['the autostart file could not be written', ['b', 'a']]];
 }
+// No saved order: names sort as the Docker page sorts them in the browser (fv3_name_cmp, held to the browser by name_order_test.js)
+$cases[] = ['no saved order: the page order sorts names as the browser does, punctuation first, then numbers, then letters',
+    $order(['p' => $folder('_Pinned'), 'a' => $folder('Apps'), 'b' => $folder('[Box]'), 'n' => $folder('2 Two')], ['zed', '-cli'], []), ['folder-p', '-cli', 'folder-b', 'folder-n', 'folder-a', 'zed']];
+
 // Imports keep the order in the file: with no saved Docker order the import creates one, the new folders first in the file's order,
 // the rest as the page draws it (A-Z); a saved order is never changed. Each through the shipped endpoint
 $savedNow = fn(): ?string => is_file("$fv3DockerManDir/userprefs.cfg") ? file_get_contents("$fv3DockerManDir/userprefs.cfg") : null;

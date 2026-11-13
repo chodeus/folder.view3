@@ -267,11 +267,10 @@
         return $roots;
     }
 
-    // Folder ids in FolderView Plus's display order; follows its orderFoldersByPrefs (utils-ordering.js), except that
-    // names compare with strnatcasecmp, not the browser's locale, so accented names can sort differently
+    // Folder ids in FolderView Plus's display order; follows its orderFoldersByPrefs (utils-ordering.js), names compared as
+    // the browser does (fv3_name_cmp: accented names can sort differently)
     function fv3_foreign_display_order(array $folders, $prefs, array $roots): array {
-        // Its base order is the browser's Object.keys: all-digit ids first, ascending
-        $ids = fv3_js_key_order(array_keys($folders));
+        $ids = array_map('strval', array_keys($folders));
         if (!is_array($prefs)) return $ids;
         $idList = static fn($v) => is_array($v) ? array_values(array_unique(array_filter($v, static fn($id) => is_string($id) && $id !== ''))) : [];
         $index = array_flip($ids);
@@ -286,7 +285,7 @@
             $sign = $mode === 'alpha' ? 1 : -1;
             $key = [];
             foreach ($ids as $id) $key[$id] = [is_string($folders[$id]['name'] ?? null) ? $folders[$id]['name'] : $id, $id];
-            $ids = $sortBy($key, static fn($a, $b) => $sign * (strnatcasecmp($a[0], $b[0]) ?: strnatcasecmp($a[1], $b[1])));
+            $ids = $sortBy($key, static fn($a, $b) => $sign * (fv3_name_cmp($a[0], $b[0]) ?: fv3_name_cmp($a[1], $b[1])));
         } elseif (in_array($mode, ['created_newest', 'created_oldest', 'updated_newest'], true)) {
             $field = $mode === 'updated_newest' ? 'updatedAt' : 'createdAt';
             $sign = $mode === 'created_oldest' ? 1 : -1;
@@ -303,7 +302,8 @@
         }
         // A pinned nested folder lifts its top-level folder, as FolderView Plus does
         $pinned = array_values(array_unique(array_filter(array_map(static fn($id) => $roots[$id] ?? null, $idList($prefs['pinnedFolderIds'] ?? null)), 'is_string')));
-        return array_values(array_unique(array_merge($pinned, $ids)));
+        // It shows the result through Object.keys as well: all-digit ids come first, ascending, whatever the sort
+        return fv3_js_key_order(array_values(array_unique(array_merge($pinned, $ids))));
     }
 
     // $existing: [type => folder map already on disk], used only for name clashes and member ownership
@@ -317,6 +317,8 @@
             $other = $onlyType === 'docker' ? 'vm' : 'docker';
             if (isset($types[$other]) && count($types[$other])) $report['skipped_sections'][] = $other;
             $types = [$onlyType => $types[$onlyType]];
+            // "Only their folder order is used" holds only when the type kept has preferences
+            if (!is_array($detected['prefs'][$onlyType] ?? null)) $report['skipped_sections'] = array_values(array_diff($report['skipped_sections'], ['prefs']));
         }
 
         $out = [];

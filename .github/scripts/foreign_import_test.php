@@ -159,13 +159,28 @@ check('a snapshot without prefs keeps the file order and does not mention prefs'
 $digits = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'manual', 'manualOrder' => ['20', '0', '10'], 'pinnedFolderIds' => ['0']], 'folders' => [
     '10' => ['name' => 'Ten', 'containers' => []], '0' => ['name' => 'Zero', 'containers' => []], '20' => ['name' => 'Twenty', 'containers' => []],
 ]];
-check('all-digit ids, id 0 among them, sort and pin like any other', $namesOf($digits) === ['Zero', 'Twenty', 'Ten'], $namesOf($digits));
+// FolderView Plus shows its result through Object.keys too: all-digit ids first, ascending, whatever the sort or the pins
+check('all-digit ids, id 0 among them: ascending whatever the manual order and pins, as FolderView Plus shows them', $namesOf($digits) === ['Zero', 'Ten', 'Twenty'], $namesOf($digits));
+$named = static fn(array $names, string $mode) => $namesOf(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => $mode],
+    'folders' => array_combine(array_map(static fn($i) => "k$i", array_keys($names)), array_map(static fn($n) => ['name' => $n, 'containers' => []], $names))]);
+check('A-Z: names starting with punctuation come before letters, in the browser\'s order', $named(['Apps', '_Downloads', 'zebra', '[Media]', '~Misc', '-Tools', 'Alpha 10', 'alpha 9'], 'alpha')
+    === ['_Downloads', '-Tools', '[Media]', '~Misc', 'alpha 9', 'Alpha 10', 'Apps', 'zebra'], $named(['Apps', '_Downloads', 'zebra', '[Media]', '~Misc', '-Tools', 'Alpha 10', 'alpha 9'], 'alpha'));
+check('Z-A: a name starting with _ comes last', $named(['Apps', '_Downloads', 'Media'], 'name_desc') === ['Media', 'Apps', '_Downloads'], $named(['Apps', '_Downloads', 'Media'], 'name_desc'));
+$mixedIds = $namesOf(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'alpha'], 'folders' => ['a' => ['name' => 'Alpha', 'containers' => []], '5' => ['name' => 'Zulu', 'containers' => []]]]);
+check('an all-digit id comes before other ids even under A-Z, as FolderView Plus shows it', $mixedIds === ['Zulu', 'Alpha'], $mixedIds);
+$envVmPrefs = ['kind' => 'environment_snapshot', 'schemaVersion' => 1, 'types' => ['docker' => ['folders' => ['a' => ['name' => 'A', 'containers' => []]]],
+    'vm' => ['folders' => ['v' => ['name' => 'V', 'containers' => []]], 'prefs' => ['sortMode' => 'alpha']]]];
+check('Docker folders from a snapshot whose Docker part has no prefs: the preview does not say their folder order is used',
+    !in_array('prefs', fv3_convert_foreign_bundle($envVmPrefs, 'docker')['report']['skipped_sections'], true), fv3_convert_foreign_bundle($envVmPrefs, 'docker')['report']['skipped_sections']);
+check('VM folders from the same snapshot, whose VM part has prefs: it does', in_array('prefs', fv3_convert_foreign_bundle($envVmPrefs, 'vm')['report']['skipped_sections'], true));
 // FolderView Plus starts from the browser's Object.keys: all-digit ids first, ascending, then the rest in file order
 $keyOrder = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'created'], 'folders' => [
     'b' => ['name' => 'Bee', 'containers' => []], '10' => ['name' => 'Ten', 'containers' => []], '0' => ['name' => 'Zero', 'containers' => []], 'a' => ['name' => 'Ay', 'containers' => []],
 ]];
 check('no dates: the browser key order, all-digit ids first and ascending', $namesOf($keyOrder) === ['Zero', 'Ten', 'Bee', 'Ay'], $namesOf($keyOrder));
-check('a backup whose prefs are not a map does not say their folder order is used', !in_array('prefs', fv3_convert_foreign_bundle($backupOf('alpha'), 'docker')['report']['skipped_sections'], true));
+check('a backup whose prefs are not a map does not say their folder order is used, from either import button',
+    !in_array('prefs', fv3_convert_foreign_bundle($backupOf('alpha'), 'docker')['report']['skipped_sections'], true)
+    && !in_array('prefs', fv3_convert_foreign_bundle($backupOf('alpha'), null)['report']['skipped_sections'], true));
 check('a backup with prefs says only their folder order is used', in_array('prefs', fv3_convert_foreign_bundle($backupOf(['sortMode' => 'alpha']), 'docker')['report']['skipped_sections'], true));
 $branch = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'branch', 'branchRootId' => 'kid', 'folders' => [
     'kid' => $plus['kid'], 'grandkid' => ['name' => 'Grandkid', 'containers' => ['g1'], 'parentId' => 'kid'],

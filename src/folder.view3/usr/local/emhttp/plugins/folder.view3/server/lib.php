@@ -356,8 +356,8 @@
         return array_slice($segs, 0, 2) === ['plugins', 'folderview.plus'];
     }
 
-    // While FolderView Plus is not installed, its icons on this server read as no icon (the question mark). The read writes nothing;
-    // a link to another host may still work, so it is kept
+    // While FolderView Plus is not installed, its icons named by a path on this server read as no icon (the question mark); a full
+    // http(s) link is kept, as the read cannot tell this server's name from another's. The read writes nothing
     function fv3_without_dead_plus_icons(array $folders): array {
         global $fv3PlusPluginDir;
         if (is_dir($fv3PlusPluginDir)) return $folders;
@@ -803,8 +803,35 @@
         return array_merge($index, array_values(array_diff($keys, $index)));
     }
 
+    // The browser's name order (localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})) for ASCII: space and punctuation in
+    // ICU's order, numbers by value, letters in any case. Other characters follow z by code point, so accents can differ
+    function fv3_name_cmp(string $a, string $b): int {
+        static $punct = null;
+        $punct ??= array_flip(str_split(" _-,;:!?.'\"()[]{}@*/\\&#%`^+<=>|~$"));
+        $tokens = static function (string $s) use ($punct): ?array {
+            if (preg_match_all('/[0-9]+|./su', $s, $m) === false) return null;
+            return array_map(static function (string $t) use ($punct): array {
+                if (ctype_digit($t)) return [100, ltrim($t, '0')];
+                $c = strtolower($t);
+                if (isset($punct[$c])) return [$punct[$c], ''];
+                return strlen($c) === 1 && $c >= 'a' && $c <= 'z' ? [200 + ord($c), ''] : [1000, $t];
+            }, $m[0]);
+        };
+        $ta = $tokens($a);
+        $tb = $tokens($b);
+        if ($ta === null || $tb === null) return strnatcasecmp($a, $b);
+        foreach ($ta as $i => [$ga, $ka]) {
+            if (!isset($tb[$i])) return 1;
+            [$gb, $kb] = $tb[$i];
+            if ($ga !== $gb) return $ga <=> $gb;
+            $c = $ga === 100 ? (strlen($ka) <=> strlen($kb) ?: strcmp($ka, $kb)) : strcmp($ka, $kb);
+            if ($c !== 0) return $c <=> 0;
+        }
+        return count($ta) < count($tb) ? -1 : 0;
+    }
+
     // The Docker page's order, top-down, as container names and folder placeholders, members before their folder.
-    // $prefs is userprefs.cfg's values; with none it is A-Z by name (createFolders() sorts by browser locale, so accents can differ)
+    // $prefs is userprefs.cfg's values; with none it is A-Z by name as createFolders() sorts it (fv3_name_cmp: accents can differ)
     function fv3_page_order(array $membership, array $allContainerNames, array $prefs): array {
         $folderContainers = $membership['containers'];
         $assigned = $membership['assigned'];
@@ -816,7 +843,7 @@
             foreach ($allContainerNames as $name) {
                 if (!in_array($name, $assigned, true)) { $entries[] = ['key' => $name, 'name' => $name]; }
             }
-            usort($entries, function($a, $b) { return strnatcasecmp($a['name'], $b['name']); });
+            usort($entries, function($a, $b) { return fv3_name_cmp($a['name'], $b['name']); });
             $prefs = array_column($entries, 'key');
         }
         $placed = [];
