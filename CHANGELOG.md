@@ -4,22 +4,13 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: Apply Defaults takes only true or false for an on/off setting
-- fix: a failed Apply Defaults request is named by its folder type, and a failed reload is named with it
-- fix: a rename report sent as a list is refused
-- fix: Apply Defaults checks each value, and no folder file is made without the lock
-- fix: one rename rule on the pages and the server, and Apply Defaults takes folder settings only
-- fix: folder saves take a lock, and pages send their change instead of their copy
-- fix: a single imported folder is placed like the rest (create.php answers its id); a restore's order copy keeps regex members in its order; an order file unreadable at the recheck is said; the VM import is checked on the real VMs page
-- fix: userprefs.cfg has one reader, in Unraid's numeric order, refusing list lines; the no-order A-Z trims each name once
-- fix: imported Docker folders go on top of the saved order in the file's order, so the folder listed first takes a container two regexes match; the no-order A-Z trims names as the page does; FolderView Plus dates sort to the millisecond
-- fix: an import with Docker stopped or empty says the order was not saved; a failed order request names both steps; userprefs.cfg lines have one writer
-- fix: imported names sort as the browser does (punctuation first), all-digit ids as FolderView Plus shows them, and the prefs note follows the type imported
-- fix: imports keep the order in the file: new folders show in the file's order, and a server with no saved Docker order gets one
-- fix: the settings page lists folders in the order the Docker and VMs pages draw them
-- fix: FolderView Plus icons already imported read as no icon while it is not installed; the icon rule has one owner and reads encoded paths
-- fix: review round for the FolderView Plus import order
-- fix: FolderView Plus folders import in the order FolderView Plus showed them
+- Folder saves from two tabs, or made at once, no longer overwrite each other
+- Apply Defaults accepts only valid values for each setting
+- Imports keep the file's folder order and place new folders above existing ones
+- Settings page lists folders in the same order as the Docker and VMs pages
+- FolderView Plus branch exports (a folder with its subfolders) now import
+- FolderView Plus User Script actions with & # % ? in their arguments now import
+- FolderView Plus icons show the default icon once FolderView Plus is removed
 
 ## 2026.11.13.3 (beta)
 
