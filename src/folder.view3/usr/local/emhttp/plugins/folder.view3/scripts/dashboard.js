@@ -16,6 +16,8 @@ let fv3DashboardUpdateContainer = false;
 let fv3DashboardUpdateFolder = false;
 // Per tile: false from the start of a draw to its panel pass or failure, so opened folders get full-width panels after it
 const fv3LayoutReady = { docker: false, vm: false };
+// Opened folders in this tile get full-width panels at once: the tile is full-width and not mid-draw
+const fv3PanelsNow = (type) => (type === 'docker' ? dockerDashboardLayout : vmDashboardLayout) === 'fullwidth' && fv3LayoutReady[type];
 // Draws started per tile: a draw's panel pass stands down once a newer draw has started
 const fv3TileDraws = { docker: 0, vm: 0 };
 let dashboardContext = 0;
@@ -741,7 +743,7 @@ const expandFolderDocker = (id) => {
         if(globalFolders.docker && globalFolders.docker[id]) {
             globalFolders.docker[id].status.expanded = true;
         }
-        if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady.docker) {
+        if (fv3PanelsNow('docker')) {
             fv3FullwidthExpand(id, 'docker');
         }
         fv3InjectCollapseToggles();
@@ -789,7 +791,7 @@ const expandFolderVM = (id) => {
         if(globalFolders.vms && globalFolders.vms[id]) {
             globalFolders.vms[id].status.expanded = true;
         }
-        if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady.vm) {
+        if (fv3PanelsNow('vm')) {
             fv3FullwidthExpand(id, 'vm');
         }
         fv3InjectCollapseToggles();
@@ -1620,8 +1622,8 @@ let fv3FullwidthRaf = null;
 const fv3FullwidthReflowSync = (onlyType) => {
     const types = onlyType ? [onlyType] : ['docker', 'vm'];
     types.forEach(type => {
-        const layout = type === 'docker' ? dockerDashboardLayout : vmDashboardLayout;
-        if (layout !== 'fullwidth') return;
+        // A tile mid-draw is left to its own panel pass (fv3TileDrawer), which runs after its layout
+        if (!fv3PanelsNow(type)) return;
         const tbody = type === 'docker' ? 'docker_view' : 'vm_view';
         const parentTd = $(`tbody#${tbody} > tr.updated > td`);
         const expandedOuters = $(`tbody#${tbody} .folder-showcase-outer[expanded="true"]:not(.fv3-hidden)`).toArray();
@@ -1716,7 +1718,7 @@ const fv3UpdateHidden = () => {
         const isStopped = $(this).hasClass('stopped');
         $(this).toggle(!(vmChecked && isStopped));
     });
-    // An opened folder shown again on a full-width tile gets its panel now (the reflow skips hidden folders)
+    // An opened folder shown again on a full-width tile not mid-draw gets its panel now (the reflow skips hidden folders)
     fv3FullwidthReflowSync();
 };
 

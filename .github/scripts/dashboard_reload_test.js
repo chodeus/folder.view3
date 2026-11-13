@@ -343,6 +343,35 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingDebu
         await n.answer('docker', 1, open(DOCKER_FOLDERS));
         check('Dashboard full-width, a newer list before the older panel pass: the newer draw still places its panel after itself, once', n.opened('docker') === '0,0'
             && n.panels('docker') === 1, { opened: n.opened('docker'), panels: n.panels('docker') });
+
+        // One tile is drawn while the other's opened folder waits for that tile's panel pass: the waiting tile gets its panel from its own pass
+        const sets = { docker: DOCKER_FOLDERS, vm: VM_FOLDERS };
+        const names = { docker: ['Docker', 'web'], vm: ['VM', 'vm1'] };
+        for (const [held, other] of [['vm', 'docker'], ['docker', 'vm']]) {
+            const r = await dashboard({ layout: 'fullwidth' });
+            r.reload();
+            await r.land(0);
+            await r.answer(held, 0, open(sets[held]), 0);
+            await r.answer(other, 0, sets[other], 0);
+            const early = r.panels(held);
+            await r.p.tick(300);
+            check(`Dashboard full-width, the ${names[other][0]} tile drawn while the ${names[held][0]} tile waits for its panel pass: no ${names[held][0]} panel before that pass, one after`,
+                early === 0 && r.panels(held) === 1 && r.shownPanels(held) === 1 && r.inPanels(held) === names[held][1],
+                { early, panels: r.panels(held), shown: r.shownPanels(held), inPanels: r.inPanels(held) });
+        }
+
+        // The page is resized while a tile waits for its panel pass: the resize's reflow leaves that tile to its pass
+        const z = await dashboard({ layout: 'fullwidth' });
+        z.reload();
+        await z.land(0);
+        await z.answer('docker', 0, open(DOCKER_FOLDERS), 0);
+        z.p.resized();
+        await z.p.tick(16);
+        const beforePass = z.panels('docker');
+        await z.p.tick(300);
+        check('Dashboard full-width, the page resized while the Docker tile waits for its panel pass: no panel before that pass, one after',
+            beforePass === 0 && z.panels('docker') === 1 && z.shownPanels('docker') === 1 && z.inPanels('docker') === 'web',
+            { beforePass, panels: z.panels('docker'), shown: z.shownPanels('docker'), inPanels: z.inPanels('docker') });
     }
     done();
 })();
