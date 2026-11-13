@@ -157,6 +157,9 @@ const createFolders = async () => {
     folderDebugMode  = false;
 };
 
+// The rows under a list entry, up to the next sortable row: a VM's detail rows, an opened folder's VMs
+const fv3RowsUnder = ($tr) => $tr.nextUntil('tr.sortable');
+
 // Render one folder. Returns the number of elements removed before the folder's position.
 const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
@@ -189,11 +192,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     const colspan = totalCols - 2;
     const fld = `<tr parent-id="${escapeHtml(id)}" class="sortable folder-id-${escapeHtml(id)} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="vm-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${escapeHtml(id)}" onclick='addVMFolderContext(${fv3JsArg(id)})' class="hand folder-hand"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><a class="folder-appname" href="#" onclick='editFolder(${fv3JsArg(id)})'>${escapeHtml(folder.name)}</a><a class="folder-appname-id">folder-${escapeHtml(id)}</a><br><i id="load-folder-${escapeHtml(id)}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${escapeHtml(id)} folder-dropdown" onclick='dropDownButton(${fv3JsArg(id)})'><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="folder-autostart"><input class="autostart" type="checkbox" id="folder-${escapeHtml(id)}-auto" style="display:none"></td></tr>`;
 
-    if (position === 0) {
-        $('#kvm_list > tr.sortable').eq(position).before($(fld));
-    } else {
-        $('#kvm_list > tr.sortable').eq(position - 1).next().after($(fld));
-    }
+    fv3PlaceFolder($('#kvm_list'), $('#kvm_list > tr.sortable'), position, $(fld), ($item) => $item.add(fv3RowsUnder($item)).last());
 
     // switchButton init deferred until autostart state is known — early init can reset VM autostart.
 
@@ -298,7 +297,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             let $vmTR = $('#kvm_list > tr.sortable:not(.folder)').filter(function() {
                 return $(this).find('td.vm-name span.outer span.inner a').first().text().trim() === container;
             }).first();
-            let $detailRows = $vmTR.nextUntil('tr.sortable');
+            let $detailRows = fv3RowsUnder($vmTR);
             $(`tr.folder-id-${id} div.folder-storage`).append($vmTR.addClass(`folder-${id}-element`).addClass(`folder-element`).removeClass('sortable'));
             if ($detailRows.length) {
                 $(`tr.folder-id-${id} div.folder-storage`).append($detailRows.addClass(`folder-${id}-element folder-element`));

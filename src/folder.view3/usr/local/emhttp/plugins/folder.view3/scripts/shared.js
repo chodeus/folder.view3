@@ -89,6 +89,15 @@ window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
     return newOnes;
 };
 
+// Inserts a folder at `position` among the list's entries (`items`); `end` gives an entry's last row. Past the last entry
+// it goes after that entry, into an empty list at its end; a place past the end or a missing list logs a debug warning
+window.fv3PlaceFolder = ($list, $items, position, el, end = ($item) => $item) => {
+    if (position > $items.length || !$list.length) fv3DebugWarn('fv3PlaceFolder', `place ${position} of ${$items.length} entries${$list.length ? '' : ', and the list is not on the page'}`);
+    if (position <= 0 && $items.length) $items.eq(0).before(el);
+    else if ($items.length) end($items.eq(Math.min(position, $items.length) - 1)).after(el);
+    else $list.append(el);
+};
+
 // Draws each list Unraid renders into folders, one draw at a time; a list whose draw failed is tried again on the next call.
 // `rows` selects the rows Unraid replaces on a reload, `data` is the page's fv3FolderData
 window.fv3ListDrawer = (rows, draw, onFail, data) => {
