@@ -2,6 +2,21 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix: the Dashboard's full-width reflow skips a tile mid-draw; one check owns when a tile gets panels
+- fix: folder data keeps only the failure of the batch asked last
+- fix: a folder hidden by "hide stopped" gets no full-width panel anywhere, and gets one at once when shown again
+- fix: on the Dashboard a folder hidden by "hide stopped" no longer shows an empty full-width panel
+- fix: a Dashboard draw's panel pass stands down for a newer draw by count, a failed draw marks its tile laid out, resize reflow is as before
+- fix: the Dashboard places full-width panels after each tile's draw, under its layout, never during it
+- fix: an empty list after a reload that began during a draw is drawn, and reloaded if that draw had older data
+- fix: each Dashboard tile has its own list drawer and waits only for its own data
+- fix: in debug mode each Dashboard tile's debug reads stand apart
+- fix: either Dashboard tile's newer data loads the list again
+- fix: the Dashboard draws only once both tiles' data is in, and a hung request no longer stalls the draw
+- fix: Dashboard folders stay drawn when list reloads overlap
+
 ## 2026.11.13.1 (beta)
 
 - Folders no longer vanish when the Docker or VMs list reloads twice quickly
