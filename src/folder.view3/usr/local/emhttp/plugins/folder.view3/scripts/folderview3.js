@@ -167,13 +167,13 @@ const fv3ImportFolderMap = async (content, type) => {
     }
     // Structural test, not `content.name` — an empty name is legal and would otherwise route a
     // single folder down the map path, writing its own keys (name, icon, settings…) as folder ids.
-    // The pages put folders the saved order does not name on top, the last one in the map first: the file's new folders are saved
-    // last-first, so they show in the file's order. Folders already on the server keep their place
+    // Docker: saved in the file's order, then import_order.php puts the new ones on top of the saved order. VMs: the page draws folders
+    // its saved order does not name on top, the last one in the map first, so they are saved last-first. Folders already there keep their place
     const known = (type === 'docker' ? dockers : vms) || {};
     const fresh = fv3IsFolderShaped(content) ? [] : Object.keys(content).filter((id) => !Object.prototype.hasOwnProperty.call(known, id));
     const jobs = fv3IsFolderShaped(content)
         ? [{ url: '/plugins/folder.view3/server/create.php', data: { type: type, content: JSON.stringify(content) }, label: content.name || fv3I18nOr('folder-unnamed', 'folder') }]
-        : Object.entries(content).reverse().map(([id, folder]) => ({ url: '/plugins/folder.view3/server/update.php', data: { type: type, content: JSON.stringify(folder), id: id }, label: folder?.name || id, key: id }));
+        : (type === 'vm' ? Object.entries(content).reverse() : Object.entries(content)).map(([id, folder]) => ({ url: '/plugins/folder.view3/server/update.php', data: { type: type, content: JSON.stringify(folder), id: id }, label: folder?.name || id, key: id }));
     const failed = await postEach(jobs);
     const outcome = {};
     // nothing saved, nothing to order: the dialog must not say "Saved, but"
@@ -190,8 +190,8 @@ const fv3ImportFolderMap = async (content, type) => {
     }
     populateTable();
     const warnings = fv3ImportWarnings(outcome);
-    // listed in the file's order, not the last-first order they were saved in
-    if (showBatchErrors([...failed].reverse(), { key: 'import-folders-failed', text: 'These folders could not be imported: $1' }, null, warnings)) return;
+    // listed in the file's order, not the last-first order VM folders are saved in
+    if (showBatchErrors(type === 'vm' ? [...failed].reverse() : failed, { key: 'import-folders-failed', text: 'These folders could not be imported: $1' }, null, warnings)) return;
     if (warnings) { swal({ title: fv3I18nOr('warning', 'Warning'), text: warnings, type: 'warning' }); } else { swal.close(); }
 };
 

@@ -292,8 +292,9 @@
             $key = [];
             foreach ($ids as $id) {
                 $v = $folders[$id][$field] ?? null;
-                $t = is_string($v) && trim($v) !== '' ? strtotime(trim($v)) : false;
-                $key[$id] = $t === false ? null : $t;
+                // Milliseconds, as Date.parse gives them: two folders made in the same second still sort
+                $d = is_string($v) && trim($v) !== '' ? date_create(trim($v)) : false;
+                $key[$id] = $d === false ? null : (int)$d->format('U') * 1000 + (int)$d->format('v');
             }
             // FolderView Plus calls an undated folder equal to every other, which no consistent order satisfies: undated go last
             $ids = $sortBy($key, static fn($ta, $tb) => ($ta === null || $tb === null) ? ($ta === null) <=> ($tb === null) : $sign * ($ta <=> $tb));
@@ -500,14 +501,15 @@
             // The object copy from the single read above: the assoc one would turn an existing
             // folder's empty {} settings/containerImages into []
             $map = $maps[$t];
-            // The pages draw folders missing from userprefs.cfg on top, the last one in the map first (fv3_page_order), so
-            // adding them in reverse shows FolderView Plus's order. With no userprefs.cfg, import_foreign.php creates one
+            // Docker folders are saved in FolderView Plus's order, then placed on top of the saved order (import_foreign.php). The VMs page
+            // draws folders its saved order does not name on top, the last one in the map first, so VM folders are saved in reverse
             $placed[$t] = [];
-            foreach (array_reverse($folders) as $folder) {
+            foreach ($t === 'vm' ? array_reverse($folders) : $folders as $folder) {
                 do { $id = generateId(); } while (property_exists($map, $id));
                 $map->$id = $folder;
-                array_unshift($placed[$t], "folder-$id");
+                $placed[$t][] = "folder-$id";
             }
+            if ($t === 'vm') $placed[$t] = array_reverse($placed[$t]);
             // No fv3_dedupe_explicit_members here: the converter already skips claimed members, and a
             // whole-map pass would strip members from existing folders that happen to share one
             $encoded = json_encode($map);

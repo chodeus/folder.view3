@@ -117,7 +117,7 @@ for (let n = 0; n < 40; n++) {
         KINDS.every((k) => setups.some((s) => s.kind === k)) && setups.some((s) => Object.keys(s.folders).some((id) => /^\d+$/.test(id)))
         && reordered.docker >= 10 && reordered.vm >= 10, reordered);
 
-    // A FolderView Plus import: the folders it showed as Alpha, Bravo, Charlie are written last-first and the saved order names none of them
+    // Folders the saved order does not name (a VM import writes them so, last-first): the pages and the settings page list them alike
     const imported = { c3: { name: 'Charlie', icon: '', regex: '', containers: [], settings: {}, hidden_preview: [], actions: [] },
         b2: { name: 'Bravo', icon: '', regex: '', containers: [], settings: {}, hidden_preview: [], actions: [] },
         a1: { name: 'Alpha', icon: '', regex: '', containers: [], settings: {}, hidden_preview: [], actions: [] } };
@@ -125,17 +125,17 @@ for (let n = 0; n < 40; n++) {
     const plusTable = await settings({ read: { docker: imported, vm: imported }, read_order: { docker: ['plex'], vm: ['plex'] } });
     const want = ['Alpha', 'Bravo', 'Charlie'];
     const plusPages = { docker: await dockerPage(plusSetup), vm: await vmPage(plusSetup) };
-    check('FolderView Plus import: the Docker page and the settings page show its order',
+    check('folders the saved order does not name: the Docker page and the settings page list them alike, the last in the map first',
         JSON.stringify(plusPages.docker) === JSON.stringify(want) && JSON.stringify(plusTable.docker) === JSON.stringify(want), { page: plusPages.docker, table: plusTable.docker });
-    check('FolderView Plus import: the VMs page and the settings page show its order',
+    check('folders the saved order does not name: the VMs page and the settings page list them alike, the last in the map first',
         JSON.stringify(plusPages.vm) === JSON.stringify(want) && JSON.stringify(plusTable.vm) === JSON.stringify(want), { page: plusPages.vm, table: plusTable.vm });
 
     // Nothing saved: the Docker page sorts by the name it shows, trimmed, any case, an empty name first
     const named = (name) => ({ name, icon: '', regex: '', containers: [], settings: {}, hidden_preview: [], actions: [] });
-    const odd = { z: named(' Zulu'), e: named(''), b: named('beta'), a: named('Alpha 10'), n: named('Alpha 9') };
+    const odd = { z: named(' Zulu'), e: named(''), b: named('beta'), a: named('Alpha 10'), n: named('Alpha 9'), m: named('\u00a0Mike\t') };
     const oddPage = await dockerPage({ folders: odd, names: ['plex'], prefs: [] });
     const oddTable = (await settings({ read: { docker: odd, vm: odd }, read_order: { docker: [], vm: [] } })).docker;
     check('nothing saved, names padded, empty, in either case and with numbers: the settings page sorts them as the Docker page does',
-        JSON.stringify(oddTable) === JSON.stringify(oddPage) && JSON.stringify(oddPage) === JSON.stringify(['', 'Alpha 9', 'Alpha 10', 'beta', 'Zulu']), { page: oddPage, table: oddTable });
+        JSON.stringify(oddTable) === JSON.stringify(oddPage) && JSON.stringify(oddPage) === JSON.stringify(['', 'Alpha 9', 'Alpha 10', 'beta', 'Mike', 'Zulu']), { page: oddPage, table: oddTable });
     done();
 })();

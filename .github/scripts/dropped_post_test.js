@@ -247,7 +247,7 @@ const differential = async (extension, extensionFirst) => {
         page.w.fv3FailureBuffer);
 
     const folders = { a1: { name: 'Apps', containers: [] }, b2: { name: 'Media', containers: [] } };
-    const importWith = async (list) => { dialogs.length = 0; posted.length = 0; answerWith(list); await page.w.fv3ImportFolderMap(folders, 'docker'); return { posted: [...posted], dialogs: [...dialogs] }; };
+    const importWith = async (list, type = 'docker') => { dialogs.length = 0; posted.length = 0; answerWith(list); await page.w.fv3ImportFolderMap(folders, type); return { posted: [...posted], dialogs: [...dialogs] }; };
     const stale = await importWith([csrfDrop, csrfDrop]);
     check('an import from a stale page: no order request is sent, and one dialog names the folders and says to reload, with no "Saved, but"',
         stale.posted.join() === 'update.php,update.php' && stale.dialogs.length === 1
@@ -258,9 +258,9 @@ const differential = async (extension, extensionFirst) => {
         && unsynced.dialogs[0] === "warning: Saved, but the folders' order could not be saved: the autostart file could not be written\n"
             + 'Saved, but the Docker start order could not be updated: the autostart file could not be written', unsynced);
     const mixed = await importWith([ok, refused, ok]);
-    // The folders are saved last-first (Media, then Apps), so the second answer is Apps's
+    // Docker folders are saved in the file's order (Apps, then Media), so the second answer is Media's
     check('an import where one folder was refused names it and still orders and syncs the one that saved',
-        mixed.posted.join() === 'update.php,update.php,import_order.php' && mixed.dialogs.join('|') === 'error: These folders could not be imported: Apps\nthe autostart file could not be written', mixed);
+        mixed.posted.join() === 'update.php,update.php,import_order.php' && mixed.dialogs.join('|') === 'error: These folders could not be imported: Media\nthe autostart file could not be written', mixed);
 
     const unordered = await importWith([ok, ok, { ...ok, body: JSON.stringify({ success: true, order_warning: "Unraid's saved Docker order (userprefs.cfg) could not be written" }) }]);
     check('an import whose saved order could not be created warns "Saved, but" with that reason',
@@ -268,7 +268,12 @@ const differential = async (extension, extensionFirst) => {
     const twoReasons = await importWith([csrfDrop, refused]);
     check('an import whose two folders failed for different reasons lists them in the file\'s order with both reasons, the reload one among them',
         twoReasons.posted.join() === 'update.php,update.php'
-        && twoReasons.dialogs.join('|') === `error: These folders could not be imported: Apps, Media\nthe autostart file could not be written\n${REASON}`, twoReasons);
+        && twoReasons.dialogs.join('|') === `error: These folders could not be imported: Apps, Media\n${REASON}\nthe autostart file could not be written`, twoReasons);
+    // VM folders are saved last-first (Media, then Apps): the first answer is Media's, and the dialog still lists them in the file's order
+    const vmReasons = await importWith([csrfDrop, refused], 'vm');
+    check('a VM import whose two folders failed lists them in the file\'s order, each with its own reason, and sends no order request',
+        vmReasons.posted.join() === 'update.php,update.php'
+        && vmReasons.dialogs.join('|') === `error: These folders could not be imported: Apps, Media\nthe autostart file could not be written\n${REASON}`, vmReasons);
 
     // A FolderView Plus import: the preview is confirmed, then import_foreign.php's answer decides the last dialog
     const report = { types: { docker: { folders: [{ name: 'Apps' }, { name: 'Media' }] } } };

@@ -85,15 +85,15 @@ const FILE = { f3: folder('Charlie'), f1: folder('Alpha'), f2: folder('Bravo'), 
 (async () => {
     {
         const server = serverWith({ old: folder('Old', ['plex']) }, ['plex', 'folder-old'], ['plex']);
-        const before = prefsOf(server);
         const page = await importFile(server, FILE);
         const sent = page.posted.filter((p) => p.name === 'update.php').map((p) => p.data.id);
         const order = page.posted.find((p) => p.name === 'import_order.php');
         const drawn = await dockerPage(server, ['plex']);
-        check('a saved order: the folders are saved last-first, the new ones named to import_order.php in the file\'s order',
-            sent.join() === 'old,f2,f1,f3' && order && order.data.ids === '["f3","f1","f2"]', { sent, order });
-        check('a saved order: the Docker page shows the new folders in the file\'s order, the one already placed keeps its place; userprefs.cfg is untouched',
-            drawn.join() === 'Charlie,Alpha,Bravo,Old' && prefsOf(server) === before && page.dialogs.at(-1) === 'closed', { drawn, dialogs: page.dialogs });
+        check('a saved order: the folders are saved in the file\'s order, the new ones named to import_order.php in that order',
+            sent.join() === 'f3,f1,f2,old' && order && order.data.ids === '["f3","f1","f2"]', { sent, order });
+        check('a saved order: the new folders go on top of it in the file\'s order, and the Docker page shows them so; the one already placed keeps its place',
+            valuesOf(prefsOf(server)).join() === 'folder-f3,folder-f1,folder-f2,plex,folder-old'
+            && drawn.join() === 'Charlie,Alpha,Bravo,Old' && page.dialogs.at(-1) === 'closed', { prefs: prefsOf(server), drawn, dialogs: page.dialogs });
         server.cleanup();
     }
     {
@@ -136,6 +136,29 @@ const FILE = { f3: folder('Charlie'), f1: folder('Alpha'), f2: folder('Bravo'), 
         check('no saved order and Docker lists nothing (stopped, or no containers): the dialog says the order could not be saved, and none is written',
             page.dialogs.at(-1) === "warning: Saved, but the folders' order could not be saved: Docker is not running or lists no containers" && prefsOf(server) === null, page.dialogs);
         server.cleanup();
+    }
+    {
+        // Plex (^plex) above a catch-all Other (.): the folder listed first takes plex, on the page and in the server's membership
+        const overlap = { p: { ...folder('Plex'), regex: '^plex' }, o: { ...folder('Other'), regex: '.' } };
+        const plusBundle = { schemaVersion: 1, type: 'docker', mode: 'full', reason: 'manual', folders: { a: { name: 'Plex', regex: '^plex', containers: [] }, b: { name: 'Other', regex: '.', containers: [] } } };
+        const results = [];
+        for (const [label, prefs] of [['a saved order', ['plex', 'sonarr']], ['none', null]]) {
+            for (const via of ['FV3 folder import', 'FolderView Plus import']) {
+                const server = serverWith({}, prefs, ['plex', 'sonarr']);
+                if (via === 'FV3 folder import') await importFile(server, overlap);
+                else server.server('import_foreign.php', 'POST', { bundle: JSON.stringify(plusBundle), type: 'docker', action: 'apply' });
+                const folders = JSON.parse(fs.readFileSync(path.join(server.config, 'docker.json'), 'utf8'));
+                const page = await drawDocker({ folders, containers: ['plex', 'sonarr'], prefs: JSON.parse(server.server('read_order.php', 'GET', { type: 'docker' })) });
+                await page.draw();
+                const byName = Object.fromEntries(Object.entries(folders).map(([id, f]) => [f.name, page.members(id).join()]));
+                const shown = page.rows().filter((r) => r.startsWith('folder-')).map((r) => folders[r.slice(7)].name).join();
+                results.push({ label, via, shown, byName, server: JSON.parse(server.server('read_membership.php', 'GET', { type: 'docker' })).membership });
+                server.cleanup();
+            }
+        }
+        check('overlapping regexes, imported onto a server with a saved order and with none, from either import: Plex shows first and takes plex, Other takes the rest; the server agrees',
+            results.every((r) => r.shown === 'Plex,Other' && r.byName.Plex === 'plex' && r.byName.Other === 'sonarr'
+                && JSON.stringify(r.server) === JSON.stringify({ plex: 'Plex', sonarr: 'Other' })), results);
     }
     {
         // A Docker folder export, then that file imported on another server: the folders show as they did

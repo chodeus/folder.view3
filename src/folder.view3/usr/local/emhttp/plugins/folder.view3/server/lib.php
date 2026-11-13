@@ -808,6 +808,12 @@
         return array_merge($index, array_values(array_diff($keys, $index)));
     }
 
+    // A name as the Docker page sorts it with nothing saved: trimmed of what JavaScript's trim() removes
+    function fv3_js_trim(string $s): string {
+        return preg_replace('/^[\x{9}-\x{D}\x{20}\x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]+|'
+            . '[\x{9}-\x{D}\x{20}\x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]+$/u', '', $s) ?? trim($s);
+    }
+
     // The browser's name order (localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})) for ASCII: space and punctuation in
     // ICU's order, numbers by value, letters in any case. Other characters follow z by code point, so accents can differ
     function fv3_name_cmp(string $a, string $b): int {
@@ -848,7 +854,8 @@
             foreach ($allContainerNames as $name) {
                 if (!in_array($name, $assigned, true)) { $entries[] = ['key' => $name, 'name' => $name]; }
             }
-            usort($entries, function($a, $b) { return fv3_name_cmp($a['name'], $b['name']); });
+            // The page's last pass sorts the rows by the trimmed name it shows (docker.js createFolders)
+            usort($entries, function($a, $b) { return fv3_name_cmp(fv3_js_trim($a['name']), fv3_js_trim($b['name'])); });
             $prefs = array_column($entries, 'key');
         }
         $placed = [];
@@ -959,8 +966,8 @@
         return null;
     }
 
-    // The one write of Unraid's saved Docker order besides the heal: an import on a server with none creates it, $first's entries
-    // (placeholders, names) first. Returns why it stopped, or null: also when an order is already saved
+    // Creates Unraid's saved Docker order on a server with none, after an import or a restore: $first's entries (placeholders, names)
+    // first. Its other writers: the heal and fv3_place_imported_docker_folders. Returns why it stopped, or null: also when one is saved
     function fv3_create_docker_order(array $first): ?string {
         global $configDir, $fv3DockerManDir;
         if (!$first) return null;
@@ -999,6 +1006,34 @@
         // FV3's own copy, which the heal restores from after a reinstall
         if (!saveOrderSnapshot('docker', $out)) fv3_error_log('fv3_create_docker_order', 'the order snapshot could not be written');
         return null;
+    }
+
+    // After an import: the new Docker folders ($first, placeholders in the file's order) go on top of Unraid's saved order, insert-only,
+    // so the page draws them and lets them claim containers top-first; with no saved order one is created. Returns why it stopped, or null
+    function fv3_place_imported_docker_folders(array $first): ?string {
+        global $configDir, $fv3DockerManDir;
+        $file = "$fv3DockerManDir/userprefs.cfg";
+        $read = fn() => is_file($file) ? @file_get_contents($file) : '';
+        for ($try = 0; $try < 3; $try++) {
+            $raw = $read();
+            $parsed = $raw === false ? false : @parse_ini_string($raw);
+            if ($parsed === false) return "Unraid's saved Docker order (userprefs.cfg) could not be read";
+            if (!$parsed) return fv3_create_docker_order($first);
+            $folders = fv3_read_json_strict("$configDir/docker.json");
+            if ($folders === null) return 'the folder config could not be read';
+            uksort($parsed, fn($a, $b) => (int)$a <=> (int)$b);
+            $current = array_values($parsed);
+            $new = array_values(array_unique(array_filter($first, fn($e) => is_string($e) && str_starts_with($e, 'folder-')
+                && array_key_exists(substr($e, 7), $folders) && !in_array($e, $current, true))));
+            if (!$new) return null;
+            $out = array_merge($new, $current);
+            // Stock UserPrefs writes take no lock: an order Unraid saved meanwhile is read again
+            if ($read() !== $raw) continue;
+            if (!fv3_write_user_prefs($file, $out)) return "Unraid's saved Docker order (userprefs.cfg) could not be written";
+            if (!saveOrderSnapshot('docker', $out)) fv3_error_log('fv3_place_imported_docker_folders', 'the order snapshot could not be written');
+            return null;
+        }
+        return "Unraid's saved Docker order (userprefs.cfg) kept changing during the import";
     }
 
     // A container may be explicit in at most one folder (issue #62). $winnerId's list survives

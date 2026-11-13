@@ -29,6 +29,8 @@ dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta', 'dup', 'x']);
 require "$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/server/lib.php";
 $configDir = "$fv3tTmp/config";
 mkdir($configDir);
+$fv3DockerManDir = "$fv3tTmp/dockerMan";
+mkdir($fv3DockerManDir);
 // lib.php's own handlers answer JSON and exit 0 — a crash here must fail the run instead
 set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
     if (!(error_reporting() & $severity) || ($severity & (E_DEPRECATED | E_USER_DEPRECATED))) return false;
@@ -131,6 +133,12 @@ $backupOf = static fn($prefs) => ['schemaVersion' => 1, 'type' => 'docker', 'mod
 $namesOf = static fn(array $raw) => array_column(fv3_convert_foreign_bundle($raw, 'docker')['folders']['docker'] ?? [], 'name');
 $fileOrder = ['Delta', 'alpha', 'Charlie', 'Bravo'];
 check('an export with no prefs keeps the file order', $namesOf(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => $plus]) === $fileOrder);
+$sameSecond = static fn(string $mode) => $namesOf(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'prefs' => ['sortMode' => $mode], 'folders' => [
+    'e' => ['name' => 'Early', 'containers' => [], 'createdAt' => '2026-01-01T00:00:00.100Z', 'updatedAt' => '2026-01-01T00:00:00.100Z'],
+    'l' => ['name' => 'Late', 'containers' => [], 'createdAt' => '2026-01-01T00:00:00.900Z', 'updatedAt' => '2026-01-01T00:00:00.900Z']]]);
+check('two folders made in the same second sort by their milliseconds, as Date.parse gives them to FolderView Plus',
+    [$sameSecond('created_newest'), $sameSecond('updated_newest'), $sameSecond('created_oldest')] === [['Late', 'Early'], ['Late', 'Early'], ['Early', 'Late']],
+    [$sameSecond('created_newest'), $sameSecond('updated_newest'), $sameSecond('created_oldest')]);
 foreach ([
     'created (the default)' => [['sortMode' => 'created'], $fileOrder],
     'A-Z, case-insensitive' => [['sortMode' => 'alpha'], ['alpha', 'Bravo', 'Charlie', 'Delta']],
@@ -191,7 +199,7 @@ check('a branch export of a nested folder imports as one folder with its own nes
 $branch['folders']['grandkid']['parentId'] = 'elsewhere';
 check('a branch export still reports a nested folder whose parent is missing', fv3_convert_foreign_bundle($branch, 'docker')['report']['types']['docker']['broken_parents'] === 1);
 
-// What the Docker page shows after the import: real write, real page order
+// What the Docker page shows after the import: real write, the real placement import_foreign.php runs, real page order
 $names = ['k-ct', 'd1', 'a1', 'c1', 'k1', 'b1', 'loose'];
 $pageFolders = static function (array $prefs) use (&$configDir, $names): array {
     $map = json_decode(file_get_contents("$configDir/docker.json"), true);
@@ -200,9 +208,13 @@ $pageFolders = static function (array $prefs) use (&$configDir, $names): array {
 };
 foreach ([['sortMode' => 'created'], ['sortMode' => 'alpha']] as $prefs) {
     resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => ['k-ct']]])]);
-    check("import with sort {$prefs['sortMode']} applies", !empty(importForeignBundle(json_encode($backupOf($prefs)), 'docker', true)['success']));
+    file_put_contents("$fv3DockerManDir/userprefs.cfg", "0=\"folder-keep\"\n1=\"k-ct\"\n2=\"loose\"\n");
+    $r = importForeignBundle(json_encode($backupOf($prefs)), 'docker', true);
+    check("import with sort {$prefs['sortMode']} applies and its folders are placed", !empty($r['success']) && fv3_place_imported_docker_folders($r['placed']['docker'] ?? []) === null);
     $want = $namesOf($backupOf($prefs));
-    check("the page shows the imported folders on top in FolderView Plus's order ({$prefs['sortMode']}), the saved folder in its place", $pageFolders(['folder-keep', 'k-ct', 'loose']) === array_merge($want, ['Existing']), $pageFolders(['folder-keep', 'k-ct', 'loose']));
+    $saved = fv3_docker_prefs();
+    check("the page shows the imported folders on top in FolderView Plus's order ({$prefs['sortMode']}), the saved folder in its place",
+        $pageFolders($saved) === array_merge($want, ['Existing']) && array_slice($saved, -3) === ['folder-keep', 'k-ct', 'loose'], [$pageFolders($saved), $saved]);
 }
 check('with no userprefs.cfg the page shows every folder A-Z', $pageFolders([]) === ['alpha', 'Bravo', 'Charlie', 'Delta', 'Existing'], $pageFolders([]));
 
@@ -381,6 +393,17 @@ foreach (['docker.json', 'vm.json'] as $emptied) {
     $written = file_get_contents("$configDir/$emptied");
     check("an emptied $emptied ([]) imports into a fresh map", !empty($r['success']) && str_starts_with($written, '{') && count(json_decode($written, true)) > 0, $r);
 }
+// The VMs page draws folders its saved order does not name on top, the last one in the map first, and no VM order is written
+resetConfig(['vm.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => []]])]);
+$vmFile = ['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'alpha'],
+    'folders' => ['z' => ['name' => 'Zulu VMs', 'containers' => []], 'a' => ['name' => 'Alpha VMs', 'containers' => []], 'm' => ['name' => 'Mike VMs', 'containers' => []]]];
+$r = importForeignBundle(json_encode($vmFile), 'vm', true);
+$vmMap = json_decode(file_get_contents("$configDir/vm.json"), true);
+$vmWant = ['Alpha VMs', 'Mike VMs', 'Zulu VMs'];
+$vmDrawn = array_reverse(array_column(array_slice($vmMap, 1), 'name'));
+check('a VM import: the VMs page shows its folders on top in FolderView Plus\'s order, the folder already there below them, and placed lists them in that order',
+    count($vmWant) > 1 && array_key_first($vmMap) === 'keep' && $vmDrawn === $vmWant
+    && array_map(static fn($p) => $vmMap[substr($p, 7)]['name'], $r['placed']['vm'] ?? []) === $vmWant, [$vmDrawn, $vmWant, $r['placed'] ?? null]);
 resetConfig(['docker.json' => '']);
 $r = importForeignBundle($json, 'docker', true);
 check('an empty config file imports into a fresh map', !empty($r['success']) && count(json_decode(file_get_contents("$configDir/docker.json"), true)) === 3, $r);
