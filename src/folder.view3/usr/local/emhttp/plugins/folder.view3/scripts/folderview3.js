@@ -81,14 +81,28 @@ const orderFolderIds = (folders, itemOrder) => {
     }
 };
 
+// Folder ids in the Docker or VMs page's order (createFolders in docker.js, vm.js): folders not in the saved order on top, the last
+// one first, then the saved ones in saved order. With nothing saved the Docker page sorts by shown name; same-name folders may swap
+const fv3PageFolderIds = (type, folders, savedOrder) => {
+    const ids = Object.keys(folders);
+    const list = Array.isArray(savedOrder) ? savedOrder : [];
+    if (type === 'docker' && Array.isArray(savedOrder) && !list.length) {
+        const shown = (id) => String(folders[id]?.name ?? '').trim();
+        return ids.slice().sort((a, b) => shown(a).localeCompare(shown(b), undefined, { numeric: true, sensitivity: 'base' }));
+    }
+    const has = (id) => Object.prototype.hasOwnProperty.call(folders, id);
+    const saved = [...new Set(list.filter((x) => typeof x === 'string' && x.startsWith('folder-') && has(x.slice(7))).map((x) => x.slice(7)))];
+    return ids.filter((id) => !saved.includes(id)).reverse().concat(saved);
+};
+
 const populateTable = async () => {
     let proms;
     try {
         proms = await Promise.all([
             $.get('/plugins/folder.view3/server/read.php?type=docker').promise(),
             $.get('/plugins/folder.view3/server/read.php?type=vm').promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=docker').promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').promise()
+            $.get('/plugins/folder.view3/server/read_order.php?type=docker').promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=vm').promise()
         ]);
     } catch (e) {
         console.error('[FV3] Failed to load folder data:', e);
@@ -97,8 +111,8 @@ const populateTable = async () => {
     }
     const dockerData = fv3SafeParse(proms[0], {});
     const vmData = fv3SafeParse(proms[1], {});
-    const currentDockerContainerOrder = fv3SafeParse(proms[2], []);
-    const currentVmOrder = fv3SafeParse(proms[3], []);
+    const savedDockerOrder = fv3SafeParse(proms[2], []);
+    const savedVmOrder = fv3SafeParse(proms[3], []);
 
     dockers = dockerData;
     vms = vmData;
@@ -110,14 +124,14 @@ const populateTable = async () => {
     vmsTable.empty();
 
     // Ids reach the inline handlers as escaped JSON literals, so any stored key (quotes included) is passed intact, never run
-    const dockerIds = orderFolderIds(dockers, currentDockerContainerOrder);
+    const dockerIds = fv3PageFolderIds('docker', dockers, savedDockerOrder);
     for (const id of dockerIds) {
         const folder = dockers[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="${escapeHtml(fv3I18nOr('export', 'Export'))}" data-i18n="[title]export" onclick="downloadDocker(${fv3JsArg(id)})"><i class="fa fa-download"></i></button><button title="${escapeHtml(fv3I18nOr('delete', 'Delete'))}" data-i18n="[title]delete" onclick="clearDocker(${fv3JsArg(id)})"><i class="fa fa-trash"></i></button></td></tr>`;
         dockerTable.append($(fld));
     }
 
-    const vmIds = orderFolderIds(vms, currentVmOrder);
+    const vmIds = fv3PageFolderIds('vm', vms, savedVmOrder);
     for (const id of vmIds) {
         const folder = vms[id];
         const fld = `<tr><td>${escapeHtml(id)}</td><td><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img" onerror="this.onerror=null;this.src='/plugins/dynamix.docker.manager/images/question.png';">${escapeHtml(folder.name)}</td><td><button title="${escapeHtml(fv3I18nOr('export', 'Export'))}" data-i18n="[title]export" onclick="downloadVm(${fv3JsArg(id)})"><i class="fa fa-download"></i></button><button title="${escapeHtml(fv3I18nOr('delete', 'Delete'))}" data-i18n="[title]delete" onclick="clearVm(${fv3JsArg(id)})"><i class="fa fa-trash"></i></button></td></tr>`;

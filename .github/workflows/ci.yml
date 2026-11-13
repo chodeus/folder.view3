@@ -95,6 +95,7 @@ jobs:
           node theme_import_dialog_test.js
           node dropped_post_test.js
           node apply_defaults_test.js
+          node settings_order_test.js
           node rename_update_test.js
 
       - name: Validate plugin manifest (XML)
