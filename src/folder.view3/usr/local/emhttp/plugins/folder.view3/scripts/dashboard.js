@@ -1830,7 +1830,11 @@ const fv3DrawList = fv3ListDrawer('tbody#docker_view > tr.updated, tbody#vm_view
 }, (e) => {
     console.error('[FV3] Dashboard createFolders failed:', e);
     $('div.spinner.fixed').hide();
-}, { behind: () => fv3Folders.docker.behind() || fv3Folders.vm.behind() });
+}, { behind: () => {
+    // Either tile's newer data is reason to load the list again: one that hangs or fails must not hold up the other
+    const newer = [fv3Folders.docker.behind(), fv3Folders.vm.behind()].filter(Boolean);
+    return newer.length ? Promise.any(newer.map((wait) => wait.then((ok) => (ok ? true : Promise.reject())))).catch(() => false) : null;
+} });
 
 // Unraid dashboard patches — inject folder rendering after containers/VMs render
 window.loadlist_original = window.loadlist;

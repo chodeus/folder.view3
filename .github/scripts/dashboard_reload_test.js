@@ -139,6 +139,42 @@ const dashboard = async ({ docker = true, vms = true } = {}) => {
             t.docker() === '' && t.p.errors.some((e) => /Docker folder rendering failed/.test(e)) && t.vms() === 'lab:vm1', { docker: t.docker(), vms: t.vms(), errors: t.p.errors });
     }
     {
+        // List 2 is drawn from list 1's data. List 2's VM data then arrives and its Docker data hangs: the list is loaded again
+        const t = await dashboard();
+        t.reload();
+        await t.land(0);
+        t.reload();
+        await t.land(1);
+        await t.answer('docker', 0, DOCKER_FOLDERS);
+        await t.answer('vm', 0, {});
+        const bare = t.vms();
+        await t.answer('vm', 1, VM_FOLDERS);
+        check('both tiles, a list drawn from older data whose newer Docker request hangs: the newer VM data loads the list again',
+            bare === '' && t.sent.length === 3 && /refresh/.test(t.log()), { bare, sent: t.sent.length, log: t.log() });
+        // The same with the newer Docker request failing: the list is loaded again too
+        const f = await dashboard();
+        f.reload();
+        await f.land(0);
+        f.reload();
+        await f.land(1);
+        await f.answer('docker', 0, DOCKER_FOLDERS);
+        await f.answer('vm', 0, {});
+        await f.answer('docker', 1, new Error('500'));
+        await f.answer('vm', 1, VM_FOLDERS);
+        check('both tiles, the newer Docker request fails and the newer VM data arrives: the list is loaded again', f.sent.length === 3, { sent: f.sent.length, log: f.log() });
+        // Both newer requests fail: nothing newer to show, so no extra load
+        const n = await dashboard();
+        n.reload();
+        await n.land(0);
+        n.reload();
+        await n.land(1);
+        await n.answer('docker', 0, DOCKER_FOLDERS);
+        await n.answer('vm', 0, VM_FOLDERS);
+        await n.answer('docker', 1, new Error('500'));
+        await n.answer('vm', 1, new Error('500'));
+        check('both tiles, both newer requests fail: no extra load', n.sent.length === 2 && !/refresh/.test(n.log()), { sent: n.sent.length, log: n.log() });
+    }
+    {
         // Only one tile, and neither: each reload is drawn, with no errors
         const d = await dashboard({ vms: false });
         d.reload();
