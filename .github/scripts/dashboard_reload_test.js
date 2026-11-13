@@ -14,15 +14,21 @@ const vmRow = (n) => `<tr class="updated" data-list="${n}"><td><span class="oute
 
 // The Dashboard with the tiles asked for. Unraid's list request goes through jQuery's own ajax and land(i) answers request i; the
 // read.php answers of each type are held until answer(type, i, folders | Error)
-// debug: FV3's debug mode on; failingDebugOrder: the type whose debug-mode read_unraid_order.php request fails. The reload's
-// own read of that URL comes first and succeeds
-const dashboard = async ({ docker = true, vms = true, debug = false, failingDebugOrder = null } = {}) => {
+// debug: FV3's debug mode on; failingDebugOrder: the type whose debug-mode read_unraid_order.php request fails (the reload's own
+// read of that URL comes first and succeeds); layout: both tiles' Dashboard layout. Animation frames run on the harness clock
+const dashboard = async ({ docker = true, vms = true, debug = false, failingDebugOrder = null, layout = 'classic' } = {}) => {
     const info = {};
     const p = await makePage({ page: 'dashboard', api: false, answers: {
         'read_order.php': () => '[]', 'read_unraid_order.php': (url) => JSON.stringify(['web']), 'docker_load.php': () => '',
         'read_info.php': () => JSON.stringify(info), 'version.php': () => '2026.11.13.1',
         'list_themes.php': () => '[]', 'read_css_config.php': () => '{}',
+        'read_settings.php': () => JSON.stringify({ dashboard_context: '2', dashboard_docker_layout: layout, dashboard_vm_layout: layout }),
     } });
+    p.w.requestAnimationFrame = (fn) => p.w.setTimeout(() => fn(p.w.Date.now()), 16);
+    p.w.cancelAnimationFrame = (id) => p.w.clearTimeout(id);
+    // At each folder opening: how many full-width panels its tile had right then (an extension listening sees the same)
+    const opened = { docker: [], vm: [] };
+    ['docker', 'vm'].forEach((type) => p.w.folderEvents.addEventListener(`${type}-post-folder-expansion`, () => opened[type].push(p.$(`#${type}_view .fv3-fullwidth-panel`).length)));
     p.w.FV3_DEBUG = debug;
     info.web = p.ct('aaaaaaaaaaaa', 'web');
     if (!docker) p.$('tbody#docker_view').remove();
@@ -75,12 +81,16 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingDebu
         banners: () => p.errors.filter((e) => /Banner:/.test(e)),
         // The draw record of one tile's drawer, or of both when no type is given
         log: (type) => (p.w.fv3DrawLog || []).filter((d) => !type || d.list.includes(`${type}_view`)).map((d) => `${d.outcome}:${d.folders}`).join(),
+        opened: (type) => opened[type].join(),
+        panels: (type) => p.$(`#${type}_view .fv3-fullwidth-panel`).length,
+        laidOut: (type) => p.$(`#${type}_view > tr.updated > td`).hasClass(`fv3-layout-${layout}`),
         reload: () => p.g('loadlist()'),
         land: async (i) => { if (sent[i]) { Object.assign(sent[i], { status: 200, statusText: 'OK', responseText: 'rows', readyState: 4 }); sent[i].onload(); } await p.tick(300); },
-        answer: async (type, i, set) => {
+        // wait: how far the clock moves after the answer (0 holds the next animation frames)
+        answer: async (type, i, set, wait = 300) => {
             if (!reads[type][i]) return;
             if (set instanceof Error) reads[type][i].reject({ status: 500, statusText: 'error' }); else reads[type][i].resolve(JSON.parse(JSON.stringify(set)));
-            await p.tick(300);
+            await p.tick(wait);
         },
     };
 };
@@ -248,6 +258,57 @@ const dashboard = async ({ docker = true, vms = true, debug = false, failingDebu
         n.reload();
         await n.land(1);
         check('no tiles: two reloads drawn, no errors', n.log('docker') === 'drawn:0,drawn:0' && n.log('vm') === 'drawn:0,drawn:0' && n.p.errors.length === 0, { log: n.log(), errors: n.p.errors });
+    }
+    {
+        // Full-width layout: an opened folder's panel is measured against the whole drawn tile, so it is placed after the draw
+        const open = (set) => Object.fromEntries(Object.entries(set).map(([id, f]) => [id, { ...f, settings: { expand_dashboard: true } }]));
+        const t = await dashboard({ layout: 'fullwidth' });
+        t.reload();
+        await t.land(0);
+        await t.answer('docker', 0, open(DOCKER_FOLDERS));
+        await t.answer('vm', 0, VM_FOLDERS);
+        t.reload();
+        await t.land(1);
+        await t.answer('docker', 1, open(DOCKER_FOLDERS));
+        check('Dashboard full-width, a reload: the opened folder gets its panel after the draw, once, under the tile\'s layout', t.opened('docker') === '0,0'
+            && t.panels('docker') === 1 && t.laidOut('docker'), { opened: t.opened('docker'), panels: t.panels('docker'), laidOut: t.laidOut('docker') });
+
+        // The VM tile's data lands after the Docker tile is drawn and laid out: the VM tile waits for its own draw too
+        const v = await dashboard({ layout: 'fullwidth' });
+        v.reload();
+        await v.land(0);
+        await v.answer('docker', 0, DOCKER_FOLDERS);
+        await v.answer('vm', 0, open(VM_FOLDERS));
+        check('Dashboard full-width, the VM tile drawn after the Docker tile: its opened folder gets its panel after its own draw', v.opened('vm') === '0'
+            && v.panels('vm') === 1, { opened: v.opened('vm'), panels: v.panels('vm') });
+
+        // The mirror: the Docker tile's data lands after the VM tile is drawn and laid out
+        const m = await dashboard({ layout: 'fullwidth' });
+        m.reload();
+        await m.land(0);
+        await m.answer('vm', 0, VM_FOLDERS);
+        await m.answer('docker', 0, open(DOCKER_FOLDERS));
+        check('Dashboard full-width, the Docker tile drawn after the VM tile: its opened folder gets its panel after its own draw', m.opened('docker') === '0'
+            && m.panels('docker') === 1, { opened: m.opened('docker'), panels: m.panels('docker') });
+
+        // After the draw a folder the user opens gets its panel at once
+        const u = await dashboard({ layout: 'fullwidth' });
+        u.reload();
+        await u.land(0);
+        await u.answer('docker', 0, DOCKER_FOLDERS);
+        u.p.g("expandFolderDocker('apps')");
+        check('Dashboard full-width, a folder the user opens after the draw: its panel is placed at once', u.opened('docker') === '1', { opened: u.opened('docker') });
+
+        // A newer list lands before the older draw's panel pass runs: that pass leaves the newer tile to its own draw
+        const n = await dashboard({ layout: 'fullwidth' });
+        n.reload();
+        await n.land(0);
+        await n.answer('docker', 0, open(DOCKER_FOLDERS), 0);
+        n.reload();
+        await n.land(1);
+        await n.answer('docker', 1, open(DOCKER_FOLDERS));
+        check('Dashboard full-width, a newer list before the older panel pass: the newer draw still places its panel after itself, once', n.opened('docker') === '0,0'
+            && n.panels('docker') === 1, { opened: n.opened('docker'), panels: n.panels('docker') });
     }
     done();
 })();

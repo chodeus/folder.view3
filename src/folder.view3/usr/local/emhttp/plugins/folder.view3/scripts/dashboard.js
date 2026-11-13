@@ -14,7 +14,8 @@ let fv3VmShowLabel = false;
 let fv3AnimationEnabled = false;
 let fv3DashboardUpdateContainer = false;
 let fv3DashboardUpdateFolder = false;
-let fv3LayoutReady = false;
+// Per tile: false while its draw runs, so opened folders get their full-width panels after it, under the tile's layout
+const fv3LayoutReady = { docker: false, vm: false };
 let dashboardContext = 0;
 let dashboardContextTrigger = 0;
 let dashboardContextGraph = 1;
@@ -738,7 +739,7 @@ const expandFolderDocker = (id) => {
         if(globalFolders.docker && globalFolders.docker[id]) {
             globalFolders.docker[id].status.expanded = true;
         }
-        if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady) {
+        if (dockerDashboardLayout === 'fullwidth' && fv3LayoutReady.docker) {
             fv3FullwidthExpand(id, 'docker');
         }
         fv3InjectCollapseToggles();
@@ -786,7 +787,7 @@ const expandFolderVM = (id) => {
         if(globalFolders.vms && globalFolders.vms[id]) {
             globalFolders.vms[id].status.expanded = true;
         }
-        if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady) {
+        if (vmDashboardLayout === 'fullwidth' && fv3LayoutReady.vm) {
             fv3FullwidthExpand(id, 'vm');
         }
         fv3InjectCollapseToggles();
@@ -1673,10 +1674,10 @@ const fv3FullwidthReflowSync = (onlyType) => {
     });
 };
 const fv3FullwidthReflow = (onlyType) => {
-    if (fv3FullwidthRaf || !fv3LayoutReady) return;
+    if (fv3FullwidthRaf) return;
     fv3FullwidthRaf = requestAnimationFrame(() => {
         fv3FullwidthRaf = null;
-        fv3FullwidthReflowSync(onlyType);
+        (onlyType ? [onlyType] : ['docker', 'vm']).filter((type) => fv3LayoutReady[type]).forEach((type) => fv3FullwidthReflowSync(type));
     });
 };
 
@@ -1784,7 +1785,7 @@ const fv3FullwidthExpand = (id, type) => {
 
         const folderName = showcase.attr('data-folder-name') || '';
         const panel = $(`<div class="fv3-fullwidth-panel" data-folder-name="${escapeHtml(folderName)}"></div>`);
-        if (!fv3LayoutReady) panel.css('display', 'none');
+        if (!fv3LayoutReady[type]) panel.css('display', 'none');
         let insertAfter = lastInRow;
         while (insertAfter.next('.fv3-fullwidth-panel').length) {
             insertAfter = insertAfter.next('.fv3-fullwidth-panel');
@@ -1804,10 +1805,14 @@ const fv3FullwidthExpand = (id, type) => {
 
 // One list drawer (fv3ListDrawer) per tile, each from its own data: a slow or failed read costs only its own tile
 const fv3TileDrawer = (type) => fv3ListDrawer(`tbody#${type}_view > tr.updated`, async () => {
+    fv3LayoutReady[type] = false;
     await fv3SettingsReq;
     await createFolders([type]);
     applyDashboardLayouts();
+    const drawn = $(`tbody#${type}_view > tr.updated > td`)[0];
     requestAnimationFrame(() => { requestAnimationFrame(() => {
+        // A newer list replaced the tile: its own draw places the panels and marks the tile ready
+        if ($(`tbody#${type}_view > tr.updated > td`)[0] !== drawn) return;
         if ((type === 'docker' ? dockerDashboardLayout : vmDashboardLayout) === 'fullwidth') {
             $(`tbody#${type}_view .folder-showcase`).css('display', 'none');
             $(`tbody#${type}_view .folder-showcase-outer[expanded="true"]`).each(function() {
@@ -1817,7 +1822,7 @@ const fv3TileDrawer = (type) => fv3ListDrawer(`tbody#${type}_view > tr.updated`,
             $(`tbody#${type}_view .folder-showcase`).css('display', '');
             $(`tbody#${type}_view .fv3-fullwidth-panel`).css('display', '');
         }
-        fv3LayoutReady = true;
+        fv3LayoutReady[type] = true;
     }); });
     $('div.spinner.fixed').hide();
 }, (e) => {
