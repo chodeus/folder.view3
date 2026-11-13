@@ -450,7 +450,7 @@
     "foreign-note-regex": "$1 folder {{PLURAL:$1|regex|regexes}} left out because FolderView3 cannot use {{PLURAL:$1|it|them}} or {{PLURAL:$1|its|their}} folder was merged into a top-level folder",
     "foreign-note-members-dropped": "$1 folder {{PLURAL:$1|member|members}} left out because the folder holds more than FolderView3 keeps",
     "foreign-note-invalid": "$1 malformed {{PLURAL:$1|entry|entries}} in the backup left out",
-    "foreign-note-prefs": "Plugin preferences are not imported",
+    "foreign-note-prefs": "Plugin preferences are not imported; only their folder order is used",
     "foreign-note-themes": "Themes are not imported",
     "foreign-note-other-docker": "Docker folders in this file were not imported — use Import Docker Folders or Import Everything",
     "foreign-note-other-vm": "VM folders in this file were not imported — use Import VM Folders or Import Everything",

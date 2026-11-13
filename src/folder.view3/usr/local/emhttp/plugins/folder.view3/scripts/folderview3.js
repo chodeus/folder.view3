@@ -678,7 +678,7 @@ const fv3ForeignPreviewHtml = (report) => {
     }
     const notes = [];
     for (const section of report.skipped_sections || []) {
-        if (section === 'prefs') notes.push(fv3I18nOr('foreign-note-prefs', 'Plugin preferences are not imported'));
+        if (section === 'prefs') notes.push(fv3I18nOr('foreign-note-prefs', 'Plugin preferences are not imported; only their folder order is used'));
         if (section === 'themes') notes.push(fv3I18nOr('foreign-note-themes', 'Themes are not imported'));
         if (section === 'docker') notes.push(fv3I18nOr('foreign-note-other-docker', 'Docker folders in this file were not imported — use Import Docker Folders or Import Everything'));
         if (section === 'vm') notes.push(fv3I18nOr('foreign-note-other-vm', 'VM folders in this file were not imported — use Import VM Folders or Import Everything'));

@@ -450,7 +450,7 @@
     "foreign-note-regex": "Pominięto $1 {{PLURAL:$1|regex folderu|regexy folderów|regexów folderów}}, bo FolderView3 nie może {{PLURAL:$1|go|ich|ich}} użyć lub {{PLURAL:$1|jego|ich|ich}} folder scalono z folderem najwyższego poziomu",
     "foreign-note-members-dropped": "Pominięto $1 {{PLURAL:$1|członka folderu|członków folderu|członków folderu}}, ponieważ folder zawiera ich więcej, niż zachowuje FolderView3",
     "foreign-note-invalid": "Pominięto $1 {{PLURAL:$1|nieprawidłowy wpis|nieprawidłowe wpisy|nieprawidłowych wpisów}} w kopii zapasowej",
-    "foreign-note-prefs": "Preferencje wtyczki nie są importowane",
+    "foreign-note-prefs": "Preferencje wtyczki nie są importowane; używana jest tylko ich kolejność folderów",
     "foreign-note-themes": "Motywy nie są importowane",
     "foreign-note-other-docker": "Foldery Docker z tego pliku nie zostały zaimportowane — użyj Importuj foldery Docker lub Importuj wszystko",
     "foreign-note-other-vm": "Foldery VM z tego pliku nie zostały zaimportowane — użyj Importuj foldery VM lub Importuj wszystko",

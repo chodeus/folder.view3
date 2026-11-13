@@ -73,6 +73,19 @@
         return '';
     }
 
+    // FolderView Plus serves its own icons (bundled, uploaded, third-party) under /plugins/folderview.plus/; uninstalling deletes them
+    function fv3_foreign_is_plus_icon(string $icon): bool {
+        $path = preg_match('#^https?://#i', $icon) ? (string)parse_url($icon, PHP_URL_PATH) : explode('?', $icon, 2)[0];
+        if (!str_starts_with($path, '/')) return false;
+        $segs = [];
+        foreach (explode('/', strtolower($path)) as $seg) {
+            if ($seg === '' || $seg === '.') continue;
+            if ($seg === '..') { array_pop($segs); continue; }
+            $segs[] = $seg;
+        }
+        return array_slice($segs, 0, 2) === ['plugins', 'folderview.plus'];
+    }
+
     // An allowlist, not a blocklist: every token must mean the same in PCRE and in the flag-less
     // JS new RegExp() the renderers use. Anything unlisted is refused, so no new construct slips in.
     function fv3_foreign_regex_js_safe(string $regex): bool {
@@ -182,10 +195,10 @@
                 if (is_array($folders)) $types[$t] = $folders;
             }
             if (!$types) return ['error' => 'no-folders'];
-            $skipped = ['prefs'];
-            if (isset($raw['themeWorkspace'])) $skipped[] = 'themes';
             $prefs = [];
             foreach ($types as $t => $_) $prefs[$t] = $raw['types'][$t]['prefs'] ?? null;
+            $skipped = array_filter($prefs, 'is_array') ? ['prefs'] : [];
+            if (isset($raw['themeWorkspace'])) $skipped[] = 'themes';
             return ['types' => $types, 'source' => $source, 'skipped' => $skipped, 'prefs' => $prefs];
         };
 
@@ -207,7 +220,11 @@
         if (($mode === 'full' || $mode === 'branch') && is_array($raw['folders'] ?? null)) {
             $skipped = isset($raw['prefs']) ? ['prefs'] : [];
             $source = $mode === 'branch' ? 'branch' : (isset($raw['reason']) ? 'backup' : 'export');
-            return ['types' => [$type => $raw['folders']], 'source' => $source, 'skipped' => $skipped, 'prefs' => [$type => $raw['prefs'] ?? null]];
+            $folders = $raw['folders'];
+            // A branch's root keeps its parentId from the full map, and that parent is not in the file
+            $root = $raw['branchRootId'] ?? null;
+            if ($mode === 'branch' && is_string($root) && is_array($folders[$root] ?? null)) $folders[$root]['parentId'] = '';
+            return ['types' => [$type => $folders], 'source' => $source, 'skipped' => $skipped, 'prefs' => [$type => $raw['prefs'] ?? null]];
         }
         if ($mode === 'single' && is_array($raw['folder'] ?? null)) {
             return ['types' => [$type => ['single' => $raw['folder']]], 'source' => 'single', 'skipped' => [], 'prefs' => []];
@@ -269,30 +286,29 @@
         if (!is_array($prefs)) return $ids;
         $idList = static fn($v) => is_array($v) ? array_values(array_unique(array_filter($v, static fn($id) => is_string($id) && $id !== ''))) : [];
         $index = array_flip($ids);
-        $name = static fn(string $id) => is_string($folders[$id]['name'] ?? null) ? $folders[$id]['name'] : $id;
-        $time = static function (string $id, string $field) use ($folders): ?int {
-            $v = $folders[$id][$field] ?? null;
-            $t = is_string($v) && trim($v) !== '' ? strtotime(trim($v)) : false;
-            return $t === false ? null : $t;
-        };
-        $sortBy = static function (callable $cmp) use ($ids, $index): array {
+        // $key: id => sort key, worked out once per folder
+        $sortBy = static function (array $key, callable $cmp) use ($ids, $index): array {
             $out = $ids;
-            usort($out, static fn($a, $b) => $cmp($a, $b) ?: $index[$a] - $index[$b]);
+            usort($out, static fn($a, $b) => $cmp($key[$a], $key[$b]) ?: $index[$a] - $index[$b]);
             return $out;
         };
         $mode = $prefs['sortMode'] ?? 'created';
         if ($mode === 'alpha' || $mode === 'name_desc') {
             $sign = $mode === 'alpha' ? 1 : -1;
-            $ids = $sortBy(static fn($a, $b) => $sign * (strnatcasecmp($name($a), $name($b)) ?: strnatcasecmp($a, $b)));
+            $key = [];
+            foreach ($ids as $id) $key[$id] = [is_string($folders[$id]['name'] ?? null) ? $folders[$id]['name'] : $id, $id];
+            $ids = $sortBy($key, static fn($a, $b) => $sign * (strnatcasecmp($a[0], $b[0]) ?: strnatcasecmp($a[1], $b[1])));
         } elseif (in_array($mode, ['created_newest', 'created_oldest', 'updated_newest'], true)) {
             $field = $mode === 'updated_newest' ? 'updatedAt' : 'createdAt';
             $sign = $mode === 'created_oldest' ? 1 : -1;
+            $key = [];
+            foreach ($ids as $id) {
+                $v = $folders[$id][$field] ?? null;
+                $t = is_string($v) && trim($v) !== '' ? strtotime(trim($v)) : false;
+                $key[$id] = $t === false ? null : $t;
+            }
             // FolderView Plus calls an undated folder equal to every other, which no consistent order satisfies: undated go last
-            $ids = $sortBy(static function ($a, $b) use ($time, $field, $sign) {
-                [$ta, $tb] = [$time($a, $field), $time($b, $field)];
-                if ($ta === null || $tb === null) return ($ta === null) <=> ($tb === null);
-                return $sign * ($ta <=> $tb);
-            });
+            $ids = $sortBy($key, static fn($ta, $tb) => ($ta === null || $tb === null) ? ($ta === null) <=> ($tb === null) : $sign * ($ta <=> $tb));
         } elseif ($mode === 'manual') {
             $ids = array_values(array_unique(array_merge(array_intersect($idList($prefs['manualOrder'] ?? null), $ids), $ids)));
         }
@@ -383,8 +399,7 @@
 
                 $suppliedIcon = $src['icon'] ?? null;
                 $icon = fv3_foreign_icon($suppliedIcon ?? '');
-                // FolderView Plus's own icons (bundled, uploaded, third-party) are deleted when it is uninstalled
-                if (stripos($icon, '/plugins/folderview.plus/') !== false) { $icon = ''; $r['plus_icons']++; }
+                if ($icon !== '' && fv3_foreign_is_plus_icon($icon)) { $icon = ''; $r['plus_icons']++; }
                 elseif ($icon === '' && $suppliedIcon !== null && !(is_string($suppliedIcon) && trim($suppliedIcon) === '')) $r['dropped_icons']++;
 
                 $suppliedRegex = $src['regex'] ?? null;

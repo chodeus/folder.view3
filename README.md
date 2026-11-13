@@ -89,16 +89,16 @@ What the import does:
 
 - **Preview first.** Nothing is saved until you confirm, and the preview lists each folder and everything that
   will be left out.
-- **Order:** folders come in the order FolderView Plus showed them. Backups and snapshots carry its sort setting
-  and pinned folders; an export keeps the order in the file. They appear above the folders you already have. If the
+- **Order:** folders come in the order FolderView Plus showed them: by its sort setting and pinned folders when
+  the file carries them (backups and snapshots do), otherwise (exports) in the order of the file. They appear above the folders you already have. If the
   Docker list was never reordered, the Docker page lists every folder and container A–Z instead.
 - **Nested folders are merged.** FolderView3 has no nesting, so every nested folder's containers or VMs move into
   its top-level folder. The top-level folder keeps its own name, icon and settings; a nested folder's name, icon,
   settings, regex and custom actions are not kept.
 - **Names:** a folder with no usable name, or named `root` (reserved by Unraid), is imported as `Imported folder`,
   and a name already used is imported as `Name (imported)`.
-- **Settings:** only settings FolderView3 has, with valid values, are kept. Plugin preferences and themes are not
-  imported.
+- **Settings:** only settings FolderView3 has, with valid values, are kept. Plugin preferences (apart from the folder
+  order) and themes are not imported.
 - **Icons:** a local path, an `http(s)` link or an embedded image is kept; anything else is dropped. FolderView
   Plus's own icons (built-in, uploaded or third-party) are files it deletes when it is uninstalled, so they are
   dropped too: choose new icons in the folder editor.

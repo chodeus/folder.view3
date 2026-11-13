@@ -450,7 +450,7 @@
     "foreign-note-regex": "$1 {{PLURAL:$1|Ordner-Regex|Ordner-Regexe}} ausgelassen, weil FolderView3 {{PLURAL:$1|ihn|sie}} nicht verwenden kann oder {{PLURAL:$1|sein|ihr}} Ordner in einen obersten Ordner zusammengeführt wurde",
     "foreign-note-members-dropped": "$1 {{PLURAL:$1|Ordnermitglied|Ordnermitglieder}} ausgelassen, weil der Ordner mehr enthält, als FolderView3 übernimmt",
     "foreign-note-invalid": "$1 {{PLURAL:$1|fehlerhafter Eintrag|fehlerhafte Einträge}} in der Sicherung ausgelassen",
-    "foreign-note-prefs": "Plugin-Einstellungen werden nicht importiert",
+    "foreign-note-prefs": "Plugin-Einstellungen werden nicht importiert; nur ihre Ordnerreihenfolge wird übernommen",
     "foreign-note-themes": "Designs werden nicht importiert",
     "foreign-note-other-docker": "Docker-Ordner in dieser Datei wurden nicht importiert — „Docker-Ordner importieren“ oder „Alles importieren“ verwenden",
     "foreign-note-other-vm": "VM-Ordner in dieser Datei wurden nicht importiert — „VM-Ordner importieren“ oder „Alles importieren“ verwenden",

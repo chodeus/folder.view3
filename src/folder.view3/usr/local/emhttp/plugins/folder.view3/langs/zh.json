@@ -450,7 +450,7 @@
     "foreign-note-regex": "已省略 $1 个 FolderView3 无法使用或所属文件夹已合并到顶级文件夹的文件夹正则表达式",
     "foreign-note-members-dropped": "已省略 $1 个文件夹成员，因为该文件夹包含的数量超过 FolderView3 保留的上限",
     "foreign-note-invalid": "已省略备份中 $1 个格式错误的条目",
-    "foreign-note-prefs": "不导入插件偏好设置",
+    "foreign-note-prefs": "不导入插件偏好设置，仅沿用其中的文件夹顺序",
     "foreign-note-themes": "不导入主题",
     "foreign-note-other-docker": "此文件中的 Docker 文件夹未导入 — 请使用“导入 Docker 文件夹”或“导入全部”",
     "foreign-note-other-vm": "此文件中的虚拟机文件夹未导入 — 请使用“导入虚拟机文件夹”或“导入全部”",

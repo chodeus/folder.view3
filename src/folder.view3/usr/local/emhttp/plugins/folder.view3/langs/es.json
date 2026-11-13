@@ -450,7 +450,7 @@
     "foreign-note-regex": "$1 {{PLURAL:$1|regex de carpeta omitida|regex de carpeta omitidas}} porque FolderView3 no puede {{PLURAL:$1|usarla|usarlas}} o su carpeta se fusionó en una carpeta superior",
     "foreign-note-members-dropped": "$1 {{PLURAL:$1|miembro de carpeta omitido|miembros de carpeta omitidos}} porque la carpeta contiene más de los que FolderView3 conserva",
     "foreign-note-invalid": "$1 {{PLURAL:$1|entrada no válida omitida|entradas no válidas omitidas}} de la copia de seguridad",
-    "foreign-note-prefs": "Las preferencias del plugin no se importan",
+    "foreign-note-prefs": "Las preferencias del plugin no se importan; solo se usa su orden de carpetas",
     "foreign-note-themes": "Los temas no se importan",
     "foreign-note-other-docker": "Las carpetas de Docker de este archivo no se importaron — use Importar carpetas Docker o Importar todo",
     "foreign-note-other-vm": "Las carpetas de VM de este archivo no se importaron — use Importar carpetas VM o Importar todo",

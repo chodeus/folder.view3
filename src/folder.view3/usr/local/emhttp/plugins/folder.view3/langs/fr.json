@@ -450,7 +450,7 @@
     "foreign-note-regex": "$1 {{PLURAL:$1|regex de dossier ignorée|regex de dossier ignorées}} car FolderView3 ne peut pas {{PLURAL:$1|l’utiliser|les utiliser}} ou {{PLURAL:$1|son|leur}} dossier a été fusionné dans un dossier de premier niveau",
     "foreign-note-members-dropped": "$1 {{PLURAL:$1|membre de dossier laissé de côté|membres de dossier laissés de côté}} car le dossier en contient plus que FolderView3 n’en garde",
     "foreign-note-invalid": "$1 {{PLURAL:$1|entrée mal formée ignorée|entrées mal formées ignorées}} dans la sauvegarde",
-    "foreign-note-prefs": "Les préférences du plugin ne sont pas importées",
+    "foreign-note-prefs": "Les préférences du plugin ne sont pas importées ; seul leur ordre des dossiers est utilisé",
     "foreign-note-themes": "Les thèmes ne sont pas importés",
     "foreign-note-other-docker": "Les dossiers Docker de ce fichier n’ont pas été importés — utilisez Importer les dossiers Docker ou Tout importer",
     "foreign-note-other-vm": "Les dossiers VM de ce fichier n’ont pas été importés — utilisez Importer les dossiers VM ou Tout importer",

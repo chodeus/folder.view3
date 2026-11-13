@@ -139,7 +139,7 @@ foreach ([
     'created oldest first' => [['sortMode' => 'created_oldest'], ['alpha', 'Bravo', 'Delta', 'Charlie']],
     'updated newest first' => [['sortMode' => 'updated_newest'], ['alpha', 'Bravo', 'Charlie', 'Delta']],
     'manual, unknown ids skipped, the rest after in file order' => [['sortMode' => 'manual', 'manualOrder' => ['f4', 'gone', 'f2']], ['Bravo', 'alpha', 'Delta', 'Charlie']],
-    'a pinned nested folder lifts its top-level folder' => [['sortMode' => 'alpha', 'pinnedFolderIds' => ['kid', 'f1']], ['Charlie', 'Delta', 'alpha', 'Bravo']],
+    'pinned first in pin order, a pinned nested folder lifting its top-level folder' => [['sortMode' => 'alpha', 'pinnedFolderIds' => ['f1', 'kid']], ['Delta', 'Charlie', 'alpha', 'Bravo']],
     'an unknown sort mode' => [['sortMode' => 'random'], $fileOrder],
     'prefs that are not a map' => ['alpha', $fileOrder],
 ] as $label => [$prefs, $want]) {
@@ -151,13 +151,23 @@ check('a date sort puts undated folders last, in file order', $namesOf($undated)
 $envOrdered =['kind' => 'environment_snapshot', 'schemaVersion' => 1, 'types' => ['docker' => ['folders' => $plus, 'prefs' => ['sortMode' => 'alpha']], 'vm' => ['folders' => $plus, 'prefs' => ['sortMode' => 'name_desc']]]];
 $envR = fv3_convert_foreign_bundle($envOrdered, null)['folders'];
 check('an environment snapshot sorts each type by its own prefs', array_column($envR['docker'], 'name') === ['alpha', 'Bravo', 'Charlie', 'Delta'] && array_column($envR['vm'], 'name') === ['Delta', 'Charlie', 'Bravo', 'alpha'], array_map(static fn($f) => array_column($f, 'name'), $envR));
+$noPrefs = $envOrdered;
+unset($noPrefs['types']['docker']['prefs']);
+$noPrefs['types']['vm']['prefs'] = 'alpha';
+check('a snapshot without prefs keeps the file order and does not mention prefs', array_column(fv3_convert_foreign_bundle($noPrefs, 'docker')['folders']['docker'], 'name') === $fileOrder
+    && !in_array('prefs', fv3_convert_foreign_bundle($noPrefs, null)['report']['skipped_sections'], true));
 $digits = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'manual', 'manualOrder' => ['20', '0', '10'], 'pinnedFolderIds' => ['0']], 'folders' => [
     '10' => ['name' => 'Ten', 'containers' => []], '0' => ['name' => 'Zero', 'containers' => []], '20' => ['name' => 'Twenty', 'containers' => []],
 ]];
 check('all-digit ids, id 0 among them, sort and pin like any other', $namesOf($digits) === ['Zero', 'Twenty', 'Ten'], $namesOf($digits));
-$branch = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'branch', 'branchRootId' => 'f3', 'folders' => ['f3' => $plus['f3'], 'kid' => $plus['kid']]];
+$branch = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'branch', 'branchRootId' => 'kid', 'folders' => [
+    'kid' => $plus['kid'], 'grandkid' => ['name' => 'Grandkid', 'containers' => ['g1'], 'parentId' => 'kid'],
+]];
 $br = fv3_convert_foreign_bundle($branch, 'docker');
-check('a branch export imports as one top-level folder with its nested folders merged', ($br['report']['source'] ?? null) === 'branch' && array_column($br['folders']['docker'] ?? [], 'containers', 'name') === ['Charlie' => ['c1', 'k1']], $br);
+check('a branch export of a nested folder imports as one folder with its own nested folders merged, its parent outside the file not reported broken',
+    ($br['report']['source'] ?? null) === 'branch' && array_column($br['folders']['docker'] ?? [], 'containers', 'name') === ['Kid' => ['k1', 'g1']] && $br['report']['types']['docker']['broken_parents'] === 0, $br);
+$branch['folders']['grandkid']['parentId'] = 'elsewhere';
+check('a branch export still reports a nested folder whose parent is missing', fv3_convert_foreign_bundle($branch, 'docker')['report']['types']['docker']['broken_parents'] === 1);
 
 // What the Docker page shows after the import: real write, real page order
 $names = ['k-ct', 'd1', 'a1', 'c1', 'k1', 'b1', 'loose'];
@@ -177,11 +187,13 @@ check('with no userprefs.cfg the page shows every folder A-Z', $pageFolders([]) 
 // FolderView Plus's own icon files go when it is uninstalled, so they are left out and counted on their own
 foreach (['/plugins/folderview.plus/images/icons/folder-cloud.svg', '/plugins/folderview.plus/images/custom/my%20icon.png?v=1730000000',
           '/plugins/folderview.plus/images/third-party-icons/Icons/plex.svg', 'http://tower.local/plugins/folderview.plus/images/folder-icon.png',
-          '/plugins/FolderView.Plus/images/icons/folder-media.svg'] as $plusIcon) {
+          '/plugins/FolderView.Plus/images/icons/folder-media.svg', '/plugins//folderview.plus/images/custom/a.png', '/plugins/./folderview.plus/images/icons/x.svg',
+          '/plugins/other/../folderview.plus/images/icons/x.svg'] as $plusIcon) {
     $ir = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['a' => ['name' => 'A', 'containers' => [], 'icon' => $plusIcon]]], 'docker');
     check("FolderView Plus icon left out: $plusIcon", $ir['folders']['docker'][0]['icon'] === '' && $ir['report']['types']['docker']['plus_icons'] === 1 && $ir['report']['types']['docker']['dropped_icons'] === 0, $ir['report']['types']['docker']);
 }
-foreach (['/plugins/dynamix.docker.manager/images/question.png', '/mnt/user/appdata/icons/folderview.plus.png'] as $okIcon) {
+foreach (['/plugins/dynamix.docker.manager/images/question.png', '/mnt/user/appdata/icons/folderview.plus.png', '/mnt/plugins/folderview.plus/x.png',
+          'https://raw.githubusercontent.com/x/repo/main/src/folderview.plus/usr/local/emhttp/plugins/folderview.plus/images/icons/media.svg'] as $okIcon) {
     $ir = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['a' => ['name' => 'A', 'containers' => [], 'icon' => $okIcon]]], 'docker');
     check("other local icon kept: $okIcon", $ir['folders']['docker'][0]['icon'] === $okIcon && $ir['report']['types']['docker']['plus_icons'] === 0);
 }
