@@ -2,6 +2,11 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## 2026.11.13.1 (beta)
+
+- Folders no longer vanish when the Docker or VMs list reloads twice quickly
+- Debug download now records how each Docker and VMs list was drawn
+
 ## 2026.11.12.1 (beta)
 
 - FolderView Plus imports now keep hidden regex and label members

@@ -305,7 +305,8 @@ $check('defaults that are already there, and an empty map, answer success withou
 $refused = [];
 foreach (['[1,2]', '{"preview":{"deep":1}}', '{"preview":[1]}', 'not json', '7', '{"preview":2,"not_a_folder_setting":"x"}', '{"preview_status":"invalid"}',
           '{"preview":9}', '{"preview":"2"}', '{"preview_hover":"yes"}', '{"preview_overflow":"scroll"}', '{"preview_border_color":"<b>"}', '{"context_graph_time":-1}',
-          '{"context_graph_time":"60"}', '{"preview_text_width":' . json_encode(str_repeat('9', 51)) . '}'] as $bad) {
+          '{"context_graph_time":"60"}', '{"preview_text_width":' . json_encode(str_repeat('9', 51)) . '}', '{"preview_hover":""}',
+          '{"use_global_defaults":null}'] as $bad) {
     $answer = $post('apply_defaults.php', ['type' => 'docker', 'settings' => $bad]);
     if ($answer !== ['400', ['error' => 'The defaults must be folder settings with values the settings page can send']]) $refused[$bad] = $answer;
 }
@@ -370,7 +371,8 @@ $made = $createFile();
 $check('createFile() leaves a folder file that is already there alone, and makes {} (and the config folder) when there is none',
     [$kept, $made] === [json_encode($saved), '{}'], [$kept, $made]);
 
-// 6. A lock that cannot be taken is a 500 that says so, and nothing is written. Not as root: root writes through the permissions
+// 6. A lock that cannot be taken: a folder save is a 500 that says so, an import answers its own error, and nothing is
+// written. Not as root: root writes through the permissions
 if (!function_exists('posix_geteuid') || posix_geteuid() !== 0) {
     $locked = [];
     $requests = ['create.php' => $writers['create.php'][0], 'update.php' => $writers['update.php'][0], 'delete.php' => $writers['delete.php'][0],

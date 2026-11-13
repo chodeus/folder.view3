@@ -128,13 +128,13 @@
         if ($lock) fv3_config_unlock($lock);
     }
 
-    // True for a value the settings page can send as the default of folder setting $key. Colours, the text width and the
-    // graph time are saved there under looser rules than the editor's (fv3_sanitize_setting), so they are judged by those
+    // True when $key is a folder setting and $value is one it can hold. Colours, the text width and the graph time come
+    // from the settings page under looser rules than the editor's (fv3_sanitize_setting), so they are judged by those
     function fv3_default_value_ok(string $key, $value): bool {
         $rule = fv3_foreign_setting_rules()[$key] ?? null;
         if ($rule === null) return false;
-        // unset: the page sends '' for an empty field, and null where the form held no number
-        if ($value === null || $value === '') return true;
+        // unset: the page sends '' for an empty field and null where the form held no number; a switch is always true or false
+        if ($rule[0] !== 'bool' && ($value === null || $value === '')) return true;
         if ($rule[0] === 'color' || $rule[0] === 'width') return is_string($value) && strlen($value) <= 50 && !preg_match('/[<>"\'\\\\]/', $value);
         if ($key === 'context_graph_time') return is_int($value) && $value >= 0;
         [$clean, $ok] = fv3_foreign_setting_value($rule, $value);
