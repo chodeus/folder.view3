@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.11.13.3 (beta)
 
 - VMs page folders stay in their saved place, also when two folders sit next to each other, and keep their VMs inside
 - Saved folders now show when the Docker or VMs list has nothing else in it
