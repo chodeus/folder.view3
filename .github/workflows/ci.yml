@@ -51,6 +51,9 @@ jobs:
       - name: POST endpoint answer tests
         run: php .github/scripts/post_answers_test.php
 
+      - name: Folder file lock tests
+        run: php .github/scripts/folder_lock_test.php
+
       - name: Variables tab tests
         run: |
           php .github/scripts/variables_tab_test.php
@@ -86,9 +89,13 @@ jobs:
           node docker_reset_order_test.js
           node autostart_save_test.js
           node empty_pages_test.js
+          node folder_placement_test.js
           node list_reload_test.js
+          node dashboard_reload_test.js
           node theme_import_dialog_test.js
           node dropped_post_test.js
+          node apply_defaults_test.js
+          node rename_update_test.js
 
       - name: Validate plugin manifest (XML)
         run: xmllint --noout folder.view3.plg

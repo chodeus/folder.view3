@@ -455,8 +455,22 @@
     }
 
 
-    // Preview ($apply false) or merge the converted folders into docker.json / vm.json in one swap
+    // Preview ($apply false), or merge the converted folders into docker.json / vm.json under the lock of each file it can
+    // write; the two files are replaced one after the other. A bundle that would be refused is refused first, as a preview
     function importForeignBundle(string $json, ?string $type, bool $apply): array {
+        $preview = fv3_import_foreign_bundle($json, $type, false);
+        if (!$apply || isset($preview['error'])) return $preview;
+        $locks = fv3_config_lock_each($type === null ? ['docker.json', 'vm.json'] : ["$type.json"]);
+        if (is_string($locks)) {
+            fv3_error_log('importForeignBundle', "could not lock $locks");
+            return ['error' => 'write-failed'];
+        }
+        $result = fv3_import_foreign_bundle($json, $type, true);
+        array_map('fv3_config_unlock', $locks);
+        return $result;
+    }
+
+    function fv3_import_foreign_bundle(string $json, ?string $type, bool $apply): array {
         global $configDir;
         if (strlen($json) > FV3_FOREIGN_MAX_BYTES) return ['error' => 'too-large'];
         $raw = json_decode($json, true);

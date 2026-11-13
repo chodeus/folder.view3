@@ -2,8 +2,10 @@
 // Stubbed: HTTP ($.get/$.ajax), fetch (/graphql), WebSocket, NchanSubscriber (Unraid's dockerload), tooltipster, timers (a manual clock).
 'use strict';
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const vm = require('vm');
+const { execFileSync } = require('child_process');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
 const plugin = process.env.FV3_PLUGIN || path.join(__dirname, '..', '..', 'src/folder.view3/usr/local/emhttp/plugins/folder.view3');
@@ -131,7 +133,14 @@ const makePage = async (opts = {}) => {
         send(m) { this.sent.push(m); }
         close() { this.readyState = 3; if (this.onclose) this.onclose({}); }
     };
-    w.ResizeObserver = class { observe() {} disconnect() {} };
+    const observing = [];
+    w.ResizeObserver = class {
+        constructor(cb) { this.cb = cb; }
+        observe(el) { if (!observing.some(([o, t]) => o === this && t === el)) observing.push([this, el]); }
+        disconnect() { for (let i = observing.length - 1; i >= 0; i--) if (observing[i][0] === this) observing.splice(i, 1); }
+    };
+    // Calls back each observer watching el (default: the page), as a resize of el would
+    const resized = (el = w.document.documentElement) => observing.filter(([, t]) => t === el).forEach(([o]) => o.cb([{ target: el }], o));
     $.i18n = (key) => key;
     $.fn.i18n = function () { return this; };
     $.fn.switchButton = function () { return this; };
@@ -227,7 +236,7 @@ dockerload.on('message', function(msg){
         mem: tip.el && tip.el.querySelector(`span.fv3-mem-${id}`).textContent,
         bar: tip.el && tip.el.querySelector(`span.fv3-cpu-bar-${id}`).style.width,
     });
-    return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow, realAjax };
+    return { w, $, g, run, tick, gets, sockets, nchan, tips, attach, ct, cell, samples, errors, pendingTimers, realNow, realAjax, resized };
 };
 
 const FOLDER_SETTINGS = {
@@ -306,4 +315,33 @@ const check = (label, ok, detail) => {
 process.exitCode = 1;
 const done = () => { console.log(failed ? `\n${failed} FAILED` : '\nall passed'); process.exit(failed ? 1 : 0); };
 
-module.exports = { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, flush, read };
+// The shipped PHP endpoints on a temp config folder, each request its own `php` process, for a test that sends on what a page
+// really posts: server(name, method, fields) gives the body it answers, `config` is the folder, cleanup() removes it all
+const phpServer = (label) => {
+    const tmp = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), `fv3-${label}-`));
+    const config = path.join(tmp, 'config');
+    // lib.php requires these two Unraid host files at load time
+    for (const [rel, src] of [['webGui/include/Helpers.php', '<?php'],
+        ['plugins/dynamix.docker.manager/include/DockerClient.php', '<?php class DockerClient { function getDockerContainers() { return []; } function getDockerJSON($url) { return []; } } class DockerUpdate {}']]) {
+        fs.mkdirSync(path.dirname(path.join(tmp, 'docroot', rel)), { recursive: true });
+        fs.writeFileSync(path.join(tmp, 'docroot', rel), src);
+    }
+    fs.mkdirSync(config);
+    fs.mkdirSync(path.join(tmp, 'dockerMan'));
+    const quote = (text) => `'${String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+    const server = (name, method, fields) => {
+        const copy = path.join(tmp, name);
+        const shipped = read(`server/${name}`);
+        const wired = shipped.replace('require_once("/usr/local/emhttp/plugins/folder.view3/server/lib.php");',
+            `require_once(${quote(path.join(plugin, 'server/lib.php'))}); $configDir = ${quote(config)}; $fv3DockerManDir = ${quote(path.join(tmp, 'dockerMan'))};`);
+        // An endpoint that loads lib.php another way would run on the real config folder
+        if (wired === shipped) throw new Error(`${name} does not require lib.php the way this harness rewrites`);
+        fs.writeFileSync(copy, wired);
+        const boot = `$_SERVER["DOCUMENT_ROOT"] = ${quote(path.join(tmp, 'docroot'))}; $_SERVER["REQUEST_METHOD"] = ${quote(method)};`
+            + ` $_${method} = json_decode(${quote(JSON.stringify(fields))}, true); include ${quote(copy)};`;
+        return execFileSync('php', ['-d', 'display_errors=0', '-r', boot], { encoding: 'utf8' });
+    };
+    return { config, server, cleanup: () => fs.rmSync(tmp, { recursive: true, force: true }) };
+};
+
+module.exports = { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, flush, read, phpServer };
