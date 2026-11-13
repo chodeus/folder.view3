@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.11.14.1 (beta)
 
 - Folder saves from two tabs, or made at once, no longer overwrite each other
 - Apply Defaults accepts only valid values for each setting
