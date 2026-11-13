@@ -23,9 +23,8 @@ const vmRow = (name, i) => `<tr parent-id="${i}" class="sortable"><td class="vm-
     `<td><input class="autostart" type="checkbox" uuid="u${i}"></td></tr><tr child-id="${i}" id="name-${i}" style="display:none"><td colspan="3"></td></tr>`;
 const NO_VMS = '<tr><td colspan="8" style="text-align:center;padding-top:12px">No Virtual Machines installed</td></tr>';
 
-// The VMs page after one list load: its rows top to bottom (`[name:vm,vm]` for a folder, `msg` for Unraid's message), and
-// whether each VM's detail row was right under that VM when the page told extensions its folders were built.
-// `listed` is what Unraid's list holds; the saved order may name a VM it does not (one added between the two requests)
+// The VMs page after one list load: its rows (`[name:vm,vm]` a folder, `msg` Unraid's message) and whether each detail row
+// was under its VM when the page reported its folders built. `listed`: the VMs Unraid's list holds, when not all of them
 const vmPage = async (vms, folders, prefs, listed = vms) => {
     const info = Object.fromEntries(vms.map((n, i) => [n, { uuid: `u${i}`, state: 'shutoff', autostart: false }]));
     const p = await makePage({ page: 'vm', api: false, answers: {
@@ -33,6 +32,8 @@ const vmPage = async (vms, folders, prefs, listed = vms) => {
         'read_unraid_order.php': () => JSON.stringify(vms), 'read_info.php': () => JSON.stringify(info),
     } });
     const land = xhr(p);
+    const warns = [];
+    p.w.fv3DebugWarn = (...args) => warns.push(args.join(' '));
     p.w.loadlist_original = () => p.realAjax({ url: '/plugins/dynamix.vm.manager/include/VMMachines.php', data: { show: '' },
         success: () => { p.$('#kvm_list').html(listed.length ? listed.map(vmRow).join('') : NO_VMS); } });
     let paired = null;
@@ -46,7 +47,7 @@ const vmPage = async (vms, folders, prefs, listed = vms) => {
         if (p.$(tr).hasClass('folder')) return `[${p.$(tr).find('.folder-appname').first().text()}:${p.$(tr).find('div.folder-storage > tr td.vm-name span.inner a').toArray().map((a) => a.textContent).join(',')}]`;
         return tr.hasAttribute('parent-id') ? p.$(tr).find('td.vm-name span.inner a').first().text() : 'msg';
     }).join(' ');
-    return { rows, paired, errors: p.errors };
+    return { rows, paired, warns, errors: p.errors };
 };
 
 const NO_CONTAINERS = "<tr><td colspan='10' style='text-align:center;padding-top:12px'>No Docker containers installed</td></tr>";
@@ -54,7 +55,7 @@ const NO_CONTAINERS = "<tr><td colspan='10' style='text-align:center;padding-top
 (async () => {
     {
         const t = await vmPage(['vm-a', 'vm-b', 'vm-c'], { A: F('A', ['vm-a']), B: F('B', ['vm-b']) }, ['folder-A', 'folder-B', 'vm-c']);
-        check('VMs, two folders side by side, then a VM: both folders, in the saved order', t.rows === '[A:vm-a] [B:vm-b] vm-c', t.rows);
+        check('VMs, two folders side by side, then a VM: both folders, in the saved order, with no warning', t.rows === '[A:vm-a] [B:vm-b] vm-c' && t.warns.length === 0, t);
         check('VMs, two folders side by side: when the page says its folders are built, each VM\'s detail row is right under it', t.paired === true && t.errors.length === 0, t);
     }
     {
@@ -66,7 +67,7 @@ const NO_CONTAINERS = "<tr><td colspan='10' style='text-align:center;padding-top
         check('VMs, every VM in a folder: each folder is shown with its VM, and no VM is left loose', t.rows === '[A:vm-a] [B:vm-b] [C:vm-c]', t.rows);
     }
     {
-        // A VM between each pair of folders, and a folder missing from the saved order: drawn the same before this change
+        // A VM between each pair of folders, and a folder missing from the saved order
         const t = await vmPage(['vm-a', 'vm-b', 'vm-c'], { T: F('T', []), H: F('H', ['vm-a', 'vm-c']), D: F('D', ['vm-b']) },
             ['folder-H', 'vm-a', 'folder-T', 'vm-b', 'folder-gone', 'vm-c']);
         check('VMs, a VM between the folders: the same rows as before, each detail row under its VM', t.rows === '[D:vm-b] [H:vm-a,vm-c] [T:]' && t.paired === true, t);
@@ -79,7 +80,8 @@ const NO_CONTAINERS = "<tr><td colspan='10' style='text-align:center;padding-top
     }
     {
         const t = await vmPage(['vm-a', 'vm-new'], { A: F('A', []) }, ['vm-a', 'vm-new', 'folder-A'], ['vm-a']);
-        check('VMs, a folder saved after a VM that Unraid\'s list does not hold yet: the folder is shown, after the last VM', t.rows === 'vm-a [A:]' && t.errors.length === 0, t);
+        check('VMs, a folder saved after a VM that Unraid\'s list does not hold yet: shown after the last VM, with a debug warning', t.rows === 'vm-a [A:]'
+            && t.warns.join() === 'fv3PlaceFolder place 2 of 1 entries' && t.errors.length === 0, t);
     }
     {
         const t = await vmPage([], { A: F('A', []), B: F('B', []) }, []);

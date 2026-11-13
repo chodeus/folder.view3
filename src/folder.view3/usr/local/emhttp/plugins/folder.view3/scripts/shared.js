@@ -89,9 +89,10 @@ window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
     return newOnes;
 };
 
-// Inserts a new folder at `position` among the list's entries (`items`, top to bottom); `end` gives an entry's last row.
-// Past the last entry it goes after it, and into a list with no entries at its end: a list on the page never drops one
+// Inserts a folder at `position` among the list's entries (`items`); `end` gives an entry's last row. Past the last entry
+// it goes after that entry, into an empty list at its end; a place past the end or a missing list logs a debug warning
 window.fv3PlaceFolder = ($list, $items, position, el, end = ($item) => $item) => {
+    if (position > $items.length || !$list.length) fv3DebugWarn('fv3PlaceFolder', `place ${position} of ${$items.length} entries${$list.length ? '' : ', and the list is not on the page'}`);
     if (position <= 0 && $items.length) $items.eq(0).before(el);
     else if ($items.length) end($items.eq(Math.min(position, $items.length) - 1)).after(el);
     else $list.append(el);

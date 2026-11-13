@@ -1,6 +1,5 @@
-// node .github/scripts/empty_pages_test.js — the Docker, VMs and Dashboard pages on a server with nothing to show: no containers, no VMs,
-// fresh or with folders saved from before. The shipped scripts build each with no error, banner or dialog, and the VMs
-// page and the Dashboard show the saved folders (npm ci in this folder first)
+// node .github/scripts/empty_pages_test.js — the Docker, VMs and Dashboard pages with no containers or VMs, fresh or with folders saved
+// from before: each builds with no error, banner or dialog, and the VMs page and the Dashboard show the saved folders (npm ci first)
 'use strict';
 const { makePage, drawDocker, check, done } = require('./preview_pages_harness.js');
 
