@@ -49,7 +49,7 @@ const VM_LIST = '/plugins/dynamix.vm.manager/include/VMMachines.php';
 const VM_FOLDERS = { lab: { name: 'Lab', icon: '', regex: '', containers: ['vm-x'], settings: {}, hidden_preview: [], actions: [] } };
 // Unraid's rows for one VM (VMMachines.php), cut to the cells vm.js reads
 const vmRows = (n) => '<tr parent-id="0" class="sortable"><td class="vm-name"><span class="outer"><span id="vm-u1" class="hand"><img class="img" src=""></span>' +
-    `<span class="inner"><a>vm-x</a><br><i class="fa fa-square stopped red-text"></i><span class="state">stopped</span></span></span></td><td class="list">${n}</td>` +
+    `<span class="inner"><a href="#" onclick='return toggle_id("name-0")'>vm-x</a><br><i class="fa fa-square stopped red-text"></i><span class="state">stopped</span></span></span></td><td class="list">${n}</td>` +
     '<td><input class="autostart" type="checkbox" uuid="u1"></td></tr><tr child-id="0" id="name-0" style="display:none"><td colspan="3"></td></tr>';
 const vms = async ({ hold = false, empty = false } = {}) => {
     const p = await makePage({ page: 'vm', api: false, answers: {

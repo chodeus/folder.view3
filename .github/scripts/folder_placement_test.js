@@ -70,7 +70,7 @@ const NO_CONTAINERS = "<tr><td colspan='10' style='text-align:center;padding-top
         // A VM between each pair of folders, and a folder missing from the saved order
         const t = await vmPage(['vm-a', 'vm-b', 'vm-c'], { T: F('T', []), H: F('H', ['vm-a', 'vm-c']), D: F('D', ['vm-b']) },
             ['folder-H', 'vm-a', 'folder-T', 'vm-b', 'folder-gone', 'vm-c']);
-        check('VMs, a VM between the folders: the same rows as before, each detail row under its VM', t.rows === '[D:vm-b] [H:vm-a,vm-c] [T:]' && t.paired === true, t);
+        check('VMs, a VM between the folders: each folder in its saved place, each detail row under its VM', t.rows === '[D:vm-b] [H:vm-a,vm-c] [T:]' && t.paired === true, t);
     }
     {
         const t = await vmPage(['vm-a', 'vm-b', 'vm-c'], { A: F('A', ['vm-a'], { expand_tab: true }), B: F('B', ['vm-b']) }, ['folder-A', 'folder-B', 'vm-c']);
