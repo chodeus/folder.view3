@@ -253,9 +253,10 @@ const differential = async (extension, extensionFirst) => {
         stale.posted.join() === 'update.php,update.php' && stale.dialogs.length === 1
         && stale.dialogs[0] === `error: These folders could not be imported: Apps, Media\n${REASON}`, stale);
     const unsynced = await importWith([ok, ok, refused]);
-    check('an import that saved but whose sync was refused still warns "Saved, but" with the server\'s reason',
+    check('an import that saved but whose order request was refused warns "Saved, but" for both its steps, with the server\'s reason',
         unsynced.posted.join() === 'update.php,update.php,import_order.php' && unsynced.dialogs.length === 1
-        && unsynced.dialogs[0] === 'warning: Saved, but the Docker start order could not be updated: the autostart file could not be written', unsynced);
+        && unsynced.dialogs[0] === "warning: Saved, but the folders' order could not be saved: the autostart file could not be written\n"
+            + 'Saved, but the Docker start order could not be updated: the autostart file could not be written', unsynced);
     const mixed = await importWith([ok, refused, ok]);
     // The folders are saved last-first (Media, then Apps), so the second answer is Apps's
     check('an import where one folder was refused names it and still orders and syncs the one that saved',

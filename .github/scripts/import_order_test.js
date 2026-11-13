@@ -15,13 +15,14 @@ const part = (rel, from, to) => {
     return src.slice(start, end);
 };
 const PREFS_LINE = /^\d+="(.*)"$/;
-// userprefs.cfg as Unraid writes it, and its values as read_order.php hands them to a page
+// userprefs.cfg as Unraid writes it, and the values a line holds
 const userprefs = (names) => names.map((n, i) => `${i}="${n}"\n`).join('');
 const prefsOf = (server) => { const f = path.join(server.config, '..', 'dockerMan', 'userprefs.cfg'); return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : null; };
 const valuesOf = (text) => (text || '').split('\n').map((l) => (l.match(PREFS_LINE) || [])[1]).filter((v) => v !== undefined);
 
-// The settings page's import and export code, sending every request to `server` (phpServer). refuse: folder ids update.php is not reached for
-const settingsPage = (server, { refuse = [] } = {}) => {
+// The settings page's import and export code, sending every request to `server` (phpServer). refuse: folder ids update.php is not reached for;
+// orderDown: import_order.php fails outright, as a PHP fatal does (500, no JSON)
+const settingsPage = (server, { refuse = [], orderDown = false } = {}) => {
     const panel = part('FolderView3.page', '<div class="fv3-page-panel" id="fv3-panel-backup"', '<div class="fv3-page-panel" id="fv3-panel-dashboard"');
     const dom = new JSDOM(`<!doctype html><html><body>${panel}</body></html>`,
         { url: 'http://tower.local/Settings/FolderView3', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: new VirtualConsole() });
@@ -45,15 +46,15 @@ const settingsPage = (server, { refuse = [] } = {}) => {
     w.$.post = (url, data) => {
         const name = url.split('/').pop();
         posted.push({ name, data });
+        if (name === 'import_order.php' && orderDown) return w.$.Deferred().reject({ status: 500, responseText: '' }).promise();
         if (name === 'update.php' && refuse.includes(data.id)) return w.$.Deferred().reject({ status: 500, responseJSON: { error: 'refused by the test' } }).promise();
         const answer = JSON.parse(server.server(name, 'POST', data));
         return answer.error ? w.$.Deferred().reject({ status: 500, responseJSON: answer }).promise() : w.$.Deferred().resolve(answer).promise();
     };
-    // read.php is the shipped one; read_order.php answers what userprefs.cfg holds, as readUserPrefs() reads it on Unraid
+    // read.php and read_order.php are the shipped ones
     w.$.get = (url) => {
         const type = url.match(/type=(docker|vm)/)[1];
-        if (url.includes('/read_order.php')) return w.$.Deferred().resolve(JSON.stringify(type === 'docker' ? valuesOf(prefsOf(server)) : [])).promise();
-        return w.$.Deferred().resolve(server.server('read.php', 'GET', { type })).promise();
+        return w.$.Deferred().resolve(server.server(url.includes('/read_order.php') ? 'read_order.php' : 'read.php', 'GET', { type })).promise();
     };
     return { w, dialogs, posted };
 };
@@ -68,7 +69,7 @@ const serverWith = (folders, prefs, containers) => {
 // The Docker page drawn by the real docker.js from what the server now holds: its folders, top-down, by name
 const dockerPage = async (server, containers) => {
     const folders = JSON.parse(fs.readFileSync(path.join(server.config, 'docker.json'), 'utf8'));
-    const page = await drawDocker({ folders, containers, prefs: valuesOf(prefsOf(server)) });
+    const page = await drawDocker({ folders, containers, prefs: JSON.parse(server.server('read_order.php', 'GET', { type: 'docker' })) });
     await page.draw();
     return page.rows().filter((r) => r.startsWith('folder-')).map((r) => folders[r.slice(7)].name);
 };
@@ -119,6 +120,21 @@ const FILE = { f3: folder('Charlie'), f1: folder('Alpha'), f2: folder('Bravo'), 
         const order = page.posted.find((p) => p.name === 'import_order.php');
         check('a folder that was not saved is left out of the order, and the dialog names it', order && order.data.ids === '["f3","f2","old"]'
             && /These folders could not be imported: Alpha/.test(page.dialogs.at(-1)), { order, dialogs: page.dialogs });
+        server.cleanup();
+    }
+    {
+        const server = serverWith({}, null, ['plex']);
+        const page = await importFile(server, FILE, { orderDown: true });
+        check('import_order.php fails outright: the dialog says neither the folders\' order nor the start order was saved, and no order is written',
+            page.dialogs.at(-1) === "warning: Saved, but the folders' order could not be saved: HTTP 500\nSaved, but the Docker start order could not be updated: HTTP 500"
+            && prefsOf(server) === null, page.dialogs);
+        server.cleanup();
+    }
+    {
+        const server = serverWith({}, null, []);
+        const page = await importFile(server, FILE);
+        check('no saved order and Docker lists nothing (stopped, or no containers): the dialog says the order could not be saved, and none is written',
+            page.dialogs.at(-1) === "warning: Saved, but the folders' order could not be saved: Docker is not running or lists no containers" && prefsOf(server) === null, page.dialogs);
         server.cleanup();
     }
     {

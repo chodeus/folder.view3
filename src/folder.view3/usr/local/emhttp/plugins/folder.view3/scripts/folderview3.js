@@ -184,7 +184,8 @@ const fv3ImportFolderMap = async (content, type) => {
             Object.assign(outcome, answer && typeof answer === 'object' ? answer : fv3SafeParse(answer, {}));
         } catch (error) {
             console.warn('[FV3] Docker order after import failed:', fv3FailReason(error));
-            outcome.warning = fv3FailReason(error);
+            // the request did neither step: the folders' order and the start order
+            outcome.order_warning = outcome.warning = fv3FailReason(error);
         }
     }
     populateTable();

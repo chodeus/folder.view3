@@ -8,10 +8,12 @@ $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-page-order-test-' . bin2hex(rand
 $fv3tDockerClient = <<<'PHP'
 <?php
 class DockerClient {
-    // fv3tDown = Docker is not answering
-    function getDockerContainers() { return ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Name' => $n], $GLOBALS['fv3tNames'] ?? []); }
+    // fv3tDown = an answer that is not a list; fv3tOff = Docker stopped, as Unraid's client answers it: the socket error printed, then []
+    function getDockerContainers() { return ($GLOBALS['fv3tDown'] ?? false) ? null : array_map(fn($n) => ['Name' => $n], $this->getDockerJSON('')); }
     // fv3tLabels = container name => its folder.view3 label
     function getDockerJSON($url) {
+        if ($GLOBALS['fv3tOff'] ?? false) { echo "Couldn't create socket: [2] No such file or directory"; return []; }
+        if ($url === '') return $GLOBALS['fv3tNames'] ?? [];
         if (($GLOBALS['fv3tLabelsDown'] ?? false) || ($GLOBALS['fv3tDown'] ?? false)) return null;
         return array_map(fn($n) => ['Names' => ["/$n"], 'Labels' => array_filter(['folder.view3' => $GLOBALS['fv3tLabels'][$n] ?? null])], $GLOBALS['fv3tNames'] ?? []);
     }
@@ -63,7 +65,7 @@ $listed = function (?array $names, ?string $cfg) use ($setPrefs): array {
     try { return readUnraidOrder('docker'); } finally { $GLOBALS['fv3tDown'] = false; }
 };
 // What a real syncContainerOrder() answers (null, or why the file could not be put in order) and the autostart file it left. $break
-// sets a failure up. null = that file does not exist ($names: Docker not answering); a string $autostart is written as is
+// sets a failure up. null = that file does not exist ($names: an answer that is not a list); a string $autostart is written as is
 $sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?callable $break = null) use ($setPrefs, $configDir, $fv3tAutostart): array {
     $GLOBALS['fv3tNames'] = $names ?? [];
     $GLOBALS['fv3tDown'] = $names === null;
@@ -278,7 +280,7 @@ $cases = [
         $sync([], ['a'], null, null, fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a"]}')), [null, null]],
     ['custom mode with an empty autostart file and no saved sequence: the file stays empty',
         $sync([], ['a'], null, '', fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom"}')), [null, '']],
-    ['the page\'s order list is empty with no containers, and with Docker not answering',
+    ['the page\'s order list is empty with no containers, and with an answer that is not a list',
         [$listed([], null), $listed([], $userprefs(['folder-f', 'gone'])), $listed(null, null)], [[], [], []]],
     ['no folders and no containers work out to an empty order',
         [$order([], [], []), $order([], [], ['ghost']), fv3_reorder_autostart([], ['a']), fv3_reorder_autostart([], [])], [[], [], [], []]],
@@ -361,7 +363,8 @@ $importOrder = function (?string $cfg, $ids, ?array $names, string $foldersJson 
     @unlink("$configDir/docker.json");
     $json = $foldersJson !== '' ? $foldersJson : json_encode(['old' => $folder('Old', ['a']), 'n1' => $folder('New one', ['b']), 'n2' => $folder('New two')]);
     if ($json !== 'none') file_put_contents("$configDir/docker.json", $json);
-    $r = $endpoint('import_order.php', 'POST', ['ids' => is_string($ids) ? $ids : json_encode($ids)], ['fv3tNames' => $names ?? [], 'fv3tDown' => $names === null]);
+    // $names null: Docker stopped
+    $r = $endpoint('import_order.php', 'POST', ['ids' => is_string($ids) ? $ids : json_encode($ids)], ['fv3tNames' => $names ?? [], 'fv3tOff' => $names === null]);
     return [$r['status'], $r['body']['success'] ?? $r['body']['error'] ?? null, $r['body']['order_warning'] ?? null, $r['body']['warning'] ?? null, $savedNow()];
 };
 $cases[] = ['folder import, no saved order: the new folders first in the file\'s order, each after its members, then the rest A-Z',
@@ -369,14 +372,16 @@ $cases[] = ['folder import, no saved order: the new folders first in the file\'s
 $cases[] = ['folder import, a saved order: it is left exactly as it was', $importOrder($keep, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $keep]];
 $cases[] = ['folder import, a saved order that will not parse: said, and left as it was',
     $importOrder($cutOff, ['n1'], ['a', 'b']), ['200', true, "Unraid's saved Docker order (userprefs.cfg) could not be read", "Unraid's saved Docker order (userprefs.cfg) could not be read", $cutOff]];
-$cases[] = ['folder import, a saved order and Docker not answering: no order warning (nothing to create), only the start order says so',
-    $importOrder($keep, ['n1'], null), ['200', true, null, "Docker's container list could not be read", $keep]];
-$cases[] = ['folder import, Docker not answering: said, and nothing written',
-    $importOrder(null, ['n1'], null), ['200', true, "Docker's container list could not be read", "Docker's container list could not be read", null]];
+$cases[] = ['folder import, a saved order and Docker stopped: quiet (nothing to create, nothing to start), and the answer is still JSON',
+    $importOrder($keep, ['n1'], null), ['200', true, null, null, $keep]];
+$cases[] = ['folder import, no saved order and Docker stopped: said, and nothing written',
+    $importOrder(null, ['n1'], null), ['200', true, 'Docker is not running or lists no containers', null, null]];
+$cases[] = ['folder import, no saved order and a container with no name in Docker\'s list: said, and nothing written',
+    $importOrder(null, ['n1'], ['a', '']), ['200', true, "Docker's container list could not be read", "Docker's container list could not be read", null]];
 $cases[] = ['folder import, ids that are not a list of folder ids: refused, nothing written',
     [$importOrder(null, '{"a":"n1"}', ['a'])[0], $importOrder(null, ['../x'], ['a'])[0], $importOrder(null, 'nope', ['a'])[0], $savedNow()], ['400', '400', '400', null]];
-// Nothing installed: no containers (or Docker off, the same empty answer), no folders, no saved order
-$cases[] = ['folder import, Docker lists nothing: quiet, nothing written', $importOrder(null, ['n1'], []), ['200', true, null, null, null]];
+// Nothing installed: no containers, no folders, no saved order
+$cases[] = ['folder import, Docker running with no containers: said, nothing written', $importOrder(null, ['n1'], []), ['200', true, 'Docker is not running or lists no containers', null, null]];
 $cases[] = ['folder import, no folder config and no new folders: quiet, nothing written', $importOrder(null, [], ['a'], 'none'), ['200', true, null, null, null]];
 @unlink("$configDir/order-docker.json");
 file_put_contents("$configDir/docker.json", '{}');

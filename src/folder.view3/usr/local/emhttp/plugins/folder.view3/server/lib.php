@@ -390,10 +390,10 @@
     }
 
     function readUserPrefs(string $type) : string {
-        $userPrefsDir = "/boot/config/plugins";
+        global $fv3DockerManDir;
         $prefsFilePath = '';
-        if($type == 'docker') { $prefsFilePath = "$userPrefsDir/dockerMan/userprefs.cfg"; }
-        elseif($type == 'vm') { $prefsFilePath = "$userPrefsDir/dynamix.vm.manager/userprefs.cfg"; }
+        if($type == 'docker') { $prefsFilePath = "$fv3DockerManDir/userprefs.cfg"; }
+        elseif($type == 'vm') { $prefsFilePath = "/boot/config/plugins/dynamix.vm.manager/userprefs.cfg"; }
         else { return '[]'; }
         if(!file_exists($prefsFilePath)) { return '[]'; }
         // Deliberate GET side-effect (self-heal on the page-load read, mirroring the
@@ -403,6 +403,13 @@
         fv3_heal_user_prefs($type, $prefsFilePath);
         $parsedIni = @parse_ini_file($prefsFilePath);
         return json_encode(array_values($parsedIni ?: []));
+    }
+
+    // userprefs.cfg in the format Unraid writes it, one N="name" line per entry
+    function fv3_write_user_prefs(string $file, array $entries): bool {
+        $lines = [];
+        foreach (array_values($entries) as $i => $name) { $lines[] = $i . '="' . $name . '"'; }
+        return fv3_atomic_write($file, implode("\n", $lines) . "\n");
     }
 
     function fv3_order_snapshot_file(string $type): string {
@@ -509,12 +516,10 @@
         }
         foreach (array_keys($insertBefore) as $fid) { $out[] = $fid; }
 
-        $lines = [];
-        foreach (array_values($out) as $i => $name) { $lines[] = $i . '="' . $name . '"'; }
         // Stock UserPrefs writes are lockless, so re-check the source right before
         // replacing — a concurrent reorder mid-compute aborts the heal (next load retries).
         if (@file_get_contents($prefsFilePath) !== $raw) return;
-        if (fv3_atomic_write($prefsFilePath, implode("\n", $lines) . "\n")) {
+        if (fv3_write_user_prefs($prefsFilePath, $out)) {
             fv3_debug_log("fv3_heal_user_prefs($type): re-inserted " . (count($out) - count($current)) . " folder position(s)");
         }
     }
@@ -893,9 +898,8 @@
     // Folder mode only logs an empty container list: a server with no containers, or with Docker off, has nothing to report
     function syncContainerOrder(string $type): ?string {
         // Rewrites the autostart file to match what FV3 renders on screen — top-to-bottom,
-        // folder members left-to-right in their editor-chosen order. Render order itself is
-        // owned by Unraid (userprefs.cfg if user drag-reordered, alphabetical otherwise);
-        // FV3 no longer auto-writes userprefs.cfg from this function.
+        // folder members left-to-right in their editor-chosen order. Render order comes from
+        // userprefs.cfg when it exists (saved by a drag-reorder or an import), A-Z otherwise.
         global $configDir;
         fv3_debug_log("syncContainerOrder called for type: $type");
         $stop = function (string $why): string { fv3_debug_log("syncContainerOrder: $why, aborting before write"); return $why; };
@@ -941,8 +945,7 @@
         $newOrder = fv3_page_order(fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, $prefs), $allContainerNames, $prefs);
         fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($prefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
 
-        // Rewrite autostart file in $newOrder sequence. userprefs.cfg is NOT touched —
-        // Unraid owns it, and writes it only when the user explicitly drag-reorders.
+        // Rewrite autostart file in $newOrder sequence; userprefs.cfg is not touched here
         $autoStartFile = fv3_autostart_file();
         if (file_exists($autoStartFile)) {
             $rawLines = fv3_read_autostart_lines($autoStartFile);
@@ -957,7 +960,7 @@
     }
 
     // The one write of Unraid's saved Docker order besides the heal: an import on a server with none creates it, $first's entries
-    // (placeholders, names) first. Returns why it stopped, or null: also when an order is saved or Docker lists nothing
+    // (placeholders, names) first. Returns why it stopped, or null: also when an order is already saved
     function fv3_create_docker_order(array $first): ?string {
         global $configDir, $fv3DockerManDir;
         if (!$first) return null;
@@ -966,8 +969,8 @@
         if ($prefs) return null;
         $dockerClient = new DockerClient();
         $ctNames = fv3_read_container_names($dockerClient);
-        // No containers, or Docker off: an order of folders alone would put every container above them once Docker lists them
-        if ($ctNames['empty']) return null;
+        // Docker stopped and no containers both answer []. An order of folders alone would put every container above them once Docker lists them
+        if ($ctNames['empty']) return 'Docker is not running or lists no containers';
         if (!$ctNames['complete']) return "Docker's container list could not be read";
         $names = $ctNames['names'];
         $folders = fv3_read_json_strict("$configDir/docker.json");
@@ -988,11 +991,9 @@
         }
         $out = fv3_sanitize_order_entries(array_values(array_unique(array_merge($out, fv3_page_order($membership, $names, [])))));
         if ($out === null) return 'a name cannot be written to userprefs.cfg';
-        $lines = [];
-        foreach ($out as $i => $name) { $lines[] = $i . '="' . $name . '"'; }
         // Stock UserPrefs writes take no lock: an order Unraid saved meanwhile wins
         if (fv3_docker_prefs() !== []) return null;
-        if (!is_dir($fv3DockerManDir) || !fv3_atomic_write("$fv3DockerManDir/userprefs.cfg", implode("\n", $lines) . "\n")) {
+        if (!is_dir($fv3DockerManDir) || !fv3_write_user_prefs("$fv3DockerManDir/userprefs.cfg", $out)) {
             return "Unraid's saved Docker order (userprefs.cfg) could not be written";
         }
         // FV3's own copy, which the heal restores from after a reinstall
