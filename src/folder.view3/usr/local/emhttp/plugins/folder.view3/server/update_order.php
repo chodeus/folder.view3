@@ -21,5 +21,5 @@
         echo json_encode(['error' => 'snapshot write failed']);
         exit;
     }
-    echo json_encode(['success' => true]);
+    fv3_ok();
 ?>

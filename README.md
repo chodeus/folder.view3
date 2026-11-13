@@ -35,7 +35,7 @@ Organize your Docker containers and VMs into collapsible folders on the Docker, 
 - **CSS Tool** — built-in theme manager with GitHub import, variable editor, presets, and advanced CSS
 - **Theme update checker** — detects when imported GitHub themes have updates, Docker-style indicators
 - **Folder defaults** — set global defaults for preview, overflow, context, and more — apply to all folders in one click
-- **Full backup/restore** — export everything (folders, settings, CSS config, themes) to a single JSON file
+- **Full backup/restore** — export everything (folders, settings, CSS config, themes) to a single JSON file; a restore puts folders back where the backup's saved order had them, a folder import shows new folders on top in the file's order (Docker: added to the top of the Docker page's saved order), and folders already placed keep their place. If the Docker list was never reordered, either one saves an order for it (a restore only when the backup has one); containers added later then appear at the top, not in A–Z order
 - **Custom CSS/JS extensions** — full theming support with 40+ CSS variables
 - **Security warnings** — CSS imports are scanned for external URLs and flagged for user review
 - **Incognito mode** — blur container names, icons, Tailscale IPs, public IPv6 addresses, MAC addresses, and container references in volume paths for screenshot-safe sharing
@@ -79,8 +79,8 @@ a fresh FolderView3, before you create folders of your own.
 
 **Import Everything works with every FolderView Plus file.** FolderView Plus keeps Docker and VM folders in
 separate files: each export and each scheduled or manual backup holds one type, so a server with both has two
-files to import. An environment or rollback snapshot holds both types in one file, and a single-folder export
-holds one folder.
+files to import. An environment or rollback snapshot holds both types in one file, a single-folder export
+holds one folder, and a branch export holds one folder with its nested folders.
 
 **Import Docker Folders** and **Import VM Folders** also accept these files, but take only their own type. The
 preview says when the file holds folders of the other type.
@@ -89,18 +89,25 @@ What the import does:
 
 - **Preview first.** Nothing is saved until you confirm, and the preview lists each folder and everything that
   will be left out.
+- **Order:** folders come in the order FolderView Plus showed them: by its sort setting and pinned folders when
+  the file carries them (backups and snapshots do), otherwise (exports) in the order of the file. They appear above the folders you already have:
+  Docker folders are added to the top of the Docker page's saved order, so where two folders' regexes match the same container, the one listed
+  first gets it. If the Docker list was never reordered, the import saves an order for it: these folders first, then everything else as the
+  Docker page listed it (A–Z). Containers added later then appear at the top. With Docker stopped or empty no order can be saved, and the import says so.
 - **Nested folders are merged.** FolderView3 has no nesting, so every nested folder's containers or VMs move into
   its top-level folder. The top-level folder keeps its own name, icon and settings; a nested folder's name, icon,
   settings, regex and custom actions are not kept.
 - **Names:** a folder with no usable name, or named `root` (reserved by Unraid), is imported as `Imported folder`,
   and a name already used is imported as `Name (imported)`.
-- **Settings:** only settings FolderView3 has, with valid values, are kept. Plugin preferences and themes are not
-  imported.
-- **Icons:** a local path, an `http(s)` link or an embedded image is kept; anything else is dropped.
+- **Settings:** only settings FolderView3 has, with valid values, are kept. Plugin preferences (apart from the folder
+  order) and themes are not imported.
+- **Icons:** a local path, an `http(s)` link or an embedded image is kept; anything else is dropped. FolderView
+  Plus's own icons (built-in, uploaded or third-party) are files it deletes when it is uninstalled, so they are
+  dropped too: choose new icons in the folder editor. Folders imported before this still name those files; while
+  FolderView Plus is not installed they show the default question-mark icon until you choose a new one.
 - **Regex:** a folder's regex is kept only if it works the same way in FolderView3.
 - **Custom actions** are kept when FolderView3 can run them as they are: a Docker or VM action may only target
-  its own folder's members, and a User Script action needs a plain script name and arguments without `&`, `#`,
-  `%` or `?`.
+  its own folder's members, and a User Script action needs a plain script name.
 - **Newer formats:** a file from a newer FolderView Plus version is refused rather than guessed at.
 
 ## Getting Started

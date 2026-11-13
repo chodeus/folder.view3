@@ -74,6 +74,113 @@ window.fv3ApplyDefaults = (folder) => {
     }
 };
 
+// Puts each saved folder into the row order at its place among the userprefs.cfg entries that still exist, so a deleted
+// folder or removed container left in that file cannot push later folders down. Returns the rows not saved yet.
+window.fv3PlaceSavedFolders = (order, savedOrder, folders, folderRegex) => {
+    if (!Array.isArray(savedOrder)) savedOrder = [];
+    const rows = new Set(order);
+    const newOnes = order.filter(x => !savedOrder.includes(x));
+    let live = 0;
+    for (const element of savedOrder) {
+        const isFolder = folderRegex.test(element) && !!folders[element.slice(7)];
+        if (isFolder) order.splice(live + newOnes.length, 0, element);
+        if (isFolder || rows.has(element)) live++;
+    }
+    return newOnes;
+};
+
+// Inserts a folder at `position` among the list's entries (`items`); `end` gives an entry's last row. Past the last entry
+// it goes after that entry, into an empty list at its end; a place past the end or a missing list logs a debug warning
+window.fv3PlaceFolder = ($list, $items, position, el, end = ($item) => $item) => {
+    if (position > $items.length || !$list.length) fv3DebugWarn('fv3PlaceFolder', `place ${position} of ${$items.length} entries${$list.length ? '' : ', and the list is not on the page'}`);
+    if (position <= 0 && $items.length) $items.eq(0).before(el);
+    else if ($items.length) end($items.eq(Math.min(position, $items.length) - 1)).after(el);
+    else $list.append(el);
+};
+
+// Draws each list Unraid renders into folders, one draw at a time; a list whose draw failed is tried again on the next call.
+// `rows` selects the rows Unraid replaces on a reload, `data` is the page's fv3FolderData
+window.fv3ListDrawer = (rows, draw, onFail, data) => {
+    let drawn = new WeakSet();
+    let sinceReload = false;
+    let running = null;
+    let landed = false;
+    let reloaded = false;
+    let lists = 0;
+    // Every call leaves a line in fv3DrawLog, so a report of missing folders shows what became of each list
+    const note = (outcome) => fv3RecordDraw(rows, outcome, $(rows).length, $(rows).filter('.folder').length + $(rows).find('.folder-showcase-outer').length);
+    // A list that landed during the draw may have asked for newer folder data than the draw had: once that data is
+    // in, and unless another list or draw came first, the page loads the list again
+    const refresh = () => {
+        const newer = landed && data.behind();
+        const at = lists;
+        if (newer) newer.then((ok) => { if (ok && at === lists && !running) { note('refresh'); window.loadlist(); } });
+    };
+    const run = () => {
+        const list = $(rows).toArray();
+        if (running) {
+            if (list.length ? list.some((row) => !running.has(row)) : reloaded) { landed = true; lists++; }
+            return note('running');
+        }
+        if (list.length ? list.some((row) => drawn.has(row)) : sinceReload) return note('kept');
+        running = new WeakSet(list);
+        landed = false;
+        reloaded = false;
+        lists++;
+        new Promise((resolve) => resolve(draw())).then(() => {
+            note('drawn');
+            drawn = new WeakSet($(rows).toArray());
+            // A reload began during the draw: its list may land after it, empty, and is then drawn
+            if (!reloaded) sinceReload = true;
+            running = null;
+            refresh();
+        }, (e) => {
+            // Only drawn rows are remembered: the next list, or a view switch, tries again
+            note('failed');
+            running = null;
+            onFail(e);
+        });
+    };
+    // An empty list has no rows to tell a new one by, so the page says when a reload begins
+    run.reload = () => { sinceReload = false; reloaded = true; };
+    return run;
+};
+
+// Folder data for a page's draws. ask() takes each reload's requests; answers() waits for the batch asked last when it
+// starts, or a newer one that answers first, and gives a copy of the newest that is in: a draw empties what it works from
+window.fv3FolderData = () => {
+    let asked = 0;
+    let given = 0;
+    let last = Promise.resolve();
+    let newest = null;
+    let failure = null;
+    let waiting = [];
+    const settled = () => { const wake = waiting; waiting = []; wake.forEach((resolve) => resolve()); };
+    return {
+        // `ifLast` wraps a failure report: a request that fails after a newer batch was asked says nothing
+        ask: (build) => {
+            const seq = ++asked;
+            const requests = build((report) => (...args) => { if (seq === asked) report(...args); });
+            last = Promise.all(requests);
+            last.then((answers) => { if (!newest || seq > newest.seq) newest = { seq, answers }; }, (e) => { if (seq === asked) failure = { seq, e }; }).then(settled);
+            return requests;
+        },
+        answers: async () => {
+            const start = asked;
+            if (!start) return [];
+            // A hung or failed batch is overtaken by a newer one; only a failure of the batch asked last ends the wait
+            while (!(newest && newest.seq >= start)) {
+                if (failure && failure.seq === asked) throw failure.e;
+                await new Promise((resolve) => waiting.push(resolve));
+            }
+            given = newest.seq;
+            return newest.answers.map((answer) => (answer && typeof answer === 'object' ? JSON.parse(JSON.stringify(answer)) : answer));
+        },
+        // Null when the answers last given were those of the batch asked last, else resolves true once that batch is in
+        behind: () => (given === asked ? null : last.then(() => true, () => false)),
+    };
+};
+
 // Resource cleanup
 window.fv3Cleanups = [];
 window.addEventListener('beforeunload', () => {
@@ -129,6 +236,11 @@ window.fv3Incognito = false;
             result = result.replace(new RegExp(escaped, 'gi'), anon);
         }
         return result;
+    }
+
+    // An open tooltip keeps the content it opened with; tooltipster throws on a badge it never initialised
+    function syncTsTooltip(el) {
+        if ($(el).hasClass('tooltipstered')) $(el).tooltipster('content', el.getAttribute('data-tstitle'));
     }
 
     var macRe = /[0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5}/g;
@@ -283,9 +395,12 @@ window.fv3Incognito = false;
             }
         });
 
-        document.querySelectorAll('.tailscale-ip, [class*="tailscale"]').forEach(function(el) {
-            el.setAttribute('data-fv3-real', el.textContent);
-            el.textContent = '100.x.x.x';
+        // Unraid's Tailscale badge fills its tooltip from data-tstitle on open: hostname, URL and tailnet IPs
+        document.querySelectorAll('.TS_tooltip[data-tstitle]').forEach(function(el) {
+            if (el.hasAttribute('data-fv3-real-tstitle')) return;
+            el.setAttribute('data-fv3-real-tstitle', el.getAttribute('data-tstitle'));
+            el.setAttribute('data-tstitle', hiddenLabel());
+            syncTsTooltip(el);
         });
 
         var extraNames = [];
@@ -406,6 +521,11 @@ window.fv3Incognito = false;
             el.innerHTML = el.getAttribute('data-fv3-real-html');
             el.removeAttribute('data-fv3-real-html');
         });
+        document.querySelectorAll('[data-fv3-real-tstitle]').forEach(function(el) {
+            el.setAttribute('data-tstitle', el.getAttribute('data-fv3-real-tstitle'));
+            el.removeAttribute('data-fv3-real-tstitle');
+            syncTsTooltip(el);
+        });
         document.querySelectorAll('[data-fv3-scrubbed]').forEach(function(el) {
             var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
             var node;
@@ -469,15 +589,15 @@ window.fv3Incognito = false;
         setTimeout(injectToggle, 100);
     }
 
+    // After every list render, including one where folder rendering failed and the native list was revealed
+    window.fv3IncognitoRefresh = function() {
+        injectToggle();
+        if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
+    };
+
     if (typeof folderEvents !== 'undefined') {
-        folderEvents.addEventListener('docker-post-folders-creation', function() {
-            injectToggle();
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
-        });
-        folderEvents.addEventListener('vm-post-folders-creation', function() {
-            injectToggle();
-            if (fv3Incognito) setTimeout(fv3IncognitoApply, 100);
-        });
+        folderEvents.addEventListener('docker-post-folders-creation', fv3IncognitoRefresh);
+        folderEvents.addEventListener('vm-post-folders-creation', fv3IncognitoRefresh);
     }
 })();
 
@@ -1072,7 +1192,8 @@ window.fv3CollectEnv = () => {
         // tableLayout/previewGeom above captured the original (pre-rerun) locked state.
         renderSignals: collectRenderSignals(),
         traceBuffer: [...(window.fv3TraceBuffer || [])],
-        recentFailures: [...(window.fv3FailureBuffer || [])]
+        recentFailures: [...(window.fv3FailureBuffer || [])],
+        listDraws: [...(window.fv3DrawLog || [])]
     };
 };
 

@@ -2,6 +2,59 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Folders no longer vanish when the Docker, VMs or Dashboard lists reload
+- VMs page folders keep their saved place, and folders show in empty lists
+- Dashboard tiles load independently, and full-width panels stay in place
+- Folder saves from two tabs, or made at once, no longer overwrite each other
+- Failed or partly applied saves now say so instead of reporting success
+- Autostart order now matches the Docker page, also with a damaged userprefs.cfg
+- Imports keep the file's folder order; settings lists folders in page order
+- FolderView Plus migration fixes: hidden members, branch exports, script arguments, icons
+- Docker page shows an update when a container's tag moves to another image
+- Display fixes: incognito Tailscale tooltip, advanced preview menu, theme import log
+
+## 2026.11.14.1 (beta)
+
+- Folder saves from two tabs, or made at once, no longer overwrite each other
+- Apply Defaults accepts only valid values for each setting
+- Imports keep the file's folder order and place new folders above existing ones
+- Settings page lists folders in the same order as the Docker and VMs pages
+- FolderView Plus branch exports (a folder with its subfolders) now import
+- FolderView Plus User Script actions with & # % ? in their arguments now import
+- FolderView Plus icons show the default icon once FolderView Plus is removed
+
+## 2026.11.13.3 (beta)
+
+- VMs page folders stay in their saved place, also when two folders sit next to each other, and keep their VMs inside
+- Saved folders now show when the Docker or VMs list has nothing else in it
+
+## 2026.11.13.2 (beta)
+
+- Dashboard folders no longer vanish when the Docker and VMs tiles reload at the same time
+- A slow or failed folder request now holds up only its own Dashboard tile
+- In the full-width Dashboard layout, opened folders get their panel in the right place after every reload
+- A folder hidden by "hide stopped" no longer leaves an empty full-width panel, and gets its panel back when shown
+
+## 2026.11.13.1 (beta)
+
+- Folders no longer vanish when the Docker or VMs list reloads twice quickly
+- Debug download now records how each Docker and VMs list was drawn
+
+## 2026.11.12.1 (beta)
+
+- FolderView Plus imports now keep hidden regex and label members
+- Incognito mode now hides Unraid's Tailscale tooltip on the Docker page
+- Docker page shows an update when a container's tag moves to another image
+- Advanced preview menu keeps its spacing on Unraid 7.4
+- Theme import log now stays on its newest line
+- Autostart order of new folders now matches the Docker page
+- A damaged or leftover userprefs.cfg no longer moves folders or reorders autostart
+- Folder saves and Reset Order now warn if the start order was not updated
+- Saves from a stale or signed-out tab now say to reload the page
+- A save that cannot be written to flash no longer reports success
+
 ## 2026.10.29.2
 
 - Advanced preview CSS fixes when browser is zoomed

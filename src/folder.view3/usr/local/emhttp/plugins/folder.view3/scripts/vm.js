@@ -13,7 +13,7 @@ const applyVmZebra = () => {
 // Render all VM folders.
 const createFolders = async () => {
     await fv3LoadFolderDefaults();
-    const prom = await Promise.all(folderReq);
+    const prom = await fv3Folders.answers();
     let folders = fv3SafeParseWithRecovery(prom[0], 'vm-folders', {});
     const unraidOrder = Object.values(fv3SafeParse(prom[1], {}));
     const vmInfo = fv3SafeParse(prom[2], {});
@@ -26,14 +26,7 @@ const createFolders = async () => {
     const fv3AssignedElsewhere = Object.values(folders).flatMap(f => Array.isArray(f.containers) ? f.containers : []);
     Object.values(folders).forEach(f => { f.fv3AssignedElsewhere = fv3AssignedElsewhere; });
 
-    let newOnes = order.filter(x => !unraidOrder.includes(x));
-
-    for (let index = 0; index < unraidOrder.length; index++) {
-        const element = unraidOrder[index];
-        if((folderRegex.test(element) && folders[element.slice(7)])) {
-            order.splice(index+newOnes.length, 0, element);
-        }
-    }
+    let newOnes = fv3PlaceSavedFolders(order, unraidOrder, folders, folderRegex);
 
     if(window.FV3_DEBUG) {
         window.fv3DebugPayloads['VM'] = JSON.stringify({
@@ -164,6 +157,9 @@ const createFolders = async () => {
     folderDebugMode  = false;
 };
 
+// The rows under a list entry, up to the next sortable row: a VM's detail rows, an opened folder's VMs
+const fv3RowsUnder = ($tr) => $tr.nextUntil('tr.sortable');
+
 // Render one folder. Returns the number of elements removed before the folder's position.
 const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
 
@@ -196,11 +192,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
     const colspan = totalCols - 2;
     const fld = `<tr parent-id="${escapeHtml(id)}" class="sortable folder-id-${escapeHtml(id)} ${folder.settings.preview_hover ? 'hover' : ''} folder"><td class="vm-name folder-name"><div class="folder-name-sub"><i class="fa fa-arrows-v mover orange-text"></i><span class="outer folder-outer"><span id="${escapeHtml(id)}" onclick='addVMFolderContext(${fv3JsArg(id)})' class="hand folder-hand"><img src="${escapeHtml(folder.icon || '/plugins/dynamix.docker.manager/images/question.png')}" class="img folder-img" onerror='this.onerror=null;this.src="/plugins/dynamix.docker.manager/images/question.png"'></span><span class="inner folder-inner"><a class="folder-appname" href="#" onclick='editFolder(${fv3JsArg(id)})'>${escapeHtml(folder.name)}</a><a class="folder-appname-id">folder-${escapeHtml(id)}</a><br><i id="load-folder-${escapeHtml(id)}" class="fa fa-square stopped red-text folder-load-status"></i><span class="state folder-state"> ${$.i18n('stopped')}</span></span></span><button class="dropDown-${escapeHtml(id)} folder-dropdown" onclick='dropDownButton(${fv3JsArg(id)})'><i class="fa fa-chevron-down" aria-hidden="true"></i></button></div></td><td colspan="${colspan}"><div class="folder-storage"></div><div class="folder-preview"></div></td><td class="folder-autostart"><input class="autostart" type="checkbox" id="folder-${escapeHtml(id)}-auto" style="display:none"></td></tr>`;
 
-    if (position === 0) {
-        $('#kvm_list > tr.sortable').eq(position).before($(fld));
-    } else {
-        $('#kvm_list > tr.sortable').eq(position - 1).next().after($(fld));
-    }
+    fv3PlaceFolder($('#kvm_list'), $('#kvm_list > tr.sortable'), position, $(fld), ($item) => $item.add(fv3RowsUnder($item)).last());
 
     // switchButton init deferred until autostart state is known — early init can reset VM autostart.
 
@@ -305,7 +297,7 @@ const createFolder = (folder, id, position, order, vmInfo, foldersDone) => {
             let $vmTR = $('#kvm_list > tr.sortable:not(.folder)').filter(function() {
                 return $(this).find('td.vm-name span.outer span.inner a').first().text().trim() === container;
             }).first();
-            let $detailRows = $vmTR.nextUntil('tr.sortable');
+            let $detailRows = fv3RowsUnder($vmTR);
             $(`tr.folder-id-${id} div.folder-storage`).append($vmTR.addClass(`folder-${id}-element`).addClass(`folder-element`).removeClass('sortable'));
             if ($detailRows.length) {
                 $(`tr.folder-id-${id} div.folder-storage`).append($detailRows.addClass(`folder-${id}-element folder-element`));
@@ -750,28 +742,37 @@ const addVMFolderContext = (id) => {
 };
 
 // Global variables
-let loadedFolder = false;
 let globalFolders = {};
 const folderRegex = /^folder-/;
 let folderDebugMode = !!window.FV3_DEBUG;
 window.fv3DebugSource = 'VM';
 let folderReq = [];
+const fv3Folders = fv3FolderData();
+
+const fv3DrawList = fv3ListDrawer('#kvm_list > tr', async () => {
+    await createFolders();
+    $('div.spinner.fixed').hide();
+}, (e) => {
+    console.error('[FV3] VM: folder rendering failed:', e);
+    // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
+    document.documentElement.classList.add('fv3-vm-ready');
+    fv3IncognitoRefresh();
+    $('div.spinner.fixed').hide();
+}, fv3Folders);
 
 // Unraid loadlist patch — inject folder rendering after VMs render
 window.loadlist_original = window.loadlist;
-let fv3FolderReqPending = false;
 window.loadlist = (x) => {
-    if (!fv3FolderReqPending) {
-        fv3FolderReqPending = true;
-        loadedFolder = false;
-        folderReq = [
-            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.'), 'error')).promise(),
-            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(() => fv3ShowBanner(fv3I18nOr('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.'), 'error')).promise()
+    fv3DrawList.reload();
+    folderReq = fv3Folders.ask((ifLast) => {
+        const failed = (key, text) => ifLast(() => fv3ShowBanner(fv3I18nOr(key, text), 'error'));
+        return [
+            $.get('/plugins/folder.view3/server/read.php?type=vm').fail(failed('folder-data-load-failed', 'Could not load folder data. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_order.php?type=vm').fail(failed('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_info.php?type=vm').fail(failed('vm-details-load-failed', 'Could not load VM details. Try refreshing the page.')).promise(),
+            $.get('/plugins/folder.view3/server/read_unraid_order.php?type=vm').fail(failed('folder-order-load-failed', 'Could not load folder order. Try refreshing the page.')).promise()
         ];
-        Promise.all(folderReq).finally(() => { fv3FolderReqPending = false; });
-    }
+    });
     if (typeof window.loadlist_original === 'function') { loadlist_original(x); }
 };
 
@@ -817,17 +818,7 @@ $.ajaxPrefilter((options, originalOptions, jqXHR) => {
             console.warn('[FV3] VM order snapshot save failed; layout restore after a reinstall may use an older order.');
         });
         $('.unhide').show();
-    } else if (options.url === "/plugins/dynamix.vm.manager/include/VMMachines.php" && !loadedFolder) {
-        jqXHR.promise().then(async () => {
-            loadedFolder = true;
-            try { await createFolders(); }
-            catch (e) {
-                console.error('[FV3] VM: folder rendering failed:', e);
-                // Reveal the anti-FOUC-hidden native list — only FV3 grouping failed
-                document.documentElement.classList.add('fv3-vm-ready');
-                loadedFolder = false;
-            }
-            $('div.spinner.fixed').hide();
-        });
+    } else if (options.url === "/plugins/dynamix.vm.manager/include/VMMachines.php") {
+        jqXHR.promise().then(fv3DrawList);
     }
 });

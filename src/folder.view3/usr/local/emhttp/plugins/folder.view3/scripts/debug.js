@@ -218,6 +218,16 @@ window.fv3RecordFailure = function(method, url, status, statusText, body) {
         if (window.fv3FailureBuffer.length > window.FV3_FAILURE_MAX) window.fv3FailureBuffer.shift();
     } catch (_) {}
 };
+// Always-active record of what became of each list a page was asked to draw into folders, for the debug download:
+// drawn | failed | running (a draw was under way) | kept (already drawn) | refresh (drawn from older data, so loaded again)
+window.FV3_DRAW_MAX = 30;
+window.fv3DrawLog = [];
+window.fv3RecordDraw = function(list, outcome, rows, folders) {
+    try {
+        window.fv3DrawLog.push({ t: Date.now(), list: list, outcome: outcome, rows: rows, folders: folders });
+        if (window.fv3DrawLog.length > window.FV3_DRAW_MAX) window.fv3DrawLog.shift();
+    } catch (_) {}
+};
 // jQuery's global hook covers every existing $.get/$.post call site with zero per-call-site
 // edits. Scoped to this plugin's own endpoints so other plugins' AJAX traffic isn't recorded.
 if (typeof $ !== 'undefined' && $(document).ajaxError) {

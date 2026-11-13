@@ -29,6 +29,8 @@ dockerUp(['app-alpha', 'app-beta', 'app-gamma', 'app-delta', 'dup', 'x']);
 require "$fv3tRepo/src/folder.view3/usr/local/emhttp/plugins/folder.view3/server/lib.php";
 $configDir = "$fv3tTmp/config";
 mkdir($configDir);
+$fv3DockerManDir = "$fv3tTmp/dockerMan";
+mkdir($fv3DockerManDir);
 // lib.php's own handlers answer JSON and exit 0 — a crash here must fail the run instead
 set_error_handler(function (int $severity, string $message, string $file, int $line): bool {
     if (!(error_reporting() & $severity) || ($severity & (E_DEPRECATED | E_USER_DEPRECATED))) return false;
@@ -86,6 +88,7 @@ check('children and grandchildren merge into the root', $d['Media']['containers'
 check('merged child count', $rep['merged_children'] === 2, $rep['merged_children']);
 check('the report names the folders merged into each top-level folder', array_column($r['report']['types']['docker']['folders'], 'merged', 'name') === ['Media' => ['Media Extras', 'Media Deep'], 'Tools' => [], '<img src=x onerror=alert(1)>' => []], array_column($r['report']['types']['docker']['folders'], 'merged', 'name'));
 check('hidden previews union across the group', $d['Media']['hidden_preview'] === ['app-beta', 'app-gamma'], $d['Media']['hidden_preview']);
+check('a hidden regex member that is not an explicit member is kept', $d['Tools']['hidden_preview'] === ['tool-one', 'tool-three'], $d['Tools']['hidden_preview']);
 check('member identities become containerImages', (array)$d['Media']['containerImages'] === ['app-alpha' => 'example/alpha:latest', 'app-beta' => 'example/beta:1.2'], $d['Media']['containerImages']);
 check('a member in two imported folders stays with the first', $d['Tools']['containers'] === ['tool-one'] && $rep['members_kept_elsewhere'] === 1, [$d['Tools']['containers'], $rep['members_kept_elsewhere']]);
 check('root actions survive', array_column($d['Media']['actions'], 'name') === ['Restart all', 'Notify'], $d['Media']['actions']);
@@ -117,6 +120,122 @@ foreach (['environment.json', 'rollback.json'] as $name) {
     check("$name via the Docker button takes docker only", array_keys($only['folders']) === ['docker'] && in_array('vm', $only['report']['skipped_sections'], true));
 }
 check('single export yields one folder', count(fv3_convert_foreign_bundle(corpus('export-single-docker.json'), 'docker')['folders']['docker']) === 1);
+
+// Folder order: FolderView Plus's display order, from its sort prefs when the file carries them (#178)
+$plus = [
+    'f1' => ['name' => 'Delta', 'containers' => ['d1'], 'createdAt' => '2026-01-03T00:00:00Z', 'updatedAt' => '2026-02-01T00:00:00Z'],
+    'f2' => ['name' => 'alpha', 'containers' => ['a1'], 'createdAt' => '2026-01-01T00:00:00Z', 'updatedAt' => '2026-02-04T00:00:00Z'],
+    'f3' => ['name' => 'Charlie', 'containers' => ['c1'], 'createdAt' => '2026-01-04T00:00:00Z', 'updatedAt' => '2026-02-02T00:00:00Z'],
+    'kid' => ['name' => 'Kid', 'containers' => ['k1'], 'parentId' => 'f3', 'createdAt' => '2026-01-05T00:00:00Z'],
+    'f4' => ['name' => 'Bravo', 'containers' => ['b1'], 'createdAt' => '2026-01-02T00:00:00Z', 'updatedAt' => '2026-02-03T00:00:00Z'],
+];
+$backupOf = static fn($prefs) => ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'folders' => $plus, 'prefs' => $prefs];
+$namesOf = static fn(array $raw) => array_column(fv3_convert_foreign_bundle($raw, 'docker')['folders']['docker'] ?? [], 'name');
+$fileOrder = ['Delta', 'alpha', 'Charlie', 'Bravo'];
+check('an export with no prefs keeps the file order', $namesOf(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => $plus]) === $fileOrder);
+$sameSecond = static fn(string $mode) => $namesOf(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'prefs' => ['sortMode' => $mode], 'folders' => [
+    'e' => ['name' => 'Early', 'containers' => [], 'createdAt' => '2026-01-01T00:00:00.100Z', 'updatedAt' => '2026-01-01T00:00:00.100Z'],
+    'l' => ['name' => 'Late', 'containers' => [], 'createdAt' => '2026-01-01T00:00:00.900Z', 'updatedAt' => '2026-01-01T00:00:00.900Z']]]);
+check('two folders made in the same second sort by their milliseconds, as Date.parse gives them to FolderView Plus',
+    [$sameSecond('created_newest'), $sameSecond('updated_newest'), $sameSecond('created_oldest')] === [['Late', 'Early'], ['Late', 'Early'], ['Early', 'Late']],
+    [$sameSecond('created_newest'), $sameSecond('updated_newest'), $sameSecond('created_oldest')]);
+foreach ([
+    'created (the default)' => [['sortMode' => 'created'], $fileOrder],
+    'A-Z, case-insensitive' => [['sortMode' => 'alpha'], ['alpha', 'Bravo', 'Charlie', 'Delta']],
+    'Z-A' => [['sortMode' => 'name_desc'], ['Delta', 'Charlie', 'Bravo', 'alpha']],
+    'created newest first' => [['sortMode' => 'created_newest'], ['Charlie', 'Delta', 'Bravo', 'alpha']],
+    'created oldest first' => [['sortMode' => 'created_oldest'], ['alpha', 'Bravo', 'Delta', 'Charlie']],
+    'updated newest first' => [['sortMode' => 'updated_newest'], ['alpha', 'Bravo', 'Charlie', 'Delta']],
+    'manual, unknown ids skipped, the rest after in file order' => [['sortMode' => 'manual', 'manualOrder' => ['f4', 'gone', 'f2']], ['Bravo', 'alpha', 'Delta', 'Charlie']],
+    'pinned first in pin order, a pinned nested folder lifting its top-level folder' => [['sortMode' => 'alpha', 'pinnedFolderIds' => ['f1', 'kid']], ['Delta', 'Charlie', 'alpha', 'Bravo']],
+    'an unknown sort mode' => [['sortMode' => 'random'], $fileOrder],
+    'prefs that are not a map' => ['alpha', $fileOrder],
+] as $label => [$prefs, $want]) {
+    check("backup order, $label", $namesOf($backupOf($prefs)) === $want, $namesOf($backupOf($prefs)));
+}
+$undated = $backupOf(['sortMode' => 'created_newest']);
+unset($undated['folders']['f1']['createdAt'], $undated['folders']['f4']['createdAt']);
+check('a date sort puts undated folders last, in file order', $namesOf($undated) === ['Charlie', 'alpha', 'Delta', 'Bravo'], $namesOf($undated));
+$envOrdered =['kind' => 'environment_snapshot', 'schemaVersion' => 1, 'types' => ['docker' => ['folders' => $plus, 'prefs' => ['sortMode' => 'alpha']], 'vm' => ['folders' => $plus, 'prefs' => ['sortMode' => 'name_desc']]]];
+$envR = fv3_convert_foreign_bundle($envOrdered, null)['folders'];
+check('an environment snapshot sorts each type by its own prefs', array_column($envR['docker'], 'name') === ['alpha', 'Bravo', 'Charlie', 'Delta'] && array_column($envR['vm'], 'name') === ['Delta', 'Charlie', 'Bravo', 'alpha'], array_map(static fn($f) => array_column($f, 'name'), $envR));
+$noPrefs = $envOrdered;
+unset($noPrefs['types']['docker']['prefs']);
+$noPrefs['types']['vm']['prefs'] = 'alpha';
+check('a snapshot without prefs keeps the file order and does not mention prefs', array_column(fv3_convert_foreign_bundle($noPrefs, 'docker')['folders']['docker'], 'name') === $fileOrder
+    && !in_array('prefs', fv3_convert_foreign_bundle($noPrefs, null)['report']['skipped_sections'], true));
+$digits = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'manual', 'manualOrder' => ['20', '0', '10'], 'pinnedFolderIds' => ['0']], 'folders' => [
+    '10' => ['name' => 'Ten', 'containers' => []], '0' => ['name' => 'Zero', 'containers' => []], '20' => ['name' => 'Twenty', 'containers' => []],
+]];
+// FolderView Plus shows its result through Object.keys too: all-digit ids first, ascending, whatever the sort or the pins
+check('all-digit ids, id 0 among them: ascending whatever the manual order and pins, as FolderView Plus shows them', $namesOf($digits) === ['Zero', 'Ten', 'Twenty'], $namesOf($digits));
+$named = static fn(array $names, string $mode) => $namesOf(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => $mode],
+    'folders' => array_combine(array_map(static fn($i) => "k$i", array_keys($names)), array_map(static fn($n) => ['name' => $n, 'containers' => []], $names))]);
+check('A-Z: names starting with punctuation come before letters, in the browser\'s order', $named(['Apps', '_Downloads', 'zebra', '[Media]', '~Misc', '-Tools', 'Alpha 10', 'alpha 9'], 'alpha')
+    === ['_Downloads', '-Tools', '[Media]', '~Misc', 'alpha 9', 'Alpha 10', 'Apps', 'zebra'], $named(['Apps', '_Downloads', 'zebra', '[Media]', '~Misc', '-Tools', 'Alpha 10', 'alpha 9'], 'alpha'));
+check('Z-A: a name starting with _ comes last', $named(['Apps', '_Downloads', 'Media'], 'name_desc') === ['Media', 'Apps', '_Downloads'], $named(['Apps', '_Downloads', 'Media'], 'name_desc'));
+$mixedIds = $namesOf(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'alpha'], 'folders' => ['a' => ['name' => 'Alpha', 'containers' => []], '5' => ['name' => 'Zulu', 'containers' => []]]]);
+check('an all-digit id comes before other ids even under A-Z, as FolderView Plus shows it', $mixedIds === ['Zulu', 'Alpha'], $mixedIds);
+$envVmPrefs = ['kind' => 'environment_snapshot', 'schemaVersion' => 1, 'types' => ['docker' => ['folders' => ['a' => ['name' => 'A', 'containers' => []]]],
+    'vm' => ['folders' => ['v' => ['name' => 'V', 'containers' => []]], 'prefs' => ['sortMode' => 'alpha']]]];
+check('Docker folders from a snapshot whose Docker part has no prefs: the preview does not say their folder order is used',
+    !in_array('prefs', fv3_convert_foreign_bundle($envVmPrefs, 'docker')['report']['skipped_sections'], true), fv3_convert_foreign_bundle($envVmPrefs, 'docker')['report']['skipped_sections']);
+check('VM folders from the same snapshot, whose VM part has prefs: it does', in_array('prefs', fv3_convert_foreign_bundle($envVmPrefs, 'vm')['report']['skipped_sections'], true));
+// FolderView Plus starts from the browser's Object.keys: all-digit ids first, ascending, then the rest in file order
+$keyOrder = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'created'], 'folders' => [
+    'b' => ['name' => 'Bee', 'containers' => []], '10' => ['name' => 'Ten', 'containers' => []], '0' => ['name' => 'Zero', 'containers' => []], 'a' => ['name' => 'Ay', 'containers' => []],
+]];
+check('no dates: the browser key order, all-digit ids first and ascending', $namesOf($keyOrder) === ['Zero', 'Ten', 'Bee', 'Ay'], $namesOf($keyOrder));
+check('a backup whose prefs are not a map does not say their folder order is used, from either import button',
+    !in_array('prefs', fv3_convert_foreign_bundle($backupOf('alpha'), 'docker')['report']['skipped_sections'], true)
+    && !in_array('prefs', fv3_convert_foreign_bundle($backupOf('alpha'), null)['report']['skipped_sections'], true));
+check('a backup with prefs says only their folder order is used', in_array('prefs', fv3_convert_foreign_bundle($backupOf(['sortMode' => 'alpha']), 'docker')['report']['skipped_sections'], true));
+$branch = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'branch', 'branchRootId' => 'kid', 'folders' => [
+    'kid' => $plus['kid'], 'grandkid' => ['name' => 'Grandkid', 'containers' => ['g1'], 'parentId' => 'kid'],
+]];
+$br = fv3_convert_foreign_bundle($branch, 'docker');
+check('a branch export of a nested folder imports as one folder with its own nested folders merged, its parent outside the file not reported broken',
+    ($br['report']['source'] ?? null) === 'branch' && array_column($br['folders']['docker'] ?? [], 'containers', 'name') === ['Kid' => ['k1', 'g1']] && $br['report']['types']['docker']['broken_parents'] === 0, $br);
+$branch['folders']['grandkid']['parentId'] = 'elsewhere';
+check('a branch export still reports a nested folder whose parent is missing', fv3_convert_foreign_bundle($branch, 'docker')['report']['types']['docker']['broken_parents'] === 1);
+
+// What the Docker page shows after the import: real write, the real placement import_foreign.php runs, real page order
+$names = ['k-ct', 'd1', 'a1', 'c1', 'k1', 'b1', 'loose'];
+$pageFolders = static function (array $prefs) use (&$configDir, $names): array {
+    $map = json_decode(file_get_contents("$configDir/docker.json"), true);
+    $rows = fv3_page_order(fv3_compute_folder_membership($map, $names, [], $prefs), $names, $prefs);
+    return array_values(array_map(static fn($p) => $map[substr($p, 7)]['name'], array_filter($rows, static fn($p) => str_starts_with($p, 'folder-'))));
+};
+foreach ([['sortMode' => 'created'], ['sortMode' => 'alpha']] as $prefs) {
+    resetConfig(['docker.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => ['k-ct']]])]);
+    file_put_contents("$fv3DockerManDir/userprefs.cfg", "0=\"folder-keep\"\n1=\"k-ct\"\n2=\"loose\"\n");
+    $r = importForeignBundle(json_encode($backupOf($prefs)), 'docker', true);
+    check("import with sort {$prefs['sortMode']} applies and its folders are placed", !empty($r['success']) && fv3_place_imported_docker_folders($r['placed']['docker'] ?? []) === null);
+    $want = $namesOf($backupOf($prefs));
+    $saved = fv3_docker_prefs();
+    check("the page shows the imported folders on top in FolderView Plus's order ({$prefs['sortMode']}), the saved folder in its place",
+        $pageFolders($saved) === array_merge($want, ['Existing']) && array_slice($saved, -3) === ['folder-keep', 'k-ct', 'loose'], [$pageFolders($saved), $saved]);
+}
+check('with no userprefs.cfg the page shows every folder A-Z', $pageFolders([]) === ['alpha', 'Bravo', 'Charlie', 'Delta', 'Existing'], $pageFolders([]));
+
+// FolderView Plus's own icon files go when it is uninstalled, so they are left out and counted on their own
+foreach (['/plugins/folderview.plus/images/icons/folder-cloud.svg', '/plugins/folderview.plus/images/custom/my%20icon.png?v=1730000000',
+          '/plugins/folderview.plus/images/third-party-icons/Icons/plex.svg', 'http://tower.local/plugins/folderview.plus/images/folder-icon.png',
+          '/plugins/FolderView.Plus/images/icons/folder-media.svg', '/plugins//folderview.plus/images/custom/a.png', '/plugins/./folderview.plus/images/icons/x.svg',
+          '/plugins/other/../folderview.plus/images/icons/x.svg', '/plugins/folderview%2Eplus/images/icons/x.svg', '/plugins\\folderview.plus\\images\\x.svg'] as $plusIcon) {
+    $ir = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['a' => ['name' => 'A', 'containers' => [], 'icon' => $plusIcon]]], 'docker');
+    check("FolderView Plus icon left out: $plusIcon", $ir['folders']['docker'][0]['icon'] === '' && $ir['report']['types']['docker']['plus_icons'] === 1 && $ir['report']['types']['docker']['dropped_icons'] === 0, $ir['report']['types']['docker']);
+}
+foreach (['/plugins/dynamix.docker.manager/images/question.png', '/mnt/user/appdata/icons/folderview.plus.png', '/mnt/plugins/folderview.plus/x.png',
+          'https://raw.githubusercontent.com/x/repo/main/src/folderview.plus/usr/local/emhttp/plugins/folderview.plus/images/icons/media.svg'] as $okIcon) {
+    $ir = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['a' => ['name' => 'A', 'containers' => [], 'icon' => $okIcon]]], 'docker');
+    check("other local icon kept: $okIcon", $ir['folders']['docker'][0]['icon'] === $okIcon && $ir['report']['types']['docker']['plus_icons'] === 0);
+}
+
+// An empty colour is FolderView Plus's "not set": not stored and not reported as left out
+$colours = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['a' => ['name' => 'A', 'containers' => [],
+    'settings' => ['preview_vertical_bars_color' => '', 'preview_border_color' => '#112233', 'preview_row_separator_color' => 'red']]]], 'docker');
+check('an empty colour is left out without a count; a bad one is still counted', settingsOf($colours['folders']['docker'][0]) === ['preview_border_color' => '#112233'] && $colours['report']['types']['docker']['dropped_settings'] === 1, [settingsOf($colours['folders']['docker'][0]), $colours['report']['types']['docker']['dropped_settings']]);
 
 // Fails closed on anything it does not know
 $full = corpus('export-full-docker.json');
@@ -159,9 +278,10 @@ check('all-digit folder ids nest like any other', array_keys($n) === ['Top'] && 
 // Actions
 $act = static fn(array $a) => fv3_foreign_action(array_merge(['name' => 'n', 'type' => 1, 'script_icon' => 'bolt', 'script' => 'ok', 'script_args' => ''], $a), ['m']);
 check('plain script accepted', $act([]) !== null);
-foreach (['..' => ['script' => '..'], 'slash' => ['script' => 'a/b'], 'ampersand args' => ['script_args' => 'a&b'], 'percent args' => ['script_args' => '%0A'], 'newline args' => ['script_args' => "a\nb"], 'quote icon' => ['script_icon' => 'x" onclick="y'], 'string type' => ['type' => '1']] as $label => $bad) {
+foreach (['..' => ['script' => '..'], 'slash' => ['script' => 'a/b'], 'newline args' => ['script_args' => "a\nb"], 'quote icon' => ['script_icon' => 'x" onclick="y'], 'string type' => ['type' => '1']] as $label => $bad) {
     check("action rejected: $label", $act($bad) === null);
 }
+check('script args with & # % ? are kept as they are', ($act(['script_args' => 'a&b=c +%41#frag?q'])['script_args'] ?? null) === 'a&b=c +%41#frag?q');
 
 check('action text above U+00FF kept', ($act(['name' => '重启'])['name'] ?? null) === '重启' && $act(['name' => 'Restart — all']) !== null && $act(['script_args' => 'é']) !== null);
 $vmAct = fv3_foreign_action(['name' => 'n', 'type' => 0, 'script_icon' => '', 'conatiners' => ['Windows 11 家庭版'], 'action' => 2], ['Windows 11 家庭版']);
@@ -183,6 +303,14 @@ check('actions past the cap are counted as left out', $capA['report']['types']['
 $manyMembers = array_map(static fn($i) => "ct-$i", range(1, FV3_FOREIGN_MAX_MEMBERS + 7));
 $capM = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => ['r' => ['name' => 'R', 'containers' => $manyMembers]]], 'docker');
 check('members past the cap are counted as left out', $capM['report']['types']['docker']['dropped_members'] === 7, $capM['report']['types']['docker']['dropped_members']);
+$hid = fv3_convert_foreign_bundle($mk(['regex' => '^app-', 'containers' => ['tool'], 'hiddenPreviewMembers' => ['app-x', 'tool', 'app-x', '']]), 'docker')['folders']['docker'][0];
+check('hidden names outside the explicit members are kept once each', $hid['hidden_preview'] === ['app-x', 'tool'], $hid['hidden_preview']);
+$manyHidden = array_map(static fn($i) => "app-$i", range(1, FV3_FOREIGN_MAX_MEMBERS + 7));
+$hidCap = fv3_convert_foreign_bundle(['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => [
+    'p' => ['name' => 'P', 'containers' => [], 'hiddenPreviewMembers' => array_slice($manyHidden, 0, 4000)],
+    'c' => ['name' => 'C', 'containers' => [], 'parentId' => 'p', 'hiddenPreviewMembers' => array_slice($manyHidden, 4000)],
+]], 'docker')['folders']['docker'][0]['hidden_preview'];
+check('hidden names merged past the cap stop at the cap', count($hidCap) === FV3_FOREIGN_MAX_MEMBERS && end($hidCap) === 'app-' . FV3_FOREIGN_MAX_MEMBERS, [count($hidCap), end($hidCap)]);
 
 // A merged child keeps only its members; what it loses must reach the preview
 $nest = ['schemaVersion' => 1, 'type' => 'docker', 'mode' => 'full', 'folders' => [
@@ -265,6 +393,17 @@ foreach (['docker.json', 'vm.json'] as $emptied) {
     $written = file_get_contents("$configDir/$emptied");
     check("an emptied $emptied ([]) imports into a fresh map", !empty($r['success']) && str_starts_with($written, '{') && count(json_decode($written, true)) > 0, $r);
 }
+// VM folders are saved last-first after the ones already there (settings_order_test.js draws the result with vm.js); no VM order is written
+resetConfig(['vm.json' => json_encode(['keep' => ['name' => 'Existing', 'containers' => []]])]);
+$vmFile = ['schemaVersion' => 1, 'type' => 'vm', 'mode' => 'full', 'reason' => 'manual', 'prefs' => ['sortMode' => 'alpha'],
+    'folders' => ['z' => ['name' => 'Zulu VMs', 'containers' => []], 'a' => ['name' => 'Alpha VMs', 'containers' => []], 'm' => ['name' => 'Mike VMs', 'containers' => []]]];
+$r = importForeignBundle(json_encode($vmFile), 'vm', true);
+$vmMap = json_decode(file_get_contents("$configDir/vm.json"), true);
+$vmWant = ['Alpha VMs', 'Mike VMs', 'Zulu VMs'];
+$vmSavedReversed = array_reverse(array_column(array_slice($vmMap, 1), 'name'));
+check('a VM import: its folders are saved last-first after the folder already there, and placed lists them in FolderView Plus\'s order',
+    count($vmWant) > 1 && array_key_first($vmMap) === 'keep' && $vmSavedReversed === $vmWant
+    && array_map(static fn($p) => $vmMap[substr($p, 7)]['name'], $r['placed']['vm'] ?? []) === $vmWant, [$vmSavedReversed, $vmWant, $r['placed'] ?? null]);
 resetConfig(['docker.json' => '']);
 $r = importForeignBundle($json, 'docker', true);
 check('an empty config file imports into a fresh map', !empty($r['success']) && count(json_decode(file_get_contents("$configDir/docker.json"), true)) === 3, $r);
@@ -381,6 +520,27 @@ check('settings graph time of 0 or empty falls back to the default', $graphTime(
 check('a stored graph time over 600 s reads back as 600', fv3_normalize_settings(['default_context_graph_time' => '7200'])['default_context_graph_time'] === '600');
 check('a graph time that is not whole seconds is refused', array_map($graphTime, ['5x00', 'abc', '62.5', '-5', ' 60']) === [null, null, null, null, null], array_map($graphTime, ['5x00', 'abc', '62.5', '-5', ' 60']));
 check('a stored graph time that is not whole seconds is dropped on read', !isset(fv3_normalize_settings(['dashboard_context_graph_time' => '5x00'])['dashboard_context_graph_time']));
+
+// Folders imported before FolderView Plus icons were left out: once it is uninstalled those icons read as no icon (issue #178)
+$plusSaved = ['p1' => ['name' => 'Bundled', 'icon' => '/plugins/folderview.plus/images/icons/folder-default.svg', 'containers' => []],
+    'p2' => ['name' => 'Uploaded', 'icon' => ' /plugins/folderview.plus/images/custom/my%20icon.png?v=1 ', 'containers' => []],
+    'p3' => ['name' => 'Encoded', 'icon' => '/plugins/folderview%2Eplus/images/icons/plex.svg', 'containers' => []],
+    'k0' => ['name' => 'Other host', 'icon' => 'http://other.local/plugins/folderview.plus/images/icons/plex.svg', 'containers' => []],
+    'k1' => ['name' => 'Unraid icon', 'icon' => '/plugins/dynamix.docker.manager/images/question.png', 'containers' => []],
+    'k2' => ['name' => 'Embedded', 'icon' => 'data:image/png;base64,AAAA', 'containers' => []],
+    'k3' => ['name' => 'No icon', 'icon' => '', 'containers' => []]];
+$plusRaw = json_encode($plusSaved);
+file_put_contents("$configDir/docker.json", $plusRaw);
+$fv3PlusPluginDir = "$fv3tTmp/folderview.plus";
+$icons = static fn(): array => array_column(json_decode(readFolder('docker'), true), 'icon', 'name');
+$gone = $icons();
+check('FolderView Plus not installed: its icons on this server read as no icon, a link to another host and every other icon are kept',
+    $gone === ['Bundled' => '', 'Uploaded' => '', 'Encoded' => '', 'Other host' => 'http://other.local/plugins/folderview.plus/images/icons/plex.svg',
+        'Unraid icon' => '/plugins/dynamix.docker.manager/images/question.png', 'Embedded' => 'data:image/png;base64,AAAA', 'No icon' => ''], $gone);
+mkdir($fv3PlusPluginDir);
+$kept = $icons();
+check('FolderView Plus installed: its icons are kept', $kept === array_column($plusSaved, 'icon', 'name'), $kept);
+check('reading the folders leaves docker.json as it was', file_get_contents("$configDir/docker.json") === $plusRaw);
 
 exec('rm -rf ' . escapeshellarg($fv3tTmp));
 echo $fv3tFailed ? "\n$fv3tFailed FAILED\n" : "\nall passed\n";
