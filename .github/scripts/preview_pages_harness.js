@@ -305,6 +305,29 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     return { p, posts, failing, dropped, render, draw, rows, members, drawn };
 };
 
+// Unraid's row for one VM (VMMachines.php), stopped, with its hidden detail row
+const vmRow = (name, i) => `<tr parent-id="${i}" class="sortable"><td class="vm-name"><span class="outer"><span id="vm-u${i}" class="hand"><img class="img" src=""></span>` +
+    `<span class="inner"><a>${name}</a><br><i class="fa fa-square stopped red-text"></i><span class="state">stopped</span></span></span></td><td></td>` +
+    `<td><input class="autostart" type="checkbox" uuid="u${i}"></td></tr><tr child-id="${i}" id="name-${i}" style="display:none"><td colspan="3"></td></tr>`;
+
+// The VMs page drawn by the real vm.js from vm.json's folders (settings a folder leaves out are drawDocker's), the VMs (all shut
+// off, uuid u0, u1, …) and userprefs.cfg's values
+const drawVms = async ({ folders, names, prefs }) => {
+    const info = Object.fromEntries(names.map((n, i) => [n, { uuid: `u${i}`, state: 'shutoff', autostart: false }]));
+    const defs = Object.fromEntries(Object.entries(folders).map(([id, f]) => [id, { icon: '', hidden_preview: [], actions: [], ...f, settings: { ...FOLDER_SETTINGS, ...(f.settings || {}) } }]));
+    const p = await makePage({ page: 'vm', api: false, answers: {
+        'read.php': () => JSON.stringify(defs), 'read_order.php': () => JSON.stringify(prefs),
+        'read_unraid_order.php': () => JSON.stringify(names), 'read_info.php': () => JSON.stringify(info),
+    } });
+    fakeXhr(p.w, () => ({ status: 200, body: '' }));
+    p.w.loadlist_original = () => p.$('#kvm_list').html(names.map(vmRow).join(''));
+    p.g('loadlist()');
+    p.g('fv3DrawList()');
+    for (let i = 0; i < 50 && !(p.w.fv3DrawLog || []).some((d) => d.outcome === 'drawn') && !p.errors.length; i++) await p.tick(100);
+    if (p.errors.length || !(p.w.fv3DrawLog || []).some((d) => d.outcome === 'drawn')) throw new Error(`VMs page not drawn: ${p.errors.join('; ')}`);
+    return p;
+};
+
 let failed = 0;
 const check = (label, ok, detail) => {
     if (ok) { console.log(`ok   ${label}`); return; }
@@ -347,4 +370,4 @@ const phpServer = (label, { containers = [] } = {}) => {
     return { config, server, cleanup: () => fs.rmSync(tmp, { recursive: true, force: true }) };
 };
 
-module.exports = { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, flush, read, phpServer };
+module.exports = { makePage, drawDocker, drawVms, fakeXhr, scriptHelpers, check, done, flush, read, phpServer };
