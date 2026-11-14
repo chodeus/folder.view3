@@ -180,6 +180,16 @@ class CheckTest(Case):
         self.assertEqual(code, 1)
         self.assertIn('::error::plugin/styles has no stylesheets that style an element', out)
 
+    def test_release_checks_with_nothing_to_check_fail_instead_of_passing(self):
+        web = next(s for s in CFG['sources'] if 'contracts' in s)
+        for broken in ({**web, 'contracts': []}, {**web, 'styles': {**web['styles'], 'themes': []}},
+                       {**web, 'contracts': [{'path': EVENTS, 'match': '(', 'why': 'w'}]}, {**web, 'contracts': [{'path': EVENTS}]}):
+            with self.subTest(broken=broken.get('contracts')):
+                cfg = {**CFG, 'sources': [broken if s is web else s for s in CFG['sources']]}
+                code, out = self.captured(watch.cmd_check, cfg, World(self).root)
+                self.assertEqual(code, 1)
+                self.assertIn('::error::watch.json: ', out)
+
     def test_an_empty_stylesheet_fails_the_same_way(self):
         code, out = self.check(SCRIPT, styles='')
         self.assertEqual(code, 1)

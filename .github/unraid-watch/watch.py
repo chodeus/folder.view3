@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -39,7 +40,25 @@ def derive(cfg, root):
             for path, where in found.items():
                 paths.setdefault(path, f'called from {where}')
         watched[src['repo']] = paths
+    problems += release_checks_config(cfg)
     return ops, watched, problems
+
+
+def release_checks_config(cfg):
+    """Problems with the contracts and styles in watch.json: an empty list would read as every release passing."""
+    held = next((s for s in cfg['sources'] if 'contracts' in s), {})
+    styles = held.get('styles', {})
+    problems = [] if held.get('contracts') and styles.get('themes') and styles.get('files') else \
+        ['watch.json: the webgui source needs contracts and styles with themes and files, or the release checks read as passing']
+    for entry in held.get('contracts', []):
+        if not all(isinstance(entry.get(key), str) and entry[key] for key in ('path', 'match', 'why')):
+            problems.append(f'watch.json: a contract needs a path, a match and a why: {entry}')
+            continue
+        try:
+            re.compile(entry['match'])
+        except re.error as e:
+            problems.append(f'watch.json: the contract on {entry["path"]} has a match that is not a regular expression ({e})')
+    return problems
 
 
 def floor(cfg, root):
