@@ -50,7 +50,7 @@
         "emhttp/plugins/dynamix/include/TaskCommand.php": "task tray endpoint behind openDocker from 7.4",
         "emhttp/plugins/dynamix/styles/default-dynamix.css": "tooltipster rules the advanced preview popup is drawn inside (7.4 added white-space: pre-line)",
         "emhttp/plugins/dynamix/styles/default-base.css": "sweet-alert, table and menu rules the plugin's dialogs and rows sit in",
-        "emhttp/plugins/dynamix/styles/default-color-palette.css": "colour variables the plugin's own colours fall back from",
+        "emhttp/plugins/dynamix/styles/default-color-palette.css": "colour variables the plugin's CSS reads, each with its own fallback",
         "emhttp/plugins/dynamix/styles/themes/azure.css": "azure theme rules under the folder rows and dialogs",
         "emhttp/plugins/dynamix/styles/themes/black.css": "black theme rules under the folder rows and dialogs",
         "emhttp/plugins/dynamix/styles/themes/gray.css": "gray theme rules under the folder rows and dialogs",
