@@ -6,12 +6,13 @@ import os
 import sys
 from pathlib import Path
 
+import css
 import scan
 import schema
 import status
 from github import GitHub, GitHubError
 from report import announce, code, read_state, render, render_status, restamp, status_comment
-from upstream import api_changes, release_notes, source, validity
+from upstream import api_changes, contracts, release_notes, release_refs, source, validity
 
 HERE = Path(__file__).resolve().parent
 
@@ -39,6 +40,15 @@ def derive(cfg, root):
                 paths.setdefault(path, f'called from {where}')
         watched[src['repo']] = paths
     return ops, watched, problems
+
+
+def local(cfg, root):
+    """What the checks per release need from the plugin: the oldest Unraid it supports, and what its stylesheets style."""
+    floor = scan.minimum(Path(root, cfg['manifest']))
+    if not floor:
+        raise Problem(f'{cfg["manifest"]}: no min="x.y.z" on its PLUGIN tag, so the oldest Unraid it supports is unknown')
+    sheets = scan.stylesheets(Path(root, cfg['plugin']))
+    return {'floor': floor, 'styled': css.styled(f.read_text(encoding='utf-8') for f in sheets)}
 
 
 def readable(cfg, root):
@@ -71,6 +81,12 @@ def show(text):
 
 def cmd_check(cfg, root):
     ops, watched, problems = derive(cfg, root)
+    plugin = Path(root, cfg['plugin'])
+    problems += css.fallbacks(scan.stylesheets(plugin), scan.code(plugin))
+    try:
+        local(cfg, root)
+    except Problem as e:
+        problems.append(str(e))
     for query, where in ops:
         print(f'{where[0]:22s} {query}')
     for repo, paths in watched.items():
@@ -97,6 +113,13 @@ def cmd_contract(cfg, gh, root, refs):
         gone = [p for p in paths if not gh.exists(repo, head, p)]
         errors += [f'{repo}: {p} no longer exists on {src["branch"]}; fix the call or watch.json' for p in gone]
         lines.append(f'- {len(paths) - len(gone)} of {len(paths)} watched paths present in {repo}')
+    held = source(cfg, 'contracts')
+    for entry, found in contracts(gh, held, release_refs(gh, held, local(cfg, root)['floor'])):
+        failed = [ref for ref, ok in found.items() if ok is False]
+        if failed:
+            errors.append(f'{held["repo"]}: {entry["path"]} does not match {entry["match"]!r} on {", ".join(failed)}: {entry["why"]}')
+        lines.append(f'- contract {entry["path"]}: holds on {sum(ok is True for ok in found.values())} of '
+                     f'{sum(ok is not None for ok in found.values())} refs')
     for error in errors:
         annotate('error', error)
     print('\n'.join(lines))
@@ -107,7 +130,7 @@ def cmd_contract(cfg, gh, root, refs):
 def cmd_status(cfg, gh, root):
     ops, watched = readable(cfg, root)
     heads = {src['repo']: gh.sha(src['repo'], src['branch']) for src in cfg['sources']}
-    show(render_status(status.gather(gh, cfg, ops, watched, heads)))
+    show(render_status(status.gather(gh, cfg, ops, watched, heads, local(cfg, root))))
     return 0
 
 
@@ -151,7 +174,7 @@ def cmd_watch(cfg, gh, root, me, base, dry_run):
             for ref, bad, _ in validity(gh, api, ops, [api['branch'], gh.latest_release(api['repo'])])) + '.'
         body = render(report, heads)
     show(body)
-    view = render_status(status.gather(gh, cfg, ops, watched, heads))
+    view = render_status(status.gather(gh, cfg, ops, watched, heads, local(cfg, root)))
     show(view)
     if dry_run:
         return 0

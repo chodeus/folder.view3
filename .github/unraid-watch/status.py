@@ -20,8 +20,8 @@ def stage(gh, cfg, ops, watched, spans):
     return out
 
 
-def gather(gh, cfg, ops, watched, heads):
-    """Everything the status comment shows, as plain data."""
+def gather(gh, cfg, ops, watched, heads, local):
+    """Everything the status comment shows, as plain data; local is watch.local(): the plugin's floor and styled elements."""
     api, docs = upstream.source(cfg, 'schema'), upstream.source(cfg, 'releases')
     core, tagged = api['repo'], docs['tags']
     branch = next(s['branch'] for s in cfg['sources'] if s['repo'] == tagged)
@@ -59,5 +59,10 @@ def gather(gh, cfg, ops, watched, heads):
 
     current = schema.load(gh.file(core, heads[core], api['schema']))
     idle, types = schema.coverage(current, api['surface'], schema.check(current, ops)[2], api['namespaces'])
+    held = upstream.source(cfg, 'contracts')
+    refs = upstream.release_refs(gh, held, local['floor'])
     return {'releases': (newest, stable, latest), 'stages': stages, 'matrix': matrix, 'unstated': unstated,
-            'idle': idle, 'types': types, 'legacy': sorted(watched[tagged].items())}
+            'idle': idle, 'types': types, 'refs': refs, 'contracts': upstream.contracts(gh, held, refs),
+            'styles': upstream.stylesheets(gh, held, refs, local['styled']),
+            # Stylesheets are not pages to move off: they are what the plugin's own CSS sits on
+            'legacy': [(path, why) for path, why in sorted(watched[tagged].items()) if not path.endswith('.css')]}

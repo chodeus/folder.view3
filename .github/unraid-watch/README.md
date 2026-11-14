@@ -7,11 +7,14 @@ plugin stands. Both go to issue #52.
 
 - **check** (every CI run, offline). Reads each GraphQL document out of `scripts/*.js` and `*.page`, and each
   webgui PHP file the plugin references. Fails when a document is not a plain string, because nothing
-  downstream could see it.
+  downstream could see it. Also fails on a `var(--x)` in the plugin's stylesheets with no fallback when only
+  Unraid defines `--x`, so an Unraid release without it cannot drop the style; a variable the plugin's own
+  stylesheets declare, or its scripts or server code name (the CSS tool's presets), is the plugin's.
 - **contract** (pull requests that touch `src/`, this directory or the workflow file, every push to `main` or
   `beta`, and daily for both). Validates every operation against the `unraid/api` schema on `main` and at the
-  latest release, and confirms every watched path still exists upstream. Red means the plugin sends something
-  that is no longer valid, or a file it depends on is gone. The daily run checks each branch with that branch's
+  latest release, confirms every watched path still exists upstream, and checks every contract on each stable
+  OS release from the plugin's declared minimum and on the development branch. Red means the plugin sends
+  something that is no longer valid, a file it depends on is gone, or a release it supports breaks a contract. The daily run checks each branch with that branch's
   copy of the tool; a manual run checks the branch it is started on.
 - **watch** (daily, on every push to `beta`, and by hand). It always reads the plugin on `beta`, whichever branch
   starts it, and does two things:
@@ -39,8 +42,13 @@ Once it is on `main` the daily run starts by itself, and still reads `beta`.
 - **Coming with X.Y**: what the newest OS pre-release has that the newest stable does not.
 - **Operations by OS release**: how many of the plugin's operations are valid on the API each OS release
   bundles, and which fields are missing.
+- **Contracts by OS release**: whether each contract holds on every supported release and the development branch.
+- **Unraid CSS by OS release**: per theme, the layout properties Unraid's stylesheets set on an element the
+  plugin's own CSS styles, that differ between releases, and that the plugin does not set itself: what can
+  look different on an older or newer Unraid. A rule no longer set on the development branch is listed apart,
+  as it has often only moved to a stylesheet not read here.
 - **API not used yet**: Docker and VM operations the plugin never calls, and how much of each type it reads.
-- **Still on legacy**: the webgui files the plugin still depends on.
+- **Still on legacy**: the webgui files the plugin still depends on, stylesheets aside.
 
 OS versions and the API each one bundles are read from the release notes. They state it in prose, in several
 styles; a release whose notes do not say is listed as not stated rather than guessed. Files are compared by
@@ -63,6 +71,12 @@ with `' + name + '` when `watch.json` has an `expand` rule naming the JS map tha
   operation from an unread field.
 - `releases`: directory holding the OS release notes. `since` is the oldest OS release to list, and `tags` is
   the repository whose tags carry those OS versions.
+- `manifest`: the plugin's `.plg`. Its `min` attribute is the oldest OS release the contracts and stylesheets
+  are checked on; the webgui's stable tags from there up are the releases.
+- `contracts`: what the plugin relies on in a webgui file, as a `path`, a regular expression it must `match`,
+  and `why`. Optional `since`: the oldest release held to it. Add one with each change that relies on Unraid.
+- `styles`: the `themes`, and the stylesheet `files` that make up each one in load order (`{theme}` is
+  replaced). A file a release does not have is skipped, so files from older and newer layouts can both be listed.
 
 ## Running it by hand
 

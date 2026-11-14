@@ -1,6 +1,7 @@
 {
   "issue": 52,
   "plugin": "src/folder.view3/usr/local/emhttp/plugins/folder.view3",
+  "manifest": "folder.view3.plg",
   "expand": [
     {"match": "docker { ${gqlAction}", "map": "fv3DockerActionMap"},
     {"match": "vm { ${gqlAction}", "map": "fv3VmActionMap"}
@@ -48,7 +49,36 @@
         "emhttp/plugins/dynamix/include/DefaultPageLayout/BodyInlineJS.php": "task tray openDocker runs through from 7.4",
         "emhttp/plugins/dynamix/include/TaskCommand.php": "task tray endpoint behind openDocker from 7.4",
         "emhttp/plugins/dynamix/styles/default-dynamix.css": "tooltipster rules the advanced preview popup is drawn inside (7.4 added white-space: pre-line)",
-        "emhttp/plugins/dynamix/styles/default-base.css": "sweet-alert, table and menu rules the plugin's dialogs and rows sit in"
+        "emhttp/plugins/dynamix/styles/default-base.css": "sweet-alert, table and menu rules the plugin's dialogs and rows sit in",
+        "emhttp/plugins/dynamix/styles/default-color-palette.css": "colour variables the plugin's own colours fall back from",
+        "emhttp/plugins/dynamix/styles/themes/azure.css": "azure theme rules under the folder rows and dialogs",
+        "emhttp/plugins/dynamix/styles/themes/black.css": "black theme rules under the folder rows and dialogs",
+        "emhttp/plugins/dynamix/styles/themes/gray.css": "gray theme rules under the folder rows and dialogs",
+        "emhttp/plugins/dynamix/styles/themes/white.css": "white theme rules under the folder rows and dialogs",
+        "emhttp/plugins/dynamix.docker.manager/sheets/DockerContainers.css": "Docker tab rows the folders sit among",
+        "emhttp/plugins/dynamix.vm.manager/sheets/VMMachines.css": "VMs tab rows the folders sit among",
+        "emhttp/plugins/dynamix.vm.manager/styles/dynamix.vm.manager.css": "VM list rules the VM folders inherit",
+        "emhttp/plugins/dynamix/sheets/DashStats.css": "Dashboard tiles the folder tiles are drawn in",
+        "emhttp/plugins/dynamix.docker.manager/include/Events.php": "answers a container action: true, or the reason Unraid refused it (shared.js fv3ActionAnswer)"
+      },
+      "contracts": [
+        {"path": "emhttp/plugins/dynamix.docker.manager/include/Events.php", "match": "'success' => \\$DockerClient->startContainer\\(",
+         "why": "answers a container start in `success`: true, or the reason it was refused (shared.js fv3ActionAnswer)"},
+        {"path": "emhttp/plugins/dynamix.vm.manager/include/VMajax.php", "match": "\\['error' => ",
+         "why": "answers a refused VM action in `error` (shared.js fv3ActionAnswer)"},
+        {"path": "emhttp/plugins/dynamix.docker.manager/include/UserPrefs.php", "match": "\\$save\\[\\] = \\$index\\[\\$i\\+\\+\\]\\.\"=\\\\\"\"\\.\\$name\\.\"\\\\\"\"",
+         "why": "saves the Docker order as N=\"name\" lines, the format the plugin reads and inserts into (lib.php fv3_parse_user_prefs)"}
+      ],
+      "styles": {
+        "themes": ["azure", "black", "gray", "white"],
+        "files": [
+          "emhttp/plugins/dynamix/styles/default-{theme}.css", "emhttp/plugins/dynamix/styles/dynamix-{theme}.css",
+          "emhttp/plugins/dynamix/styles/default-color-palette.css", "emhttp/plugins/dynamix/styles/default-base.css",
+          "emhttp/plugins/dynamix/styles/themes/{theme}.css", "emhttp/plugins/dynamix/styles/default-dynamix.css",
+          "emhttp/plugins/dynamix/styles/jquery.sweetalert.css", "emhttp/plugins/dynamix/styles/default-popup.css",
+          "emhttp/plugins/dynamix.docker.manager/sheets/DockerContainers.css", "emhttp/plugins/dynamix.vm.manager/styles/dynamix.vm.manager.css",
+          "emhttp/plugins/dynamix.vm.manager/sheets/VMMachines.css", "emhttp/plugins/dynamix/sheets/DashStats.css"
+        ]
       }
     },
     {

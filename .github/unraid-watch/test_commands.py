@@ -5,7 +5,7 @@ from unittest import mock
 
 import watch
 from github import GitHubError
-from world import API, CFG, DOCS, ME, NEW, RELEASE, SCRIPT, SDL, USERPREFS, WEB, WITHOUT_STOP, Case, World, sha, url
+from world import API, CFG, DOCS, EVENTS, ME, NEW, RELEASE, SCRIPT, SDL, STYLES, USERPREFS, WEB, WITHOUT_STOP, Case, World, sha, url
 
 
 class ContractTest(Case):
@@ -77,10 +77,43 @@ class ContractTest(Case):
         self.assertEqual(code, 1)
         self.assertIn('::error::a.js:6:', out)
 
+    def test_contracts_are_checked_on_master_and_listed(self):
+        code, out = self.contract()
+        self.assertEqual(code, 0)
+        self.assertIn(f'- contract {EVENTS}: holds on 1 of 1 refs', out)
+
+    def test_a_contract_a_supported_release_breaks_fails_and_names_the_release(self):
+        self.w.release_line()
+        self.w.tree(WEB, '9.0.3', {EVENTS: 'ev0'})
+        self.w.blob(WEB, 'ev0', "$arrResponse = ['ok' => $DockerClient->startContainer($container)];\n")
+        code, out = self.contract()
+        self.assertEqual(code, 1)
+        self.assertIn(f"::error::unraid/webgui: {EVENTS} does not match \"'success' => \" on 9.0.3: answers in `success`", out)
+        self.assertIn(f'- contract {EVENTS}: holds on 1 of 2 refs', out)
+
+    def test_a_release_before_a_contracts_since_is_not_held_to_it(self):
+        self.w.release_line()
+        self.w.tree(WEB, '9.0.3', {})
+        cfg = {**CFG, 'sources': [{**s, 'contracts': [{**s['contracts'][0], 'since': '9.1.0'}]} if 'contracts' in s else s
+                                  for s in CFG['sources']]}
+        code, out = self.captured(watch.cmd_contract, cfg, self.w.client(), self.w.root, None)
+        self.assertEqual(code, 0)
+        self.assertIn(f'- contract {EVENTS}: holds on 1 of 1 refs', out)
+
+    def test_only_stable_releases_from_the_plugins_minimum_are_read(self):
+        self.w.release_line()
+        self.contract()
+        read = {c[1].split('/git/trees/')[1].split('?')[0] for c in self.w.fake.calls if f'/repos/{WEB}/git/trees/' in c[1]}
+        self.assertEqual(read, {'9.0.3', 'master'})
+
+    def test_a_manifest_without_a_minimum_stops_the_contract(self):
+        with self.assertRaisesRegex(watch.Problem, 'no min="x.y.z"'):
+            self.contract(world=World(self, manifest='<PLUGIN name="p">\n'))
+
 
 class CheckTest(Case):
-    def check(self, script):
-        world = World(self, script)
+    def check(self, script, **world):
+        world = World(self, script, **world)
         code, out = self.captured(watch.cmd_check, CFG, world.root)
         self.assertEqual(world.fake.calls, [])
         return code, out
@@ -106,6 +139,16 @@ class CheckTest(Case):
         code, out = self.check(SCRIPT.replace('/plugins/dynamix.docker.manager/', '/plugins/other/'))
         self.assertEqual(code, 1)
         self.assertIn('::error::unraid/webgui: the plugin references none of its endpoints', out)
+
+    def test_an_unraid_css_variable_without_a_fallback_fails(self):
+        code, out = self.check(SCRIPT, styles=STYLES + '.tip { margin: var(--gap); }\n')
+        self.assertEqual(code, 1)
+        self.assertIn('::error::a.css:3: var(--gap) has no fallback and only Unraid defines --gap', out)
+
+    def test_a_manifest_without_a_minimum_fails(self):
+        code, out = self.check(SCRIPT, manifest='<PLUGIN name="p">\n')
+        self.assertEqual(code, 1)
+        self.assertIn('::error::plugin.plg: no min="x.y.z" on its PLUGIN tag', out)
 
 
 class MainTest(Case):
