@@ -2,6 +2,11 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Folder actions that Unraid refuses now show its reason instead of raw JSON
+- A failed update no longer deletes the package the installed version reinstalls from at boot
+
 ## 2026.11.14.3 (beta)
 
 - A failed update no longer deletes the package the installed version reinstalls from at boot
