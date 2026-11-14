@@ -239,25 +239,9 @@ file_put_contents($autostartFile, "app-d 10\napp-a\n");
 check($status === 200 && json_decode($body) !== null, "sync_order: status $status, $body");
 $leaves('sync_order', ['autostart' => "app-a\napp-d 10\n"]);
 
-// What the runs left in the logs: FV3's files must log nothing, no stand-in was asked anything it does not answer, and no
-// command the webGUI ran was missing where the shell's error reached php -S's log (one run with 2>/dev/null fails unseen)
-// From 7.2 Unraid logs a .page's inline PHP as "in plugins/folder.view3/<file>.page", with no leading slash
-$phplog = file('/var/log/phplog', FILE_IGNORE_NEW_LINES);
-$fv3Lines = preg_grep('#plugins/folder\.view3/#', $phplog);
-check(!$fv3Lines, "PHP logged from FV3's files:\n  " . implode("\n  ", array_slice($fv3Lines, 0, 20)));
-// No script died or failed an include: in Unraid's own code, a sign of state the fakes lack
-$broken = preg_grep('/PHP Fatal error|Failed opening .* for inclusion/', $phplog);
-check(!$broken, "PHP died or missed a file:\n  " . implode("\n  ", array_slice(array_unique($broken), 0, 20)));
-// FV3's error log copies every warning raised in its requests, Unraid's too, by basename. With VM debug on, a real Unraid's
-// libvirt.php adds one when it keys an array by a domain handle; any other line fails
-$errorLog = is_file("$flash/error.log") ? file("$flash/error.log", FILE_IGNORE_NEW_LINES) : [];
-$handleWarning = '/^\[[^]]+\] php-error: Resource ID#\d+ used as offset, casting to integer \(\d+\) at libvirt\.php:\d+$/';
-$reported = $errorLog === false ? ['error.log could not be read'] : preg_grep($handleWarning, $errorLog, PREG_GREP_INVERT);
-check(!$reported, "FV3's error.log:\n  " . implode("\n  ", $reported));
-$unknown = preg_grep('/UNKNOWN/', file('/var/log/fv3-fakes.log', FILE_IGNORE_NEW_LINES));
-check(!$unknown, "the fakes were asked what they do not answer:\n  " . implode("\n  ", array_unique($unknown)));
-$missing = preg_grep('/command not found/', file('/var/log/php-server.log', FILE_IGNORE_NEW_LINES));
-check(!$missing, "the webGUI ran commands this image lacks:\n  " . implode("\n  ", array_unique($missing)));
+// What the runs left in the logs
+require __DIR__ . '/fake_logs.php';
+foreach (fv3_fake_log_checks() as [$ok, $what]) check($ok, $what);
 
 if ($failures) {
     echo "FAILED [Unraid $version]: " . count($failures) . " of $checks checks\n- " . implode("\n- ", $failures) . "\n";

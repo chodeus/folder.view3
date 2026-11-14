@@ -221,6 +221,30 @@ jobs:
           UNRAID_VERSION: ${{ matrix.unraid }}
         run: docker run --rm --network none -v "$PWD:/repo" -w /repo fv3-unraid bash .github/unraid-compat/pages_test.sh .webgui "$UNRAID_VERSION"
 
+      - name: Set up Node
+        if: ${{ (success() || failure()) && env.RUNS == 'true' }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+
+      # Runs after a failed step above too: this one checks what the pages draw
+      - name: FV3's pages in Chromium and Firefox, every theme at desktop, tablet and phone widths
+        if: ${{ (success() || failure()) && env.RUNS == 'true' }}
+        timeout-minutes: 20
+        env:
+          UNRAID_VERSION: ${{ matrix.unraid }}
+        run: |
+          (cd .github/unraid-compat && npm ci --ignore-scripts --no-audit --no-fund)
+          bash .github/unraid-compat/browser_test.sh fv3-unraid .webgui "$UNRAID_VERSION" "$RUNNER_TEMP/screenshots"
+
+      - name: Keep the browsers' screenshots
+        if: ${{ always() && env.RUNS == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: screenshots-unraid-${{ matrix.unraid }}
+          path: ${{ runner.temp }}/screenshots
+          retention-days: 14
+
   # One check per matrix for beta's branch protection: the version rows rename themselves as Renovate moves them
   php-compat:
     name: PHP compatibility

@@ -226,6 +226,15 @@ reviews:
           docker and domain cfg). A call a stand-in does not answer fails
           the run: flag an answer that hides one, and any stand-in for code
           the webGUI repo has.
+        - browser_test.sh starts fake_unraid.sh in a container with no network
+          and runs the Playwright image in a second container that joins its
+          network. browser_test.js drives FV3's Docker, VMs and Dashboard
+          pages in Chromium and Firefox and checks what the user sees (rows,
+          tiles, an opened folder, the advanced preview's layout) against
+          values written by hand. A failed request or console error passes
+          only for a service the fake does not run (ABSENT) or for Unraid's
+          own unload handler. fake_logs.php holds the log checks both tests
+          run. package.json pins playwright-core to the image's version.
         - matrix_check.py keeps ci.yml's Unraid rows at one per minor from the
           .plg's min to the newest release; Renovate only moves rows.
         - Each step asserts what the user is left with (live files, the

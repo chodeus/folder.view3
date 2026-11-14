@@ -1,0 +1,8 @@
+{
+  "name": "folder-view3-unraid-browser-test",
+  "private": true,
+  "description": "browser_test.js's driver; nothing here ships in the plugin. Its version must equal the Playwright image's in browser_test.sh",
+  "devDependencies": {
+    "playwright-core": "1.65.1"
+  }
+}
