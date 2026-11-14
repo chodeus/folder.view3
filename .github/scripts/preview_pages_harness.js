@@ -252,7 +252,7 @@ const dockerRow = (name, sid) => `<tr class="sortable" id="ct-${name}"><td class
     `<td><input type="checkbox" class="autostart" container="${name}"></td><td></td></tr>`;
 
 // The Docker page drawn by the real createFolders() from docker.json's folders, Docker's container names and userprefs.cfg's values
-const drawDocker = async ({ folders, containers, prefs, listed }) => {
+const drawDocker = async ({ folders, containers, prefs, listed, api = false }) => {
     const sid = (i) => String(i).padStart(12, 'a');
     const defs = Object.fromEntries(Object.entries(folders).map(([id, f]) => [id, { ...f, icon: '', settings: { ...FOLDER_SETTINGS }, hidden_preview: [], actions: [] }]));
     const saved = prefs.filter((n) => containers.includes(n));
@@ -261,7 +261,7 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     // false = 0); how it orders several missing ones among themselves is its own tie-break, so they stay as given
     const shown = missing.concat(saved);
     const info = {};
-    const p = await makePage({ page: 'docker', api: false, answers: {
+    const p = await makePage({ page: 'docker', api, answers: {
         'read.php': () => JSON.stringify(defs),
         'read_order.php': () => JSON.stringify(prefs),
         'read_info.php': () => JSON.stringify(info),
@@ -310,13 +310,11 @@ const vmRow = (name, i) => `<tr parent-id="${i}" class="sortable"><td class="vm-
     `<span class="inner"><a>${name}</a><br><i class="fa fa-square stopped red-text"></i><span class="state">stopped</span></span></span></td><td></td>` +
     `<td><input class="autostart" type="checkbox" uuid="u${i}"></td></tr><tr child-id="${i}" id="name-${i}" style="display:none"><td colspan="3"></td></tr>`;
 
-// The VMs page drawn by the real vm.js from vm.json's folders (settings a folder leaves out are drawDocker's), the VMs (all shut
-// off, uuid u0, u1, …) and userprefs.cfg's values
+// The VMs page drawn by the real vm.js from vm.json's folders as given, the VMs (all shut off, uuid u0, u1, …) and userprefs.cfg's values
 const drawVms = async ({ folders, names, prefs }) => {
     const info = Object.fromEntries(names.map((n, i) => [n, { uuid: `u${i}`, state: 'shutoff', autostart: false }]));
-    const defs = Object.fromEntries(Object.entries(folders).map(([id, f]) => [id, { icon: '', hidden_preview: [], actions: [], ...f, settings: { ...FOLDER_SETTINGS, ...(f.settings || {}) } }]));
     const p = await makePage({ page: 'vm', api: false, answers: {
-        'read.php': () => JSON.stringify(defs), 'read_order.php': () => JSON.stringify(prefs),
+        'read.php': () => JSON.stringify(folders), 'read_order.php': () => JSON.stringify(prefs),
         'read_unraid_order.php': () => JSON.stringify(names), 'read_info.php': () => JSON.stringify(info),
     } });
     fakeXhr(p.w, () => ({ status: 200, body: '' }));
@@ -370,4 +368,4 @@ const phpServer = (label, { containers = [] } = {}) => {
     return { config, server, cleanup: () => fs.rmSync(tmp, { recursive: true, force: true }) };
 };
 
-module.exports = { makePage, drawDocker, drawVms, fakeXhr, scriptHelpers, check, done, flush, read, phpServer };
+module.exports = { makePage, drawDocker, drawVms, fakeXhr, scriptHelpers, check, done, flush, read, phpServer, FOLDER_SETTINGS };

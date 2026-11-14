@@ -1392,9 +1392,10 @@ window.fv3ContainerAction = async (type, id, action) => {
 };
 
 // Unraid's answer to a container or VM action in the shape the folder actions read: a refusal's reason is in `success` (Events.php)
-// or `error` (VMajax.php), the same on 7.0 to 7.4
+// or `error` (VMajax.php); an answer that is no object at all is a failure too
 window.fv3ActionAnswer = (answer) => {
-    if (!answer || typeof answer !== 'object') return answer;
+    if (!answer || typeof answer !== 'object') return { success: false, text: answer ? String(answer) : fv3I18nOr('request-failed', 'Request failed') };
+    if (answer.success === true) return answer;
     var reason = typeof answer.success === 'string' && answer.success ? answer.success : answer.error;
     return typeof reason === 'string' && reason ? { success: false, text: reason } : answer;
 };
