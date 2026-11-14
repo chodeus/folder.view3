@@ -39,6 +39,10 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(a, b)
         self.assertIn(('@media (max-width: 9px)', '.y', 'top'), a)
 
+    def test_a_guard_nested_in_where_and_not_leaves_the_element_it_styles(self):
+        self.assertEqual(css.subject('a.button:where(:not(.ext *))'), ['.button'])
+        self.assertEqual(css.subject('.box:where(:not(:is(.a .b) .c))'), ['.box'])
+
     def test_a_generated_box_or_an_attribute_value_is_not_the_element(self):
         self.assertEqual(css.subject('.tip::before'), [])
         self.assertEqual(css.subject('a[href$=".png"]'), [])

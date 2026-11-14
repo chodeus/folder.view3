@@ -122,7 +122,11 @@ def rules(text):
 
 def subject(selector):
     """The ids and classes of the element a selector styles; none for a ::before box, nothing an attribute value or :not() names."""
-    last = re.split(r'[\s>+~]+', re.sub(r'\([^()]*\)|\[[^\]]*\]', '', selector).strip())[-1]
+    # Innermost first, until none is left: 7.4 wraps its guards as :where(:not(.unapi *))
+    bare, previous = re.sub(r'\[[^\]]*\]', '', selector), None
+    while bare != previous:
+        bare, previous = re.sub(r'\([^()]*\)', '', bare), bare
+    last = re.split(r'[\s>+~]+', bare.strip())[-1]
     return [] if '::' in last else TOKEN.findall(last)
 
 
