@@ -113,7 +113,8 @@ def stylesheets(gh, src, refs, ours, pinned):
             texts = []
             for path in (p.format(theme=theme) for p in styles['files']):
                 text = text_at(gh, src['repo'], pinned.get(ref, ref), path)
-                if text is not None:
+                # An empty file is no input either: a theme of empty files must not read as "no change"
+                if text and text.strip():
                     texts.append(text)
                     seen.add(path)
             by_ref[ref] = css.merged(texts)

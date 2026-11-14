@@ -167,6 +167,12 @@ class StatusTest(Case):
         body = report.render_status(status.gather(self.w.client(), cfg, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
         self.assertIn('Listed in watch.json but on no release: `css/typo-azure.css`, `css/typo-black.css`.', body)
 
+    def test_an_empty_stylesheet_counts_as_missing_not_as_no_change(self):
+        self.w.release_line()
+        self.w.blob(WEB, 'old0', '  \n')
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
+        self.assertIn('Listed in watch.json but on no release: `css/old-black.css`.', body)
+
     def test_one_themes_file_missing_on_every_release_is_named_though_another_theme_has_it(self):
         self.w.release_line()
         self.w.tree(WEB, '9.0.3', {EVENTS: 'ev1', 'css/old-azure.css': 'old1'})

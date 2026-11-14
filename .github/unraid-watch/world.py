@@ -188,7 +188,7 @@ class World:
         self.tags(WEB, ['9.1.0-beta.2', '9.0.3', '8.9.0', '2030.11.10'])
         self.tree(WEB, '9.0.3', {EVENTS: 'ev1', 'css/old-azure.css': 'old1', 'css/old-black.css': 'old0'})
         self.blob(WEB, 'old1', '.tip { display: block; color: blue; }\n')
-        self.blob(WEB, 'old0', '')
+        self.blob(WEB, 'old0', '.other { top: 0; }\n')
         self.fake.routes['GET', url(f'/repos/{API}/commits', page=1, path='api/switch.ts', per_page=100,
                                     sha=NEW[API])] = [commit(50, 'feat: enable the new page', '2030-01-03T00:00:00Z')]
 

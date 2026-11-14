@@ -80,13 +80,19 @@ def _parts(body):
     return items + [(None, body[start:])]
 
 
+def _set(decls, name, value):
+    """A later declaration wins, except over an !important one that it is not itself."""
+    if not (decls.get(name, '').endswith('!important') and not value.endswith('!important')):
+        decls[name] = value
+
+
 def _declarations(text):
     decls = {}
     for part in _split(text, ';'):
         name, colon, value = part.partition(':')
         if colon and name.strip() and not name.strip().startswith('@'):
             # `4px!important` and `4px !important` are the same value
-            decls[name.strip().lower()] = ' '.join(re.sub(r'\s*!\s*important\b', ' !important', value).split())
+            _set(decls, name.strip().lower(), ' '.join(re.sub(r'\s*!\s*important\b', ' !important', value).split()))
     return decls
 
 
@@ -121,23 +127,28 @@ def subject(selector):
 
 
 def styled(texts):
-    """{id or class: properties FolderView3 sets on elements that carry it} from FolderView3's own stylesheets."""
+    """{id or class: {(at-rule conditions, property)} FolderView3 sets on elements that carry it} from its own stylesheets."""
     out = {}
     for text in texts:
-        for _, selector, decls in rules(text):
+        for conditions, selector, decls in rules(text):
             for token in subject(selector):
-                out.setdefault(token, set()).update(decls)
+                out.setdefault(token, set()).update((conditions, name) for name in decls)
     return out
 
 
 def merged(texts):
-    """{(at-rule conditions, selector, property): value} for stylesheets in load order: a later one wins."""
+    """{(at-rule conditions, selector, property): value} for stylesheets in load order: a later one wins, !important aside."""
     out = {}
     for text in texts:
         for conditions, selector, decls in rules(text):
             for name, value in decls.items():
-                out[(conditions, selector, name)] = value
+                _set(out, (conditions, selector, name), value)
     return out
+
+
+def _covers(ours, token, conditions, name):
+    # The plugin's own rule for this property covers Unraid's when it holds everywhere, or under the same condition
+    return ('', name) in ours[token] or (conditions, name) in ours[token]
 
 
 def changes(by_ref, refs, ours):
@@ -145,7 +156,7 @@ def changes(by_ref, refs, ours):
     out = []
     for conditions, selector, name in sorted(set().union(*(by_ref[r] for r in refs))):
         tokens = [t for t in subject(selector) if t in ours]
-        if name not in LAYOUT or not tokens or any(name in ours[t] for t in tokens):
+        if name not in LAYOUT or not tokens or any(_covers(ours, t, conditions, name) for t in tokens):
             continue
         values = [(ref, by_ref[ref].get((conditions, selector, name))) for ref in refs]
         if len({v for _, v in values}) > 1:

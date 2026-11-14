@@ -58,7 +58,7 @@ class RulesTest(unittest.TestCase):
 
 
 class ChangesTest(unittest.TestCase):
-    OURS = {'.tip': {'color'}, '.row': {'white-space'}}
+    OURS = {'.tip': {('', 'color')}, '.row': {('', 'white-space')}}
 
     def by_ref(self, old, new):
         return {'9.0.0': css.merged([old]), 'master': css.merged([new])}
@@ -76,6 +76,19 @@ class ChangesTest(unittest.TestCase):
 
     def test_a_later_stylesheet_wins_as_the_page_loads_them(self):
         self.assertEqual(css.merged(['.tip { top: 1px }', '.tip { top: 2px }']), {('', '.tip', 'top'): '2px'})
+
+    def test_an_important_declaration_is_not_overwritten_by_a_plain_one(self):
+        self.assertEqual(css.merged(['.tip { top: 1px !important }', '.tip { top: 2px }']), {('', '.tip', 'top'): '1px !important'})
+        self.assertEqual(css.rules('.tip { top: 1px !important; top: 2px }'), [('', '.tip', {'top': '1px !important'})])
+        self.assertEqual(css.merged(['.tip { top: 1px !important }', '.tip { top: 3px !important }']), {('', '.tip', 'top'): '3px !important'})
+
+    def test_the_plugin_setting_a_property_under_a_condition_covers_only_that_condition(self):
+        ours = css.styled(['@media (max-width: 600px) { .tip { white-space: normal } }'])
+        by_ref = {'9.0.0': css.merged(['.tip { white-space: nowrap }']), 'master': css.merged(['.tip { white-space: pre-line }'])}
+        self.assertEqual([r[2] for r in css.changes(by_ref, ['9.0.0', 'master'], ours)], ['white-space'])
+        same = {'9.0.0': css.merged(['@media (max-width: 600px) { .tip { white-space: nowrap } }']),
+                'master': css.merged(['@media (max-width: 600px) { .tip { white-space: pre-line } }'])}
+        self.assertEqual(css.changes(same, ['9.0.0', 'master'], ours), [])
 
 
 class FallbacksTest(unittest.TestCase):
