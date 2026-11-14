@@ -112,6 +112,22 @@ class GitHub:
             return self._call('GET', f'/repos/{repo}/contents/{urllib.parse.quote(path)}', {'ref': ref}, raw=True)
         return self._once(('file', repo, ref, path), read)
 
+    def blob(self, repo, sha):
+        """A file's text by its blob sha: one read per version of a file, however many releases share it."""
+        return self._once(('blob', repo, sha), lambda: self._call('GET', f'/repos/{repo}/git/blobs/{sha}', raw=True))
+
+    def tags(self, repo):
+        """Every tag name of a repository."""
+        def read():
+            names = []
+            for page in range(1, 51):
+                batch = self._call('GET', f'/repos/{repo}/tags', {'page': page, 'per_page': 100})
+                names += [t['name'] for t in batch]
+                if len(batch) < 100:
+                    return names
+            raise GitHubError(f'{repo}: more than 5000 tags')
+        return self._once(('tags', repo), read)
+
     def exists(self, repo, ref, path):
         return bool(self._call('HEAD', f'/repos/{repo}/contents/{urllib.parse.quote(path.rstrip("/"))}',
                                {'ref': ref}, missing=(404,)))
