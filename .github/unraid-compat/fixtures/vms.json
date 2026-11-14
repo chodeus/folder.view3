@@ -1,0 +1,28 @@
+{
+ "domains": [
+  {
+   "name": "Debian 12",
+   "uuid": "803bd917-84b0-490f-ba3c-5e21b4cd6f07",
+   "state": 1,
+   "id": 1,
+   "autostart": true,
+   "xml": "<domain type='kvm' id='1'>\n  <name>Debian 12</name>\n  <uuid>803bd917-84b0-490f-ba3c-5e21b4cd6f07</uuid>\n  <description>Debian 12 lab server</description>\n  <metadata>\n    <vmtemplate xmlns=\"unraid\" name=\"Debian\" iconold=\"debian.png\" icon=\"debian.png\" os=\"debian\" webui=\"\" storage=\"default\"/>\n  </metadata>\n  <memory unit='KiB'>2097152</memory>\n  <currentMemory unit='KiB'>2097152</currentMemory>\n  <memoryBacking>\n    <nosharepages/>\n  </memoryBacking>\n  <vcpu placement='static'>2</vcpu>\n  <os>\n    <type arch='x86_64' machine='pc-q35-9.2'>hvm</type>\n  </os>\n  <clock offset='utc'/>\n  <devices>\n    <emulator>/usr/local/sbin/qemu</emulator>\n    <disk type='file' device='disk'>\n      <driver name='qemu' type='raw' cache='writeback'/>\n      <source file='/mnt/user/domains/Debian 12/vdisk1.img'/>\n      <target dev='hdc' bus='virtio'/>\n      <boot order='1'/>\n    </disk>\n    <interface type='bridge'>\n      <mac address='52:54:00:00:00:02'/>\n      <source bridge='br0'/>\n      <model type='virtio-net'/>\n    </interface>\n    <graphics type='vnc' port='5900' autoport='yes' websocket='5700' listen='0.0.0.0' keymap='en-us'><listen type='address' address='0.0.0.0'/></graphics>\n  </devices>\n</domain>\n"
+  },
+  {
+   "name": "Windows 11",
+   "uuid": "9fd1c657-7f2b-41b4-9ff3-5b42706315d5",
+   "state": 5,
+   "id": -1,
+   "autostart": false,
+   "xml": "<domain type='kvm'>\n  <name>Windows 11</name>\n  <uuid>9fd1c657-7f2b-41b4-9ff3-5b42706315d5</uuid>\n  <description></description>\n  <metadata>\n    <vmtemplate xmlns=\"unraid\" name=\"Windows 11\" iconold=\"windows11.png\" icon=\"windows11.png\" os=\"windows11\" webui=\"\" storage=\"default\"/>\n  </metadata>\n  <memory unit='KiB'>8388608</memory>\n  <currentMemory unit='KiB'>8388608</currentMemory>\n  <memoryBacking>\n    <nosharepages/>\n  </memoryBacking>\n  <vcpu placement='static'>4</vcpu>\n  <os>\n    <type arch='x86_64' machine='pc-q35-9.2'>hvm</type>\n  </os>\n  <clock offset='localtime'/>\n  <devices>\n    <emulator>/usr/local/sbin/qemu</emulator>\n    <disk type='file' device='disk'>\n      <driver name='qemu' type='raw' cache='writeback'/>\n      <source file='/mnt/user/domains/Windows 11/vdisk1.img'/>\n      <target dev='hdc' bus='virtio'/>\n      <boot order='1'/>\n    </disk>\n    <interface type='bridge'>\n      <mac address='52:54:00:00:00:04'/>\n      <source bridge='br0'/>\n      <model type='virtio-net'/>\n    </interface>\n    <graphics type='vnc' port='-1' autoport='yes' websocket='-1' listen='0.0.0.0' keymap='en-us'><listen type='address' address='0.0.0.0'/></graphics>\n  </devices>\n</domain>\n"
+  },
+  {
+   "name": "Home Assistant",
+   "uuid": "39ec878e-ce44-4414-8dd1-b8fb3e57f9b2",
+   "state": 3,
+   "id": 2,
+   "autostart": true,
+   "xml": "<domain type='kvm' id='2'>\n  <name>Home Assistant</name>\n  <uuid>39ec878e-ce44-4414-8dd1-b8fb3e57f9b2</uuid>\n  <description></description>\n  <metadata>\n    <vmtemplate xmlns=\"unraid\" name=\"Linux\" iconold=\"linux.png\" icon=\"linux.png\" os=\"linux\" webui=\"\" storage=\"default\"/>\n  </metadata>\n  <memory unit='KiB'>4194304</memory>\n  <currentMemory unit='KiB'>4194304</currentMemory>\n  <memoryBacking>\n    <nosharepages/>\n  </memoryBacking>\n  <vcpu placement='static'>3</vcpu>\n  <os>\n    <type arch='x86_64' machine='pc-q35-9.2'>hvm</type>\n  </os>\n  <clock offset='utc'/>\n  <devices>\n    <emulator>/usr/local/sbin/qemu</emulator>\n    <disk type='file' device='disk'>\n      <driver name='qemu' type='raw' cache='writeback'/>\n      <source file='/mnt/user/domains/Home Assistant/vdisk1.img'/>\n      <target dev='hdc' bus='virtio'/>\n      <boot order='1'/>\n    </disk>\n    <interface type='bridge'>\n      <mac address='52:54:00:00:00:03'/>\n      <source bridge='br0'/>\n      <model type='virtio-net'/>\n    </interface>\n    <graphics type='vnc' port='5901' autoport='yes' websocket='5701' listen='0.0.0.0' keymap='en-us'><listen type='address' address='0.0.0.0'/></graphics>\n  </devices>\n</domain>\n"
+  }
+ ]
+}

@@ -2,26 +2,18 @@
 # FolderView3 through a real Unraid webGUI's plugin installer: install, upgrade over the last stable, remove, failures, min.
 # Disposable container only, as root, with no network. Usage: install_test.sh <webgui-tree> <unraid-version> <stable-checkout>
 set -u
-# This replaces /usr/bin/php, package tools and plugin files, so it runs only in a fresh Docker container, never on a host.
-if [ ! -f /.dockerenv ] || [ -e /etc/unraid-version ] || [ -d /boot/config ]; then echo 'Refusing to run outside a fresh Docker container' >&2; exit 2; fi
 version=$2; repo=$(pwd)
+. "$repo/.github/unraid-compat/lib.sh"
 fail() { echo "FAILED [Unraid $version]: $*"; exit 1; }
-web=$(cd "$1" 2>/dev/null && pwd) && [ -f "$web/emhttp/plugins/dynamix.plugin.manager/scripts/plugin" ] || fail "no Unraid plugin installer under $1"
 stable=$(cd "$3" 2>/dev/null && pwd) && [ -f "$stable/pkg_build.sh" ] || fail "no last-stable checkout with pkg_build.sh at $3"
 awk --version 2>/dev/null | grep -q 'GNU Awk' || fail 'awk is not gawk, as it is on Unraid: the remove script needs RT'
+fv3_docroot "$1" || fail "no Unraid plugin installer under $1"
 
-name=folder.view3
-docroot=/usr/local/emhttp
-flash=/boot/config/plugins/$name
 live=$docroot/plugins/$name
 manifest=/boot/config/plugins/$name.plg
-mkdir -p "$docroot/plugins" /boot/config/plugins-error /var/log/plugins /var/log/packages /var/local/emhttp
-cp -R "$web/emhttp/plugins/dynamix" "$web/emhttp/plugins/dynamix.plugin.manager" "$docroot/plugins/"
-ln -sfn "$docroot/plugins/dynamix" "$docroot/webGui"
-printf 'csrf_token="compat-test-token"\n' > /var/local/emhttp/var.ini
-# Unraid's pre- and post-install hooks run as #!/usr/bin/php and keep their state under /tmp/plugins
+mkdir -p /boot/config/plugins-error /var/log/plugins /var/log/packages
+# Unraid's pre- and post-install hooks keep their state under /tmp/plugins
 mkdir -p /tmp/plugins
-ln -sf "$(command -v php)" /usr/bin/php
 plugin() { php "$docroot/plugins/dynamix.plugin.manager/scripts/plugin" "$@"; }
 
 # Slackware's package tools, as they work: the record lists the package's files, and removepkg takes those and the folders
@@ -42,11 +34,7 @@ rm -f "$record"
 STUB
 chmod +x /sbin/upgradepkg /sbin/removepkg
 
-work=$(mktemp -d)
-build() { # build <source tree> <version> <branch>: the .plg and package as the release workflow makes them
-	local dir="$work/$2"; mkdir -p "$dir"; cp -R "$1/src" "$1/$name.plg" "$1/pkg_build.sh" "$dir/"
-	(cd "$dir" && bash pkg_build.sh --version "$2" --branch "$3" --out "$dir/dist" >/dev/null) || fail "package build of $2"
-}
+build() { fv3_build "$@" || fail "package build of $2"; }
 old=2026.01.01; new=2099.01.01
 build "$stable" $old main; build "$repo" $new beta
 min=$(grep -o '<PLUGIN [^>]*min="[^"]*"' "$work/$new/$name.plg" | sed 's/.*min="//; s/"$//')

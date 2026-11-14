@@ -203,9 +203,7 @@ jobs:
           repository: unraid/webgui
           ref: ${{ matrix.unraid }}
           path: .webgui
-          sparse-checkout: |
-            emhttp/plugins/dynamix
-            emhttp/plugins/dynamix.plugin.manager
+          sparse-checkout: emhttp
 
       - name: Install, upgrade, remove and failures through Unraid's own plugin installer
         if: env.RUNS == 'true'
@@ -215,6 +213,12 @@ jobs:
         run: |
           docker build -q -t fv3-unraid --build-arg PHP="$PHP_VERSION" .github/unraid-compat
           docker run --rm --network none -v "$PWD:/repo" -w /repo fv3-unraid bash .github/unraid-compat/install_test.sh .webgui "$UNRAID_VERSION" .stable
+
+      - name: FV3's endpoints and pages through this Unraid's webGUI, Docker and libvirt faked
+        if: env.RUNS == 'true'
+        env:
+          UNRAID_VERSION: ${{ matrix.unraid }}
+        run: docker run --rm --network none -v "$PWD:/repo" -w /repo fv3-unraid bash .github/unraid-compat/pages_test.sh .webgui "$UNRAID_VERSION"
 
   # One check per matrix for beta's branch protection: the version rows rename themselves as Renovate moves them
   php-compat:

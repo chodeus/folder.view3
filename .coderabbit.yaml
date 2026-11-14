@@ -211,9 +211,16 @@ reviews:
         The Unraid compatibility matrix; CI only, nothing here ships.
         - install_test.sh puts the .plg through each Unraid version's own
           plugin installer, hooks included, in a fresh Docker container with
-          no network; it must refuse to run anywhere else. Only Slackware's
-          upgradepkg and removepkg are stubbed, keeping their file-list
-          records: flag any other stand-in for Unraid's code.
+          no network; it must refuse to run anywhere else (lib.sh's guard).
+          Only Slackware's upgradepkg and removepkg are stubbed, keeping their
+          file-list records: flag any other stand-in for Unraid's code.
+        - fake_unraid.sh serves one Unraid version's real webGUI with php -S
+          and pages_test.php drives FV3 through it. Stand-ins are the system
+          boundary only: fake/docker.php (dockerd's socket and the docker CLI),
+          fake/libvirt.php (the php-libvirt extension) and the Connect plugin's
+          ServerState, which the webGUI repo lacks. A call they do not answer
+          is logged as UNKNOWN and fails the run: flag an answer that hides
+          one, and any other stand-in for Unraid's code.
         - matrix_check.py keeps ci.yml's Unraid rows at one per minor from the
           .plg's min to the newest release; Renovate only moves rows.
         - Each step asserts what the user is left with (live files, the
