@@ -6,8 +6,8 @@
 <!ENTITY launch "Settings/FolderView3">
 <!ENTITY plugdir "/usr/local/emhttp/plugins/&name;">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/&github;/beta/&name;.plg">
-<!ENTITY version "2026.11.14.1">
-<!ENTITY md5 "cdfd17d6715ecfdfd871093879b807f5">
+<!ENTITY version "2026.11.14.2">
+<!ENTITY md5 "2029e3a9a69afea7d971a8fbd6c386a0">
 <!ENTITY pkgname "&name;-&version;-x86_64-1">
 ]>
 
@@ -15,6 +15,9 @@
     <CHANGES>
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
+
+###2026.11.14.2
+- Folder actions that Unraid refuses now show its reason instead of raw JSON
 
 ###2026.11.14.1
 - Folder saves from two tabs, or made at once, no longer overwrite each other
