@@ -47,6 +47,10 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(css.subject('.tip::before'), [])
         self.assertEqual(css.subject('a[href$=".png"]'), [])
 
+    def test_a_group_rule_with_no_space_after_its_keyword_is_still_read(self):
+        self.assertEqual(css.rules('@media(max-width:600px){.tip{white-space:pre-line}} @supports(display:grid){.row{top:0}}'),
+                         [('@media (max-width: 600px)', '.tip', {'white-space': 'pre-line'}), ('@supports (display: grid)', '.row', {'top': '0'})])
+
     def test_a_comma_inside_not_stays_in_its_selector(self):
         self.assertEqual(css.rules('.x:not(.p, .q), .z { display: none }'),
                          [('', '.x:not(.p, .q)', {'display': 'none'}), ('', '.z', {'display': 'none'})])
@@ -116,6 +120,10 @@ class FallbacksTest(unittest.TestCase):
 
     def test_a_word_the_code_merely_uses_does_not_make_an_unraid_variable_the_plugins(self):
         (problem,) = self.check('.a { color: var(--text); }', "fields.push({ type: 'text', label: 'Name' });")
+        self.assertIn('var(--text) has no fallback', problem)
+
+    def test_code_that_only_reads_a_variable_does_not_define_it(self):
+        (problem,) = self.check('.a { color: var(--text); }', "getComputedStyle(document.body).getPropertyValue('--text');")
         self.assertIn('var(--text) has no fallback', problem)
 
     def test_a_variable_nested_in_a_fallback_needs_its_own(self):

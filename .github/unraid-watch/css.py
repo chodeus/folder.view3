@@ -104,7 +104,8 @@ def _walk(body, conditions, parents, out):
             out += [(conditions, parent, decls) for parent in parents if decls]
             continue
         if head.startswith('@'):
-            if head.split(None, 1)[0].lower() in GROUPS:
+            # `@media(max-width:600px)` needs no space after the keyword
+            if re.match(r'@[\w-]+', head).group(0).lower() in GROUPS:
                 _walk(block, ' '.join(filter(None, (conditions, _condition(head)))), parents, out)
             continue
         selectors = [_selector(s) for s in _split(head, ',') if s.strip()]
@@ -175,9 +176,9 @@ def fallbacks(stylesheets, code):
     named = '\n'.join(f.read_text(encoding='utf-8') for f in code)
 
     def keyed(name):
-        # The CSS tool's presets ('fv3-x': '#fff') and the generated theme CSS ('x' => '#fff') key the plugin's own variables
-        bare = re.escape(name[2:])
-        return re.search(r"['\"]--" + bare + r"['\"]|['\"]" + bare + r"['\"]\s*(?::|=>)", named)
+        # The CSS tool's presets ('fv3-x': '#fff') and the generated theme CSS ('x' => '#fff') key the plugin's own variables;
+        # a name that is only read (getPropertyValue('--x')) is not defined by that
+        return re.search(r"['\"](?:--)?" + re.escape(name[2:]) + r"['\"]\s*(?::|=>)", named)
     return [f'{f.name}:{text.count(chr(10), 0, m.start()) + 1}: var({m.group(1)}) has no fallback and FolderView3 does not '
             f'define {m.group(1)}, so the style needs every Unraid release to; give it a fallback'
             for f, text in texts.items() for m in VAR.finditer(text)
