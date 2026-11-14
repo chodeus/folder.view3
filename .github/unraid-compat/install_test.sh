@@ -121,6 +121,7 @@ installed $old download
 [ "$(config_sums)" = "$before" ] || fail 'download: saved files changed'
 [ -f "$flash/$name-$old-x86_64-1.txz" ] || fail 'download: deleted the archive the next boot installs from'
 boot download-boot; installed $old download-boot
+[ "$(config_sums)" = "$before" ] || fail 'download-boot: saved files changed'
 
 # A failed upgradepkg does the same
 reset; install $old stable3; saved_config; before=$(config_sums)
@@ -134,6 +135,7 @@ installed $old upgradepkg
 [ "$(config_sums)" = "$before" ] || fail 'upgradepkg: saved files changed'
 [ -f "$flash/$name-$old-x86_64-1.txz" ] || fail 'upgradepkg: deleted the archive the next boot installs from'
 boot upgradepkg-boot; installed $old upgradepkg-boot
+[ "$(config_sums)" = "$before" ] || fail 'upgradepkg-boot: saved files changed'
 
 # The installer itself refuses an Unraid below the .plg's min, and says why
 reset; set_version 6.12.15; cp "$work/$new/dist/$name-$new-x86_64-1.txz" "$flash/"

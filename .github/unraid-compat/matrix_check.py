@@ -4,7 +4,8 @@ import pathlib
 import re
 import sys
 
-ROW = re.compile(r"- \{unraid: '([^']+)', php: '([^']+)'(?:, row: '([^']+)')?\}")
+# Only a row that YAML reads: first on its line, so a commented-out row is not counted as tested
+ROW = re.compile(r"^[ \t]*- \{unraid: '([^']+)', php: '([^']+)'(?:, row: '([^']+)')?\}", re.M)
 RELEASE = re.compile(r'(\d+)\.(\d+)\.\d+')
 
 
@@ -31,9 +32,11 @@ def problems(ci, plg):
             out.append(f'Unraid {major}.{minor} has {len(versions)} release rows: {", ".join(versions)}')
         if (major, minor) < floor:
             out.append(f'release row {versions[0]} is below the .plg\'s min {floor[0]}.{floor[1]}')
-    for major in sorted({major for major, _ in minors if major >= floor[0]}):
+    # From the min's own minor: a major with no rows at all still needs its first minor
+    for major in range(floor[0], max(minors)[0] + 1):
         first = floor[1] if major == floor[0] else 0
-        missing = [f'{major}.{n}' for n in range(first, max(n for m, n in minors if m == major)) if (major, n) not in minors]
+        present = [n for m, n in minors if m == major]
+        missing = [f'{major}.{n}' for n in range(first, max(present, default=first + 1)) if n not in present]
         out += [f'no release row for Unraid {v}, between the .plg\'s min and the newest row' for v in missing]
     # The 'newest tag' row runs only betas; a release it reaches needs a row of its own and the PHP that release ships
     out += [f'Unraid {tag} is out: give it a release row with the PHP its release notes name' for tag in tags

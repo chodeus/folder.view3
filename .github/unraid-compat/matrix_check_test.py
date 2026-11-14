@@ -25,6 +25,14 @@ class MatrixCheckTest(unittest.TestCase):
             'Unraid 7.0 has 2 release rows: 7.0.1, 7.0.0',
             'no release row for Unraid 7.1, between the .plg\'s min and the newest row'])
 
+    def test_a_commented_out_row_is_not_tested_so_not_counted(self):
+        text = ci('7.0.1', '7.1.4', '7.3.5', '7.4.0').replace("          - {unraid: '7.3.5'", "          # - {unraid: '7.2.9', php: '8.4'}\n          - {unraid: '7.3.5'")
+        self.assertEqual(matrix_check.problems(text, PLG), ["no release row for Unraid 7.2, between the .plg's min and the newest row"])
+
+    def test_the_mins_own_major_needs_rows_when_only_a_later_major_has_them(self):
+        self.assertEqual(matrix_check.problems(ci('8.0.0', tag="'8.0.0', php: '8.4'"), PLG),
+                         ["no release row for Unraid 7.0, between the .plg's min and the newest row"])
+
     def test_a_missing_min_newest_tag_or_release_row_fails_closed(self):
         self.assertEqual(matrix_check.problems(ci('7.0.1'), '<PLUGIN name="folder.view3">'), ['folder.view3.plg names no min="x.y.z"'])
         self.assertEqual(matrix_check.problems("- {unraid: '7.0.1', php: '8.3'}", PLG), ["ci.yml needs exactly one 'newest tag' row, not 0"])

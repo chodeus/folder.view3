@@ -35,10 +35,16 @@ def _regex_end(text, i):
     return None
 
 
+def _in_script(spans, i):
+    return any(start <= i < end for start, end in spans)
+
+
 def scan(text, kind):
     """(code, comments): the text with comments, CSS strings and JS regexes blanked, and [(start, end, comment text)]."""
     code, comments, i, n = list(text), [], 0, len(text)
     script = kind != 'css'
+    # A .page holds CSS and HTML too: only its <script> blocks have regex literals (url(/x) in a <style> is not one)
+    js = [(0, n)] if kind == 'js' else [m.span(1) for m in re.finditer(r'<script\b[^>]*>(.*?)</script>', text, re.I | re.S)] if kind == 'page' else []
     while i < n:
         c, two = text[i], text[i:i + 2]
         html = kind == 'page' and text.startswith('<!--', i)
@@ -50,7 +56,7 @@ def scan(text, kind):
             comments.append((i, end, text[i:end]))
             _blank(code, text, i, end)
             i = end
-        elif c == '/' and kind in ('js', 'page') and (end := _regex_end(text, i)):
+        elif c == '/' and _in_script(js, i) and (end := _regex_end(text, i)):
             _blank(code, text, i, end)
             i = end
         elif c in '"\'' or (c == '`' and script):

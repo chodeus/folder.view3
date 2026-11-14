@@ -57,6 +57,12 @@ class ImportantCheckTest(unittest.TestCase):
                             'Folder.page': '<p>See https://example.test</p><style>.b { top: 0 !important }</style>\n<!-- !important: r -->\n<i style="top:0 !important"></i>\n'})
         self.assertEqual([p.split(': !')[0] for p in found], [f'{ROOT}/Folder.page:1', f'{ROOT}/styles/a.css:1'])
 
+    def test_a_url_in_page_css_is_no_regex_but_one_in_its_script_is(self):
+        page = ('<style>.a { background: url(/icon.svg); color: red !important; }</style>\n'
+                "<script>s = s.replace(/'/g, ''); el.style.cssText = 'x:1 !important'; // !important: r\n</script>\n")
+        (problem,) = self.check({'Folder.page': page})
+        self.assertIn('Folder.page:1:', problem)
+
     def test_no_files_to_check_fails_closed(self):
         self.assertEqual(self.check({'README.md': 'x'}), [f'{ROOT}: no CSS, JS, PHP or .page files to check'])
 
