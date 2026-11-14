@@ -4,6 +4,8 @@
 set -u
 version=$2; repo=$(pwd); here=$repo/.github/unraid-compat
 . "$here/lib.sh"
+# Past lib.sh's guard: fake/docker.php and pages_test.php refuse to run without this
+mkdir -p /var/run && touch /var/run/fv3-fake-unraid || fail 'no marker'
 fv3_docroot "$1" || fail "no Unraid webGUI under $1"
 
 # FV3 as upgradepkg leaves it, and the config folder its .plg makes
@@ -66,17 +68,15 @@ error_reporting=E_ALL
 EOF
 : > /var/log/phplog; : > /var/log/fv3-fakes.log
 
-# Docker and libvirtd under their own names, so Unraid's pgrep() and /proc/<pid> checks find them running
+# Docker and libvirtd under their own names and rc scripts, so Unraid's pgrep(), /proc/<pid> and status checks find them running
+mkdir -p /etc/rc.d && for rc in rc.docker rc.libvirt; do cp "$here/fake/rc_service.sh" /etc/rc.d/$rc && chmod +x /etc/rc.d/$rc; done
 printf '#!/bin/sh\nexec php %s/fake/docker.php cli "$@"\n' "$here" > /usr/local/bin/docker && chmod +x /usr/local/bin/docker
 ln -sf "$(command -v php)" /usr/local/sbin/dockerd; ln -sf "$(command -v sleep)" /usr/local/sbin/libvirtd
 dockerd "$here/fake/docker.php" serve > /var/log/dockerd.log 2>&1 &
 mkdir -p /var/run/libvirt; libvirtd infinity & echo $! > /var/run/libvirt/libvirtd.pid
 php -S 127.0.0.1:80 -t $docroot "$here/fake/router.php" > /var/log/php-server.log 2>&1 &
 for _ in $(seq 300); do
-	if [ -S /var/run/docker.sock ] && [ -s /var/run/dockerd.pid ] && curl -sf -o /dev/null http://127.0.0.1/robots.txt; then
-		# pages_test.php refuses to run without it
-		touch /var/run/fv3-fake-unraid && exit 0
-	fi
+	[ -S /var/run/docker.sock ] && [ -s /var/run/dockerd.pid ] && curl -sf -o /dev/null http://127.0.0.1/robots.txt && exit 0
 	sleep 0.1
 done
 fail "the fake Unraid did not start: $(cat /var/log/dockerd.log /var/log/php-server.log)"

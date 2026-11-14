@@ -66,6 +66,8 @@ if (($argv[1] ?? '') === 'cli') {
 }
 
 if (($argv[1] ?? '') === 'serve') {
+    // It replaces the host's Docker socket: only inside fake_unraid.sh's container
+    if (!is_file('/.dockerenv') || !is_file('/var/run/fv3-fake-unraid')) { fwrite(STDERR, "docker.php serve runs only under fake_unraid.sh\n"); exit(2); }
     $sock = '/var/run/docker.sock';
     @unlink($sock);
     $server = stream_socket_server("unix://$sock", $errno, $errstr);
@@ -81,7 +83,7 @@ if (($argv[1] ?? '') === 'serve') {
         [$status, $body] = fv3d_answer($d, $method, $target);
         fv3d_log(($status === null ? 'UNKNOWN ' : '') . "socket $method $target");
         if ($status === null) [$status, $body] = [404, ['message' => 'page not found']];
-        // One line of JSON with a length, as dockerd answers: DockerClient decodes the body line by line
+        // One line of JSON with a length: DockerClient decodes the body line by line
         $json = json_encode($body, JSON_UNESCAPED_SLASHES) . "\n";
         fwrite($conn, "HTTP/1.1 $status " . ($status === 200 ? 'OK' : 'Not Found') . "\r\nContent-Type: application/json\r\nContent-Length: " . strlen($json) . "\r\nConnection: close\r\n\r\n$json");
         fclose($conn);

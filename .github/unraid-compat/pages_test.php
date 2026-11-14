@@ -1,6 +1,6 @@
 <?php
-// FV3 through the Unraid webGUI fake_unraid.sh serves: Unraid's lists, FV3's reads and CSRF-checked writes, its pages in 4 themes
-// and the files they link. A warning from FV3's files fails; 7.0 and 7.1 log a .page's inline PHP without the page's name.
+// FV3 through the Unraid webGUI fake_unraid.sh serves: Unraid's lists, FV3's reads, its folder/settings/order writes through
+// Unraid's CSRF check, its pages in 4 themes. A warning from FV3's files fails; 7.0/7.1 log .page inline PHP without its name.
 if (!is_file('/.dockerenv') || !is_file('/var/run/fv3-fake-unraid')) { fwrite(STDERR, "Run pages_test.sh: this needs the container fake_unraid.sh set up\n"); exit(2); }
 $version = $argv[1] ?? '?';
 $failures = [];
@@ -117,22 +117,28 @@ check($status === 200 && $body === '2099.01.01', "version: status $status, $body
 [$status, $body] = req('GET', '/plugins/folder.view3/server/cpu.php');
 check($status === 200 && (int)$body > 0, "cpu: status $status, $body");
 
-// FV3's pages in every theme: rendered whole, FV3's own section present, and every file it links served by this Unraid
+// FV3's pages in every theme: rendered whole, Unraid's lists that FV3's scripts fold present, FV3's own part present, and every
+// file that part links served by this Unraid
 $pages = [
-    'Docker' => ['folder.view3.Docker.page', ['/plugins/folder.view3/scripts/docker.js', '/plugins/folder.view3/styles/docker.css']],
-    'VMs' => ['folder.view3.VMs.page', ['/plugins/folder.view3/scripts/vm.js', '/plugins/folder.view3/styles/vm.css']],
-    'Dashboard' => ['folder.view3.Dashboard.page', ['/plugins/folder.view3/scripts/dashboard.js', '/plugins/folder.view3/styles/dashboard.css']],
-    'Settings/FolderView3' => ['FolderView3.page', ['/plugins/folder.view3/scripts/folderview3.js', '/plugins/folder.view3/styles/folderview3.css']],
-    "Folder?type=docker&id=$media" => ['Folder.page', ['/plugins/folder.view3/scripts/folder.js', '/plugins/folder.view3/styles/folder.css']],
+    'Docker' => ['folder.view3.Docker.page', ['/plugins/folder.view3/scripts/docker.js', '/plugins/folder.view3/styles/docker.css'], ['docker_list', 'loadlist()']],
+    'VMs' => ['folder.view3.VMs.page', ['/plugins/folder.view3/scripts/vm.js', '/plugins/folder.view3/styles/vm.css'], ['kvm_table', 'kvm_list', 'loadlist()']],
+    'Dashboard' => ['folder.view3.Dashboard.page', ['/plugins/folder.view3/scripts/dashboard.js', '/plugins/folder.view3/styles/dashboard.css'], ['docker_view', 'vm_view', 'loadlist()']],
+    'Settings/FolderView3' => ['FolderView3.page', ['/plugins/folder.view3/scripts/folderview3.js', '/plugins/folder.view3/styles/folderview3.css'], []],
+    "Folder?type=docker&id=$media" => ['Folder.page', ['/plugins/folder.view3/scripts/folder.js', '/plugins/folder.view3/styles/folder.css'], []],
 ];
 $served = [];
 @mkdir('/boot/config/plugins/dynamix', 0777, true);
 foreach (['black', 'white', 'azure', 'gray'] as $theme) {
     file_put_contents('/boot/config/plugins/dynamix/dynamix.cfg', "[display]\ntheme=\"$theme\"\n");
-    foreach ($pages as $page => [$file, $needs]) {
+    foreach ($pages as $page => [$file, $needs, $unraid]) {
         [$status, $html] = req('GET', "/$page");
         $where = "$page ($theme)";
         check($status === 200 && str_contains($html, '</html>'), "$where: status $status, page cut short");
+        // An element id, or a function FV3's script wraps when written as name()
+        foreach ($unraid as $hook) {
+            $found = str_ends_with($hook, '()') ? preg_match('/function\s+' . substr($hook, 0, -2) . '\s*\(/', $html) : preg_match("/id=[\"']{$hook}[\"']/", $html);
+            check($found === 1, "$where: Unraid's page has no $hook for FV3's script");
+        }
         check(!preg_match('#Error evaluating content in plugins\\\\?/folder\.view3#', $html), "$where: Unraid caught an error in FV3's page");
         $part = fv3t_page_part($html, "plugins/folder.view3/$file");
         if ($part === '') {
@@ -172,8 +178,11 @@ if ($new) {
 }
 [$status] = req('POST', '/plugins/folder.view3/server/update_settings.php', ['key' => 'dashboard_docker_layout', 'value' => 'classic']);
 check($status === 200 && (json_decode((string)@file_get_contents("$flash/settings.json"), true)['dashboard_docker_layout'] ?? null) === 'classic', "update_settings: status $status");
+// Autostart out of the saved order: the sync puts it back in folder order, app-d's wait kept
+file_put_contents('/var/lib/docker/unraid-autostart', "app-d 10\napp-a\n");
 [$status, $body] = req('POST', '/plugins/folder.view3/server/sync_order.php', ['type' => 'docker']);
-check($status === 200 && json_decode($body) !== null, "sync_order: status $status, $body");
+$autostart = (string)@file_get_contents('/var/lib/docker/unraid-autostart');
+check($status === 200 && json_decode($body) !== null && $autostart === "app-a\napp-d 10\n", "sync_order: status $status, $body, autostart " . json_encode($autostart));
 
 // What the runs left in the logs: FV3's files must log nothing, and neither fake was asked anything it does not know
 // From 7.2 Unraid logs a .page's inline PHP as "in plugins/folder.view3/<file>.page", with no leading slash

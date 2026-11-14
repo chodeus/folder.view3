@@ -93,12 +93,24 @@ function libvirt_domain_get_block_info($dom, $dev) {
     return false;
 }
 
+// Unraid's VM usage poller reads these keys per domain name; a running domain has used some CPU time
+function libvirt_connect_get_all_domain_stats($conn, $stats = 0, $flags = 0) {
+    $all = [];
+    foreach (fv3l_domains() as $name => $d) {
+        $info = libvirt_domain_get_info(fv3l_handle('domain', $name));
+        $all[$name] = ['state.state' => $d['state'], 'state.reason' => 1, 'cpu.time' => $d['id'] > 0 ? 125000000000 : 0,
+            'vcpu.current' => $info['nrVirtCpu'], 'vcpu.maximum' => $info['nrVirtCpu'], 'balloon.current' => $info['memory'],
+            'balloon.maximum' => $info['maxMem'], 'net.count' => 0, 'block.count' => 0];
+    }
+    return $all;
+}
+
 function libvirt_domain_get_counts($conn) {
     $active = count(array_filter(fv3l_domains(), fn($d) => $d['id'] > 0));
     return ['total' => count(fv3l_domains()), 'active' => $active, 'inactive' => count(fv3l_domains()) - $active];
 }
 
-// php-libvirt's answer: the matches' text in order, with their count under 'num'
+// php-libvirt's answer: the matches' text in order, their count under 'num', and false when nothing matches
 function libvirt_domain_xml_xpath($dom, $xpath, $flags = 0) {
     $d = fv3l_domain($dom);
     if (!$d) return false;
@@ -106,6 +118,7 @@ function libvirt_domain_xml_xpath($dom, $xpath, $flags = 0) {
     $doc->loadXML($d['xml']);
     $nodes = @(new DOMXPath($doc))->query($xpath);
     if ($nodes === false) { $GLOBALS['fv3l_error'] = "invalid xpath $xpath"; return false; }
+    if ($nodes->length === 0) return false;
     $out = ['xpath' => $xpath, 'num' => $nodes->length];
     foreach ($nodes as $i => $node) $out[$i] = $node->nodeValue;
     return $out;
@@ -113,7 +126,7 @@ function libvirt_domain_xml_xpath($dom, $xpath, $flags = 0) {
 
 // Every other libvirt_* function in the webGUI's code at 7.0.1-7.4.0: none has an answer here yet
 foreach (['libvirt_connect_get_information', 'libvirt_connect_get_capabilities', 'libvirt_connect_get_machine_types',
-    'libvirt_connect_get_domain_capabilities', 'libvirt_connect_get_all_domain_stats', 'libvirt_has_feature',
+    'libvirt_connect_get_domain_capabilities', 'libvirt_has_feature',
     'libvirt_list_nodedevs', 'libvirt_nodedev_get', 'libvirt_nodedev_get_xml_desc', 'libvirt_nodedev_get_information',
     'libvirt_nodedev_capabilities', 'libvirt_list_networks', 'libvirt_network_get', 'libvirt_network_get_xml_desc', 'libvirt_get_net_res',
     'libvirt_get_net_list', 'libvirt_get_net_xml', 'libvirt_domain_interface_addresses',
