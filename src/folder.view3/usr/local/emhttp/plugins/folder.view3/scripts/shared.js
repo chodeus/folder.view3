@@ -1391,10 +1391,20 @@ window.fv3ContainerAction = async (type, id, action) => {
     return null;
 };
 
+// Unraid's answer to a container or VM action in the shape the folder actions read: a refusal's reason is in `success` (Events.php)
+// or `error` (VMajax.php); an answer that is no object at all is a failure too
+window.fv3ActionAnswer = (answer) => {
+    if (!answer || typeof answer !== 'object') return { success: false, text: answer ? String(answer) : fv3I18nOr('request-failed', 'Request failed') };
+    if (answer.success === true) return answer;
+    var reason = typeof answer.success === 'string' && answer.success ? answer.success : answer.error;
+    return typeof reason === 'string' && reason ? { success: false, text: reason } : answer;
+};
+
 window.fv3DockerAction = (action, containerId, fullId) => {
     var gqlAction = fv3DockerActionMap[action];
     var phpFallback = () => $.post(window.eventURL || '/update.htm', { action: action, container: containerId }, null, 'json').promise()
-        .fail(() => fv3ShowBanner(fv3I18nOr('container-action-failed', 'The container action "$1" failed. Check your server connection.', action)));
+        .fail(() => fv3ShowBanner(fv3I18nOr('container-action-failed', 'The container action "$1" failed. Check your server connection.', action)))
+        .then(fv3ActionAnswer);
     if (fv3ApiAvailable && gqlAction && fullId) {
         return fv3GraphQL('mutation($id: PrefixedID!) { docker { ' + gqlAction + '(id: $id) { id } } }', { id: fullId })
             .then(() => { fv3Debug('API', 'Docker', gqlAction, containerId, 'OK'); return { success: true }; })
@@ -1409,7 +1419,8 @@ window.fv3DockerAction = (action, containerId, fullId) => {
 window.fv3VmAction = (action, uuid) => {
     var gqlAction = fv3VmActionMap[action];
     var phpFallback = () => $.post('/plugins/dynamix.vm.manager/include/VMajax.php', { action: action, uuid: uuid }, null, 'json').promise()
-        .fail(() => fv3ShowBanner(fv3I18nOr('vm-action-failed', 'The VM action "$1" failed. Check your server connection.', action.replace('domain-', ''))));
+        .fail(() => fv3ShowBanner(fv3I18nOr('vm-action-failed', 'The VM action "$1" failed. Check your server connection.', action.replace('domain-', ''))))
+        .then(fv3ActionAnswer);
     if (fv3ApiAvailable && gqlAction) {
         return fv3GraphQL('mutation($id: PrefixedID!) { vm { ' + gqlAction + '(id: $id) } }', { id: uuid })
             .then(() => { fv3Debug('API', 'VM', gqlAction, uuid, 'OK'); return { success: true }; })
