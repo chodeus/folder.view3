@@ -1,11 +1,9 @@
 #!/bin/bash
-# A running Unraid of one webGUI version, in this container: its docroot, FV3 installed from its package, a saved setup,
-# Docker and libvirt faked from fixtures/, served by php -S on 127.0.0.1:80. Run from the repo root.
-# Usage: fake_unraid.sh <webgui-tree> <unraid-version>
+# One Unraid version running in this container, FV3 installed and Docker and libvirt faked, served on 127.0.0.1:80.
+# Run from the repo root. Usage: fake_unraid.sh <webgui-tree> <unraid-version>
 set -u
 version=$2; repo=$(pwd); here=$repo/.github/unraid-compat
 . "$here/lib.sh"
-fail() { echo "FAILED [Unraid $version]: $*"; exit 1; }
 fv3_docroot "$1" || fail "no Unraid webGUI under $1"
 
 # FV3 as upgradepkg leaves it, and the config folder its .plg makes
@@ -29,7 +27,7 @@ printf 'SERVICE="enable"\nDEBUG="yes"\n' > /boot/config/domain.cfg
 # The OS image adds the Connect plugin, which the webGUI repo lacks from 7.2 on; 7.4's header requires its state class
 if [ ! -f $docroot/plugins/dynamix.my.servers/include/state.php ]; then
 	mkdir -p $docroot/plugins/dynamix.my.servers/include
-	printf '<?php\nclass ServerState { public function getServerStateJsonForHtmlAttr() { return htmlspecialchars("{}"); } }\n' > $docroot/plugins/dynamix.my.servers/include/state.php
+	cp "$here/fake/connect_state.php" $docroot/plugins/dynamix.my.servers/include/state.php
 	: > $docroot/plugins/dynamix.my.servers/include/myservers1.php
 fi
 ln -sf $docroot/plugins/dynamix.plugin.manager/scripts/plugin /usr/local/sbin/plugin
@@ -75,7 +73,10 @@ dockerd "$here/fake/docker.php" serve > /var/log/dockerd.log 2>&1 &
 mkdir -p /var/run/libvirt; libvirtd infinity & echo $! > /var/run/libvirt/libvirtd.pid
 php -S 127.0.0.1:80 -t $docroot "$here/fake/router.php" > /var/log/php-server.log 2>&1 &
 for _ in $(seq 300); do
-	[ -S /var/run/docker.sock ] && curl -sf -o /dev/null http://127.0.0.1/robots.txt && exit 0
+	if [ -S /var/run/docker.sock ] && [ -s /var/run/dockerd.pid ] && curl -sf -o /dev/null http://127.0.0.1/robots.txt; then
+		# pages_test.php refuses to run without it
+		touch /var/run/fv3-fake-unraid && exit 0
+	fi
 	sleep 0.1
 done
 fail "the fake Unraid did not start: $(cat /var/log/dockerd.log /var/log/php-server.log)"

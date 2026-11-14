@@ -1,7 +1,7 @@
 <?php
-// FV3 through one Unraid version's real webGUI, served by fake_unraid.sh: the Unraid lists FV3's pages read, FV3's read endpoints,
-// its writes behind Unraid's CSRF check, and its pages in each theme with every file they link. A warning from FV3's files fails.
-// Usage, in the container after fake_unraid.sh: php -d auto_prepend_file= .github/unraid-compat/pages_test.php <unraid-version>
+// FV3 through the Unraid webGUI fake_unraid.sh serves: Unraid's lists, FV3's reads and CSRF-checked writes, its pages in 4 themes
+// and the files they link. A warning from FV3's files fails; 7.0 and 7.1 log a .page's inline PHP without the page's name.
+if (!is_file('/.dockerenv') || !is_file('/var/run/fv3-fake-unraid')) { fwrite(STDERR, "Run pages_test.sh: this needs the container fake_unraid.sh set up\n"); exit(2); }
 $version = $argv[1] ?? '?';
 $failures = [];
 $checks = 0;
@@ -23,14 +23,19 @@ function req(string $method, string $path, array $fields = [], ?string $token = 
     return [$status, (string)$body, $headers];
 }
 
-// What one .page file put on the page: Unraid opens each file's part, in the head and again in the body, with a comment naming it
+// What one .page file put on the page: Unraid opens each file's part, in the head and again in the body, with a comment naming
+// it; a part ends at the next one, at </head> or at the footer
 function fv3t_page_part(string $html, string $file): string {
     preg_match_all('/<!--\s*#+\s*(\S+\.page)\s*#+\s*-->/', $html, $marks, PREG_OFFSET_CAPTURE);
+    preg_match_all('#</head>|id="footer"#', $html, $ends, PREG_OFFSET_CAPTURE);
+    $bounds = array_merge(array_column($marks[0], 1), array_column($ends[0], 1), [strlen($html)]);
+    sort($bounds);
     $part = '';
     foreach ($marks[0] as $i => [$mark, $at]) {
         if ($marks[1][$i][0] !== $file) continue;
         $from = $at + strlen($mark);
-        $part .= substr($html, $from, ($marks[0][$i + 1][1] ?? strlen($html)) - $from);
+        $to = current(array_filter($bounds, fn($b) => $b >= $from));
+        $part .= substr($html, $from, $to - $from);
     }
     return $part;
 }
@@ -171,7 +176,8 @@ check($status === 200 && (json_decode((string)@file_get_contents("$flash/setting
 check($status === 200 && json_decode($body) !== null, "sync_order: status $status, $body");
 
 // What the runs left in the logs: FV3's files must log nothing, and neither fake was asked anything it does not know
-$fv3Lines = preg_grep('#/plugins/folder\.view3/#', file('/var/log/phplog', FILE_IGNORE_NEW_LINES));
+// From 7.2 Unraid logs a .page's inline PHP as "in plugins/folder.view3/<file>.page", with no leading slash
+$fv3Lines = preg_grep('#plugins/folder\.view3/#', file('/var/log/phplog', FILE_IGNORE_NEW_LINES));
 check(!$fv3Lines, "PHP logged from FV3's files:\n  " . implode("\n  ", array_slice($fv3Lines, 0, 20)));
 // php-error lines copy every warning of the request, Unraid's too, and name only the file's basename: the PHP log judges those
 $errorLog = is_file("$flash/error.log") ? file("$flash/error.log", FILE_IGNORE_NEW_LINES) : [];

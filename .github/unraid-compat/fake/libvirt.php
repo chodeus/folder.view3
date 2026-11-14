@@ -1,6 +1,7 @@
 <?php
-// Stand-in for the php-libvirt extension Unraid's libvirt.php calls, over the domains in fixtures/vms.json. Read calls answer
-// from each domain's XML; every other libvirt_* name Unraid uses is logged as UNKNOWN and fails, like an unknown Docker call.
+// Stand-in for the php-libvirt extension, over fixtures/vms.json: reads answer from each domain's XML, and every other
+// libvirt_* function the webGUI calls (7.0-7.4) is logged as UNKNOWN; one it never called is an undefined function.
+
 // No function_exists() guard: PHP binds this file's functions before its first line runs, so one would always be true.
 
 const VIR_DOMAIN_NOSTATE = 0;
@@ -110,7 +111,7 @@ function libvirt_domain_xml_xpath($dom, $xpath, $flags = 0) {
     return $out;
 }
 
-// Every other name in Unraid's libvirt.php, libvirt_helpers.php and VMMachines.php: none has an answer here yet
+// Every other libvirt_* function in the webGUI's code at 7.0.1-7.4.0: none has an answer here yet
 foreach (['libvirt_connect_get_information', 'libvirt_connect_get_capabilities', 'libvirt_connect_get_machine_types',
     'libvirt_connect_get_domain_capabilities', 'libvirt_connect_get_all_domain_stats', 'libvirt_has_feature',
     'libvirt_list_nodedevs', 'libvirt_nodedev_get', 'libvirt_nodedev_get_xml_desc', 'libvirt_nodedev_get_information',
@@ -122,7 +123,7 @@ foreach (['libvirt_connect_get_information', 'libvirt_connect_get_capabilities',
     'libvirt_domain_reboot', 'libvirt_domain_suspend', 'libvirt_domain_resume', 'libvirt_domain_managedsave', 'libvirt_domain_set_autostart',
     'libvirt_domain_change_boot_devices', 'libvirt_domain_disk_remove', 'libvirt_domain_send_keys', 'libvirt_domain_send_pointer_event',
     'libvirt_domain_snapshot_create', 'libvirt_domain_snapshot_delete', 'libvirt_domain_snapshot_get_xml', 'libvirt_domain_snapshot_lookup_by_name',
-    'libvirt_domain_snapshot_revert', 'libvirt_storagevolume_create_xml'] as $fv3lName) {
+    'libvirt_domain_snapshot_revert', 'libvirt_storagevolume_create_xml', 'libvirt_version'] as $fv3lName) {
     eval("function $fv3lName(...\$args) { fv3l_log('UNKNOWN $fv3lName'); \$GLOBALS['fv3l_error'] = 'not in the fake'; return false; }");
 }
 unset($fv3lName);

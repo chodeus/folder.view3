@@ -1,7 +1,6 @@
 <?php
-// Fake Docker for Unraid's DockerClient and FV3: `serve` answers /var/run/docker.sock, `cli <args>` stands in for the docker
-// CLI. Both read fixtures/docker.json (Docker Engine API answers captured from throwaway containers); a request this file
-// does not know is logged as UNKNOWN and refused, so a new call by Unraid or FV3 shows up in the log.
+// Fake Docker from fixtures/docker.json (Engine API answers of throwaway containers): `serve` answers /var/run/docker.sock,
+// `cli <args>` is the docker CLI. A request it does not know is logged as UNKNOWN and refused.
 $d = json_decode((string)@file_get_contents(__DIR__ . '/../fixtures/docker.json'), true);
 if (!is_array($d)) { fwrite(STDERR, "fixtures/docker.json is unreadable\n"); exit(2); }
 

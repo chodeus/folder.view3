@@ -215,11 +215,11 @@ reviews:
           Only Slackware's upgradepkg and removepkg are stubbed, keeping their
           file-list records: flag any other stand-in for Unraid's code.
         - fake_unraid.sh serves one Unraid version's real webGUI with php -S
-          and pages_test.php drives FV3 through it. Stand-ins are the system
-          boundary only: fake/docker.php (dockerd's socket and the docker CLI),
-          fake/libvirt.php (the php-libvirt extension) and the Connect plugin's
-          ServerState, which the webGUI repo lacks. A call they do not answer
-          is logged as UNKNOWN and fails the run: flag an answer that hides
+          and pages_test.php drives FV3 through it. Stand-ins live in fake/ and
+          are the system boundary only: docker.php (dockerd's socket and the
+          docker CLI), libvirt.php (the php-libvirt extension) and
+          connect_state.php (the Connect plugin, which the webGUI repo lacks).
+          A call they do not answer fails the run: flag an answer that hides
           one, and any other stand-in for Unraid's code.
         - matrix_check.py keeps ci.yml's Unraid rows at one per minor from the
           .plg's min to the newest release; Renovate only moves rows.

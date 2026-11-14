@@ -4,7 +4,6 @@
 set -u
 version=$2; repo=$(pwd)
 . "$repo/.github/unraid-compat/lib.sh"
-fail() { echo "FAILED [Unraid $version]: $*"; exit 1; }
 stable=$(cd "$3" 2>/dev/null && pwd) && [ -f "$stable/pkg_build.sh" ] || fail "no last-stable checkout with pkg_build.sh at $3"
 awk --version 2>/dev/null | grep -q 'GNU Awk' || fail 'awk is not gawk, as it is on Unraid: the remove script needs RT'
 fv3_docroot "$1" || fail "no Unraid plugin installer under $1"
