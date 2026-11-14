@@ -31,33 +31,24 @@ jobs:
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libxml2-utils
 
-      - name: PHP syntax check
+      # php -l on every .php and .page file, then every .github/scripts/*_test.php; a deprecation fails too
+      - name: PHP syntax check and PHP tests
+        run: bash .github/scripts/php_tests.sh
+
+      - name: Every !important has its reason
+        working-directory: .github/scripts
         run: |
-          status=0
-          while IFS= read -r f; do
-            php -l "$f" || status=1
-          done < <(find src -name '*.php')
-          exit $status
+          python3 -B -m unittest important_check_test
+          python3 -B important_check.py
 
-      - name: Update status test
-        run: php .github/scripts/update_status_test.php
-
-      - name: FolderView Plus import tests
-        run: php .github/scripts/foreign_import_test.php
-
-      - name: Autostart order tests
-        run: php .github/scripts/page_order_test.php
-
-      - name: POST endpoint answer tests
-        run: php .github/scripts/post_answers_test.php
-
-      - name: Folder file lock tests
-        run: php .github/scripts/folder_lock_test.php
+      - name: The Unraid matrix has a row for every minor up to the newest release
+        working-directory: .github/unraid-compat
+        run: |
+          python3 -B -m unittest matrix_check_test
+          python3 -B matrix_check.py
 
       - name: Variables tab tests
-        run: |
-          php .github/scripts/variables_tab_test.php
-          node .github/scripts/variables_tab_test.js
+        run: node .github/scripts/variables_tab_test.js
 
       - name: Autostart tab tests
         run: node .github/scripts/autostart_api_test.js
@@ -98,6 +89,7 @@ jobs:
           node settings_order_test.js
           node import_order_test.js
           node name_order_test.js
+          node action_refusal_test.js
           node rename_update_test.js
 
       - name: Validate plugin manifest (XML)
@@ -145,29 +137,138 @@ jobs:
           python -m unittest discover -s .github/unraid-watch -p 'test_*.py'
           python .github/unraid-watch/watch.py check
 
-  # A dispatched run's checks never reach the PR, so vendor-sync's run reports Lint + build there as a commit status.
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Unraid ships 8.3 up to 7.2.7 and in 7.3.0, 8.4 from 7.2.8, 7.3.1 and 7.4; 8.5 is ahead of every release
+        php: ['8.3', '8.4', '8.5']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: PHP syntax check and PHP tests
+        env:
+          PHP_VERSION: ${{ matrix.php }}
+        run: docker run --rm -v "$PWD:/repo" -w /repo "php:${PHP_VERSION}-cli" bash .github/scripts/php_tests.sh
+
+  unraid:
+    name: Unraid ${{ matrix.unraid }}${{ matrix.row && format(' ({0})', matrix.row) || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # One release row per minor from the .plg's min, on the PHP its release notes name; Renovate moves each to its newest
+        # patch, and the 'newest tag' row to any newer tag. matrix_check.py fails when a release has no row of its own.
+        include:
+          - {unraid: '7.0.1', php: '8.3'}
+          - {unraid: '7.1.4', php: '8.3'}
+          - {unraid: '7.2.9', php: '8.4'}
+          - {unraid: '7.3.5', php: '8.4'}
+          - {unraid: '7.4.0', php: '8.4'}
+          # Runs only while it names a beta or release candidate; one on a newer PHP needs its php raised by hand
+          - {unraid: '7.4.0', php: '8.4', row: 'newest tag'}
+    env:
+      RUNS: ${{ !matrix.row || contains(matrix.unraid, '-') }}
+    steps:
+      - name: Nothing newer than the release rows
+        if: env.RUNS != 'true'
+        env:
+          UNRAID_VERSION: ${{ matrix.unraid }}
+        run: echo "::notice::Unraid $UNRAID_VERSION is a release, so its own release row tests it"
+
+      - name: Checkout
+        if: env.RUNS == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Checkout the last stable release
+        if: env.RUNS == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: main
+          path: .stable
+
+      - name: Checkout the Unraid webGUI at this version
+        if: env.RUNS == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          repository: unraid/webgui
+          ref: ${{ matrix.unraid }}
+          path: .webgui
+          sparse-checkout: |
+            emhttp/plugins/dynamix
+            emhttp/plugins/dynamix.plugin.manager
+
+      - name: Install, upgrade, remove and failures through Unraid's own plugin installer
+        if: env.RUNS == 'true'
+        env:
+          PHP_VERSION: ${{ matrix.php }}
+          UNRAID_VERSION: ${{ matrix.unraid }}
+        run: |
+          docker build -q -t fv3-unraid --build-arg PHP="$PHP_VERSION" .github/unraid-compat
+          docker run --rm --network none -v "$PWD:/repo" -w /repo fv3-unraid bash .github/unraid-compat/install_test.sh .webgui "$UNRAID_VERSION" .stable
+
+  # One check per matrix for beta's branch protection: the version rows rename themselves as Renovate moves them
+  php-compat:
+    name: PHP compatibility
+    needs: php
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every PHP version passed
+        env:
+          RESULT: ${{ needs.php.result }}
+        run: '[ "$RESULT" = success ]'
+
+  unraid-compat:
+    name: Unraid compatibility
+    needs: unraid
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every Unraid version passed
+        env:
+          RESULT: ${{ needs.unraid.result }}
+        run: '[ "$RESULT" = success ]'
+
+  # A dispatched run's checks never reach the PR, so vendor-sync's run reports each gate there as a commit status.
   report:
-    needs: validate
+    needs: [validate, php-compat, unraid-compat]
     if: always() && github.event_name == 'workflow_dispatch' && inputs.base != ''
     runs-on: ubuntu-latest
     permissions:
       statuses: write
     steps:
-      - name: Post the result on the PR's commit
+      - name: Post the results on the PR's commit
         env:
-          RESULT: ${{ needs.validate.result }}
+          LINT: ${{ needs.validate.result }}
+          PHP: ${{ needs.php-compat.result }}
+          UNRAID: ${{ needs.unraid-compat.result }}
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          state=failure
-          [ "$RESULT" = success ] && state=success
-          gh api "repos/$REPO/statuses/$SHA" -f state="$state" -f context='Lint + build' -f target_url="$RUN_URL" -f description="CI dispatched for this PR: $RESULT" >/dev/null
+          post() {
+            local state=failure
+            [ "$2" = success ] && state=success
+            gh api "repos/$REPO/statuses/$SHA" -f state="$state" -f context="$1" -f target_url="$RUN_URL" -f description="CI dispatched for this PR: $2" >/dev/null
+          }
+          post 'Lint + build' "$LINT"
+          post 'PHP compatibility' "$PHP"
+          post 'Unraid compatibility' "$UNRAID"
 
   notify-failure:
-    needs: validate
+    needs: [validate, php, unraid]
     if: failure() && github.event_name != 'pull_request' && !inputs.base
     permissions: {}
     uses: chodeus/chodeus-ops/.github/workflows/notify-discord.yml@65484add1113c1bbc00827af7237ebe7a1837bbb # main

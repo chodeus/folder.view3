@@ -95,12 +95,25 @@ def lf(data):
     return data if b'\0' in data[:8000] else data.replace(b'\r\n', b'\n')
 
 
+def plugin_root(repo=ROOT):
+    """(vendor.json, the plugin folder its root names)."""
+    manifest = json.loads((repo / 'vendor.json').read_text())
+    return manifest, (repo / manifest['root']).resolve()
+
+
+def destination(manifest, root, rel):
+    """Where a bundled file lands; vendor.json may not point outside the plugin folder."""
+    dest = (root / rel).resolve()
+    if not dest.is_relative_to(root):
+        raise SystemExit(f'vendor.json: {rel} is outside {manifest["root"]}')
+    return dest
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=('check', 'sync'))
     mode = parser.parse_args().mode
-    manifest = json.loads((ROOT / 'vendor.json').read_text())
-    root = (ROOT / manifest['root']).resolve()
+    manifest, root = plugin_root()
     stale = []
     for lib in manifest['libraries']:
         if 'npm' in lib:
@@ -110,9 +123,7 @@ def main():
         else:
             raise SystemExit(f'vendor.json: a library needs an npm or github source: {lib}')
         for src, data in files.items():
-            dest = (root / lib['files'][src]).resolve()
-            if not dest.is_relative_to(root):
-                raise SystemExit(f'vendor.json: {lib["files"][src]} is outside {manifest["root"]}')
+            dest = destination(manifest, root, lib['files'][src])
             data = lf(data)
             if dest.is_file() and dest.read_bytes() == data:
                 continue

@@ -206,6 +206,20 @@ reviews:
           GraphQL checks in schema.py; flag a second copy of either.
         - TESTS use synthetic versions, shas and handles only; a value captured
           from a live system in a fixture is a finding.
+    - path: ".github/unraid-compat/**"
+      instructions: |
+        The Unraid compatibility matrix; CI only, nothing here ships.
+        - install_test.sh puts the .plg through each Unraid version's own
+          plugin installer, hooks included, in a fresh Docker container with
+          no network; it must refuse to run anywhere else. Only Slackware's
+          upgradepkg and removepkg are stubbed, keeping their file-list
+          records: flag any other stand-in for Unraid's code.
+        - matrix_check.py keeps ci.yml's Unraid rows at one per minor from the
+          .plg's min to the newest release; Renovate only moves rows.
+        - Each step asserts what the user is left with (live files, the
+          registered manifest, saved folders, Unraid's orders) right after it,
+          against values written by hand. A failed step fails the job.
+        - Fixtures hold synthetic names and ids only.
     - path: ".github/scripts/**"
       instructions: |
         CI tests and helpers; nothing here ships in the plugin.
@@ -224,6 +238,9 @@ reviews:
           failed read or download as "nothing to report".
         - package.json here is test-only (jquery, jsdom), pinned to exact
           versions.
+        - php_tests.sh is the one list of PHP checks for Lint + build and the
+          PHP matrix: php -l on every .php and .page file, then every
+          *_test.php here; a deprecation fails like an error.
     - path: "**"
       instructions: |-
         Applies to every file, whatever the language:

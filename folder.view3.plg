@@ -720,12 +720,6 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 - Initial Release
     </CHANGES>
 
-    <FILE Run="/bin/bash">
-        <INLINE>
-            rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null | grep -v '&pkgname;')
-        </INLINE>
-    </FILE>
-
     <!-- Package archive -->
     <FILE Name="/boot/config/plugins/&name;/&pkgname;.txz" Run="upgradepkg --install-new --reinstall">
         <URL>https://github.com/&github;/releases/download/v&version;/&pkgname;.txz</URL>
@@ -735,6 +729,8 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
     <!-- Post install -->
     <FILE Run="/bin/bash">
         <INLINE>
+            # Only once the new package is in: a failed download or upgradepkg keeps the archive the next boot installs from
+            rm -f $(ls /boot/config/plugins/&name;/&name;*.txz 2>/dev/null | grep -v '&pkgname;')
             for p in /var/log/packages/&name;-*; do
                 [ -e "$p" ] || continue
                 case "$(basename "$p")" in &pkgname;) continue;; esac

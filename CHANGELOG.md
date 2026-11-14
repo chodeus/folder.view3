@@ -2,6 +2,14 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## 2026.11.14.3 (beta)
+
+- A failed update no longer deletes the package the installed version reinstalls from at boot
+
+## 2026.11.14.2 (beta)
+
+- Folder actions that Unraid refuses now show its reason instead of raw JSON
+
 ## 2026.11.14
 
 - Folders no longer vanish when the Docker, VMs or Dashboard lists reload
