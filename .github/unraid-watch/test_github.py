@@ -15,6 +15,16 @@ class GitHubTest(unittest.TestCase):
         self.fake.routes['GET', url(f'/repos/o/r/compare/{sha(1)}...{sha(2)}', page=page, per_page=100)] = {
             'status': status, 'total_commits': total, 'commits': [commit(n) for n in numbers]}
 
+    def test_tags_follow_every_page(self):
+        self.fake.routes['GET', url('/repos/o/r/tags', page=1, per_page=100)] = [{'name': f't{n}'} for n in range(100)]
+        self.fake.routes['GET', url('/repos/o/r/tags', page=2, per_page=100)] = [{'name': 't100'}]
+        self.assertEqual(self.gh.tags('o/r'), [f't{n}' for n in range(101)])
+
+    def test_a_blob_is_read_once_however_many_releases_share_it(self):
+        self.fake.routes['GET', '/repos/o/r/git/blobs/abc'] = '.tip { top: 0 }'
+        self.assertEqual([self.gh.blob('o/r', 'abc') for _ in range(3)], ['.tip { top: 0 }'] * 3)
+        self.assertEqual(len(self.fake.sent('GET')), 1)
+
     def test_between_follows_every_page(self):
         self.compare(1, 'ahead', 105, range(100, 200))
         self.compare(2, 'ahead', 105, range(200, 205))

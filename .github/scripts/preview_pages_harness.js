@@ -252,7 +252,7 @@ const dockerRow = (name, sid) => `<tr class="sortable" id="ct-${name}"><td class
     `<td><input type="checkbox" class="autostart" container="${name}"></td><td></td></tr>`;
 
 // The Docker page drawn by the real createFolders() from docker.json's folders, Docker's container names and userprefs.cfg's values
-const drawDocker = async ({ folders, containers, prefs, listed }) => {
+const drawDocker = async ({ folders, containers, prefs, listed, api = false }) => {
     const sid = (i) => String(i).padStart(12, 'a');
     const defs = Object.fromEntries(Object.entries(folders).map(([id, f]) => [id, { ...f, icon: '', settings: { ...FOLDER_SETTINGS }, hidden_preview: [], actions: [] }]));
     const saved = prefs.filter((n) => containers.includes(n));
@@ -261,7 +261,7 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     // false = 0); how it orders several missing ones among themselves is its own tie-break, so they stay as given
     const shown = missing.concat(saved);
     const info = {};
-    const p = await makePage({ page: 'docker', api: false, answers: {
+    const p = await makePage({ page: 'docker', api, answers: {
         'read.php': () => JSON.stringify(defs),
         'read_order.php': () => JSON.stringify(prefs),
         'read_info.php': () => JSON.stringify(info),
@@ -303,6 +303,27 @@ const drawDocker = async ({ folders, containers, prefs, listed }) => {
     // Every row top-down, a folder's members ahead of its placeholder: the shape fv3_page_order() returns
     const drawn = () => rows().flatMap((r) => (r.startsWith('folder-') ? [...members(r.slice(7)), r] : [r]));
     return { p, posts, failing, dropped, render, draw, rows, members, drawn };
+};
+
+// Unraid's row for one VM (VMMachines.php), stopped, with its hidden detail row
+const vmRow = (name, i) => `<tr parent-id="${i}" class="sortable"><td class="vm-name"><span class="outer"><span id="vm-u${i}" class="hand"><img class="img" src=""></span>` +
+    `<span class="inner"><a>${name}</a><br><i class="fa fa-square stopped red-text"></i><span class="state">stopped</span></span></span></td><td></td>` +
+    `<td><input class="autostart" type="checkbox" uuid="u${i}"></td></tr><tr child-id="${i}" id="name-${i}" style="display:none"><td colspan="3"></td></tr>`;
+
+// The VMs page drawn by the real vm.js from vm.json's folders as given, the VMs (all shut off, uuid u0, u1, …) and userprefs.cfg's values
+const drawVms = async ({ folders, names, prefs }) => {
+    const info = Object.fromEntries(names.map((n, i) => [n, { uuid: `u${i}`, state: 'shutoff', autostart: false }]));
+    const p = await makePage({ page: 'vm', api: false, answers: {
+        'read.php': () => JSON.stringify(folders), 'read_order.php': () => JSON.stringify(prefs),
+        'read_unraid_order.php': () => JSON.stringify(names), 'read_info.php': () => JSON.stringify(info),
+    } });
+    fakeXhr(p.w, () => ({ status: 200, body: '' }));
+    p.w.loadlist_original = () => p.$('#kvm_list').html(names.map(vmRow).join(''));
+    p.g('loadlist()');
+    p.g('fv3DrawList()');
+    for (let i = 0; i < 50 && !(p.w.fv3DrawLog || []).some((d) => d.outcome === 'drawn') && !p.errors.length; i++) await p.tick(100);
+    if (p.errors.length || !(p.w.fv3DrawLog || []).some((d) => d.outcome === 'drawn')) throw new Error(`VMs page not drawn: ${p.errors.join('; ')}`);
+    return p;
 };
 
 let failed = 0;
@@ -347,4 +368,4 @@ const phpServer = (label, { containers = [] } = {}) => {
     return { config, server, cleanup: () => fs.rmSync(tmp, { recursive: true, force: true }) };
 };
 
-module.exports = { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, flush, read, phpServer };
+module.exports = { makePage, drawDocker, drawVms, fakeXhr, scriptHelpers, check, done, flush, read, phpServer, FOLDER_SETTINGS };
