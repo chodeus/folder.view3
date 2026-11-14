@@ -4,7 +4,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: a failed update no longer deletes the package archive the installed version boots from
+- A failed update no longer deletes the package the installed version reinstalls from at boot
 
 ## 2026.11.14.2 (beta)
 
