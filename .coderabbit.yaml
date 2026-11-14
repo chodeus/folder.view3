@@ -220,7 +220,8 @@ reviews:
           router.php (nginx's locations), prepend.php (php.ini's prepend),
           docker.php (dockerd's socket and the docker CLI), libvirt.php (the
           php-libvirt extension), rc_service.sh (rc.docker and rc.libvirt),
-          connect_state.php (the Connect plugin), the dockerd and libvirtd
+          dmidecode.sh and ip.sh (those commands), connect_state.php (the
+          Connect plugin), the dockerd and libvirtd
           processes, and emhttp's state files (var.ini, network.ini, the
           docker and domain cfg). A call a stand-in does not answer fails
           the run: flag an answer that hides one, and any stand-in for code

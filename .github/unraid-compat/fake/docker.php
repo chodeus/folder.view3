@@ -46,7 +46,8 @@ function fv3d_cli(array $d, array $args): ?array {
     $line = implode(' ', $args);
     if ($line === 'network ls' && $format === '{{.Name}}={{.Driver}}') return array_map(fn($n) => "{$n['Name']}={$n['Driver']}", $d['networks']);
     if ($line === 'ps -q --no-trunc') return array_column(fv3d_running($d), 'Id');
-    if (preg_match('/^ps --filter label=(\S+) --format \{\{\.Names\}\}$/', $line, $m)) {
+    // A label's presence only, as Unraid filters: label=key=value is a form this fake does not answer
+    if (preg_match('/^ps --filter label=([^\s=]+) --format \{\{\.Names\}\}$/', $line, $m)) {
         return array_map(fn($c) => ltrim($c['Names'][0], '/'), array_values(array_filter(fv3d_running($d), fn($c) => isset($c['Labels'][$m[1]]))));
     }
     if ($line === 'stats --no-stream' && $format === '{{.ID}};{{.CPUPerc}};{{.MemUsage}}') {

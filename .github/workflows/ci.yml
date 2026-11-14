@@ -216,7 +216,7 @@ jobs:
 
       # Runs after a failed install test too: the two report on different things
       - name: FV3's endpoints and pages through this Unraid's webGUI, Docker and libvirt faked
-        if: ${{ !cancelled() && env.RUNS == 'true' }}
+        if: ${{ (success() || failure()) && env.RUNS == 'true' }}
         env:
           UNRAID_VERSION: ${{ matrix.unraid }}
         run: docker run --rm --network none -v "$PWD:/repo" -w /repo fv3-unraid bash .github/unraid-compat/pages_test.sh .webgui "$UNRAID_VERSION"

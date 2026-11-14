@@ -1,7 +1,9 @@
 #!/bin/bash
-# Shared by install_test.sh and fake_unraid.sh: source it from the repo root with $version set. These replace system files,
-# so they run only in a fresh Docker container, never on a host.
-if [ ! -f /.dockerenv ] || [ -e /etc/unraid-version ] || [ -d /boot/config ]; then echo 'Refusing to run outside a fresh Docker container' >&2; exit 2; fi
+# Shared by install_test.sh and fake_unraid.sh: source it from the repo root with $version set. These replace system files and
+# a download must fail, so they run only in a fresh Docker container with no network (loopback alone), never on a host.
+if [ ! -f /.dockerenv ] || [ -e /etc/unraid-version ] || [ -d /boot/config ] || [ "$(ls /sys/class/net 2>/dev/null)" != lo ]; then
+	echo 'Refusing to run outside a fresh Docker container with no network' >&2; exit 2
+fi
 name=folder.view3
 docroot=/usr/local/emhttp
 flash=/boot/config/plugins/$name

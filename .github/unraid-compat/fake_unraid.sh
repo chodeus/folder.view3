@@ -70,6 +70,8 @@ EOF
 
 # Docker and libvirtd under their own names and rc scripts, so Unraid's pgrep(), /proc/<pid> and status checks find them running
 mkdir -p /etc/rc.d && for rc in rc.docker rc.libvirt; do cp "$here/fake/rc_service.sh" /etc/rc.d/$rc && chmod +x /etc/rc.d/$rc; done
+# The OS image's dmidecode and ip: the forms Unraid's Dashboard and ipaddr() run, anything else UNKNOWN
+for cmd in dmidecode ip; do cp "$here/fake/$cmd.sh" /usr/sbin/$cmd && chmod +x /usr/sbin/$cmd; done
 printf '#!/bin/sh\nexec php %s/fake/docker.php cli "$@"\n' "$here" > /usr/local/bin/docker && chmod +x /usr/local/bin/docker
 ln -sf "$(command -v php)" /usr/local/sbin/dockerd; ln -sf "$(command -v sleep)" /usr/local/sbin/libvirtd
 dockerd "$here/fake/docker.php" serve > /var/log/dockerd.log 2>&1 &

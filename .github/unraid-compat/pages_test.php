@@ -93,12 +93,16 @@ foreach (array_merge($containers, $vms) as $name) check($status === 200 && str_c
 $info = get_json('read_info.php?type=docker', $status);
 check($status === 200 && is_array($info) && $sorted(array_keys($info)) === $containers, "read_info docker: status $status, containers " . json_encode(is_array($info) ? array_keys($info) : $info));
 if (is_array($info) && $sorted(array_keys($info)) === $containers) {
-    check($info['app-a']['info']['State']['Autostart'] === true && $info['app-d']['info']['State']['Autostart'] === true && $info['app-b']['info']['State']['Autostart'] === false,
-        'read_info docker: autostart not app-a and app-d only');
-    check(str_ends_with($info['app-a']['info']['State']['WebUi'], ':18080/'), "read_info docker: app-a WebUI {$info['app-a']['info']['State']['WebUi']} does not reach host port 18080");
-    check(($info['app-a']['info']['template']['path'] ?? '') === '/boot/config/plugins/dockerMan/templates-user/my-app-a.xml', 'read_info docker: app-a lost its template');
-    check($info['tool-c']['info']['State']['Running'] === false && $info['app-b']['info']['State']['Running'] === true, 'read_info docker: running states wrong');
-    check($info['app-d']['shortId'] === $shortId('app-d'), 'read_info docker: app-d short id wrong');
+    $seen = array_map(fn($c) => [$c['info']['State']['Autostart'], $c['info']['State']['Running'], $c['info']['State']['WebUi'], $c['info']['template']['path'] ?? null, $c['shortId']], $info);
+    ksort($seen);
+    // [IP] is ipaddr() on 7.0 (network.ini's address); from 7.1 DockerUtil::host() needs a LAN port, which a container with no network lacks
+    $webui = version_compare($version, '7.1', '<') ? 'http://192.0.2.10:18080/' : 'http://:18080/';
+    check($seen === [
+        'app-a' => [true, true, $webui, '/boot/config/plugins/dockerMan/templates-user/my-app-a.xml', $shortId('app-a')],
+        'app-b' => [false, true, '', null, $shortId('app-b')],
+        'app-d' => [true, true, '', null, $shortId('app-d')],
+        'tool-c' => [false, false, '', null, $shortId('tool-c')],
+    ], 'read_info docker: autostart, running, WebUI, template or short id wrong: ' . json_encode($seen));
 }
 $info = get_json('read_info.php?type=vm', $status);
 check($status === 200 && is_array($info) && $sorted(array_keys($info)) === $vms, "read_info vm: status $status, VMs " . json_encode(is_array($info) ? array_keys($info) : $info));
@@ -212,7 +216,8 @@ file_put_contents($autostartFile, "app-d 10\napp-a\n");
 check($status === 200 && json_decode($body) !== null, "sync_order: status $status, $body");
 $leaves('sync_order', ['autostart' => "app-a\napp-d 10\n"]);
 
-// What the runs left in the logs: FV3's files must log nothing, and neither fake was asked anything it does not know
+// What the runs left in the logs: FV3's files must log nothing, no stand-in was asked anything it does not answer, and no
+// command the webGUI ran was missing where the shell's error reached php -S's log (one run with 2>/dev/null fails unseen)
 // From 7.2 Unraid logs a .page's inline PHP as "in plugins/folder.view3/<file>.page", with no leading slash
 $fv3Lines = preg_grep('#plugins/folder\.view3/#', file('/var/log/phplog', FILE_IGNORE_NEW_LINES));
 check(!$fv3Lines, "PHP logged from FV3's files:\n  " . implode("\n  ", array_slice($fv3Lines, 0, 20)));
@@ -222,6 +227,8 @@ $reported = $errorLog === false ? ['error.log could not be read'] : preg_grep('/
 check(!$reported, "FV3's error.log:\n  " . implode("\n  ", $reported));
 $unknown = preg_grep('/UNKNOWN/', file('/var/log/fv3-fakes.log', FILE_IGNORE_NEW_LINES));
 check(!$unknown, "the fakes were asked what they do not answer:\n  " . implode("\n  ", array_unique($unknown)));
+$missing = preg_grep('/command not found/', file('/var/log/php-server.log', FILE_IGNORE_NEW_LINES));
+check(!$missing, "the webGUI ran commands this image lacks:\n  " . implode("\n  ", array_unique($missing)));
 
 if ($failures) {
     echo "FAILED [Unraid $version]: " . count($failures) . " of $checks checks\n- " . implode("\n- ", $failures) . "\n";
