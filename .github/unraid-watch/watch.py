@@ -42,13 +42,24 @@ def derive(cfg, root):
     return ops, watched, problems
 
 
+def floor(cfg, root):
+    """The oldest Unraid release the plugin supports, from its manifest; a Problem when it states none."""
+    manifest = Path(root, cfg['manifest'])
+    if not manifest.is_file():
+        raise Problem(f'{cfg["manifest"]} is missing, so the oldest Unraid the plugin supports is unknown')
+    found = scan.minimum(manifest)
+    if not found:
+        raise Problem(f'{cfg["manifest"]}: no min="x.y.z" on its PLUGIN tag, so the oldest Unraid it supports is unknown')
+    return found
+
+
 def local(cfg, root):
     """What the checks per release need from the plugin: the oldest Unraid it supports, and what its stylesheets style."""
-    floor = scan.minimum(Path(root, cfg['manifest']))
-    if not floor:
-        raise Problem(f'{cfg["manifest"]}: no min="x.y.z" on its PLUGIN tag, so the oldest Unraid it supports is unknown')
     sheets = scan.stylesheets(Path(root, cfg['plugin']))
-    return {'floor': floor, 'styled': css.styled(f.read_text(encoding='utf-8') for f in sheets)}
+    # No stylesheets would read as "Unraid changed nothing the plugin styles"
+    if not sheets:
+        raise Problem(f'{cfg["plugin"]}/styles has no stylesheets, so what the plugin styles is unknown')
+    return {'floor': floor(cfg, root), 'styled': css.styled(f.read_text(encoding='utf-8') for f in sheets)}
 
 
 def readable(cfg, root):
@@ -100,6 +111,8 @@ def cmd_check(cfg, root):
 
 def cmd_contract(cfg, gh, root, refs):
     ops, watched, errors = derive(cfg, root)
+    # Read before the first request: a manifest that states no minimum stops the run before anything is fetched
+    oldest = floor(cfg, root)
     api = source(cfg, 'schema')
     lines = []
     for ref, bad, deprecated in validity(gh, api, ops, refs or [api['branch'], gh.latest_release(api['repo'])]):
@@ -114,8 +127,12 @@ def cmd_contract(cfg, gh, root, refs):
         errors += [f'{repo}: {p} no longer exists on {src["branch"]}; fix the call or watch.json' for p in gone]
         lines.append(f'- {len(paths) - len(gone)} of {len(paths)} watched paths present in {repo}')
     held = source(cfg, 'contracts')
-    for entry, found in contracts(gh, held, release_refs(gh, held, local(cfg, root)['floor'])):
+    pinned = {held['branch']: gh.sha(held['repo'], held['branch'])}
+    for entry, found in contracts(gh, held, release_refs(gh, held, oldest), pinned):
+        missing = [ref for ref, ok in found.items() if ok == 'missing']
         failed = [ref for ref, ok in found.items() if ok is False]
+        if missing:
+            errors.append(f'{held["repo"]}: {entry["path"]} is missing on {", ".join(missing)}: {entry["why"]}')
         if failed:
             errors.append(f'{held["repo"]}: {entry["path"]} does not match {entry["match"]!r} on {", ".join(failed)}: {entry["why"]}')
         lines.append(f'- contract {entry["path"]}: holds on {sum(ok is True for ok in found.values())} of '

@@ -81,28 +81,9 @@ class StatusTest(Case):
             '- 3 of 3: `main` (not released); `v4.2.0` (latest API release); `v4.1.0` (Unraid 9.1.0-beta.2)',
             '- 2 of 3, missing `DockerMutations.stop`: `v4.0.0` (Unraid 9.0.3)',
             '- API version not stated in the notes: `9.0.2`, `9.0.1`',
-            '',
-            '**Contracts by OS release**',
-            '',
-            'What FolderView3 relies on in the webgui, checked on `9.0.3` and `master`.',
-            '',
-            '- `Events.php` answers in `success`: holds on all 2',
-            '',
-            '**Unraid CSS by OS release**',
-            '',
-            'Layout properties Unraid sets on elements FolderView3 styles, that differ between releases, and that FolderView3 '
-            'does not set itself.',
-            '',
-            '- `.tip` `white-space`: not set in `9.0.3`, `pre-line` in `master`',
         ]))
         self.assertEqual(body.split('\n\n<details>', 1)[1], '\n'.join([
-            '<summary>No longer set in the stylesheets read here (1; may have moved elsewhere)</summary>',
-            '',
-            '- `.tip` `display`: `block` in `9.0.3`, not set in `master` (azure)',
-            '',
-            '</details>',
-            '',
-            '<details><summary>API not used yet (1 operations)</summary>',
+            '<summary>API not used yet (1 operations)</summary>',
             '',
             '- `DockerMutations.restart(id: ID!): Boolean!`',
             '',
@@ -114,6 +95,25 @@ class StatusTest(Case):
             '',
             '- `emhttp/page/`: markup',
             f'- `{USERPREFS}`: called from a.js:5',
+            '',
+            '</details>',
+            '',
+            '**Contracts by OS release**',
+            '',
+            'What FolderView3 relies on in the webgui, checked on its release tags `9.0.3` and on `master`.',
+            '',
+            '- `Events.php` answers in `success`: holds on all 2',
+            '',
+            '**Unraid CSS by OS release**',
+            '',
+            'Layout properties Unraid sets on elements FolderView3 styles, that differ between releases, and that FolderView3 '
+            'does not set itself.',
+            '',
+            '- `.tip` `white-space`: not set in `9.0.3`, `pre-line` in `master`',
+            '',
+            '<details><summary>No longer set in the stylesheets read here (1; may have moved elsewhere)</summary>',
+            '',
+            '- `.tip` `display`: `block` in `9.0.3`, not set in `master` (azure)',
             '',
             '</details>',
             '',
@@ -152,6 +152,20 @@ class StatusTest(Case):
         self.assertIn('- unraid/webgui `9.1.0-beta.2`...`master`: not available\n', body)
         self.assertIn('- unraid/webgui `9.0.3`...`9.1.0-beta.2`: not available\n', body)
         self.assertIn('- unraid/api `v4.0.0`...`v4.1.0`:\n  - removed', body)
+
+    def test_a_failed_read_leaves_the_release_checks_out_and_says_so(self):
+        self.w.fake.routes['GET', url(f'/repos/{WEB}/tags', page=1, per_page=100)] = (500, 'boom')
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
+        self.assertIn('**Operations by OS release**', body)
+        self.assertIn('**Contracts and Unraid CSS by OS release**: could not be read (`GET /repos/unraid/webgui/tags: HTTP 500', body)
+        self.assertNotIn('**Unraid CSS by OS release**', body)
+
+    def test_a_listed_stylesheet_no_release_has_is_named(self):
+        cfg = {**CFG, 'sources': [{**s, 'styles': {**s['styles'], 'files': s['styles']['files'] + ['css/typo-{theme}.css']}}
+                                  if 'styles' in s else s for s in CFG['sources']]}
+        self.w.release_line()
+        body = report.render_status(status.gather(self.w.client(), cfg, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
+        self.assertIn('Listed in watch.json but on no release: `css/typo-{theme}.css`.', body)
 
     def test_watched_stylesheets_are_not_listed_as_legacy_pages(self):
         view = status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {'css/azure.css': 'theme', USERPREFS: 'prefs'}, DOCS: {}},
@@ -236,6 +250,14 @@ class StatusCommentTest(Case):
         self.w.hit()
         self.w.run()
         self.assertEqual((len(self.w.posted), len(self.w.status)), (1, 1))
+
+    def test_news_still_goes_out_when_the_release_checks_cannot_be_read(self):
+        self.w.state()
+        self.w.hit()
+        self.w.fake.routes['GET', f'/repos/{WEB}/git/blobs/ev1'] = (500, 'boom')
+        code, _ = self.w.run()
+        self.assertEqual((code, len(self.w.posted), len(self.w.status)), (0, 1, 1))
+        self.assertIn('could not be read', self.w.status[0][1])
 
     def test_status_command_prints_and_writes_nothing(self):
         code, out = self.captured(watch.cmd_status, CFG, self.w.client(), self.w.root)

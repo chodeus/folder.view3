@@ -13,7 +13,7 @@ plugin stands. Both go to issue #52.
 - **contract** (pull requests that touch `src/`, this directory or the workflow file, every push to `main` or
   `beta`, and daily for both). Validates every operation against the `unraid/api` schema on `main` and at the
   latest release, confirms every watched path still exists upstream, and checks every contract on each stable
-  OS release from the plugin's declared minimum and on the development branch. Red means the plugin sends
+  webgui release tag from the plugin's declared minimum and on the development branch. Red means the plugin sends
   something that is no longer valid, a file it depends on is gone, or a release it supports breaks a contract. The daily run checks each branch with that branch's
   copy of the tool; a manual run checks the branch it is started on.
 - **watch** (daily, on every push to `beta`, and by hand). It always reads the plugin on `beta`, whichever branch
@@ -42,7 +42,8 @@ Once it is on `main` the daily run starts by itself, and still reads `beta`.
 - **Coming with X.Y**: what the newest OS pre-release has that the newest stable does not.
 - **Operations by OS release**: how many of the plugin's operations are valid on the API each OS release
   bundles, and which fields are missing.
-- **Contracts by OS release**: whether each contract holds on every supported release and the development branch.
+- **Contracts by OS release**: whether each contract holds on every webgui release tag from the plugin's minimum
+  and on the development branch. An OS release the webgui has no tag for (some patch releases) is not read.
 - **Unraid CSS by OS release**: per theme, the layout properties Unraid's stylesheets set on an element the
   plugin's own CSS styles, that differ between releases, and that the plugin does not set itself: what can
   look different on an older or newer Unraid. A rule no longer set on the development branch is listed apart,
@@ -72,7 +73,7 @@ with `' + name + '` when `watch.json` has an `expand` rule naming the JS map tha
 - `releases`: directory holding the OS release notes. `since` is the oldest OS release to list, and `tags` is
   the repository whose tags carry those OS versions.
 - `manifest`: the plugin's `.plg`. Its `min` attribute is the oldest OS release the contracts and stylesheets
-  are checked on; the webgui's stable tags from there up are the releases.
+  are checked on; the webgui's stable tags from there up are the releases, and finding none is an error.
 - `contracts`: what the plugin relies on in a webgui file, as a `path`, a regular expression it must `match`,
   and `why`. Optional `since`: the oldest release held to it. Add one with each change that relies on Unraid.
 - `styles`: the `themes`, and the stylesheet `files` that make up each one in load order (`{theme}` is

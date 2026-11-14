@@ -76,7 +76,7 @@ def code(plugin):
 
 def minimum(manifest):
     """The oldest Unraid release the plugin declares it runs on: the PLUGIN tag's min attribute; None when it has none."""
-    found = re.search(r'<PLUGIN\b[^>]*\bmin="(\d+\.\d+\.\d+)"', manifest.read_text(encoding='utf-8')) if manifest.is_file() else None
+    found = re.search(r'<PLUGIN\b[^>]*\bmin="(\d+\.\d+\.\d+)"', manifest.read_text(encoding='utf-8'))
     return found and found.group(1)
 
 

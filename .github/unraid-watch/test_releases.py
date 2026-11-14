@@ -11,7 +11,7 @@ class ReleasesTest(unittest.TestCase):
                           '10.0.0-beta.1'])
 
     def test_an_os_release_tag_is_a_stable_version_not_a_date(self):
-        self.assertEqual([t for t in ('7.4.0', '7.4.0-rc.1', '2014.11.10', 'v7.4.0', '7.4') if releases.os_tag(t)], ['7.4.0'])
+        self.assertEqual([t for t in ('9.4.0', '9.4.0-rc.1', '2030.11.10', 'v9.4.0', '9.4') if releases.os_tag(t)], ['9.4.0'])
 
     def test_stable_means_no_prerelease_suffix(self):
         self.assertTrue(releases.stable('9.1.0'))

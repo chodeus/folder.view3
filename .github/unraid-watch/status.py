@@ -2,6 +2,7 @@
 import releases
 import schema
 import upstream
+from github import GitHubError
 
 
 def stage(gh, cfg, ops, watched, spans):
@@ -60,9 +61,15 @@ def gather(gh, cfg, ops, watched, heads, local):
     current = schema.load(gh.file(core, heads[core], api['schema']))
     idle, types = schema.coverage(current, api['surface'], schema.check(current, ops)[2], api['namespaces'])
     held = upstream.source(cfg, 'contracts')
-    refs = upstream.release_refs(gh, held, local['floor'])
+    pinned = {held['branch']: heads[held['repo']]}
+    try:
+        refs = upstream.release_refs(gh, held, local['floor'])
+        styles, unmatched = upstream.stylesheets(gh, held, refs, local['styled'], pinned)
+        compat = {'refs': refs, 'contracts': upstream.contracts(gh, held, refs, pinned), 'styles': styles, 'unmatched': unmatched}
+    except GitHubError as e:
+        # These sections only report: a failed read leaves them out and says so, and the news still goes out
+        compat = {'refs': [], 'contracts': [], 'styles': {}, 'unread': str(e)}
     return {'releases': (newest, stable, latest), 'stages': stages, 'matrix': matrix, 'unstated': unstated,
-            'idle': idle, 'types': types, 'refs': refs, 'contracts': upstream.contracts(gh, held, refs),
-            'styles': upstream.stylesheets(gh, held, refs, local['styled']),
+            'idle': idle, 'types': types, **compat,
             # Stylesheets are not pages to move off: they are what the plugin's own CSS sits on
             'legacy': [(path, why) for path, why in sorted(watched[tagged].items()) if not path.endswith('.css')]}

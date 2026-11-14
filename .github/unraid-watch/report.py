@@ -104,19 +104,24 @@ def _runs(values):
 
 
 def _contracts(view):
+    if 'unread' in view:
+        return ['', f'**Contracts and Unraid CSS by OS release**: could not be read ({code(view["unread"], 300)}).']
     *tags, branch = view['refs']
-    span = ((f'{code(tags[0])} to {code(tags[-1])}' if len(tags) > 1 else code(tags[0])) + ' and ' if tags else '') + code(branch)
-    out = ['', '**Contracts by OS release**', '', f'What FolderView3 relies on in the webgui, checked on {span}.', '']
+    span = f'{code(tags[0])} to {code(tags[-1])}' if len(tags) > 1 else code(tags[0])
+    out = ['', '**Contracts by OS release**', '',
+           f'What FolderView3 relies on in the webgui, checked on its release tags {span} and on {code(branch)}.', '']
     for entry, found in view['contracts']:
         held = [ref for ref, ok in found.items() if ok is not None]
-        failed = [ref for ref, ok in found.items() if ok is False]
-        state = 'fails on ' + ', '.join(code(r) for r in failed) if failed else f'holds on all {len(held)}'
+        broken = [f'{"missing" if ok == "missing" else "fails"} on {code(ref)}' for ref, ok in found.items() if ok not in (True, None)]
         since = f' (from {code(entry["since"])})' if 'since' in entry else ''
-        out.append(f'- {code(entry["path"].rsplit("/", 1)[-1])} {entry["why"]}: {state}{since}')
+        out.append(f'- {code(entry["path"].rsplit("/", 1)[-1])} {entry["why"]}: '
+                   + (', '.join(broken) if broken else f'holds on all {len(held)}') + since)
     return out
 
 
 def _styles(view):
+    if 'unread' in view:
+        return []
     themes, changed, gone = list(view['styles']), {}, {}
     for theme, rows in view['styles'].items():
         for context, selector, name, values in rows:
@@ -130,10 +135,12 @@ def _styles(view):
     out = ['', '**Unraid CSS by OS release**', '',
            'Layout properties Unraid sets on elements FolderView3 styles, that differ between releases, and that FolderView3 '
            'does not set itself.', '']
-    out += capped([row(k, w) for k, w in changed.items()], 60) or ['- none']
+    out += capped([row(k, w) for k, w in changed.items()], 40) or ['- none']
+    if view['unmatched']:
+        out += ['', 'Listed in watch.json but on no release: ' + ', '.join(code(p, 200) for p in view['unmatched']) + '.']
     if gone:
         out += ['', f'<details><summary>No longer set in the stylesheets read here ({len(gone)}; may have moved elsewhere)</summary>', '']
-        out += capped([row(k, w) for k, w in gone.items()], 60) + ['', '</details>']
+        out += capped([row(k, w) for k, w in gone.items()], 40) + ['', '</details>']
     return out
 
 
@@ -163,7 +170,6 @@ def render_status(view):
                    + ': ' + '; '.join(members))
     if view['unstated']:
         out.append('- API version not stated in the notes: ' + ', '.join(code(v) for v in view['unstated']))
-    out += _contracts(view) + _styles(view)
     out += ['', f'<details><summary>API not used yet ({len(view["idle"])} operations)</summary>', '']
     out += [f'- {code(signature, 300)}' for signature in view['idle']]
     if view['types']:
@@ -171,6 +177,8 @@ def render_status(view):
                 + ', '.join(f'{code(name)} {read}/{total}' for name, read, total in view['types']) + '.']
     out += ['', '</details>', '', f'<details><summary>Still on legacy ({len(view["legacy"])} webgui files)</summary>', '']
     out += [f'- {code(path, 200)}: {why}' for path, why in view['legacy']] + ['', '</details>']
+    # Last: the longest sections, so a body cut for length loses these before anything above
+    out += _contracts(view) + _styles(view)
     return fit('\n'.join(out)) + '\n\n' + STATUS
 
 

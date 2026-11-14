@@ -129,9 +129,10 @@ class World:
             self.tree(API, ref, {'api/schema.graphql': 's1', 'api/switch.ts': 'w1'})
         self.notes(OLD[DOCS], {})
         self.notes(NEW[DOCS], {})
-        # The webgui with no release tag yet: contracts and stylesheets are read on master alone
-        self.tags(WEB, [])
-        self.tree(WEB, 'master', {EVENTS: 'ev1', 'css/azure.css': 'st1', 'css/black.css': 'st1'})
+        # One supported release that matches master: contracts hold and no stylesheet differs; master is read at its pinned sha
+        self.tags(WEB, ['9.0.3'])
+        for ref in ('9.0.3', NEW[WEB]):
+            self.tree(WEB, ref, {EVENTS: 'ev1', 'css/azure.css': 'st1', 'css/black.css': 'st1'})
         self.blob(WEB, 'ev1', "$arrResponse = ['success' => $DockerClient->startContainer($container)];\n")
         self.blob(WEB, 'st1', '.tip { white-space: pre-line; color: red; }\n.row { white-space: normal; }\n')
 
@@ -179,12 +180,12 @@ class World:
         self.tree(API, NEW[API], {'api/schema.graphql': 's2', 'api/switch.ts': 'w1'})
         self.tree(WEB, STABLE_WEB, {'emhttp/page': 't0', USERPREFS: 'u0'})
         self.tree(WEB, BETA_WEB, {'emhttp/page': 't1', USERPREFS: 'u0'})
-        self.tree(WEB, NEW[WEB], {'emhttp/page': 't1', USERPREFS: 'u0'})
+        self.tree(WEB, NEW[WEB], {'emhttp/page': 't1', USERPREFS: 'u0', EVENTS: 'ev1', 'css/azure.css': 'st1', 'css/black.css': 'st1'})
         self.between(API, [50], span=(LATEST_API, NEW[API]))
         self.between(WEB, [60, 61], status='diverged', span=(STABLE_WEB, BETA_WEB))
         # Only 9.0.3 is a stable OS release at or after the plugin's floor (9.0.0); 9.0.3's azure theme sets .tip's display,
         # master's does not but sets its white-space
-        self.tags(WEB, ['9.1.0-beta.2', '9.0.3', '8.9.0', '2014.11.10'])
+        self.tags(WEB, ['9.1.0-beta.2', '9.0.3', '8.9.0', '2030.11.10'])
         self.tree(WEB, '9.0.3', {EVENTS: 'ev1', 'css/old-azure.css': 'old1'})
         self.blob(WEB, 'old1', '.tip { display: block; color: blue; }\n')
         self.fake.routes['GET', url(f'/repos/{API}/commits', page=1, path='api/switch.ts', per_page=100,
