@@ -66,7 +66,11 @@ function libvirt_domain_get_uuid_string($dom) { return fv3l_domain($dom)['uuid']
 function libvirt_domain_get_id($dom) { $d = fv3l_domain($dom); return $d ? $d['id'] : false; }
 function libvirt_domain_is_active($dom) { $d = fv3l_domain($dom); return $d ? $d['id'] > 0 : false; }
 function libvirt_domain_get_autostart($dom) { $d = fv3l_domain($dom); return $d ? (int)$d['autostart'] : false; }
-function libvirt_domain_get_xml_desc($dom, $xpath = null, $flags = 0) { return fv3l_domain($dom)['xml'] ?? false; }
+// The live XML only, as Unraid asks for it ($dom, 0): an xpath or flags would be a form this fake does not answer
+function libvirt_domain_get_xml_desc($dom, $xpath = null, $flags = 0) {
+    if (!in_array($xpath, [null, 0, '0', ''], true) || $flags !== 0) { fv3l_log('UNKNOWN libvirt_domain_get_xml_desc with an xpath or flags'); return false; }
+    return fv3l_domain($dom)['xml'] ?? false;
+}
 function libvirt_list_domain_snapshots($dom) { return fv3l_domain($dom) ? [] : false; }
 
 function libvirt_domain_get_info($dom) {
@@ -112,6 +116,7 @@ function libvirt_domain_get_counts($conn) {
 
 // php-libvirt's answer: the matches' text in order, their count under 'num', and false when nothing matches
 function libvirt_domain_xml_xpath($dom, $xpath, $flags = 0) {
+    if ($flags !== 0) { fv3l_log('UNKNOWN libvirt_domain_xml_xpath on the inactive XML'); return false; }
     $d = fv3l_domain($dom);
     if (!$d) return false;
     $doc = new DOMDocument();

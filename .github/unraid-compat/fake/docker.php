@@ -18,7 +18,9 @@ function fv3d_running(array $d): array { return array_values(array_filter($d['co
 function fv3d_answer(array $d, string $method, string $target): array {
     $path = (string)parse_url($target, PHP_URL_PATH);
     parse_str((string)parse_url($target, PHP_URL_QUERY), $query);
-    if ($method !== 'GET') return [null, null];
+    // Only `all` on the two lists is answered; a filter or any other parameter is a request this fake does not know
+    $lists = in_array($path, ['/containers/json', '/images/json'], true);
+    if ($method !== 'GET' || array_diff(array_keys($query), $lists ? ['all'] : [])) return [null, null];
     if ($path === '/containers/json') return [200, ($query['all'] ?? '0') !== '0' ? $d['containers'] : fv3d_running($d)];
     if (preg_match('#^/containers/([^/]+)/json$#', $path, $m)) {
         $ct = fv3d_container($d, $m[1]);
@@ -44,7 +46,7 @@ function fv3d_cli(array $d, array $args): ?array {
     if (preg_match('/^ps --filter label=(\S+) --format \{\{\.Names\}\}$/', $line, $m)) {
         return array_map(fn($c) => ltrim($c['Names'][0], '/'), array_values(array_filter(fv3d_running($d), fn($c) => isset($c['Labels'][$m[1]]))));
     }
-    if (str_starts_with($line, 'stats --no-stream') && $format === '{{.ID}};{{.CPUPerc}};{{.MemUsage}}') {
+    if ($line === 'stats --no-stream' && $format === '{{.ID}};{{.CPUPerc}};{{.MemUsage}}') {
         return array_map(fn($c) => substr($c['Id'], 0, 12) . ';0.50%;12.5MiB / 7.7GiB', fv3d_running($d));
     }
     if (preg_match('/^inspect (\S+)$/', $line, $m) && ($ct = fv3d_container($d, $m[1]))) {
