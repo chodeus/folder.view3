@@ -63,6 +63,11 @@ class ImportantCheckTest(unittest.TestCase):
         (problem,) = self.check({'Folder.page': page})
         self.assertIn('Folder.page:1:', problem)
 
+    def test_a_protocol_relative_url_in_page_css_is_no_comment_but_one_in_its_php_is(self):
+        page = '<style>.a { background: url(//cdn.test/x.png); color: red !important; }</style>\n<?php\n// !important: r\necho "<i style=\'top:0 !important\'>"; ?>\n'
+        (problem,) = self.check({'Folder.page': page})
+        self.assertIn('Folder.page:1:', problem)
+
     def test_no_files_to_check_fails_closed(self):
         self.assertEqual(self.check({'README.md': 'x'}), [f'{ROOT}: no CSS, JS, PHP or .page files to check'])
 

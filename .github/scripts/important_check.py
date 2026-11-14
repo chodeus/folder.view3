@@ -43,13 +43,15 @@ def scan(text, kind):
     """(code, comments): the text with comments, CSS strings and JS regexes blanked, and [(start, end, comment text)]."""
     code, comments, i, n = list(text), [], 0, len(text)
     script = kind != 'css'
-    # A .page holds CSS and HTML too: only its <script> blocks have regex literals (url(/x) in a <style> is not one)
+    # A .page holds CSS and HTML too: only its <script> blocks have regex literals (url(/x) in a <style> is not one),
+    # and only those and its PHP blocks have // comments (url(//cdn/x) is not one)
     js = [(0, n)] if kind == 'js' else [m.span(1) for m in re.finditer(r'<script\b[^>]*>(.*?)</script>', text, re.I | re.S)] if kind == 'page' else []
+    slashes = [(0, n)] if kind in ('js', 'php') else js + [m.span(1) for m in re.finditer(r'<\?(.*?)(?:\?>|\Z)', text, re.S)] if kind == 'page' else []
     while i < n:
         c, two = text[i], text[i:i + 2]
         html = kind == 'page' and text.startswith('<!--', i)
         # `//` after a `:` is a URL (https://), not a comment
-        if two == '/*' or html or (script and two == '//' and text[i - 1:i] != ':') or (kind == 'php' and c == '#' and text[i + 1:i + 2] != '['):
+        if two == '/*' or html or (two == '//' and text[i - 1:i] != ':' and _in_script(slashes, i)) or (kind == 'php' and c == '#' and text[i + 1:i + 2] != '['):
             close = '*/' if two == '/*' else '-->' if html else '\n'
             found = text.find(close, i + 2)
             end = n if found == -1 else found + (0 if close == '\n' else len(close))
