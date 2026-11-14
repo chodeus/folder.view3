@@ -6,6 +6,26 @@
   "customManagers": [
     {
       "customType": "regex",
+      "description": "Each release row of the CI matrix's Unraid list, moved to the newest patch of its minor.",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": ["- \\{unraid: '(?<currentValue>[^']+)', php: '[^']+'\\}"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "unraid/webgui",
+      "depTypeTemplate": "unraid-release",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "The matrix's 'newest tag' row: the newest Unraid tag of any kind, betas and release candidates included.",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": ["- \\{unraid: '(?<currentValue>[^']+)', php: '[^']+', row: 'newest tag'\\}"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "unraid/webgui",
+      "depTypeTemplate": "unraid-newest-tag",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
       "description": "actionlint's release tag and tarball SHA-256 in validate-workflows.yml; Renovate takes the same asset's hash from the new release.",
       "managerFilePatterns": ["/^\\.github/workflows/validate-workflows\\.yml$/"],
       "matchStrings": [
@@ -37,6 +57,29 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "Release rows take Unraid releases only (webgui also carries 2014.x date tags, which sort above every 7.x), within their minor.",
+      "matchDepTypes": ["unraid-release"],
+      "allowedVersions": "/^\\d{1,2}\\.\\d+\\.\\d+$/"
+    },
+    {
+      "description": "A new minor gets a row of its own by hand, so a release row never leaves its minor.",
+      "matchDepTypes": ["unraid-release"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "description": "Unraid releases and their betas and release candidates, still without the date tags.",
+      "matchDepTypes": ["unraid-newest-tag"],
+      "allowedVersions": "/^\\d{1,2}\\.\\d+\\.\\d+(-[0-9A-Za-z.]+)?$/",
+      "ignoreUnstable": false
+    },
+    {
+      "description": "One Unraid PR, merged by hand: a patch can change the PHP a release ships (7.2.8 did), so each row's php is checked against the release notes.",
+      "matchDepNames": ["unraid/webgui"],
+      "groupName": "Unraid versions",
+      "automerge": false
+    },
     {
       "description": "Bundled libraries ship to users, so their updates are fix(deps).",
       "matchDepTypes": ["bundled"],
