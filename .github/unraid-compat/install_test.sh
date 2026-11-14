@@ -2,10 +2,12 @@
 # FolderView3 through a real Unraid webGUI's plugin installer: install, upgrade over the last stable, remove, failures, min.
 # Disposable container only, as root, with no network. Usage: install_test.sh <webgui-tree> <unraid-version> <stable-checkout>
 set -u
-# This replaces plugin files and system tools, so it must never touch a real server.
-if [ -e /etc/unraid-version ] || [ -d /boot/config ]; then echo 'Refusing to run on an Unraid system' >&2; exit 2; fi
-web=$(cd "$1" && pwd); version=$2; stable=$(cd "$3" && pwd); repo=$(pwd)
+# This replaces /usr/bin/php, package tools and plugin files, so it runs only in a fresh Docker container, never on a host.
+if [ ! -f /.dockerenv ] || [ -e /etc/unraid-version ] || [ -d /boot/config ]; then echo 'Refusing to run outside a fresh Docker container' >&2; exit 2; fi
+version=$2; repo=$(pwd)
 fail() { echo "FAILED [Unraid $version]: $*"; exit 1; }
+web=$(cd "$1" 2>/dev/null && pwd) && [ -f "$web/emhttp/plugins/dynamix.plugin.manager/scripts/plugin" ] || fail "no Unraid plugin installer under $1"
+stable=$(cd "$3" 2>/dev/null && pwd) && [ -f "$stable/pkg_build.sh" ] || fail "no last-stable checkout with pkg_build.sh at $3"
 awk --version 2>/dev/null | grep -q 'GNU Awk' || fail 'awk is not gawk, as it is on Unraid: the remove script needs RT'
 
 name=folder.view3
@@ -17,22 +19,26 @@ mkdir -p "$docroot/plugins" /boot/config/plugins-error /var/log/plugins /var/log
 cp -R "$web/emhttp/plugins/dynamix" "$web/emhttp/plugins/dynamix.plugin.manager" "$docroot/plugins/"
 ln -sfn "$docroot/plugins/dynamix" "$docroot/webGui"
 printf 'csrf_token="compat-test-token"\n' > /var/local/emhttp/var.ini
-# The hooks check every installed plugin through Unraid's php at /usr/bin/php; this container has only this one
-rm -rf "$docroot/plugins/dynamix.plugin.manager/pre-hooks" "$docroot/plugins/dynamix.plugin.manager/post-hooks"
+# Unraid's pre- and post-install hooks run as #!/usr/bin/php and keep their state under /tmp/plugins
+mkdir -p /tmp/plugins
 ln -sf "$(command -v php)" /usr/bin/php
 plugin() { php "$docroot/plugins/dynamix.plugin.manager/scripts/plugin" "$@"; }
 
-# Slackware's package tools; everything else is Unraid's own code
+# Slackware's package tools, as they work: the record lists the package's files, and removepkg takes those and the folders
+# they leave empty. Everything else is Unraid's own code.
 cat > /sbin/upgradepkg <<'STUB'
 #!/bin/bash
 for pkg; do :; done
 tar -xJf "$pkg" -C / || exit 1
-touch "/var/log/packages/$(basename "$pkg" .txz)"
+tar -tJf "$pkg" > "/var/log/packages/$(basename "$pkg" .txz)"
 STUB
 cat > /sbin/removepkg <<'STUB'
 #!/bin/bash
-rm -rf /usr/local/emhttp/plugins/folder.view3
-rm -f "/var/log/packages/$1"
+record=/var/log/packages/$1
+[ -f "$record" ] || exit 1
+grep -v '/$' "$record" | while IFS= read -r f; do rm -f "/$f"; done
+grep '/$' "$record" | sort -r | while IFS= read -r d; do rmdir "/$d" 2>/dev/null; done
+rm -f "$record"
 STUB
 chmod +x /sbin/upgradepkg /sbin/removepkg
 
@@ -74,6 +80,10 @@ saved_config() { # what a user has saved: folders, settings, a theme, and Unraid
 	printf '0="folder-ZyXwVuTsRqPoNmLkJiHg"\r\n1="Debian 12"\r\n2="Windows"' > /boot/config/plugins/dynamix.vm.manager/userprefs.cfg
 }
 config_sums() { (cd /boot/config/plugins && find $name dockerMan dynamix.vm.manager -type f ! -name "$name-*.txz" ! -path "$name/version" -print0 | sort -z | xargs -0 md5sum); }
+boot() { # boot <step>: what a reboot does: RAM starts empty, and the registered manifest installs again from the flash alone
+	rm -rf "$live" /var/log/packages/$name-* /var/log/plugins/$name.plg
+	plugin install "$manifest" > "$work/$1.log" 2>&1 || { cat "$work/$1.log"; fail "$1: reinstall at boot refused"; }
+}
 set_version "$version"
 
 # A fresh install
@@ -88,12 +98,13 @@ install $new upgrade; installed $new upgrade
 [ ! -e "$flash/$name-$old-x86_64-1.txz" ] || fail 'upgrade: previous archive left on the flash'
 [ ! -e "/var/log/packages/$name-$old-x86_64-1" ] || fail 'upgrade: previous package record left'
 
-# What a reboot does: the registered manifest installs again from the archive on the flash
-rm -f /var/log/plugins/$name.plg
-plugin install "$manifest" > "$work/boot.log" 2>&1 || { cat "$work/boot.log"; fail 'boot: reinstall refused'; }
-installed $new boot
+# A reboot after the upgrade brings back the new version from its archive
+boot boot; installed $new boot
+[ "$(config_sums)" = "$before" ] || fail 'boot: saved files changed'
 
-# Removal leaves nothing, and takes only FolderView3's own entries out of Unraid's orders, line endings kept
+# Removal leaves nothing, a file the package did not ship included, and takes only FolderView3's entries out of Unraid's
+# orders, line endings kept
+printf 'x' > "$live/not-from-the-package"
 plugin remove $name.plg > "$work/remove.log" 2>&1 || { cat "$work/remove.log"; fail 'remove: refused'; }
 [ ! -e "$live" ] && [ ! -e "$flash" ] && [ ! -e /var/log/plugins/$name.plg ] && [ ! -e "$manifest" ] || fail 'remove: files left behind'
 ls /var/log/packages/$name-* >/dev/null 2>&1 && fail 'remove: package record left'
@@ -102,12 +113,14 @@ cmp -s /boot/config/plugins/dockerMan/userprefs.cfg <(printf '0="alpha"\n1="fold
 cmp -s /boot/config/plugins/dynamix.vm.manager/userprefs.cfg <(printf '0="Debian 12"\r\n1="Windows"') \
 	|| fail "remove: VM order not as expected: $(od -c /boot/config/plugins/dynamix.vm.manager/userprefs.cfg | head -5)"
 
-# A download that fails (no network here) leaves the running install and what the user saved
+# A download that fails (no network here) leaves the running install, what the user saved, and a next boot that brings it back
 reset; install $old stable2; saved_config; before=$(config_sums)
 plugin install "$work/$new/$name.plg" > "$work/download.log" 2>&1 && fail 'download: install reported success without its package'
+grep -q 'download failure' "$work/download.log" || { cat "$work/download.log"; fail 'download: refused for a reason other than the download'; }
 installed $old download
-[ -f "$flash/$name-$old-x86_64-1.txz" ] || fail 'download: deleted the archive the next boot installs from'
 [ "$(config_sums)" = "$before" ] || fail 'download: saved files changed'
+[ -f "$flash/$name-$old-x86_64-1.txz" ] || fail 'download: deleted the archive the next boot installs from'
+boot download-boot; installed $old download-boot
 
 # A failed upgradepkg does the same
 reset; install $old stable3; saved_config; before=$(config_sums)
@@ -116,9 +129,11 @@ mv /sbin/upgradepkg "$work/upgradepkg"; printf '#!/bin/bash\nexit 1\n' > /sbin/u
 plugin install "$work/$new/$name.plg" > "$work/upgradepkg.log" 2>&1; status=$?
 mv "$work/upgradepkg" /sbin/upgradepkg
 [ $status -ne 0 ] || fail 'upgradepkg: install reported success though upgradepkg failed'
+grep -q "run failed: 'upgradepkg" "$work/upgradepkg.log" || { cat "$work/upgradepkg.log"; fail 'upgradepkg: refused before upgradepkg ran'; }
 installed $old upgradepkg
-[ -f "$flash/$name-$old-x86_64-1.txz" ] || fail 'upgradepkg: deleted the archive the next boot installs from'
 [ "$(config_sums)" = "$before" ] || fail 'upgradepkg: saved files changed'
+[ -f "$flash/$name-$old-x86_64-1.txz" ] || fail 'upgradepkg: deleted the archive the next boot installs from'
+boot upgradepkg-boot; installed $old upgradepkg-boot
 
 # The installer itself refuses an Unraid below the .plg's min, and says why
 reset; set_version 6.12.15; cp "$work/$new/dist/$name-$new-x86_64-1.txz" "$flash/"

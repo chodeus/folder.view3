@@ -34,6 +34,32 @@ class ImportantCheckTest(unittest.TestCase):
         (problem,) = self.check({'styles/a.css': sheet})
         self.assertIn('a.css:3:', problem)
 
+    def test_a_reason_at_the_end_of_a_line_covers_that_line_only(self):
+        rules = '.a { top: 0 !important } /* !important: r */\n.b { top: 0 !important }\n'
+        decls = '.c {\n    top: 0 !important; /* !important: r */\n    left: 0 !important;\n}\n'
+        self.assertEqual([p.split(': !')[0] for p in self.check({'styles/a.css': rules, 'styles/b.css': decls})],
+                         [f'{ROOT}/styles/a.css:2', f'{ROOT}/styles/b.css:3'])
+
+    def test_a_nested_rule_does_not_move_a_declaration_to_its_selector(self):
+        outer = '/* !important: r */\n.a {\n    .b { color: red }\n    top: 0 !important;\n}\n'
+        inner = '.a {\n    /* !important: r */\n    .b { color: red }\n    top: 0 !important;\n}\n'
+        self.assertEqual(self.check({'styles/a.css': outer}), [])
+        (problem,) = self.check({'styles/b.css': inner})
+        self.assertIn('b.css:4:', problem)
+
+    def test_a_quote_in_a_regex_literal_or_a_php_hash_comment_is_read_as_code_does(self):
+        js = "s = s.replace(/'/g, ''); el.style.cssText = 'x:1 !important'; // !important: r\n"
+        php = "<?php\n# !important: r\necho '.b{top:0 !important}';\n"
+        self.assertEqual(self.check({'scripts/a.js': js, 'server/a.php': php}), [])
+
+    def test_any_case_a_url_or_an_html_reason_is_read_as_the_browser_does(self):
+        found = self.check({'styles/a.css': '.a { top: 0 !IMPORTANT }\n',
+                            'Folder.page': '<p>See https://example.test</p><style>.b { top: 0 !important }</style>\n<!-- !important: r -->\n<i style="top:0 !important"></i>\n'})
+        self.assertEqual([p.split(': !')[0] for p in found], [f'{ROOT}/Folder.page:1', f'{ROOT}/styles/a.css:1'])
+
+    def test_no_files_to_check_fails_closed(self):
+        self.assertEqual(self.check({'README.md': 'x'}), [f'{ROOT}: no CSS, JS, PHP or .page files to check'])
+
     def test_a_reason_comment_must_give_a_reason(self):
         self.assertEqual(len(self.check({'styles/a.css': '/* !important: */\n.a { top: 0 !important }\n'})), 1)
 
@@ -53,7 +79,8 @@ class ImportantCheckTest(unittest.TestCase):
         self.assertEqual([p.split(':')[0] for p in found], [f'{ROOT}/Folder.page', f'{ROOT}/server/a.php'])
 
     def test_a_bundled_library_is_skipped(self):
-        self.assertEqual(self.check({'styles/include/lib.css': '.a { top: 0 !important }\n'}, bundled=['styles/include/lib.css']), [])
+        self.assertEqual(self.check({'styles/include/lib.css': '.a { top: 0 !important }\n', 'styles/own.css': '.b { top: 0 }\n'},
+                                    bundled=['styles/include/lib.css']), [])
 
 
 if __name__ == '__main__':

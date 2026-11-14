@@ -210,9 +210,12 @@ reviews:
       instructions: |
         The Unraid compatibility matrix; CI only, nothing here ships.
         - install_test.sh puts the .plg through each Unraid version's own
-          plugin installer in a throwaway container with no network. Only
-          Slackware's upgradepkg and removepkg are stubbed: flag any other
-          stand-in for Unraid's code. It must refuse to run on a real server.
+          plugin installer, hooks included, in a fresh Docker container with
+          no network; it must refuse to run anywhere else. Only Slackware's
+          upgradepkg and removepkg are stubbed, keeping their file-list
+          records: flag any other stand-in for Unraid's code.
+        - matrix_check.py keeps ci.yml's Unraid rows at one per minor from the
+          .plg's min to the newest release; Renovate only moves rows.
         - Each step asserts what the user is left with (live files, the
           registered manifest, saved folders, Unraid's orders) right after it,
           against values written by hand. A failed step fails the job.

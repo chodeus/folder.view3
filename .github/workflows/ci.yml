@@ -41,6 +41,12 @@ jobs:
           python3 -B -m unittest important_check_test
           python3 -B important_check.py
 
+      - name: The Unraid matrix has a row for every minor up to the newest release
+        working-directory: .github/unraid-compat
+        run: |
+          python3 -B -m unittest matrix_check_test
+          python3 -B matrix_check.py
+
       - name: Variables tab tests
         run: node .github/scripts/variables_tab_test.js
 
@@ -156,23 +162,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The newest release of each minor from the .plg's min, on the PHP that release ships
+        # One release row per minor from the .plg's min, on the PHP its release notes name; Renovate moves each to its newest
+        # patch, and the 'newest tag' row to any newer tag. matrix_check.py fails when a release has no row of its own.
         include:
           - {unraid: '7.0.1', php: '8.3'}
           - {unraid: '7.1.4', php: '8.3'}
-          - {unraid: '7.2.7', php: '8.3'}
+          - {unraid: '7.2.9', php: '8.4'}
           - {unraid: '7.3.5', php: '8.4'}
-          # renovate: newest Unraid
           - {unraid: '7.4.0', php: '8.4'}
-          # renovate: newest Unraid tag, betas included; a beta on a newer PHP needs its php raised by hand
+          # Runs only while it names a beta or release candidate; one on a newer PHP needs its php raised by hand
           - {unraid: '7.4.0', php: '8.4', row: 'newest tag'}
+    env:
+      RUNS: ${{ !matrix.row || contains(matrix.unraid, '-') }}
     steps:
+      - name: Nothing newer than the release rows
+        if: env.RUNS != 'true'
+        env:
+          UNRAID_VERSION: ${{ matrix.unraid }}
+        run: echo "::notice::Unraid $UNRAID_VERSION is a release, so its own release row tests it"
+
       - name: Checkout
+        if: env.RUNS == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Checkout the last stable release
+        if: env.RUNS == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -180,6 +196,7 @@ jobs:
           path: .stable
 
       - name: Checkout the Unraid webGUI at this version
+        if: env.RUNS == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -191,6 +208,7 @@ jobs:
             emhttp/plugins/dynamix.plugin.manager
 
       - name: Install, upgrade, remove and failures through Unraid's own plugin installer
+        if: env.RUNS == 'true'
         env:
           PHP_VERSION: ${{ matrix.php }}
           UNRAID_VERSION: ${{ matrix.unraid }}
