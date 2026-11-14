@@ -62,6 +62,23 @@ $labFolder = $folder('Lab', ['Debian 12']);
 // read.php adds the fields every reader dereferences (fv3_normalize_folders), without writing them
 $read = fn(array $f) => $f + ['hidden_preview' => []];
 
+// FV3's saved folders and settings and Unraid's orders, as fake_unraid.sh wrote them: FV3's reads, its pages and each write below
+// leave them exactly so, bar what the write is meant to change; $leaves checks all six after the reads, the pages and each write
+$dockerPrefs = '/boot/config/plugins/dockerMan/userprefs.cfg';
+$vmPrefs = '/boot/config/plugins/dynamix.vm.manager/userprefs.cfg';
+$autostartFile = '/var/lib/docker/unraid-autostart';
+$saved = fn(string $type) => is_file("$flash/$type.json") ? json_decode(file_get_contents("$flash/$type.json"), true) ?? 'not JSON' : 'absent';
+$state = fn() => ['docker' => $saved('docker'), 'vm' => $saved('vm'), 'settings' => $saved('settings'), 'Docker order' => (string)@file_get_contents($dockerPrefs),
+    'VM order' => (string)@file_get_contents($vmPrefs), 'autostart' => (string)@file_get_contents($autostartFile)];
+$seeded = ['docker' => [$media => $mediaFolder, $tools => $toolsFolder], 'vm' => [$lab => $labFolder], 'settings' => 'absent',
+    'Docker order' => "0=\"folder-$media\"\n1=\"app-a\"\n2=\"app-b\"\n3=\"folder-$tools\"\n4=\"tool-c\"\n5=\"app-d\"\n",
+    'VM order' => "0=\"folder-$lab\"\n1=\"Debian 12\"\n2=\"Home Assistant\"\n3=\"Windows 11\"\n", 'autostart' => "app-a\napp-d 10\n"];
+$leaves = function (string $step, array $changed = []) use ($seeded, $state): void {
+    static $want = null;
+    $want = array_replace($want ?? $seeded, $changed);
+    foreach ($state() as $what => $now) check($now === $want[$what], "$step left $what as " . json_encode($now));
+};
+
 // Unraid's own lists, which FV3's pages fold into folders
 [$status, $body] = req('GET', '/plugins/dynamix.docker.manager/include/DockerContainers.php');
 check($status === 200 && substr_count($body, "<tr class='sortable'>") === 4, "Docker list: status $status, " . substr_count($body, "<tr class='sortable'>") . ' container rows, not 4');
@@ -123,6 +140,7 @@ foreach (['read_order.php?type=docker', 'read_order.php?type=vm', 'read_settings
 check($status === 200 && $body === '2099.01.01', "version: status $status, $body");
 [$status, $body] = req('GET', '/plugins/folder.view3/server/cpu.php');
 check($status === 200 && (int)$body > 0, "cpu: status $status, $body");
+$leaves("FV3's reads");
 
 // FV3's pages in every theme: rendered whole, Unraid's lists that FV3's scripts fold present, FV3's own part present, and every
 // file that part links served by this Unraid
@@ -163,35 +181,36 @@ foreach (['black', 'white', 'azure', 'gray'] as $theme) {
     }
 }
 @unlink('/boot/config/plugins/dynamix/dynamix.cfg');
+$leaves("FV3's pages");
 
-// Writes go through Unraid's CSRF check: a create without the right token saves nothing and FV3 never answers.
-// Each write leaves every saved folder, setting and order exactly as written here.
-$prefs = "0=\"folder-$media\"\n1=\"app-a\"\n2=\"app-b\"\n3=\"folder-$tools\"\n4=\"tool-c\"\n5=\"app-d\"\n";
-$saved = fn(string $type) => json_decode((string)@file_get_contents("$flash/$type.json"), true);
-$before = md5_file("$flash/docker.json");
+// Writes go through Unraid's CSRF check: a create without the right token saves nothing and FV3 never answers
+$create = ['type' => 'docker', 'content' => json_encode($folder('New', ['app-d']))];
 foreach (['missing' => null, 'wrong' => 'not-the-token'] as $case => $token) {
-    [$status, $body, $headers] = req('POST', '/plugins/folder.view3/server/create.php', ['type' => 'docker', 'content' => json_encode($folder('New', ['app-d']))], $token);
-    check(md5_file("$flash/docker.json") === $before && !isset($headers['x-fv3-answer']), "create with the token $case: saved or answered by FV3 (status $status)");
+    [$status, $body, $headers] = req('POST', '/plugins/folder.view3/server/create.php', $create, $token);
+    check(!isset($headers['x-fv3-answer']), "create with the token $case: answered by FV3 (status $status)");
+    $leaves("create with the token $case");
 }
-[$status, $body, $headers] = req('POST', '/plugins/folder.view3/server/create.php', ['type' => 'docker', 'content' => json_encode($folder('New', ['app-d']))]);
+[$status, $body, $headers] = req('POST', '/plugins/folder.view3/server/create.php', $create);
 $new = (string)(json_decode($body, true)['id'] ?? '');
-check($status === 200 && isset($headers['x-fv3-answer']) && $saved('docker') === [$media => $mediaFolder, $tools => $toolsFolder, $new => $folder('New', ['app-d'])],
-    "create: status $status, $body, saved " . json_encode($saved('docker')));
+check($status === 200 && isset($headers['x-fv3-answer']) && $new !== '', "create: status $status, $body");
+$leaves('create', ['docker' => [$media => $mediaFolder, $tools => $toolsFolder, $new => $folder('New', ['app-d'])]]);
 [$status] = req('POST', '/plugins/folder.view3/server/update.php', ['type' => 'docker', 'id' => $media, 'content' => json_encode($folder('Media 2', ['app-a']))]);
-$mediaFolder = $folder('Media 2', ['app-a']);
-check($status === 200 && $saved('docker') === [$media => $mediaFolder, $tools => $toolsFolder, $new => $folder('New', ['app-d'])], "update: status $status, saved " . json_encode($saved('docker')));
+check($status === 200, "update: status $status");
+$leaves('update', ['docker' => [$media => $folder('Media 2', ['app-a']), $tools => $toolsFolder, $new => $folder('New', ['app-d'])]]);
 [$status] = req('POST', '/plugins/folder.view3/server/update.php', ['type' => 'vm', 'id' => $lab, 'content' => json_encode($folder('Lab 2', ['Debian 12']))]);
-check($status === 200 && $saved('vm') === [$lab => $folder('Lab 2', ['Debian 12'])], "update vm: status $status, saved " . json_encode($saved('vm')));
+check($status === 200, "update vm: status $status");
+$leaves('update vm', ['vm' => [$lab => $folder('Lab 2', ['Debian 12'])]]);
 [$status] = req('POST', '/plugins/folder.view3/server/delete.php', ['type' => 'docker', 'id' => $new]);
-check($status === 200 && $saved('docker') === [$media => $mediaFolder, $tools => $toolsFolder], "delete: status $status, saved " . json_encode($saved('docker')));
+check($status === 200, "delete: status $status");
+$leaves('delete', ['docker' => [$media => $folder('Media 2', ['app-a']), $tools => $toolsFolder]]);
 [$status] = req('POST', '/plugins/folder.view3/server/update_settings.php', ['key' => 'dashboard_docker_layout', 'value' => 'classic']);
-check($status === 200 && $saved('settings') === ['dashboard_docker_layout' => 'classic'], "update_settings: status $status, saved " . json_encode($saved('settings')));
-// Autostart out of the saved order: the sync puts it back in folder order, app-d's wait kept, Unraid's own order untouched
-file_put_contents('/var/lib/docker/unraid-autostart', "app-d 10\napp-a\n");
+check($status === 200, "update_settings: status $status");
+$leaves('update_settings', ['settings' => ['dashboard_docker_layout' => 'classic']]);
+// Autostart out of the saved order: the sync puts it back in folder order with app-d's wait kept, and changes nothing else
+file_put_contents($autostartFile, "app-d 10\napp-a\n");
 [$status, $body] = req('POST', '/plugins/folder.view3/server/sync_order.php', ['type' => 'docker']);
-$autostart = (string)@file_get_contents('/var/lib/docker/unraid-autostart');
-check($status === 200 && json_decode($body) !== null && $autostart === "app-a\napp-d 10\n", "sync_order: status $status, $body, autostart " . json_encode($autostart));
-check((string)@file_get_contents('/boot/config/plugins/dockerMan/userprefs.cfg') === $prefs, "Unraid's Docker order changed by FV3's writes");
+check($status === 200 && json_decode($body) !== null, "sync_order: status $status, $body");
+$leaves('sync_order', ['autostart' => "app-a\napp-d 10\n"]);
 
 // What the runs left in the logs: FV3's files must log nothing, and neither fake was asked anything it does not know
 // From 7.2 Unraid logs a .page's inline PHP as "in plugins/folder.view3/<file>.page", with no leading slash

@@ -52,7 +52,11 @@ function fv3l_lookup(string $field, $value) {
     return false;
 }
 
-function libvirt_connect($uri = null, $readonly = true, $credentials = []) { return fv3l_handle('connection', 'qemu:///system'); }
+// Unraid's Libvirt class connects read-write to qemu:///system; another URI or a read-only connection is not this fake
+function libvirt_connect($uri = null, $readonly = true, $credentials = []) {
+    if ($uri !== 'qemu:///system' || $readonly !== false) { fv3l_log('UNKNOWN libvirt_connect to ' . var_export($uri, true) . ($readonly === false ? '' : ' read-only')); return false; }
+    return fv3l_handle('connection', 'qemu:///system');
+}
 function libvirt_get_last_error() { return $GLOBALS['fv3l_error'] ?? null; }
 function libvirt_logfile_set($filename, $maxsize = 0) { return true; }
 function libvirt_connect_get_uri($conn) { return 'qemu:///system'; }
@@ -97,8 +101,10 @@ function libvirt_domain_get_block_info($dom, $dev) {
     return false;
 }
 
-// Unraid's VM usage poller reads these keys per domain name; a running domain has used some CPU time
+// Unraid's VM usage poller asks for every stat of every domain ($conn alone) and reads these keys; a stats or flags selection is
+// a form this fake does not answer. A running domain has used some CPU time
 function libvirt_connect_get_all_domain_stats($conn, $stats = 0, $flags = 0) {
+    if ($stats !== 0 || $flags !== 0) { fv3l_log('UNKNOWN libvirt_connect_get_all_domain_stats with a stats or flags selection'); return false; }
     $all = [];
     foreach (fv3l_domains() as $name => $d) {
         $info = libvirt_domain_get_info(fv3l_handle('domain', $name));

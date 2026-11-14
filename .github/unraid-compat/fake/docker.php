@@ -18,10 +18,13 @@ function fv3d_running(array $d): array { return array_values(array_filter($d['co
 function fv3d_answer(array $d, string $method, string $target): array {
     $path = (string)parse_url($target, PHP_URL_PATH);
     parse_str((string)parse_url($target, PHP_URL_QUERY), $query);
-    // Only `all` on the two lists is answered; a filter or any other parameter is a request this fake does not know
+    // Only `all` on the two lists is answered; a filter, any other parameter or all[] (Docker's key `all[]`, not `all`) is a
+    // request this fake does not know
     $lists = in_array($path, ['/containers/json', '/images/json'], true);
-    if ($method !== 'GET' || array_diff(array_keys($query), $lists ? ['all'] : [])) return [null, null];
-    if ($path === '/containers/json') return [200, ($query['all'] ?? '0') !== '0' ? $d['containers'] : fv3d_running($d)];
+    if ($method !== 'GET' || array_diff(array_keys($query), $lists ? ['all'] : []) || array_filter($query, 'is_array')) return [null, null];
+    // Docker's httputils.BoolValue: empty, 0, no, false and none are false, any other value true
+    $all = !in_array(strtolower(trim($query['all'] ?? '')), ['', '0', 'no', 'false', 'none'], true);
+    if ($path === '/containers/json') return [200, $all ? $d['containers'] : fv3d_running($d)];
     if (preg_match('#^/containers/([^/]+)/json$#', $path, $m)) {
         $ct = fv3d_container($d, $m[1]);
         return $ct ? [200, $ct] : [404, ['message' => "No such container: {$m[1]}"]];
