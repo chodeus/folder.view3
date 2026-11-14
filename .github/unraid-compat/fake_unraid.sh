@@ -57,7 +57,7 @@ cat > /boot/config/plugins/dockerMan/templates-user/my-app-a.xml <<'EOF'
 </Container>
 EOF
 
-# Every PHP process starts as Unraid's php.ini has it: short tags, the prepend, errors to a log and never into a page
+# PHP as Unraid's php.ini sets it: short tags, the prepend, errors to a log and never into a page
 cat > "$PHP_INI_DIR/conf.d/zz-fake-unraid.ini" <<EOF
 short_open_tag=On
 auto_prepend_file=$here/fake/prepend.php

@@ -65,7 +65,7 @@ foreach ($vms as $vm) check(str_contains($body, $vm), "VM list has no row for $v
 [$status, $body] = req('POST', '/webGui/include/DashboardApps.php', ['docker' => 1, 'vms' => 1, 'vmusage' => 'N']);
 foreach (array_merge($containers, $vms) as $name) check($status === 200 && str_contains($body, $name), "Dashboard tiles: status $status, no tile for $name");
 
-// FV3's reads, each answered from what Unraid's own code got from Docker and libvirt
+// FV3's reads; the Docker and VM ones answer from what Unraid's own code got from the fakes
 $info = get_json('read_info.php?type=docker', $status);
 check($status === 200 && is_array($info) && $sorted(array_keys($info)) === $containers, "read_info docker: status $status, containers " . json_encode(is_array($info) ? array_keys($info) : $info));
 if (is_array($info) && $sorted(array_keys($info)) === $containers) {
@@ -157,7 +157,7 @@ foreach (['black', 'white', 'azure', 'gray'] as $theme) {
 }
 @unlink('/boot/config/plugins/dynamix/dynamix.cfg');
 
-// Writes go through Unraid's CSRF check: without the token nothing is saved and FV3 never answers
+// Writes go through Unraid's CSRF check: a create without the right token saves nothing and FV3 never answers
 $folder = fn(string $name, array $members) => json_encode(['name' => $name, 'icon' => '', 'regex' => '', 'containers' => $members, 'settings' => ['preview' => 1], 'actions' => []]);
 $before = md5_file("$flash/docker.json");
 foreach (['missing' => null, 'wrong' => 'not-the-token'] as $case => $token) {
