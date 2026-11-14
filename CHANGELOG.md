@@ -4,9 +4,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- refactor: the folder-file code moves from lib.php to lib.folders.php
-- fix: a success with an error field stays a success, a null answer is a failure; the API-first path and raw VM fixtures are tested
-- fix: a folder action Unraid refuses shows Unraid's reason, not its JSON answer
+- Folder actions that Unraid refuses now show its reason instead of raw JSON
 
 ## 2026.11.14.1 (beta)
 
