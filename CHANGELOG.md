@@ -2,6 +2,10 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Folder actions that Unraid refuses now show its reason instead of raw JSON
+
 ## 2026.11.14.1 (beta)
 
 - Folder saves from two tabs, or made at once, no longer overwrite each other
