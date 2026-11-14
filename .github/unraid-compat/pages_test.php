@@ -135,15 +135,38 @@ $folders = get_json('read.php?type=vm', $status);
 check($status === 200 && $folders === [$lab => $read($labFolder)], 'read vm: ' . json_encode($folders));
 $autostart = get_json('read_autostart.php', $status);
 check($status === 200 && ($autostart['autostart'] ?? null) === [['name' => 'app-a', 'wait' => 0], ['name' => 'app-d', 'wait' => 10]], 'read_autostart: ' . json_encode($autostart));
-foreach (['read_order.php?type=docker', 'read_order.php?type=vm', 'read_settings.php', 'list_themes.php', 'read_css_config.php', 'read_css_defaults.php',
-    'read_error_log.php', 'read_organizer_registry.php', 'export_all.php'] as $path) {
+// Unraid's saved orders, and no FV3 settings, themes, styles or organizer folders yet; re-encoded, so {} and [] stay apart
+$exact = [
+    'read_order.php?type=docker' => json_encode(["folder-$media", 'app-a', 'app-b', "folder-$tools", 'tool-c', 'app-d']),
+    'read_order.php?type=vm' => json_encode(["folder-$lab", 'Debian 12', 'Home Assistant', 'Windows 11']),
+    'read_settings.php' => '{}', 'list_themes.php' => '[]', 'read_css_config.php' => '{}', 'read_organizer_registry.php' => '{"folders":[]}',
+];
+foreach ($exact as $path => $want) {
     [$status, $body] = req('GET', "/plugins/folder.view3/server/$path");
-    check($status === 200 && json_decode($body) !== null, "$path: status $status, not JSON: " . substr($body, 0, 200));
+    check($status === 200 && json_encode(json_decode($body)) === $want, "$path: status $status, " . substr($body, 0, 200));
 }
+// All 49 of the CSS tool's defaults, two of them by value
+$defaults = get_json('read_css_defaults.php', $status);
+check($status === 200 && is_array($defaults) && count($defaults) === 49 && ($defaults['folder-view3-graph-cpu'] ?? null) === '#2b8da3'
+    && ($defaults['fv3-folder-name-min-width'] ?? null) === '220px', "read_css_defaults: status $status, " . substr(json_encode($defaults), 0, 200));
+// The backup: the seeded folders and nothing else of FV3's yet, stamped with this Unraid, this FV3 and the time
+$export = get_json('export_all.php', $status);
+$stamp = strtotime((string)($export['exported'] ?? ''));
+unset($export['exported']);
+check($status === 200 && $export === ['fv3_export_version' => 1, 'plugin_version' => '2099.01.01', 'unraid_version' => $version,
+    'docker' => [$media => $mediaFolder, $tools => $toolsFolder], 'vm' => [$lab => $labFolder], 'settings' => [], 'autostart' => [],
+    'css_config' => [], 'custom_styles' => [], 'order_docker' => [], 'order_vm' => []], "export_all: status $status, " . json_encode($export));
+check($stamp !== false && abs($stamp - time()) < 300, 'export_all: not stamped with the time');
+// FV3's debug panel shows the error log's last 200 lines; what those lines may hold is checked with the logs below
+$raw = trim((string)@file_get_contents("$flash/error.log"));
+$log = get_json('read_error_log.php', $status);
+check($status === 200 && $log === ['log' => implode("\n", array_slice($raw === '' ? [] : explode("\n", $raw), -200))], "read_error_log: status $status, not the log's tail");
 [$status, $body] = req('GET', '/plugins/folder.view3/server/version.php');
 check($status === 200 && $body === '2099.01.01', "version: status $status, $body");
+// Logical CPUs, as this container's /proc/cpuinfo lists them
+$cpus = count(preg_grep('/^processor\s*:/', file('/proc/cpuinfo')));
 [$status, $body] = req('GET', '/plugins/folder.view3/server/cpu.php');
-check($status === 200 && (int)$body > 0, "cpu: status $status, $body");
+check($status === 200 && trim($body) === (string)$cpus, "cpu: status $status, $body, not $cpus");
 $leaves("FV3's reads");
 
 // FV3's pages in every theme: rendered whole, Unraid's lists that FV3's scripts fold present, FV3's own part present, and every
@@ -219,11 +242,17 @@ $leaves('sync_order', ['autostart' => "app-a\napp-d 10\n"]);
 // What the runs left in the logs: FV3's files must log nothing, no stand-in was asked anything it does not answer, and no
 // command the webGUI ran was missing where the shell's error reached php -S's log (one run with 2>/dev/null fails unseen)
 // From 7.2 Unraid logs a .page's inline PHP as "in plugins/folder.view3/<file>.page", with no leading slash
-$fv3Lines = preg_grep('#plugins/folder\.view3/#', file('/var/log/phplog', FILE_IGNORE_NEW_LINES));
+$phplog = file('/var/log/phplog', FILE_IGNORE_NEW_LINES);
+$fv3Lines = preg_grep('#plugins/folder\.view3/#', $phplog);
 check(!$fv3Lines, "PHP logged from FV3's files:\n  " . implode("\n  ", array_slice($fv3Lines, 0, 20)));
-// php-error lines copy every warning of the request, Unraid's too, and name only the file's basename: the PHP log judges those
+// No script died or failed an include: in Unraid's own code, a sign of state the fakes lack
+$broken = preg_grep('/PHP Fatal error|Failed opening .* for inclusion/', $phplog);
+check(!$broken, "PHP died or missed a file:\n  " . implode("\n  ", array_slice(array_unique($broken), 0, 20)));
+// FV3's error log copies every warning raised in its requests, Unraid's too, by basename. With VM debug on, a real Unraid's
+// libvirt.php adds one when it keys an array by a domain handle; any other line fails
 $errorLog = is_file("$flash/error.log") ? file("$flash/error.log", FILE_IGNORE_NEW_LINES) : [];
-$reported = $errorLog === false ? ['error.log could not be read'] : preg_grep('/^\[[^]]+\] (?!php-error: )/', $errorLog);
+$handleWarning = '/^\[[^]]+\] php-error: Resource ID#\d+ used as offset, casting to integer \(\d+\) at libvirt\.php:\d+$/';
+$reported = $errorLog === false ? ['error.log could not be read'] : preg_grep($handleWarning, $errorLog, PREG_GREP_INVERT);
 check(!$reported, "FV3's error.log:\n  " . implode("\n  ", $reported));
 $unknown = preg_grep('/UNKNOWN/', file('/var/log/fv3-fakes.log', FILE_IGNORE_NEW_LINES));
 check(!$unknown, "the fakes were asked what they do not answer:\n  " . implode("\n  ", array_unique($unknown)));

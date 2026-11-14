@@ -13,24 +13,45 @@ fv3_build "$repo" 2099.01.01 beta || fail 'package build'
 tar -xJf "$work/2099.01.01/dist/$name-2099.01.01-x86_64-1.txz" -C / || fail 'package unpack'
 mkdir -p "$flash/styles" "$flash/scripts" && printf '2099.01.01' > "$flash/version"
 
-# Unraid's own state, as emhttp writes it with the array started
+# Unraid's own state in emhttp's files, the array started: a synthetic licence and flash, root alone, and no devices, disks
+# or user shares
 printf 'version="%s"\n' "$version" > /etc/unraid-version
 cat >> /var/local/emhttp/var.ini <<EOF
 version="$version"
 NAME="Tower"
+COMMENT=""
+SYS_MODEL=""
 fsState="Started"
 mdState="STARTED"
+deviceCount="0"
+shareSMBEnabled="yes"
+shareNFSEnabled="no"
+configValid="yes"
+flashGUID="0000-0000-0000-000000000000"
+flashVendor="Example"
+flashProduct="FV3 Test Flash"
+regTy="Pro"
+regTm="1735689600"
+regExp=""
 regBuildTime="1735689600"
 EOF
+for ini in devs disks sec sec_nfs shares; do : > /var/local/emhttp/$ini.ini; done
+printf '["root"]\nidx="0"\nname="root"\ndesc="Console and webGui login account"\npasswd="yes"\n' > /var/local/emhttp/users.ini
 printf '[eth0]\nBONDING="no"\nBRIDGING="no"\nIPADDR:0="192.0.2.10"\nNETMASK:0="255.255.255.0"\nUSE_DHCP:0="no"\n' > /var/local/emhttp/network.ini
 printf 'DOCKER_ENABLED="yes"\n' > /boot/config/docker.cfg
 # DEBUG keeps PHP warnings on: without it Unraid's libvirt_helpers.php, which FV3 loads, turns error reporting off
 printf 'SERVICE="enable"\nDEBUG="yes"\n' > /boot/config/domain.cfg
-# The OS image adds the Connect plugin, which the webGUI repo lacks from 7.2 on; 7.4's header requires its state class
+# Unraid's own writers add every other key with its default
+for cfg in dynamix.docker.manager/scripts/dockerconfig dynamix.vm.manager/scripts/libvirtconfig; do
+	php -d short_open_tag=On $docroot/plugins/$cfg || fail "$cfg"
+done
+# The OS image adds the Connect plugin, which the webGUI repo lacks from 7.2 on: the header includes its myservers files, and
+# from 7.4 requires its state class
 if [ ! -f $docroot/plugins/dynamix.my.servers/include/state.php ]; then
 	mkdir -p $docroot/plugins/dynamix.my.servers/include
 	cp "$here/fake/connect_state.php" $docroot/plugins/dynamix.my.servers/include/state.php
 	: > $docroot/plugins/dynamix.my.servers/include/myservers1.php
+	: > $docroot/plugins/dynamix.my.servers/include/myservers2.php
 fi
 ln -sf $docroot/plugins/dynamix.plugin.manager/scripts/plugin /usr/local/sbin/plugin
 

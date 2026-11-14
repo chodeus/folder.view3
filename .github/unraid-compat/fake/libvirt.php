@@ -102,7 +102,8 @@ function libvirt_domain_get_block_info($dom, $dev) {
 }
 
 // Unraid's VM usage poller asks for every stat of every domain ($conn alone) and reads these keys; a stats or flags selection is
-// a form this fake does not answer. A running domain has used some CPU time
+// a form this fake does not answer. An active domain (running or paused) has used some CPU time and holds all its memory
+// (balloon.rss, which libvirt reports only for an active domain)
 function libvirt_connect_get_all_domain_stats($conn, $stats = 0, $flags = 0) {
     if ($stats !== 0 || $flags !== 0) { fv3l_log('UNKNOWN libvirt_connect_get_all_domain_stats with a stats or flags selection'); return false; }
     $all = [];
@@ -110,7 +111,7 @@ function libvirt_connect_get_all_domain_stats($conn, $stats = 0, $flags = 0) {
         $info = libvirt_domain_get_info(fv3l_handle('domain', $name));
         $all[$name] = ['state.state' => $d['state'], 'state.reason' => 1, 'cpu.time' => $d['id'] > 0 ? 125000000000 : 0,
             'vcpu.current' => $info['nrVirtCpu'], 'vcpu.maximum' => $info['nrVirtCpu'], 'balloon.current' => $info['memory'],
-            'balloon.maximum' => $info['maxMem'], 'net.count' => 0, 'block.count' => 0];
+            'balloon.maximum' => $info['maxMem'], 'net.count' => 0, 'block.count' => 0] + ($d['id'] > 0 ? ['balloon.rss' => $info['memory']] : []);
     }
     return $all;
 }

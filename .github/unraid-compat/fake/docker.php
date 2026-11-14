@@ -39,25 +39,22 @@ function fv3d_answer(array $d, string $method, string $target): array {
     return [null, null];
 }
 
-// The docker CLI lines Unraid and FV3 run, answered in the CLI's own output format
+// The docker CLI lines Unraid and FV3 run, each matched whole (its --format too) and answered in the CLI's own output format
 function fv3d_cli(array $d, array $args): ?array {
-    $format = null;
-    foreach ($args as $i => $a) if (str_starts_with($a, '--format=')) { $format = substr($a, 9); unset($args[$i]); }
     $line = implode(' ', $args);
-    if ($line === 'network ls' && $format === '{{.Name}}={{.Driver}}') return array_map(fn($n) => "{$n['Name']}={$n['Driver']}", $d['networks']);
+    if ($line === 'network ls --format={{.Name}}={{.Driver}}') return array_map(fn($n) => "{$n['Name']}={$n['Driver']}", $d['networks']);
     if ($line === 'ps -q --no-trunc') return array_column(fv3d_running($d), 'Id');
     // A label's presence only, as Unraid filters: label=key=value is a form this fake does not answer
     if (preg_match('/^ps --filter label=([^\s=]+) --format \{\{\.Names\}\}$/', $line, $m)) {
         return array_map(fn($c) => ltrim($c['Names'][0], '/'), array_values(array_filter(fv3d_running($d), fn($c) => isset($c['Labels'][$m[1]]))));
     }
-    if ($line === 'stats --no-stream' && $format === '{{.ID}};{{.CPUPerc}};{{.MemUsage}}') {
+    if ($line === 'stats --no-stream --format={{.ID}};{{.CPUPerc}};{{.MemUsage}}') {
         return array_map(fn($c) => substr($c['Id'], 0, 12) . ';0.50%;12.5MiB / 7.7GiB', fv3d_running($d));
     }
-    if (preg_match('/^inspect (\S+)$/', $line, $m) && ($ct = fv3d_container($d, $m[1]))) {
-        if ($format === '{{.Name}}') return [$ct['Name']];
-        if (preg_match('/^\{\{range \.NetworkSettings\.Networks\}\}\{\{\.(IPAddress|GlobalIPv6Address)\}\} \{\{end\}\}$/', (string)$format, $f)) {
-            return [implode('', array_map(fn($n) => ($n[$f[1]] ?? '') . ' ', $ct['NetworkSettings']['Networks']))];
-        }
+    // DockerUtil::myIP()
+    if (preg_match('/^inspect --format=\{\{range \.NetworkSettings\.Networks\}\}\{\{\.(IPAddress|GlobalIPv6Address)\}\} \{\{end\}\} (\S+)$/', $line, $m)
+        && ($ct = fv3d_container($d, $m[2]))) {
+        return [implode('', array_map(fn($n) => ($n[$m[1]] ?? '') . ' ', $ct['NetworkSettings']['Networks']))];
     }
     return null;
 }
