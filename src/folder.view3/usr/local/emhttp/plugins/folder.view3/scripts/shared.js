@@ -1912,6 +1912,7 @@ window.fv3InstallDockerTableWidthFix = () => {
         if (!storage || !storage.children.length) return;
         const children = Array.from(storage.children);
         const origStyles = children.map(c => c.getAttribute('style') || '');
+        // !important: an inline !important outranks every stylesheet, so no theme or custom CSS shows a row while it is measured
         children.forEach(c => c.style.cssText += ';visibility:hidden !important;');
         children.forEach(c => folder.parentNode.insertBefore(c, folder.nextSibling));
         void tbl.offsetHeight;

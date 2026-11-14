@@ -206,6 +206,20 @@ reviews:
           GraphQL checks in schema.py; flag a second copy of either.
         - TESTS use synthetic versions, shas and handles only; a value captured
           from a live system in a fixture is a finding.
+    - path: ".github/unraid-compat/**"
+      instructions: |
+        The Unraid compatibility matrix; CI only, nothing here ships.
+        - install_test.sh puts the .plg through each Unraid version's own
+          plugin installer in a throwaway container with no network. Only
+          Slackware's upgradepkg and removepkg are stubbed: flag any other
+          stand-in for Unraid's code. It must refuse to run on a real server.
+        - Each step asserts what the user is left with (live files, the
+          registered manifest, saved folders, Unraid's orders) right after it,
+          against values written by hand. A failed step fails the job.
+        - php_tests.sh is the one list of PHP checks for Lint + build and the
+          PHP matrix: php -l on every .php and .page file, then every
+          .github/scripts/*_test.php; a deprecation fails like an error.
+        - Fixtures hold synthetic names and ids only.
     - path: ".github/scripts/**"
       instructions: |
         CI tests and helpers; nothing here ships in the plugin.

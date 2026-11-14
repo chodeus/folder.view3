@@ -6,6 +6,26 @@
   "customManagers": [
     {
       "customType": "regex",
+      "description": "The newest stable Unraid the CI matrix installs FolderView3 on, so a new release is tested before users reach it.",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": ["# renovate: newest Unraid\\s+- \\{unraid: '(?<currentValue>[^']+)'"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "unraid/webgui",
+      "depTypeTemplate": "unraid-stable",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "The newest Unraid tag of any kind, betas and release candidates included, for the matrix's 'newest tag' row.",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": ["# renovate: newest Unraid tag[^\\n]*\\s+- \\{unraid: '(?<currentValue>[^']+)'"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "unraid/webgui",
+      "depTypeTemplate": "unraid-newest-tag",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
       "description": "actionlint's release tag and tarball SHA-256 in validate-workflows.yml; Renovate takes the same asset's hash from the new release.",
       "managerFilePatterns": ["/^\\.github/workflows/validate-workflows\\.yml$/"],
       "matchStrings": [
@@ -37,6 +57,17 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "Unraid releases only: webgui also carries 2014.x date tags, which sort above every 7.x.",
+      "matchDepTypes": ["unraid-stable"],
+      "allowedVersions": "/^\\d{1,2}\\.\\d+\\.\\d+$/"
+    },
+    {
+      "description": "Unraid releases and their betas and release candidates, still without the date tags.",
+      "matchDepTypes": ["unraid-newest-tag"],
+      "allowedVersions": "/^\\d{1,2}\\.\\d+\\.\\d+(-[0-9A-Za-z.]+)?$/",
+      "ignoreUnstable": false
+    },
     {
       "description": "Bundled libraries ship to users, so their updates are fix(deps).",
       "matchDepTypes": ["bundled"],
