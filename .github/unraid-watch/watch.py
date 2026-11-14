@@ -3,15 +3,17 @@
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
+import css
 import scan
 import schema
 import status
 from github import GitHub, GitHubError
 from report import announce, code, read_state, render, render_status, restamp, status_comment
-from upstream import api_changes, release_notes, source, validity
+from upstream import api_changes, contracts, release_notes, release_refs, source, validity
 
 HERE = Path(__file__).resolve().parent
 
@@ -38,7 +40,46 @@ def derive(cfg, root):
             for path, where in found.items():
                 paths.setdefault(path, f'called from {where}')
         watched[src['repo']] = paths
+    problems += release_checks_config(cfg)
     return ops, watched, problems
+
+
+def release_checks_config(cfg):
+    """Problems with the contracts and styles in watch.json: an empty list would read as every release passing."""
+    held = next((s for s in cfg['sources'] if 'contracts' in s), {})
+    styles = held.get('styles', {})
+    problems = [] if held.get('contracts') and styles.get('themes') and styles.get('files') else \
+        ['watch.json: the webgui source needs contracts and styles with themes and files, or the release checks read as passing']
+    for entry in held.get('contracts', []):
+        if not all(isinstance(entry.get(key), str) and entry[key] for key in ('path', 'match', 'why')):
+            problems.append(f'watch.json: a contract needs a path, a match and a why: {entry}')
+            continue
+        try:
+            re.compile(entry['match'])
+        except re.error as e:
+            problems.append(f'watch.json: the contract on {entry["path"]} has a match that is not a regular expression ({e})')
+    return problems
+
+
+def floor(cfg, root):
+    """The oldest Unraid release the plugin supports, from its manifest; a Problem when it states none."""
+    manifest = Path(root, cfg['manifest'])
+    if not manifest.is_file():
+        raise Problem(f'{cfg["manifest"]} is missing, so the oldest Unraid the plugin supports is unknown')
+    found = scan.minimum(manifest)
+    if not found:
+        raise Problem(f'{cfg["manifest"]}: no min="x.y.z" on its PLUGIN tag, so the oldest Unraid it supports is unknown')
+    return found
+
+
+def local(cfg, root):
+    """What the checks per release need from the plugin: the oldest Unraid it supports, and what its stylesheets style."""
+    sheets = scan.stylesheets(Path(root, cfg['plugin']))
+    styled = css.styled(f.read_text(encoding='utf-8') for f in sheets)
+    # No stylesheets, or none that styles an element by id or class, would read as "Unraid changed nothing the plugin styles"
+    if not styled:
+        raise Problem(f'{cfg["plugin"]}/styles has no stylesheets that style an element by id or class, so what the plugin styles is unknown')
+    return {'floor': floor(cfg, root), 'styled': styled}
 
 
 def readable(cfg, root):
@@ -71,6 +112,12 @@ def show(text):
 
 def cmd_check(cfg, root):
     ops, watched, problems = derive(cfg, root)
+    plugin = Path(root, cfg['plugin'])
+    problems += css.fallbacks(scan.stylesheets(plugin), scan.code(plugin))
+    try:
+        local(cfg, root)
+    except Problem as e:
+        problems.append(str(e))
     for query, where in ops:
         print(f'{where[0]:22s} {query}')
     for repo, paths in watched.items():
@@ -84,6 +131,8 @@ def cmd_check(cfg, root):
 
 def cmd_contract(cfg, gh, root, refs):
     ops, watched, errors = derive(cfg, root)
+    # Read before the first request: a manifest that states no minimum stops the run before anything is fetched
+    oldest = floor(cfg, root)
     api = source(cfg, 'schema')
     lines = []
     for ref, bad, deprecated in validity(gh, api, ops, refs or [api['branch'], gh.latest_release(api['repo'])]):
@@ -97,6 +146,17 @@ def cmd_contract(cfg, gh, root, refs):
         gone = [p for p in paths if not gh.exists(repo, head, p)]
         errors += [f'{repo}: {p} no longer exists on {src["branch"]}; fix the call or watch.json' for p in gone]
         lines.append(f'- {len(paths) - len(gone)} of {len(paths)} watched paths present in {repo}')
+    held = source(cfg, 'contracts')
+    pinned = {held['branch']: gh.sha(held['repo'], held['branch'])}
+    for entry, found in contracts(gh, held, release_refs(gh, held, oldest), pinned):
+        missing = [ref for ref, ok in found.items() if ok == 'missing']
+        failed = [ref for ref, ok in found.items() if ok is False]
+        if missing:
+            errors.append(f'{held["repo"]}: {entry["path"]} is missing on {", ".join(missing)}: {entry["why"]}')
+        if failed:
+            errors.append(f'{held["repo"]}: {entry["path"]} does not match {entry["match"]!r} on {", ".join(failed)}: {entry["why"]}')
+        lines.append(f'- contract {entry["path"]}: holds on {sum(ok is True for ok in found.values())} of '
+                     f'{sum(ok is not None for ok in found.values())} refs')
     for error in errors:
         annotate('error', error)
     print('\n'.join(lines))
@@ -107,7 +167,7 @@ def cmd_contract(cfg, gh, root, refs):
 def cmd_status(cfg, gh, root):
     ops, watched = readable(cfg, root)
     heads = {src['repo']: gh.sha(src['repo'], src['branch']) for src in cfg['sources']}
-    show(render_status(status.gather(gh, cfg, ops, watched, heads)))
+    show(render_status(status.gather(gh, cfg, ops, watched, heads, local(cfg, root))))
     return 0
 
 
@@ -151,7 +211,7 @@ def cmd_watch(cfg, gh, root, me, base, dry_run):
             for ref, bad, _ in validity(gh, api, ops, [api['branch'], gh.latest_release(api['repo'])])) + '.'
         body = render(report, heads)
     show(body)
-    view = render_status(status.gather(gh, cfg, ops, watched, heads))
+    view = render_status(status.gather(gh, cfg, ops, watched, heads, local(cfg, root)))
     show(view)
     if dry_run:
         return 0
