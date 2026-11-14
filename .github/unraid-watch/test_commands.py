@@ -178,7 +178,12 @@ class CheckTest(Case):
         Path(world.root, 'plugin/styles/a.css').unlink()
         code, out = self.captured(watch.cmd_check, CFG, world.root)
         self.assertEqual(code, 1)
-        self.assertIn('::error::plugin/styles has no stylesheets', out)
+        self.assertIn('::error::plugin/styles has no stylesheets that style an element', out)
+
+    def test_an_empty_stylesheet_fails_the_same_way(self):
+        code, out = self.check(SCRIPT, styles='')
+        self.assertEqual(code, 1)
+        self.assertIn('::error::plugin/styles has no stylesheets that style an element', out)
 
 
 class MainTest(Case):

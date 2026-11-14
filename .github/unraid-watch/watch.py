@@ -56,10 +56,11 @@ def floor(cfg, root):
 def local(cfg, root):
     """What the checks per release need from the plugin: the oldest Unraid it supports, and what its stylesheets style."""
     sheets = scan.stylesheets(Path(root, cfg['plugin']))
-    # No stylesheets would read as "Unraid changed nothing the plugin styles"
-    if not sheets:
-        raise Problem(f'{cfg["plugin"]}/styles has no stylesheets, so what the plugin styles is unknown')
-    return {'floor': floor(cfg, root), 'styled': css.styled(f.read_text(encoding='utf-8') for f in sheets)}
+    styled = css.styled(f.read_text(encoding='utf-8') for f in sheets)
+    # No stylesheets, or none that styles an element by id or class, would read as "Unraid changed nothing the plugin styles"
+    if not styled:
+        raise Problem(f'{cfg["plugin"]}/styles has no stylesheets that style an element by id or class, so what the plugin styles is unknown')
+    return {'floor': floor(cfg, root), 'styled': styled}
 
 
 def readable(cfg, root):

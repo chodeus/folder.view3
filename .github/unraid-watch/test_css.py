@@ -22,6 +22,9 @@ class RulesTest(unittest.TestCase):
             ('', '.title.y', {'top': '1px'}),
             ('@media (min-width: 1px)', '.title', {'clear': 'both'})])
 
+    def test_a_declaration_after_a_nested_rule_wins_as_it_does_in_the_browser(self):
+        self.assertEqual(css.merged(['.tip { & { top: 1px; } top: 2px; }']), {('', '.tip', 'top'): '2px'})
+
     def test_a_statement_at_rule_does_not_swallow_the_next_rule_and_keyframes_are_no_elements(self):
         text = '@charset "UTF-8";\n@import url(a.css);\n.tip { display: block }\n@keyframes k { from { top: 0 } }'
         self.assertEqual(css.rules(text), [('', '.tip', {'display': 'block'})])

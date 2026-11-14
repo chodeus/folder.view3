@@ -61,23 +61,23 @@ def _condition(text):
 
 
 def _parts(body):
-    """(declarations, [(head, block)]) of a body: its own declarations, and the rules and at-rules nested in it."""
-    own, nested, depth, paren, start, item = [], [], 0, 0, 0, 0
+    """[(None, declarations) or (head, block)] of a body in source order: its own declarations and the rules nested in it."""
+    items, depth, paren, start, item = [], 0, 0, 0, 0
     for i, c in _plain(body):
         paren += (c == '(') - (c == ')') if depth == 0 else 0
         if c == '{':
             if depth == 0:
-                own.append(body[start:item])
+                items.append((None, body[start:item]))
                 head, opened = ' '.join(body[item:i].split()), i + 1
             depth += 1
         elif c == '}' and depth:
             depth -= 1
             if depth == 0:
-                nested.append((head, body[opened:i]))
+                items.append((head, body[opened:i]))
                 start = item = i + 1
         elif c == ';' and depth == 0 and paren <= 0:
             item = i + 1
-    return ''.join(own) + body[start:], nested
+    return items + [(None, body[start:])]
 
 
 def _declarations(text):
@@ -91,10 +91,12 @@ def _declarations(text):
 
 
 def _walk(body, conditions, parents, out):
-    own, nested = _parts(body)
-    decls = _declarations(own) if parents else {}
-    out += [(conditions, parent, decls) for parent in parents if decls]
-    for head, block in nested:
+    # In source order: a declaration after a nested rule comes after it, as the browser applies them
+    for head, block in _parts(body):
+        if head is None:
+            decls = _declarations(block) if parents else {}
+            out += [(conditions, parent, decls) for parent in parents if decls]
+            continue
         if head.startswith('@'):
             if head.split(None, 1)[0].lower() in GROUPS:
                 _walk(block, ' '.join(filter(None, (conditions, _condition(head)))), parents, out)

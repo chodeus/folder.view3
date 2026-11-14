@@ -105,18 +105,20 @@ def stylesheets(gh, src, refs, ours, pinned):
     """({theme: css.changes}, [listed file no release has]) for Unraid's stylesheets; a file one release lacks is skipped."""
     styles = src['styles']
     out, seen = {}, set()
+    # Each theme's own file is its own input: one theme's themes/{theme}.css does not stand in for another's
+    listed = list(dict.fromkeys(p.format(theme=t) for t in styles['themes'] for p in styles['files']))
     for theme in styles['themes']:
         by_ref = {}
         for ref in refs:
             texts = []
-            for pattern in styles['files']:
-                text = text_at(gh, src['repo'], pinned.get(ref, ref), pattern.format(theme=theme))
+            for path in (p.format(theme=theme) for p in styles['files']):
+                text = text_at(gh, src['repo'], pinned.get(ref, ref), path)
                 if text is not None:
                     texts.append(text)
-                    seen.add(pattern)
+                    seen.add(path)
             by_ref[ref] = css.merged(texts)
         out[theme] = css.changes(by_ref, refs, ours)
-    return out, [p for p in styles['files'] if p not in seen]
+    return out, [p for p in listed if p not in seen]
 
 
 def differences(gh, repo, paths, start, head):

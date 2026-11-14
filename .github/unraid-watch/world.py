@@ -186,8 +186,9 @@ class World:
         # Only 9.0.3 is a stable OS release at or after the plugin's floor (9.0.0); 9.0.3's azure theme sets .tip's display,
         # master's does not but sets its white-space
         self.tags(WEB, ['9.1.0-beta.2', '9.0.3', '8.9.0', '2030.11.10'])
-        self.tree(WEB, '9.0.3', {EVENTS: 'ev1', 'css/old-azure.css': 'old1'})
+        self.tree(WEB, '9.0.3', {EVENTS: 'ev1', 'css/old-azure.css': 'old1', 'css/old-black.css': 'old0'})
         self.blob(WEB, 'old1', '.tip { display: block; color: blue; }\n')
+        self.blob(WEB, 'old0', '')
         self.fake.routes['GET', url(f'/repos/{API}/commits', page=1, path='api/switch.ts', per_page=100,
                                     sha=NEW[API])] = [commit(50, 'feat: enable the new page', '2030-01-03T00:00:00Z')]
 

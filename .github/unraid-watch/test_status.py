@@ -4,7 +4,7 @@ import report
 import status
 import upstream
 import watch
-from world import (API, BETA_API, BETA_WEB, CFG, DOCS, LATEST_API, ME, NEW, RELEASE, SCRIPT, STABLE_WEB, USERPREFS, WEB,
+from world import (API, BETA_API, BETA_WEB, CFG, DOCS, EVENTS, LATEST_API, ME, NEW, RELEASE, SCRIPT, STABLE_WEB, USERPREFS, WEB,
                    Case, World, commit, sha, url)
 
 OPS = [('{ docker { statuses { name } } }', ['a.js:3']),
@@ -165,7 +165,13 @@ class StatusTest(Case):
                                   if 'styles' in s else s for s in CFG['sources']]}
         self.w.release_line()
         body = report.render_status(status.gather(self.w.client(), cfg, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
-        self.assertIn('Listed in watch.json but on no release: `css/typo-{theme}.css`.', body)
+        self.assertIn('Listed in watch.json but on no release: `css/typo-azure.css`, `css/typo-black.css`.', body)
+
+    def test_one_themes_file_missing_on_every_release_is_named_though_another_theme_has_it(self):
+        self.w.release_line()
+        self.w.tree(WEB, '9.0.3', {EVENTS: 'ev1', 'css/old-azure.css': 'old1'})
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
+        self.assertIn('Listed in watch.json but on no release: `css/old-black.css`.', body)
 
     def test_watched_stylesheets_are_not_listed_as_legacy_pages(self):
         view = status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {'css/azure.css': 'theme', USERPREFS: 'prefs'}, DOCS: {}},
