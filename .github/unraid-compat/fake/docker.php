@@ -39,22 +39,17 @@ function fv3d_answer(array $d, string $method, string $target): array {
     return [null, null];
 }
 
-// The docker CLI lines Unraid and FV3 run, each matched whole (its --format too) and answered in the CLI's own output format
+// The docker CLI lines Unraid and FV3 run, matched argument by argument as the shell split them (--format too), and answered
+// in the CLI's own output format
 function fv3d_cli(array $d, array $args): ?array {
-    $line = implode(' ', $args);
-    if ($line === 'network ls --format={{.Name}}={{.Driver}}') return array_map(fn($n) => "{$n['Name']}={$n['Driver']}", $d['networks']);
-    if ($line === 'ps -q --no-trunc') return array_column(fv3d_running($d), 'Id');
+    if ($args === ['network', 'ls', '--format={{.Name}}={{.Driver}}']) return array_map(fn($n) => "{$n['Name']}={$n['Driver']}", $d['networks']);
+    if ($args === ['ps', '-q', '--no-trunc']) return array_column(fv3d_running($d), 'Id');
     // A label's presence only, as Unraid filters: label=key=value is a form this fake does not answer
-    if (preg_match('/^ps --filter label=([^\s=]+) --format \{\{\.Names\}\}$/', $line, $m)) {
+    if (count($args) === 5 && [$args[0], $args[1], $args[3], $args[4]] === ['ps', '--filter', '--format', '{{.Names}}'] && preg_match('/^label=([^\s=]+)$/', $args[2], $m)) {
         return array_map(fn($c) => ltrim($c['Names'][0], '/'), array_values(array_filter(fv3d_running($d), fn($c) => isset($c['Labels'][$m[1]]))));
     }
-    if ($line === 'stats --no-stream --format={{.ID}};{{.CPUPerc}};{{.MemUsage}}') {
+    if ($args === ['stats', '--no-stream', '--format={{.ID}};{{.CPUPerc}};{{.MemUsage}}']) {
         return array_map(fn($c) => substr($c['Id'], 0, 12) . ';0.50%;12.5MiB / 7.7GiB', fv3d_running($d));
-    }
-    // DockerUtil::myIP()
-    if (preg_match('/^inspect --format=\{\{range \.NetworkSettings\.Networks\}\}\{\{\.(IPAddress|GlobalIPv6Address)\}\} \{\{end\}\} (\S+)$/', $line, $m)
-        && ($ct = fv3d_container($d, $m[2]))) {
-        return [implode('', array_map(fn($n) => ($n[$m[1]] ?? '') . ' ', $ct['NetworkSettings']['Networks']))];
     }
     return null;
 }
@@ -62,7 +57,7 @@ function fv3d_cli(array $d, array $args): ?array {
 if (($argv[1] ?? '') === 'cli') {
     $args = array_slice($argv, 2);
     $out = fv3d_cli($d, $args);
-    fv3d_log(($out === null ? 'UNKNOWN ' : '') . 'cli ' . implode(' ', $args));
+    fv3d_log(($out === null ? 'UNKNOWN ' : '') . 'cli ' . implode(' ', $args) . ($out === null ? ' (' . count($args) . ' arguments)' : ''));
     if ($out === null) exit(1);
     echo $out ? implode("\n", $out) . "\n" : '';
     exit(0);
