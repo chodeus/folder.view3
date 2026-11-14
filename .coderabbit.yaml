@@ -216,9 +216,6 @@ reviews:
         - Each step asserts what the user is left with (live files, the
           registered manifest, saved folders, Unraid's orders) right after it,
           against values written by hand. A failed step fails the job.
-        - php_tests.sh is the one list of PHP checks for Lint + build and the
-          PHP matrix: php -l on every .php and .page file, then every
-          .github/scripts/*_test.php; a deprecation fails like an error.
         - Fixtures hold synthetic names and ids only.
     - path: ".github/scripts/**"
       instructions: |
@@ -238,6 +235,9 @@ reviews:
           failed read or download as "nothing to report".
         - package.json here is test-only (jquery, jsdom), pinned to exact
           versions.
+        - php_tests.sh is the one list of PHP checks for Lint + build and the
+          PHP matrix: php -l on every .php and .page file, then every
+          *_test.php here; a deprecation fails like an error.
     - path: "**"
       instructions: |-
         Applies to every file, whatever the language:
