@@ -42,16 +42,16 @@ const HOOKS = [
     { page: ALL, css: 'green-text', file: 'scripts/docker.js', loses: 'a started folder loses its green state' },
     { page: ALL, css: 'red-text', file: 'scripts/docker.js', loses: 'a stopped folder loses its red state' },
     { page: ALL, css: 'orange-text', file: 'scripts/docker.js', loses: "a folder's drag handle and update mark lose their colour" },
-    // Unraid's functions and jQuery plugins
+    // Unraid's functions and jQuery plugins, each callable, and its CSRF token, a non-empty string
     { page: D, js: 'loadlist', file: 'scripts/docker.js', loses: 'folders never draw' },
     { page: D, js: 'listview', file: 'scripts/docker.js', loses: 'folders are not redrawn after a view toggle' },
     { page: D, js: 'openDocker', file: 'scripts/docker.js', loses: "a folder's Update does nothing" },
     { page: D, js: 'openTerminal', file: 'scripts/docker.js', loses: 'the console and log buttons do nothing' },
-    { page: D, js: 'dockerload', file: 'scripts/docker.js', loses: 'no CPU and memory stats without the Unraid API' },
+    { page: D, js: 'dockerload.addEventListener', file: 'scripts/docker.js', loses: 'no CPU and memory stats without the Unraid API' },
     { page: V, js: 'loadlist', file: 'scripts/vm.js', loses: 'folders never draw' },
     { page: ALL, js: 'context.attach', file: 'scripts/docker.js', loses: 'folders have no menus' },
     { page: ALL, js: 'swal', file: 'scripts/shared.js', loses: 'no confirm or error dialogs' },
-    { page: ALL, js: 'csrf_token', file: 'scripts/include/customEvents.js', loses: "every FV3 save is refused" },
+    { page: ALL, js: 'csrf_token', string: true, file: 'scripts/include/customEvents.js', loses: "every FV3 save is refused" },
     { page: ALL, js: '$.fn.tooltipster', file: 'scripts/advanced-preview.js', loses: 'no advanced preview' },
     { page: D, js: '$.fn.switchButton', file: 'scripts/docker.js', loses: 'the folder autostart switch never draws' },
     { page: D, js: '$.fn.sortable', file: 'scripts/docker.js', loses: 'folders cannot be dragged' },
@@ -93,7 +93,10 @@ function missingHooks(hooks) {
         if (h.dom) return !!document.querySelector(h.dom);
         if (h.any) return h.any.some((s) => document.querySelector(s));
         if (h.css) return new RegExp(`\\.${h.css}(?![\\w-])`).test(selectors);
-        try { return (0, eval)(`typeof ${h.js}`) !== 'undefined'; } catch { return false; }
+        try {
+            const value = (0, eval)(h.js);
+            return h.string ? typeof value === 'string' && value !== '' : typeof value === 'function';
+        } catch { return false; }
     };
     return hooks.map((h, i) => (present(h) ? -1 : i)).filter((i) => i >= 0);
 }
