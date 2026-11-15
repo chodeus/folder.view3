@@ -143,21 +143,26 @@ async function settled(page, read, arg) {
     throw new Error(`still changing after 10 s: ${JSON.stringify(last)}`);
 }
 
-// A user's click, the target scrolled to the middle first. When something lies over it, FV3's own element fails the view; Unraid's
-// (7.0's fixed sidebar themes cover the left of the page below desktop width) gets the click dispatched to the target instead
+// Unraid's own page frame. A click it covers is dispatched to the target; any other cover fails the view
+const FRAME = [
+    ['#menu', "7.0's azure and gray sidebar: fixed at the left edge, it lies over the page below desktop width"],
+];
+
+// A user's click, the target scrolled to the middle first
 async function press(locator, what) {
     await locator.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }));
     try {
         await locator.click({ timeout: 5000 });
     } catch (e) {
-        const cover = await locator.evaluate((el) => {
+        const cover = await locator.evaluate((el, frame) => {
             if (!window.fv3Test.seen(el)) return null;
             const r = el.getBoundingClientRect();
             const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
             if (!top || el.contains(top)) return null;
-            for (let n = top; n && n !== document.body; n = n.parentElement) if ([...n.classList].some((c) => /^(fv3|folder-)/.test(c))) return `FV3's ${n.tagName.toLowerCase()}.${[...n.classList].join('.')}`;
-            return '';
-        });
+            if (frame.some((selector) => top.closest(selector))) return '';
+            const n = top.closest('[id], [class]') || top;
+            return `${n.tagName.toLowerCase()}${n.id ? `#${n.id}` : ''}${[...n.classList].map((c) => `.${c}`).join('')}`;
+        }, FRAME.map(([selector]) => selector));
         if (cover === null) throw new Error(`${what} could not be clicked: ${e.message.split('\n')[0]}`);
         if (cover) throw new Error(`${what} is covered by ${cover}`);
         await locator.dispatchEvent('click');
