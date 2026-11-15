@@ -233,8 +233,11 @@ reviews:
           tiles, an opened folder, the advanced preview's layout) against
           values written by hand. A failed request or console error passes
           only for a service the fake does not run (ABSENT) or for Unraid's
-          own unload handler. fake_logs.php holds the log checks both tests
-          run. package.json pins playwright-core to the image's version.
+          own unload handler. Clicks are a user's; only where Unraid's own
+          layout covers the target is the click dispatched instead.
+          fake_logs.php holds the log checks both tests run. package.json
+          pins playwright-core to the image's version, which
+          browser_test.sh checks.
         - matrix_check.py keeps ci.yml's Unraid rows at one per minor from the
           .plg's min to the newest release; Renovate only moves rows.
         - Each step asserts what the user is left with (live files, the

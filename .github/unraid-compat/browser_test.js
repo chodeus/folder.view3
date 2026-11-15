@@ -1,4 +1,4 @@
-// FV3's pages in Chromium and Firefox on the fake Unraid browser_test.sh started, every theme and width; a screenshot per view.
+// FV3's pages in Chromium and Firefox on the fake Unraid browser_test.sh started, 4 themes at 3 widths, screenshots kept.
 // Usage: node browser_test.js <unraid-version> <screenshot-dir> <the fake's csrf token>
 'use strict';
 const fs = require('fs');
@@ -8,11 +8,13 @@ const [version, shots, fakeToken] = process.argv.slice(2);
 const base = 'http://127.0.0.1';
 const failures = [];
 let checks = 0;
-const check = (ok, what) => { checks++; if (!ok) failures.push(what); return ok; };
+// Each failure prints as it happens, so a run the step's time limit kills still shows what failed
+const check = (ok, what) => { checks++; if (!ok) { failures.push(what); console.log(`- ${what}`); } return ok; };
 const same = (got, want) => JSON.stringify(got) === JSON.stringify(want);
 
 const MEDIA = 'MediaAbCdEfGhIjKlMnO';
 const LAB = 'LabFoldAbCdEfGhIjKlM';
+const SPARE = 'Spare & <b>';
 const THEMES = ['black', 'white', 'azure', 'gray'];
 const SIZES = [[1440, 900], [768, 1024], [400, 860]];
 
@@ -21,15 +23,23 @@ const ABSENT = [
     [/^\/sub\//, "Unraid's nchan push channels: the fake runs no nchan, so the page's live updates never connect"],
     [/^\/graphql$/, "the Unraid API: the fake has none, so FV3's fv3DetectApi takes the PHP path"],
 ];
-const absent = (url) => { try { const path = new URL(url).pathname; return ABSENT.some(([re]) => re.test(path)); } catch { return false; } };
-// Chromium refuses every unload handler: Unraid's dynamix.js adds some, and on 7.0 the Docker and Dashboard pages' inline
-// scripts too. From those sources the refusal is Unraid's, while FV3's shipped files add none
+const pathOf = (url) => { try { return new URL(url).pathname; } catch { return ''; } };
+const absent = (url) => ABSENT.some(([re]) => re.test(pathOf(url)));
+// Chromium refuses every unload handler: Unraid's dynamix.js adds some, and 7.0's inline page scripts. From dynamix.js or the
+// page itself the refusal is Unraid's while FV3's shipped files add none, which fv3Unload checks
 const plugin = `${__dirname}/../../src/folder.view3/usr/local/emhttp/plugins/folder.view3`;
 const fv3Unload = fs.readdirSync(plugin, { recursive: true }).filter((f) => /\.(js|page|php)$/.test(f))
     .filter((f) => /(?<!before)unload\b/.test(fs.readFileSync(`${plugin}/${f}`, 'utf8')));
 const unraidUnload = (m, page) => {
     if (fv3Unload.length || m.text() !== 'Permissions policy violation: unload is not allowed in this document.') return false;
-    try { return ['/webGui/javascript/dynamix.js', `/${page}`].includes(new URL(m.location()?.url).pathname); } catch { return false; }
+    return ['/webGui/javascript/dynamix.js', `/${page}`].includes(pathOf(m.location()?.url));
+};
+// A console error from FV3's files is never excused; elsewhere, by its source or a URL in its text (trailing punctuation dropped)
+const excused = (m, page) => {
+    const from = m.location()?.url || '';
+    if (pathOf(from).startsWith('/plugins/folder.view3/')) return false;
+    const urls = [from, ...(m.text().match(/\b(?:https?|wss?):\/\/[^\s'"]+/g) || []).map((u) => u.replace(/[.,;:)]+$/, ''))];
+    return urls.some(absent) || unraidUnload(m, page);
 };
 
 // Each page's own rows, tiles and folders as the user sees them, read in the page: a folder as "name [members it shows]", a
@@ -53,26 +63,32 @@ const READ = {
     },
 };
 
-// What fake_unraid.sh saved: Media holds app-a by hand and app-b by its label, Tools takes tool-c by regex, app-d is loose, Lab
-// holds Debian 12; each list in Unraid's saved order
+// fake_unraid.sh's setup in Unraid's saved order: Media holds app-a by hand and app-b by its label, Tools takes tool-c by regex,
+// app-d is loose, Lab holds Debian 12. The empty folder made below is in no saved order, so FV3 draws it first
 const WANT = {
-    Docker: { shut: ['Media [app-a, app-b]', 'Tools [tool-c]', 'app-d'], open: ['Media [app-a, app-b]', 'app-a', 'app-b', 'Tools [tool-c]', 'app-d'] },
+    Docker: {
+        shut: [`${SPARE} []`, 'Media [app-a, app-b]', 'Tools [tool-c]', 'app-d'],
+        open: [`${SPARE} []`, 'Media [app-a, app-b]', 'app-a', 'app-b', 'Tools [tool-c]', 'app-d'],
+    },
     VMs: {
         shut: { rows: ['Lab [Debian 12]', 'Home Assistant', 'Windows 11'], details: '3 of 3 detail rows after their VM' },
         open: { rows: ['Lab [Debian 12]', 'Debian 12', 'Home Assistant', 'Windows 11'], details: '3 of 3 detail rows after their VM' },
     },
     Dashboard: {
-        shut: { docker: ['Media [app-a, app-b] shows []', 'Tools [tool-c] shows []', 'app-d'], vms: ['Lab [Debian 12] shows []', 'Home Assistant', 'Windows 11'] },
-        open: { docker: ['Media [app-a, app-b] shows [app-a, app-b]', 'Tools [tool-c] shows []', 'app-d'], vms: ['Lab [Debian 12] shows []', 'Home Assistant', 'Windows 11'] },
+        shut: { docker: [`${SPARE} [] shows []`, 'Media [app-a, app-b] shows []', 'Tools [tool-c] shows []', 'app-d'], vms: ['Lab [Debian 12] shows []', 'Home Assistant', 'Windows 11'] },
+        open: { docker: [`${SPARE} [] shows []`, 'Media [app-a, app-b] shows [app-a, app-b]', 'Tools [tool-c] shows []', 'app-d'], vms: ['Lab [Debian 12] shows []', 'Home Assistant', 'Windows 11'] },
     },
 };
 // FV3's events for a finished draw; the folder each page opens, its event when open, and how a user opens it
 const DRAWN = { Docker: ['docker-post-folders-creation'], VMs: ['vm-post-folders-creation'], Dashboard: ['docker-post-folders-creation', 'vm-post-folders-creation'] };
 const OPEN = {
-    Docker: ['Media', 'docker-post-folder-expansion', (p) => p.click(`button.dropDown-${MEDIA}`)],
-    VMs: ['Lab', 'vm-post-folder-expansion', (p) => p.click(`button.dropDown-${LAB}`)],
-    // The Dashboard opens a folder from its tile's menu; this is the call that menu entry makes (dashboard.js, its Expand item)
-    Dashboard: ['Media', 'docker-post-folder-expansion', (p) => p.evaluate((id) => expandFolderDocker(id), MEDIA)],
+    Docker: ['Media', 'docker-post-folder-expansion', (p) => press(p.locator(`button.dropDown-${MEDIA}`), "Media's chevron")],
+    VMs: ['Lab', 'vm-post-folder-expansion', (p) => press(p.locator(`button.dropDown-${LAB}`), "Lab's chevron")],
+    // The tile's menu, the item FV3's lang pack labels 'expand'
+    Dashboard: ['Media', 'docker-post-folder-expansion', async (p) => {
+        await press(p.locator(`#folder-id-${MEDIA}`), "Media's tile");
+        await press(p.locator('ul.dropdown-context:visible li > a', { hasText: await p.evaluate(() => $.i18n('expand')) }), "its menu's Expand");
+    }],
 };
 // The first member of Media, and where a click opens its advanced preview once Media is open
 const PREVIEWED = 'app-a';
@@ -87,8 +103,23 @@ function testHelpers() {
         if (/-post-folders?-(creation|expansion)$/.test(event.type)) events.push(event.type);
         return dispatch.call(this, event);
     };
-    const seen = (el) => getComputedStyle(el).visibility !== 'hidden'
-        && (el.getClientRects().length > 0 || (getComputedStyle(el).display === 'contents' && [...el.children].some(seen)));
+    // Seen: drawn, not transparent or hidden, and not clipped away by an overflow: hidden/clip ancestor (scrolling ones are reachable)
+    const seen = (el) => {
+        if (getComputedStyle(el).display === 'contents') return [...el.children].some(seen);
+        if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
+        let { left, right, top, bottom } = el.getBoundingClientRect();
+        for (let a = el.parentElement; a && right > left && bottom > top; a = a.parentElement) {
+            const style = getComputedStyle(a), box = a.getBoundingClientRect();
+            if (/hidden|clip/.test(style.overflowX)) { left = Math.max(left, box.left); right = Math.min(right, box.right); }
+            if (/hidden|clip/.test(style.overflowY)) { top = Math.max(top, box.top); bottom = Math.min(bottom, box.bottom); }
+        }
+        return right > left && bottom > top;
+    };
+    // Every FV3 banner shown, kept after the page removes it
+    const banners = [];
+    new MutationObserver((changes) => changes.forEach((c) => c.addedNodes.forEach((n) => {
+        if (n.nodeType === 1 && n.matches('.fv3-banner, :has(.fv3-banner)')) banners.push(n.textContent.trim());
+    }))).observe(document, { childList: true, subtree: true });
     const name = (outer) => {
         const before = [];
         for (const node of outer.querySelector('.inner').childNodes) { if (node.nodeName === 'BR') break; before.push(node.textContent); }
@@ -97,7 +128,7 @@ function testHelpers() {
     const tableRows = (list, nameCell) => [...document.querySelectorAll(`#${list} > tr`)].filter(seen).map((row) => row.classList.contains('folder')
         ? `${row.querySelector('.folder-appname').innerText.trim()} [${[...row.querySelectorAll('.folder-preview span.outer')].filter(seen).map(name).join(', ')}]`
         : name(row.querySelector(`td.${nameCell} span.outer`)));
-    window.fv3Test = { events, seen, name, tableRows };
+    window.fv3Test = { events, seen, name, tableRows, banners };
 }
 
 // The page's reading once two in a row agree: FV3 animates an opening and Unraid may reload a list after the first draw
@@ -110,6 +141,27 @@ async function settled(page, read, arg) {
         await page.waitForTimeout(250);
     }
     throw new Error(`still changing after 10 s: ${JSON.stringify(last)}`);
+}
+
+// A user's click, the target scrolled to the middle first. When something lies over it, FV3's own element fails the view; Unraid's
+// (7.0's fixed sidebar themes cover the left of the page below desktop width) gets the click dispatched to the target instead
+async function press(locator, what) {
+    await locator.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }));
+    try {
+        await locator.click({ timeout: 5000 });
+    } catch (e) {
+        const cover = await locator.evaluate((el) => {
+            if (!window.fv3Test.seen(el)) return null;
+            const r = el.getBoundingClientRect();
+            const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            if (!top || el.contains(top)) return null;
+            for (let n = top; n && n !== document.body; n = n.parentElement) if ([...n.classList].some((c) => /^(fv3|folder-)/.test(c))) return `FV3's ${n.tagName.toLowerCase()}.${[...n.classList].join('.')}`;
+            return '';
+        });
+        if (cover === null) throw new Error(`${what} could not be clicked: ${e.message.split('\n')[0]}`);
+        if (cover) throw new Error(`${what} is covered by ${cover}`);
+        await locator.dispatchEvent('click');
+    }
 }
 
 const waitEvents = (page, names) => page.waitForFunction((names) => names.every((n) => window.fv3Test.events.includes(n)), names, { timeout: 20000 });
@@ -139,26 +191,41 @@ function popupState(name) {
     };
 }
 
+// A page whose script never yields stalls page.evaluate, which has no timeout: past this the view fails, not the step's time limit
+const VIEW_LIMIT = 90000;
+
+// One page in one browser, theme and width; false when it ended before FV3 drew
 async function view(browser, kind, theme, [width, height], page) {
     const where = `${kind} ${theme} ${width}px ${page}`;
-    const context = await browser.newContext({ viewport: { width, height } });
-    await context.addInitScript(testHelpers);
-    const tab = await context.newPage();
-    const errors = [];
-    tab.on('pageerror', (e) => errors.push(`page error: ${e.message}`));
-    tab.on('console', (m) => {
-        if (m.type() !== 'error') return;
-        const urls = [m.location()?.url, ...(m.text().match(/\b(?:https?|wss?):\/\/[^\s'"]+/g) || [])].filter(Boolean);
-        if (!urls.some(absent) && !unraidUnload(m, page)) errors.push(`console error: ${m.text()} (${m.location()?.url || 'no source'})`);
-    });
-    tab.on('response', (r) => { if (r.status() >= 400 && !absent(r.url())) errors.push(`${r.status()} for ${r.url()}`); });
-    tab.on('requestfailed', (r) => { if (!absent(r.url())) errors.push(`request failed: ${r.url()} ${r.failure()?.errorText}`); });
     const file = `${shots}/${kind}/${theme}-${width}-${page}`;
+    const errors = [];
+    let context, tab, timer, drew = false;
     try {
-        await tab.goto(`${base}/${page}`);
+        context = await browser.newContext({ viewport: { width, height } });
+        await context.addInitScript(testHelpers);
+        tab = await context.newPage();
+        tab.on('pageerror', (e) => errors.push(`page error: ${e.message}`));
+        tab.on('console', (m) => { if (m.type() === 'error' && !excused(m, page)) errors.push(`console error: ${m.text()} (${m.location()?.url || 'no source'})`); });
+        tab.on('response', (r) => { if (r.status() >= 400 && !absent(r.url())) errors.push(`${r.status()} for ${r.url()}`); });
+        tab.on('requestfailed', (r) => { if (!absent(r.url())) errors.push(`request failed: ${r.url()} ${r.failure()?.errorText}`); });
+        await Promise.race([steps(), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`the view took over ${VIEW_LIMIT / 1000} s`)), VIEW_LIMIT); })]);
+    } catch (e) {
+        check(false, `${where}: ${e.message.split('\n')[0]}`);
+        await tab?.screenshot({ path: `${file}-failed.png`, fullPage: true, timeout: 10000 }).catch(() => {});
+    } finally {
+        clearTimeout(timer);
+    }
+    check(!errors.length, `${where}:\n    ${[...new Set(errors)].join('\n    ')}`);
+    await context?.close().catch(() => {});
+    return drew;
+
+    async function steps() {
+        const loaded = await tab.goto(`${base}/${page}`);
+        if (loaded?.status() !== 200) throw new Error(`/${page} answered ${loaded?.status()}`);
         check(await tab.evaluate((t) => [...document.querySelectorAll('link[rel=stylesheet]')]
             .some((l) => new RegExp(`/webGui/styles/(?:themes/|default-)${t}\\.css`).test(l.getAttribute('href'))), theme), `${where}: the ${theme} theme's stylesheet is not on the page`);
         await waitEvents(tab, DRAWN[page]).catch(() => { throw new Error(`FV3 did not finish drawing within 20 s (${DRAWN[page].join(', ')})`); });
+        drew = true;
         let got = await settled(tab, READ[page]);
         check(same(got, WANT[page].shut), `${where}: drawn as ${JSON.stringify(got)}, not ${JSON.stringify(WANT[page].shut)}`);
         const [folder, opened, open] = OPEN[page];
@@ -168,7 +235,7 @@ async function view(browser, kind, theme, [width, height], page) {
         check(same(got, WANT[page].open), `${where}: with ${folder} open, drawn as ${JSON.stringify(got)}, not ${JSON.stringify(WANT[page].open)}`);
         await tab.screenshot({ path: `${file}.png`, fullPage: true });
         if (PREVIEW[page]) {
-            await tab.locator(PREVIEW[page]).first().click();
+            await press(tab.locator(PREVIEW[page]).first(), `${PREVIEWED}'s preview icon`);
             await tab.waitForSelector('.tooltipster-base .preview-outbox', { state: 'visible', timeout: 10000 })
                 .catch(() => { throw new Error('the advanced preview did not open within 10 s'); });
             // The popup fades in and draws its graph after it opens
@@ -179,13 +246,9 @@ async function view(browser, kind, theme, [width, height], page) {
             check(!popup.inside, `${where}: the advanced preview leaves the window: ${popup.inside}`);
             await tab.screenshot({ path: `${file}-preview.png` });
         }
-        check(!(await tab.locator('.fv3-banner').count()), `${where}: FV3 shows a banner: ${await tab.locator('.fv3-banner').allInnerTexts()}`);
-    } catch (e) {
-        check(false, `${where}: ${e.message.split('\n')[0]}`);
-        await tab.screenshot({ path: `${file}-failed.png`, fullPage: true }).catch(() => {});
+        const banners = await tab.evaluate(() => window.fv3Test.banners);
+        check(!banners.length, `${where}: FV3 showed a banner: ${banners.join(' | ')}`);
     }
-    check(!errors.length, `${where}:\n    ${[...new Set(errors)].join('\n    ')}`);
-    await context.close();
 }
 
 // A save as the page posts it; anything but a 200, or an FV3 answer without FV3's header, stops the run
@@ -200,8 +263,9 @@ async function post(request, path, form, what) {
     const browsers = { chromium: await chromium.launch(), firefox: await firefox.launch() };
     const setup = await browsers.chromium.newContext();
     const tab = await setup.newPage();
-    await tab.goto(`${base}/Docker`);
-    // The token of the fake browser_test.sh started, so these writes never reach any other server on this loopback
+    const loaded = await tab.goto(`${base}/Docker`);
+    if (loaded?.status() !== 200) throw new Error(`/Docker answered ${loaded?.status()}, so the setup could not read Unraid's token`);
+    // lib.sh gives every fake this token and a real Unraid never has it, so no real server on this loopback is written to
     const token = await tab.evaluate(() => typeof csrf_token === 'string' ? csrf_token : '');
     if (token !== fakeToken) { console.error(`127.0.0.1 is not the fake Unraid browser_test.sh started (token "${token}")`); process.exit(2); }
     // Media as fake_unraid.sh saved it, with the advanced preview on
@@ -211,19 +275,29 @@ async function post(request, path, form, what) {
     await post(setup.request, '/plugins/folder.view3/server/update.php', { type: 'docker', id: MEDIA, csrf_token: token,
         content: JSON.stringify({ ...media, settings: { ...media.settings, context: 2 } }) }, "Media's advanced preview");
     await post(setup.request, '/plugins/folder.view3/server/update_settings.php', { key: 'dashboard_context', value: '2', csrf_token: token }, "the Dashboard's advanced preview");
+    // A folder with no members, named in characters a page must escape
+    await post(setup.request, '/plugins/folder.view3/server/create.php', { type: 'docker', csrf_token: token,
+        content: JSON.stringify({ name: SPARE, icon: '', regex: '', containers: [], settings: { preview: 1 }, actions: [] }) }, 'the empty folder');
+    let undrawn = 0;
     for (const theme of THEMES) {
         // As Unraid's Display Settings saves it
         await post(setup.request, '/update.php', { '#file': 'dynamix/dynamix.cfg', '#section': 'display', theme, csrf_token: token }, `the ${theme} theme`);
         for (const [kind, browser] of Object.entries(browsers)) {
             fs.mkdirSync(`${shots}/${kind}`, { recursive: true });
-            for (const size of SIZES) for (const page of ['Docker', 'VMs', 'Dashboard']) await view(browser, kind, theme, size, page);
+            for (const size of SIZES) for (const page of ['Docker', 'VMs', 'Dashboard']) {
+                undrawn = (await view(browser, kind, theme, size, page)) ? 0 : undrawn + 1;
+                if (undrawn === 3) throw new Error('3 views in a row ended before FV3 drew, so the rest were not run');
+            }
         }
     }
     await setup.close();
     for (const browser of Object.values(browsers)) await browser.close();
     if (failures.length) {
-        console.log(`FAILED [Unraid ${version}]: ${failures.length} of ${checks} browser checks\n- ${failures.join('\n- ')}`);
+        console.log(`FAILED [Unraid ${version}]: ${failures.length} of ${checks} browser checks, each listed above`);
         process.exit(1);
     }
     console.log(`Unraid ${version}: FV3's pages in Chromium and Firefox, ${THEMES.length} themes at ${SIZES.length} widths, passed (${checks} checks)`);
-})().catch((e) => { console.log(`FAILED [Unraid ${version}]: ${e.message}`); process.exit(1); });
+})().catch((e) => {
+    console.log(`FAILED [Unraid ${version}]: ${e.message.split('\n')[0]}${failures.length ? ` (after ${failures.length} failed checks, listed above)` : ''}`);
+    process.exit(1);
+});

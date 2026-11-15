@@ -45,7 +45,8 @@ function get_json(string $path, ?int &$status = null) {
     return json_decode($body, true);
 }
 
-$flash = '/boot/config/plugins/folder.view3';
+require __DIR__ . '/fake_logs.php';
+$flash = FV3T_FLASH;
 $media = 'MediaAbCdEfGhIjKlMnO';
 $tools = 'ToolsPqRsTuVwXyZaBcD';
 $lab = 'LabFoldAbCdEfGhIjKlM';
@@ -240,7 +241,6 @@ check($status === 200 && json_decode($body) !== null, "sync_order: status $statu
 $leaves('sync_order', ['autostart' => "app-a\napp-d 10\n"]);
 
 // What the runs left in the logs
-require __DIR__ . '/fake_logs.php';
 foreach (fv3_fake_log_checks() as [$ok, $what]) check($ok, $what);
 
 if ($failures) {

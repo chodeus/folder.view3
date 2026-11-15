@@ -221,13 +221,7 @@ jobs:
           UNRAID_VERSION: ${{ matrix.unraid }}
         run: docker run --rm --network none -v "$PWD:/repo" -w /repo fv3-unraid bash .github/unraid-compat/pages_test.sh .webgui "$UNRAID_VERSION"
 
-      - name: Set up Node
-        if: ${{ (success() || failure()) && env.RUNS == 'true' }}
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 26
-
-      # Runs after a failed step above too: this one checks what the pages draw
+      # Runs after a failed step above too: this one checks what the pages draw. The runner's own npm installs the driver
       - name: FV3's pages in Chromium and Firefox, every theme at desktop, tablet and phone widths
         if: ${{ (success() || failure()) && env.RUNS == 'true' }}
         timeout-minutes: 20
