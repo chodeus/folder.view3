@@ -21,12 +21,10 @@ function fv3_fake_log_checks(): array {
     // No script died or failed an include: in Unraid's own code, a sign of state the fakes lack
     $broken = preg_grep('/PHP Fatal error|Failed opening .* for inclusion/', $phplog);
     $checks[] = [!$broken, "PHP died or missed a file:\n  " . implode("\n  ", array_slice(array_unique($broken), 0, 20))];
-    // FV3's error log copies every warning raised in its requests, Unraid's too, by basename. With VM debug on, a real Unraid's
-    // libvirt.php adds one when it keys an array by a domain handle; any other line fails
-    $handleWarning = '/^\[[^]]+\] php-error: Resource ID#\d+ used as offset, casting to integer \(\d+\) at libvirt\.php:\d+$/';
+    // Any line in FV3's error log fails: a clean run logs nothing there, and Unraid's own warnings stay in its phplog
     // No error.log means nothing logged only while its folder is there
     $checks[] = [is_dir(FV3T_FLASH), FV3T_FLASH . ' is missing, so its error.log was never read'];
-    $reported = preg_grep($handleWarning, $read(FV3T_FLASH . '/error.log', true), PREG_GREP_INVERT);
+    $reported = $read(FV3T_FLASH . '/error.log', true);
     $checks[] = [!$reported, "FV3's error.log:\n  " . implode("\n  ", $reported)];
     $unknown = preg_grep('/UNKNOWN/', $read('/var/log/fv3-fakes.log'));
     $checks[] = [!$unknown, "the fakes were asked what they do not answer:\n  " . implode("\n  ", array_unique($unknown))];
