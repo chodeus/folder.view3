@@ -91,12 +91,15 @@ const DRAWN = { Docker: ['docker-post-folders-creation'], VMs: ['vm-post-folders
 const OPEN = {
     Docker: ['Media', ['docker-post-folder-expansion'], (p) => press(p.locator(`button.dropDown-${MEDIA}`), "Media's chevron")],
     VMs: ['Lab', ['vm-post-folder-expansion'], (p) => press(p.locator(`button.dropDown-${LAB}`), "Lab's chevron")],
-    // Each by its tile's menu, the item FV3's lang pack labels 'expand': Media on the Docker card, Lab on the VM card
+    // Each by its tile's menu, the item FV3's lang pack labels 'expand'. Unraid fades a used menu out and then hides every menu,
+    // so a user's next menu waits for that: one opened during the fade closes at once
     Dashboard: ['Media and Lab', ['docker-post-folder-expansion', 'vm-post-folder-expansion'], async (p) => {
         const expand = await p.evaluate(() => $.i18n('expand'));
         for (const [id, folder] of [[MEDIA, 'Media'], [LAB, 'Lab']]) {
             await press(p.locator(`#folder-id-${id}`), `${folder}'s tile`);
             await press(p.locator('ul.dropdown-context:visible li > a', { hasText: expand }), `${folder}'s menu's Expand`);
+            await p.waitForFunction(() => [...document.querySelectorAll('ul.dropdown-context')].every((u) => !u.offsetParent), null, { timeout: 5000 })
+                .catch(() => { throw new Error(`${folder}'s menu did not close within 5 s`); });
         }
     }],
 };
@@ -170,7 +173,8 @@ const FRAME = [
 
 // A user's click, the target scrolled to the middle first
 async function press(locator, what) {
-    await locator.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }));
+    await locator.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }), null, { timeout: 10000 })
+        .catch(() => { throw new Error(`${what} is not on the page within 10 s`); });
     try {
         await locator.click({ timeout: 5000 });
     } catch (e) {
@@ -182,7 +186,8 @@ async function press(locator, what) {
             if (frame.some((selector) => top.closest(selector))) return '';
             const n = top.closest('[id], [class]') || top;
             return `${n.tagName.toLowerCase()}${n.id ? `#${n.id}` : ''}${[...n.classList].map((c) => `.${c}`).join('')}`;
-        }, FRAME.map(([selector]) => selector));
+        }, FRAME.map(([selector]) => selector), { timeout: 5000 }).catch(() => undefined);
+        if (cover === undefined) throw new Error(`${what} could not be clicked, then left the page: ${e.message.split('\n')[0]}`);
         if (cover === null) throw new Error(`${what} could not be clicked: ${e.message.split('\n')[0]}`);
         if (cover) throw new Error(`${what} is covered by ${cover}`);
         await locator.dispatchEvent('click');
