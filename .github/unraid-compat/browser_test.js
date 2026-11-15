@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, firefox } = require('playwright-core');
-const { HOOKS, names, describe, applies, missingHooks } = require('./hooks');
+const { HOOKS, tokens, mentions, describe, applies, missingHooks } = require('./hooks');
 const { widths, layoutState } = require('./layout');
 
 const [version, shots, fakeToken, tree, mode = 'fv3'] = process.argv.slice(2);
@@ -220,7 +220,7 @@ const VIEW_LIMIT = 90000;
 
 // One page in one browser, theme and width, through one pass's steps; false when it ended before the page drew
 async function view(browser, kind, theme, [width, height], page, steps) {
-    const v = { where: `${kind} ${theme} ${width}px ${page}`, file: `${shots}/${kind}/${theme}-${width}-${page}`, theme, width, page, drew: false };
+    const v = { where: `${kind} ${theme} ${width}px ${page}`, file: `${shots}/${kind}/${theme}-${width}-${page}${ALONE ? '-unraid-alone' : ''}`, theme, width, page, drew: false };
     const { where, file } = v;
     const errors = [];
     let context, tab, timer;
@@ -258,7 +258,7 @@ const measured = {}, lacking = new Map();
 async function aloneSteps(tab, v) {
     await load(tab, v);
     v.drew = await tab.waitForSelector(LISTED[v.page], { timeout: 20000 }).then(() => true, () => false);
-    check(v.drew, `${v.where}: Unraid alone drew no ${LISTED[v.page]} within 20 s`);
+    if (!check(v.drew, `${v.where}: Unraid alone drew no ${LISTED[v.page]} within 20 s, so its hooks and widths were not read`)) return;
     measured[v.where] = await settled(tab, widths);
     const hooks = HOOKS.filter((h) => !h.url && [v.page, 'any page'].includes(h.page) && applies(h, version));
     for (const i of await settled(tab, missingHooks, hooks)) lacking.set(hooks[i], [...(lacking.get(hooks[i]) || []), v.where]);
@@ -288,8 +288,8 @@ async function fv3Steps(tab, v) {
     for (const problem of Object.values(layout.rules)) check(!problem, `${where}: ${problem}`);
     // Where Unraid alone already scrolls sideways (both tables at tablet and phone widths), FV3 may be wider
     const now = await tab.evaluate(widths), was = measured[where];
-    check(was && (!was.page || now.page) && (was.table !== true || now.table),
-        `${where}: FV3 adds sideways scrolling Unraid alone does not have: ${now.sizes} (Unraid alone ${was?.sizes ?? 'not measured'})`);
+    if (was) check((!was.page || now.page) && (was.table !== true || now.table), `${where}: FV3 adds sideways scrolling Unraid alone does not have: ${now.sizes} (Unraid alone ${was.sizes})`);
+    else if (Object.keys(measured).length) check(false, `${where}: widths not compared, the Unraid-alone pass did not measure this view`);
     await tab.screenshot({ path: `${file}.png`, fullPage: true });
     if (PREVIEW[page]) {
         await press(tab.locator(PREVIEW[page]).first(), `${PREVIEWED}'s preview icon`);
@@ -333,7 +333,7 @@ async function fv3Setup(request, token) {
 function hookChecks(webgui) {
     for (const h of HOOKS) {
         const text = fs.existsSync(`${plugin}/${h.file}`) ? fs.readFileSync(`${plugin}/${h.file}`, 'utf8') : null;
-        const gone = text === null ? [h.file] : names(h).filter((n) => !text.includes(n));
+        const gone = text === null ? [h.file] : tokens(h).filter((t) => !mentions(text, t));
         check(!gone.length, `hooks.js names ${h.file} for ${describe(h)}, but FV3 no longer has ${gone.join(', ')} there`);
     }
     for (const [h, where] of lacking) check(false, `Unraid ${version} lacks ${describe(h)} on ${h.page} (${where.length} views, first ${where[0]}), which ${h.file} needs: ${h.loses}`);
@@ -343,7 +343,7 @@ function hookChecks(webgui) {
 (async () => {
     const webgui = path.resolve(__dirname, '../..', tree || '');
     if (!fs.existsSync('/.dockerenv') || !fakeToken || !fs.existsSync(`${webgui}/emhttp`)) { console.error('Run browser_test.sh: this needs the fake Unraid it starts and its webGUI tree'); process.exit(2); }
-    check(!fv3Unload.length, `FV3 adds an unload handler, which Chromium never runs: ${fv3Unload.join(', ')}`);
+    if (!ALONE) check(!fv3Unload.length, `FV3 adds an unload handler, which Chromium never runs: ${fv3Unload.join(', ')}`);
     const browsers = { chromium: await chromium.launch(), firefox: await firefox.launch() };
     const setup = await browsers.chromium.newContext();
     const tab = await setup.newPage();
@@ -353,7 +353,8 @@ function hookChecks(webgui) {
     const token = await tab.evaluate(() => typeof csrf_token === 'string' ? csrf_token : '');
     if (token !== fakeToken) { console.error(`127.0.0.1 is not the fake Unraid browser_test.sh started (token "${token}")`); process.exit(2); }
     if (!ALONE) {
-        try { Object.assign(measured, JSON.parse(fs.readFileSync(MEASURED, 'utf8'))); } catch (e) { throw new Error(`the Unraid-alone pass left no measurements: ${e.message}`); }
+        // Without them only the width comparison is lost; FV3's pass still runs
+        try { Object.assign(measured, JSON.parse(fs.readFileSync(MEASURED, 'utf8'))); } catch (e) { check(false, `the Unraid-alone pass left no measurements, so no widths are compared: ${e.message}`); }
         await fv3Setup(setup.request, token);
     }
     let undrawn = 0;

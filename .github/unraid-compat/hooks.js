@@ -9,7 +9,7 @@ const HOOKS = [
     { page: D, dom: '#docker_list td.ct-name > span.outer > span.hand > img.img', file: 'scripts/docker.js', loses: "folder previews show no containers' icons" },
     { page: D, dom: '#docker_list td.ct-name span.inner > span.appname > a.exec', file: 'scripts/docker.js', loses: 'containers are not read into their folders' },
     { page: D, dom: '#docker_list td.ct-name span.outer i[id^="load-"]', file: 'scripts/docker.js', loses: "folder icons stop showing their containers' state" },
-    { page: D, dom: '#docker_list td.updatecolumn', file: 'scripts/shared.js', loses: 'incognito leaves version text showing' },
+    { page: D, dom: 'td.updatecolumn', file: 'scripts/shared.js', loses: 'incognito leaves version text showing' },
     { page: D, dom: '#docker_list td.advanced', file: 'scripts/docker.js', loses: "the folder autostart switch cannot find its containers' switches" },
     { page: D, dom: '#docker_list input.autostart', file: 'scripts/docker.js', loses: 'the folder autostart switch does nothing' },
     { page: D, dom: '.switch-button-background', file: 'scripts/docker.js', loses: 'the folder autostart switch is unstyled' },
@@ -70,17 +70,22 @@ const HOOKS = [
     { url: '/plugins/dynamix.docker.manager/images/question.png', file: 'scripts/docker.js', loses: 'folders without an icon show a broken image' },
 ];
 
-// What a hook's FV3 file must still mention: a selector's ids, classes and quoted values, a function's own name, a URL's file
-const names = (h) => (h.js ? [h.js.replace(/^\$\.(fn\.)?/, '')] : h.url ? [h.url.split('/').pop()] : h.css ? [h.css]
-    : (h.any || [h.dom]).flatMap((s) => [...s.matchAll(/[#.]([\w-]+)|"([^"]+)"/g)].map((m) => m[1] || m[2])));
+// What a hook's FV3 file must still mention: a selector's #ids, .classes and quoted values, a function's name, a URL's file
+const tokens = (h) => (h.js ? [h.js.startsWith('$.fn.') ? h.js.slice(4) : h.js] : h.url ? [h.url.split('/').pop()] : h.css ? [h.css]
+    : (h.any || [h.dom]).flatMap((s) => [...s.matchAll(/([#.][\w-]+)|"([^"]+)"/g)].map((m) => m[1] || m[2])));
+const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// As a whole token (a #id or .class starts at its mark); a class may also be named in a class attribute or as a quoted string
+const mentions = (text, t) => new RegExp(`${/^[#.]/.test(t) ? '' : '(?<![\\w-])'}${esc(t)}(?![\\w-])`).test(text)
+    || (t[0] === '.' && new RegExp(`class=["'][^"']*(?<![\\w-])${esc(t.slice(1))}(?![\\w-])|['"]${esc(t.slice(1))}['"]`).test(text));
 const describe = (h) => h.dom || (h.any && `any of ${h.any.join(', ')}`) || (h.css && `a stylesheet rule for .${h.css}`) || h.url || `the global ${h.js}`;
 const older = (a, b) => { const [x, y] = [a, b].map((v) => v.split('.').map(Number)); const i = x.findIndex((n, k) => n !== y[k]); return i >= 0 && x[i] < y[i]; };
 const applies = (h, version) => !h.since || !older(version, h.since);
 
-// In the page: the indexes of the hooks it lacks. Rules nested in @media count; a sheet that cannot be read counts as none
+// In the page: the indexes of the hooks it lacks. Rules in @media and @import count; a sheet that cannot be read counts as none
 function missingHooks(hooks) {
-    const flat = (rules) => rules.flatMap((r) => (r.cssRules ? [r, ...flat([...r.cssRules])] : [r]));
-    const selectors = flat([...document.styleSheets].flatMap((s) => { try { return [...s.cssRules]; } catch { return []; } }))
+    const own = (sheet) => { try { return [...sheet.cssRules]; } catch { return []; } };
+    const flat = (rules) => rules.flatMap((r) => (r.styleSheet ? flat(own(r.styleSheet)) : r.cssRules ? [r, ...flat([...r.cssRules])] : [r]));
+    const selectors = flat([...document.styleSheets].flatMap(own))
         .map((r) => r.selectorText || '').join('\n');
     const present = (h) => {
         if (h.dom) return !!document.querySelector(h.dom);
@@ -91,4 +96,4 @@ function missingHooks(hooks) {
     return hooks.map((h, i) => (present(h) ? -1 : i)).filter((i) => i >= 0);
 }
 
-module.exports = { HOOKS, names, describe, applies, missingHooks };
+module.exports = { HOOKS, tokens, mentions, describe, applies, missingHooks };

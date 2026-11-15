@@ -10,7 +10,7 @@ function widths() {
 }
 
 // Each rule's failure, '' when it holds. A folder against a loose container on its page (Unraid's name element, a link only
-// with a template): name no taller, row no taller than 1.5x; at desktop width, its preview on one line inside its cell
+// with a template): name and row no taller than 1.5x theirs; at desktop width, its preview on one line inside its cell
 function layoutState({ page, desktop }) {
     const { seen, name, members } = window.fv3Test;
     const box = (el) => el.getBoundingClientRect();
