@@ -4,8 +4,7 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix(error log): comments say what the check tests: files under FV3's folder
-- fix(error log): log only warnings raised in FV3's own files
+- The error log no longer lists Unraid's own PHP warnings as FolderView3 errors
 
 ## 2026.11.14.3 (beta)
 
