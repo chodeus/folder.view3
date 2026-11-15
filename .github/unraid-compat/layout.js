@@ -19,6 +19,8 @@ function layoutState({ page, desktop }) {
         !nameEl || !seen(nameEl) ? `${label}'s name cannot be seen` : tall(nameEl) > 1.5 * tall(other) ? `${label}'s name is ${tall(nameEl)} px tall, ${loose}'s ${tall(other)} px` : '',
         !icon || !seen(icon) ? `${label}'s icon cannot be seen` : !icon.complete || !icon.naturalWidth ? `${label}'s icon did not load` : '',
     ].filter(Boolean);
+    // A folder by its name's text, even where that text cannot be seen
+    const nameOf = (el) => el?.textContent.trim() || 'a folder';
     const rules = { name: [] };
 
     if (page === 'Dashboard') {
@@ -27,7 +29,7 @@ function layoutState({ page, desktop }) {
         if (!otherName) return { error: "no app-d tile to compare folders' tiles with" };
         rules.card = [];
         for (const folder of document.querySelectorAll('.folder-showcase-outer')) {
-            const label = folder.querySelector('.fv3-folder-appname')?.innerText.trim() || 'a folder';
+            const label = nameOf(folder.querySelector('.fv3-folder-appname'));
             rules.name.push(...shown(label, folder.querySelector('.fv3-folder-appname'), folder.querySelector('img.fv3-folder-icon'), otherName, 'app-d'));
             const card = box(folder.closest('tbody'));
             const out = [folder.querySelector(':scope > span.outer'), ...members(folder)].filter((o) => o && seen(o)).filter((o) => box(o).left < card.left - 1 || box(o).right > card.right + 1);
@@ -42,7 +44,7 @@ function layoutState({ page, desktop }) {
         rules.height = [];
         if (desktop) rules.preview = [];
         for (const row of rows.filter((r) => r.classList.contains('folder'))) {
-            const label = row.querySelector('a.folder-appname')?.innerText.trim() || 'a folder';
+            const label = nameOf(row.querySelector('a.folder-appname'));
             rules.name.push(...shown(label, row.querySelector('a.folder-appname'), row.querySelector('img.folder-img'), otherName, loose));
             if (box(row).height > 1.5 * box(other).height) rules.height.push(`${label}'s row is ${Math.round(box(row).height)} px tall, ${loose}'s ${Math.round(box(other).height)} px`);
             const items = [...row.querySelectorAll('.folder-preview span.outer')].filter(seen);
