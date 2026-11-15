@@ -10,7 +10,7 @@ function widths() {
 }
 
 // Each rule's failure, '' when it holds. A folder against a loose container on its page (Unraid's name element, a link only
-// with a template): name and row no taller than 1.5x theirs. A preview item that does not fit is clipped, which the readout fails
+// with a template): name and row no taller than 1.5x theirs. A preview item clipped wholly out of sight drops out of the readout
 function layoutState(page) {
     const { seen, name, members } = window.fv3Test;
     const box = (el) => el.getBoundingClientRect();

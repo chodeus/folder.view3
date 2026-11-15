@@ -258,8 +258,8 @@ async function view(browser, kind, theme, [width, height], page, steps) {
     } finally {
         clearTimeout(timer);
     }
-    // Unraid alone's own errors are not FV3's
-    if (!ALONE) check(!errors.length, `${where}:\n    ${[...new Set(errors)].join('\n    ')}`);
+    // Unraid alone must run clean too: an error there is Unraid's or the fake's, and its readings would not hold
+    check(!errors.length, `${where}:\n    ${[...new Set(errors)].join('\n    ')}`);
     await context?.close().catch(() => {});
     return v.drew;
 }
