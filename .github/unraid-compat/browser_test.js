@@ -171,13 +171,23 @@ const FRAME = [
     ['#menu', "7.0's azure and gray sidebar: fixed at the left edge, it lies over the page below desktop width"],
 ];
 
-// A user's click, the target scrolled to the middle first
+// A user's click, the target scrolled to the middle until it stays there: a folder opening above it grows for a moment
 async function press(locator, what) {
-    await locator.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }), null, { timeout: 10000 })
-        .catch(() => { throw new Error(`${what} is not on the page within 10 s`); });
+    const middle = () => locator.evaluate((el) => {
+        el.scrollIntoView({ block: 'center', inline: 'center' });
+        const r = el.getBoundingClientRect();
+        return `${Math.round(r.top)},${Math.round(r.left)}`;
+    }, null, { timeout: 10000 }).catch(() => { throw new Error(`${what} is not on the page within 10 s`); });
+    for (let at = await middle(), i = 0; i < 20; i++) {
+        await locator.page().waitForTimeout(100);
+        if (at === (at = await middle())) break;
+    }
     try {
         await locator.click({ timeout: 5000 });
     } catch (e) {
+        // Playwright's own retries scroll the target elsewhere: what covers it is read back in the middle, beside Playwright's reason
+        const why = e.message.split('\n').find((l) => l.includes('intercepts pointer events'))?.trim().replace(/^- /, '') || e.message.split('\n')[0];
+        await middle().catch(() => {});
         const cover = await locator.evaluate((el, frame) => {
             if (!window.fv3Test.seen(el)) return null;
             const r = el.getBoundingClientRect();
@@ -187,9 +197,9 @@ async function press(locator, what) {
             const n = top.closest('[id], [class]') || top;
             return `${n.tagName.toLowerCase()}${n.id ? `#${n.id}` : ''}${[...n.classList].map((c) => `.${c}`).join('')}`;
         }, FRAME.map(([selector]) => selector), { timeout: 5000 }).catch(() => undefined);
-        if (cover === undefined) throw new Error(`${what} could not be clicked, then left the page: ${e.message.split('\n')[0]}`);
-        if (cover === null) throw new Error(`${what} could not be clicked: ${e.message.split('\n')[0]}`);
-        if (cover) throw new Error(`${what} is covered by ${cover}`);
+        if (cover === undefined) throw new Error(`${what} could not be clicked, then left the page: ${why}`);
+        if (cover === null) throw new Error(`${what} could not be clicked: ${why}`);
+        if (cover) throw new Error(`${what} is covered by ${cover} (${why})`);
         await locator.dispatchEvent('click');
     }
 }
