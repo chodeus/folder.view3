@@ -1,6 +1,6 @@
 <?php
-// php .github/scripts/error_handler_test.php [plugin-dir] — lib.php's error handler copies a warning into FV3's error.log only when one of
-// FV3's files raised it; PHP's own log (Unraid's phplog) still gets every warning
+// php .github/scripts/error_handler_test.php [plugin-dir] — lib.php's error handler copies a warning into FV3's error.log only when a file
+// under FV3's folder raised it; PHP's own log (Unraid's phplog) still gets every warning
 $fv3tPlugin = $argv[1] ?? dirname(__DIR__, 2) . '/src/folder.view3/usr/local/emhttp/plugins/folder.view3';
 $fv3tTmp = realpath(sys_get_temp_dir()) . '/fv3-error-handler-test-' . bin2hex(random_bytes(4));
 $docroot = "$fv3tTmp/docroot";
@@ -31,7 +31,7 @@ foreach ($files as $rel => $src) {
     file_put_contents("$docroot/$rel", $src);
 }
 
-// One request: load lib.php, then run each file
+// A process of its own, as an endpoint request runs: lib.php's handler and the log settings stay out of this test's PHP
 $request = '$_SERVER["DOCUMENT_ROOT"] = ' . var_export($docroot, true) . '; require ' . var_export("$docroot/plugins/folder.view3/server/lib.php", true) . ';'
     . ' $configDir = ' . var_export("$fv3tTmp/config", true) . '; foreach (' . var_export(array_values($warns), true) . ' as $f) include $f;';
 $out = [];

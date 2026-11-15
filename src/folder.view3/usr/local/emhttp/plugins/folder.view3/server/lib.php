@@ -165,7 +165,7 @@
         echo json_encode(['error' => 'Internal error']);
     });
     // Non-fatal PHP errors don't end the request, so only log them; deprecations are noise, not failures.
-    // Only FV3's own files: a warning raised in Unraid's code (libvirt.php...) stays in Unraid's phplog alone
+    // Only files under FV3's folder: a warning raised in Unraid's code (libvirt.php...) stays in Unraid's phplog alone
     set_error_handler(function(int $severity, string $message, string $file, int $line): bool {
         if (!(error_reporting() & $severity) || ($severity & (E_DEPRECATED | E_USER_DEPRECATED))) return false;
         if (!str_starts_with($file, dirname(__DIR__) . '/')) return false;
