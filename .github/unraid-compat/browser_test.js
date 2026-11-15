@@ -288,7 +288,7 @@ async function aloneSteps(tab, v) {
 
 // FV3's pass: drawn in the saved order, folders opened as a user opens them, the layout rules, the advanced preview, no banners
 async function fv3Steps(tab, v) {
-    const { where, file, page, width } = v;
+    const { where, file, page } = v;
     await load(tab, v);
     await waitEvents(tab, DRAWN[page]).catch(() => { throw new Error(`FV3 did not finish drawing within 20 s (${DRAWN[page].join(', ')})`); });
     v.drew = true;
@@ -305,7 +305,7 @@ async function fv3Steps(tab, v) {
     await waitEvents(tab, opened).catch(() => { throw new Error(`${folder} did not open within 20 s (${opened.join(', ')})`); });
     got = await settled(tab, READ[page]);
     check(same(got, WANT[page].open), `${where}: with ${folder} open, drawn as ${JSON.stringify(got)}, not ${JSON.stringify(WANT[page].open)}`);
-    const layout = await settled(tab, layoutState, { page, desktop: width === SIZES[0][0] });
+    const layout = await settled(tab, layoutState, page);
     if (layout.error) throw new Error(layout.error);
     for (const problem of Object.values(layout.rules)) check(!problem, `${where}: ${problem}`);
     // Only where Unraid alone fits: where it already scrolls sideways, FV3 may be wider

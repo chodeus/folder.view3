@@ -10,8 +10,8 @@ function widths() {
 }
 
 // Each rule's failure, '' when it holds. A folder against a loose container on its page (Unraid's name element, a link only
-// with a template): name and row no taller than 1.5x theirs; at desktop width, its preview on one line inside its cell
-function layoutState({ page, desktop }) {
+// with a template): name and row no taller than 1.5x theirs. A preview item that does not fit is clipped, which the readout fails
+function layoutState(page) {
     const { seen, name, members } = window.fv3Test;
     const box = (el) => el.getBoundingClientRect();
     const tall = (node) => { const r = document.createRange(); r.selectNodeContents(node); return Math.round(r.getBoundingClientRect().height); };
@@ -43,16 +43,10 @@ function layoutState({ page, desktop }) {
         const otherName = other?.querySelector(`td.${cell} span.inner > *`);
         if (!otherName) return { error: `no ${loose} row to compare folders with` };
         rules.height = [];
-        if (desktop) rules.preview = [];
         for (const row of rows.filter((r) => r.classList.contains('folder'))) {
             const label = nameOf(row.querySelector('a.folder-appname'));
             rules.name.push(...shown(label, row.querySelector('a.folder-appname'), row.querySelector('img.folder-img'), otherName, loose));
             if (box(row).height > 1.5 * box(other).height) rules.height.push(`${label}'s row is ${Math.round(box(row).height)} px tall, ${loose}'s ${Math.round(box(other).height)} px`);
-            const items = [...row.querySelectorAll('.folder-preview span.outer')].filter(seen);
-            if (!desktop || !items.length) continue;
-            const c = box(row.querySelector('.folder-preview').closest('td')), top = box(items[0]).top;
-            const off = items.filter((i) => Math.abs(box(i).top - top) > 2 || box(i).left < c.left - 1 || box(i).right > c.right + 1);
-            if (off.length) rules.preview.push(`${label}'s preview wraps or leaves its cell at ${off.map(name).join(', ')}`);
         }
     }
     return { rules: Object.fromEntries(Object.entries(rules).map(([rule, problems]) => [rule, problems.join('; ')])) };
