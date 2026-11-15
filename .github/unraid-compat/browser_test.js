@@ -91,14 +91,14 @@ const DRAWN = { Docker: ['docker-post-folders-creation'], VMs: ['vm-post-folders
 const OPEN = {
     Docker: ['Media', ['docker-post-folder-expansion'], (p) => press(p.locator(`button.dropDown-${MEDIA}`), "Media's chevron")],
     VMs: ['Lab', ['vm-post-folder-expansion'], (p) => press(p.locator(`button.dropDown-${LAB}`), "Lab's chevron")],
-    // Each by its tile's menu, the item FV3's lang pack labels 'expand'. Unraid fades a used menu out and then hides every menu,
-    // so a user's next menu waits for that: one opened during the fade closes at once
+    // Each by its tile's menu, the item FV3's lang pack labels 'expand'. Unraid fades a used menu out and hides every menu as each
+    // fade ends, so a user's next menu waits for the fade (jQuery's :animated): one opened during it closes at once
     Dashboard: ['Media and Lab', ['docker-post-folder-expansion', 'vm-post-folder-expansion'], async (p) => {
         const expand = await p.evaluate(() => $.i18n('expand'));
         for (const [id, folder] of [[MEDIA, 'Media'], [LAB, 'Lab']]) {
             await press(p.locator(`#folder-id-${id}`), `${folder}'s tile`);
             await press(p.locator('ul.dropdown-context:visible li > a', { hasText: expand }), `${folder}'s menu's Expand`);
-            await p.waitForFunction(() => [...document.querySelectorAll('ul.dropdown-context')].every((u) => !u.offsetParent), null, { timeout: 5000 })
+            await p.waitForFunction(() => !$('ul.dropdown-context:animated').length && [...document.querySelectorAll('ul.dropdown-context')].every((u) => !u.offsetParent), null, { timeout: 5000 })
                 .catch(() => { throw new Error(`${folder}'s menu did not close within 5 s`); });
         }
     }],
