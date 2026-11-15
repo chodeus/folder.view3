@@ -32,8 +32,9 @@ function layoutState({ page, desktop }) {
             const label = nameOf(folder.querySelector('.fv3-folder-appname'));
             rules.name.push(...shown(label, folder.querySelector('.fv3-folder-appname'), folder.querySelector('img.fv3-folder-icon'), otherName, 'app-d'));
             const card = box(folder.closest('tbody'));
-            const out = [folder.querySelector(':scope > span.outer'), ...members(folder)].filter((o) => o && seen(o)).filter((o) => box(o).left < card.left - 1 || box(o).right > card.right + 1);
-            if (out.length) rules.card.push(`${label}'s ${out.map((o) => name(o) || 'tile').join(', ')} leave the card (${Math.round(card.left)}-${Math.round(card.right)})`);
+            const own = folder.querySelector(':scope > span.outer');
+            const out = [own, ...members(folder)].filter((o) => o && seen(o)).filter((o) => box(o).left < card.left - 1 || box(o).right > card.right + 1);
+            if (out.length) rules.card.push(`${label}'s ${out.map((o) => (o === own ? 'tile' : name(o))).join(', ')} outside the card (${Math.round(card.left)} to ${Math.round(card.right)} px)`);
         }
     } else {
         const [list, cell, loose] = page === 'Docker' ? ['docker_list', 'ct-name', 'app-d'] : ['kvm_list', 'vm-name', 'Home Assistant'];

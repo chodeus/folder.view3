@@ -171,7 +171,7 @@ const FRAME = [
     ['#menu', "7.0's azure and gray sidebar: fixed at the left edge, it lies over the page below desktop width"],
 ];
 
-// A user's click, the target scrolled to the middle until it stays there: a folder opening above it grows for a moment
+// A user's click, the target scrolled to the middle until it stays there: a folder opening above it can still move it
 async function press(locator, what) {
     const middle = () => locator.evaluate((el) => {
         el.scrollIntoView({ block: 'center', inline: 'center' });
