@@ -31,7 +31,7 @@ browse() { docker run --rm --network container:"$fake" --shm-size=1g --user "$(i
 # Unraid alone first, with FV3's page hooks (folder.view3.<page>.page) out of its plugin folder; FV3's pass then compares with it
 docker exec "$fake" bash -c 'mkdir -p /run/fv3-off && mv /usr/local/emhttp/plugins/folder.view3/folder.view3.*.page /run/fv3-off/' || fail "FV3's pages could not be moved aside"
 # FV3's pass must never compare with an earlier run's measurements
-rm -f "$shots/unraid-alone.json"
+rm -f "$shots/unraid-alone.json" || fail "the last run's measurements could not be removed from $shots"
 browse unraid-alone; status=$?
 docker exec "$fake" bash -c 'mv /run/fv3-off/* /usr/local/emhttp/plugins/folder.view3/' || fail "FV3's pages could not be put back"
 browse || status=1
