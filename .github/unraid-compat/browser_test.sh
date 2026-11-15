@@ -1,6 +1,6 @@
 #!/bin/bash
 # FV3's pages in Chromium and Firefox: the fake Unraid in a container with no network, the browsers in one that joins its network.
-# From the repo root, after npm ci here: browser_test.sh <fake-unraid-image> <webgui-tree> <unraid-version> <screenshot-dir>
+# From the repo root, after npm ci here: browser_test.sh <fake-unraid-image> <webgui-tree from the repo root> <unraid-version> <screenshot-dir>
 set -u
 image=$1; tree=$2; version=$3; shots=$4
 # Renovate moves this with playwright-core in package.json: the driver only runs the browsers built for its own version
@@ -26,9 +26,15 @@ token=$(docker exec "$fake" php -d auto_prepend_file= -r 'echo parse_ini_file("/
 [ -n "$token" ] || fail "no csrf_token in the fake's var.ini"
 
 mkdir -p "$shots" || fail "cannot make $shots"
-docker run --rm --network container:"$fake" --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp \
-	-v "$PWD:/repo:ro" -v "$(cd "$shots" && pwd):/shots" -w /repo/.github/unraid-compat "$browsers" node browser_test.js "$version" /shots "$token"
-status=$?
+browse() { docker run --rm --network container:"$fake" --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/repo:ro" \
+	-v "$(cd "$shots" && pwd):/shots" -w /repo/.github/unraid-compat "$browsers" node browser_test.js "$version" /shots "$token" "$tree" "$@"; }
+# Unraid alone first, with FV3's page hooks (folder.view3.<page>.page) out of its plugin folder; FV3's pass then compares with it
+docker exec "$fake" bash -c 'mkdir -p /run/fv3-off && mv /usr/local/emhttp/plugins/folder.view3/folder.view3.*.page /run/fv3-off/' || fail "FV3's pages could not be moved aside"
+# FV3's pass must never compare with an earlier run's measurements
+rm -f "$shots/unraid-alone.json" || fail "the last run's measurements could not be removed from $shots"
+browse unraid-alone; status=$?
+docker exec "$fake" bash -c 'mv /run/fv3-off/* /usr/local/emhttp/plugins/folder.view3/' || fail "FV3's pages could not be put back"
+browse || status=1
 # The logs hold what the pages asked of Unraid's PHP and the fakes, for every run above
 docker exec "$fake" php -d auto_prepend_file= -d display_errors=stderr .github/unraid-compat/fake_logs.php "$version" || status=1
 exit $status
