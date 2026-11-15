@@ -51,7 +51,7 @@ const HOOKS = [
     { page: V, js: 'loadlist', file: 'scripts/vm.js', loses: 'folders never draw' },
     { page: ALL, js: 'context.attach', file: 'scripts/docker.js', loses: 'folders have no menus' },
     { page: ALL, js: 'swal', file: 'scripts/shared.js', loses: 'no confirm or error dialogs' },
-    { page: ALL, js: 'csrf_token', string: true, file: 'scripts/include/customEvents.js', loses: "every FV3 save is refused" },
+    { page: ALL, js: 'csrf_token', type: 'string', file: 'scripts/include/customEvents.js', loses: "every FV3 save is refused" },
     { page: ALL, js: '$.fn.tooltipster', file: 'scripts/advanced-preview.js', loses: 'no advanced preview' },
     { page: D, js: '$.fn.switchButton', file: 'scripts/docker.js', loses: 'the folder autostart switch never draws' },
     { page: D, js: '$.fn.sortable', file: 'scripts/docker.js', loses: 'folders cannot be dragged' },
@@ -77,7 +77,8 @@ const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // As a whole token (a #id or .class starts at its mark); a class may also be named in a class attribute or as a quoted string
 const mentions = (text, t) => new RegExp(`${/^[#.]/.test(t) ? '' : '(?<![\\w-])'}${esc(t)}(?![\\w-])`).test(text)
     || (t[0] === '.' && new RegExp(`class=["'][^"']*(?<![\\w-])${esc(t.slice(1))}(?![\\w-])|['"]${esc(t.slice(1))}['"]`).test(text));
-const describe = (h) => h.dom || (h.any && `any of ${h.any.join(', ')}`) || (h.css && `a stylesheet rule for .${h.css}`) || h.url || `the global ${h.js}`;
+const describe = (h) => h.dom || (h.any && `any of ${h.any.join(', ')}`) || (h.css && `a stylesheet rule for .${h.css}`) || h.url
+    || (h.type === 'string' ? `${h.js} as a non-empty string` : `the function ${h.js}`);
 const older = (a, b) => { const [x, y] = [a, b].map((v) => v.split('.').map(Number)); const i = x.findIndex((n, k) => n !== y[k]); return i >= 0 && x[i] < y[i]; };
 const applies = (h, version) => !h.since || !older(version, h.since);
 // The hooks one view checks: its page's and every page's that apply to this version (endpoints are checked as files)
@@ -95,7 +96,7 @@ function missingHooks(hooks) {
         if (h.css) return new RegExp(`\\.${h.css}(?![\\w-])`).test(selectors);
         try {
             const value = (0, eval)(h.js);
-            return h.string ? typeof value === 'string' && value !== '' : typeof value === 'function';
+            return typeof value === (h.type || 'function') && value !== '';
         } catch { return false; }
     };
     return hooks.map((h, i) => (present(h) ? -1 : i)).filter((i) => i >= 0);
