@@ -28,9 +28,8 @@ token=$(docker exec "$fake" php -d auto_prepend_file= -r 'echo parse_ini_file("/
 mkdir -p "$shots" || fail "cannot make $shots"
 browse() { docker run --rm --network container:"$fake" --shm-size=1g --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/repo:ro" \
 	-v "$(cd "$shots" && pwd):/shots" -w /repo/.github/unraid-compat "$browsers" node browser_test.js "$version" /shots "$token" "$tree" "$@"; }
-# Unraid alone first, with FV3's page hooks out of its plugin folder; FV3's pass then compares with what it measured
-pages='folder.view3.Docker.page folder.view3.VMs.page folder.view3.Dashboard.page'
-docker exec "$fake" bash -c "mkdir -p /run/fv3-off && cd /usr/local/emhttp/plugins/folder.view3 && mv $pages /run/fv3-off/" || fail "FV3's pages could not be moved aside"
+# Unraid alone first, with FV3's page hooks (folder.view3.<page>.page) out of its plugin folder; FV3's pass then compares with it
+docker exec "$fake" bash -c 'mkdir -p /run/fv3-off && mv /usr/local/emhttp/plugins/folder.view3/folder.view3.*.page /run/fv3-off/' || fail "FV3's pages could not be moved aside"
 # FV3's pass must never compare with an earlier run's measurements
 rm -f "$shots/unraid-alone.json"
 browse unraid-alone; status=$?

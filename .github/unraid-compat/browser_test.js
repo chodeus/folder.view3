@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, firefox } = require('playwright-core');
-const { HOOKS, tokens, mentions, describe, applies, missingHooks } = require('./hooks');
+const { HOOKS, tokens, mentions, describe, applies, forView, missingHooks } = require('./hooks');
 const { widths, layoutState } = require('./layout');
 
 const [version, shots, fakeToken, tree, mode = 'fv3'] = process.argv.slice(2);
@@ -14,7 +14,8 @@ const MEASURED = `${shots}/unraid-alone.json`;
 const base = 'http://127.0.0.1';
 const failures = [];
 let checks = 0;
-// Each failure prints as it happens, so a run the step's time limit kills still shows what failed
+// Each failure prints as it happens, so a run the step's time limit kills still shows what failed; a missing hook prints once the
+// views end, as one line for all its views
 const check = (ok, what) => { checks++; if (!ok) { failures.push(what); console.log(`- ${what}`); } return ok; };
 const same = (got, want) => JSON.stringify(got) === JSON.stringify(want);
 
@@ -82,18 +83,21 @@ const WANT = {
     },
     Dashboard: {
         shut: { docker: [`${SPARE} [] shows []`, 'Media [app-a, app-b] shows []', 'Tools [tool-c] shows []', 'app-d'], vms: ['Lab [Debian 12] shows []', 'Home Assistant', 'Windows 11'] },
-        open: { docker: [`${SPARE} [] shows []`, 'Media [app-a, app-b] shows [app-a, app-b]', 'Tools [tool-c] shows []', 'app-d'], vms: ['Lab [Debian 12] shows []', 'Home Assistant', 'Windows 11'] },
+        open: { docker: [`${SPARE} [] shows []`, 'Media [app-a, app-b] shows [app-a, app-b]', 'Tools [tool-c] shows []', 'app-d'], vms: ['Lab [Debian 12] shows [Debian 12]', 'Home Assistant', 'Windows 11'] },
     },
 };
-// FV3's events for a finished draw; the folder each page opens, its event when open, and how a user opens it
+// FV3's events for a finished draw; the folders each page opens, their events once open, and how a user opens them
 const DRAWN = { Docker: ['docker-post-folders-creation'], VMs: ['vm-post-folders-creation'], Dashboard: ['docker-post-folders-creation', 'vm-post-folders-creation'] };
 const OPEN = {
-    Docker: ['Media', 'docker-post-folder-expansion', (p) => press(p.locator(`button.dropDown-${MEDIA}`), "Media's chevron")],
-    VMs: ['Lab', 'vm-post-folder-expansion', (p) => press(p.locator(`button.dropDown-${LAB}`), "Lab's chevron")],
-    // The tile's menu, the item FV3's lang pack labels 'expand'
-    Dashboard: ['Media', 'docker-post-folder-expansion', async (p) => {
-        await press(p.locator(`#folder-id-${MEDIA}`), "Media's tile");
-        await press(p.locator('ul.dropdown-context:visible li > a', { hasText: await p.evaluate(() => $.i18n('expand')) }), "its menu's Expand");
+    Docker: ['Media', ['docker-post-folder-expansion'], (p) => press(p.locator(`button.dropDown-${MEDIA}`), "Media's chevron")],
+    VMs: ['Lab', ['vm-post-folder-expansion'], (p) => press(p.locator(`button.dropDown-${LAB}`), "Lab's chevron")],
+    // Each by its tile's menu, the item FV3's lang pack labels 'expand': Media on the Docker card, Lab on the VM card
+    Dashboard: ['Media and Lab', ['docker-post-folder-expansion', 'vm-post-folder-expansion'], async (p) => {
+        const expand = await p.evaluate(() => $.i18n('expand'));
+        for (const [id, folder] of [[MEDIA, 'Media'], [LAB, 'Lab']]) {
+            await press(p.locator(`#folder-id-${id}`), `${folder}'s tile`);
+            await press(p.locator('ul.dropdown-context:visible li > a', { hasText: expand }), `${folder}'s menu's Expand`);
+        }
     }],
 };
 // FV3's Dashboard layouts for the Docker and VM cards in each theme, so every layout is drawn at every width
@@ -257,14 +261,17 @@ async function load(tab, { where, page, theme }) {
 const measured = {}, lacking = new Map();
 async function aloneSteps(tab, v) {
     await load(tab, v);
+    // An FV3 page hook left in place would compare FV3 with itself
+    const fv3 = await tab.$('script[src*="/plugins/folder.view3/"], link[href*="/plugins/folder.view3/"]');
+    if (!check(!fv3, `${v.where}: FV3 is on the page, so this is not Unraid alone and nothing was read`)) return;
     v.drew = await tab.waitForSelector(LISTED[v.page], { timeout: 20000 }).then(() => true, () => false);
     if (!check(v.drew, `${v.where}: Unraid alone drew no ${LISTED[v.page]} within 20 s, so its hooks and widths were not read`)) return;
     measured[v.where] = await settled(tab, widths);
-    const hooks = HOOKS.filter((h) => !h.url && [v.page, 'any page'].includes(h.page) && applies(h, version));
+    const hooks = forView(v.page, version);
     for (const i of await settled(tab, missingHooks, hooks)) lacking.set(hooks[i], [...(lacking.get(hooks[i]) || []), v.where]);
 }
 
-// FV3's pass: drawn in the saved order, a folder opened as a user opens it, the layout rules, the advanced preview, no banners
+// FV3's pass: drawn in the saved order, folders opened as a user opens them, the layout rules, the advanced preview, no banners
 async function fv3Steps(tab, v) {
     const { where, file, page, width } = v;
     await load(tab, v);
@@ -280,13 +287,13 @@ async function fv3Steps(tab, v) {
     check(same(got, WANT[page].shut), `${where}: drawn as ${JSON.stringify(got)}, not ${JSON.stringify(WANT[page].shut)}`);
     const [folder, opened, open] = OPEN[page];
     await open(tab);
-    await waitEvents(tab, [opened]).catch(() => { throw new Error(`${folder} did not open within 20 s (${opened})`); });
+    await waitEvents(tab, opened).catch(() => { throw new Error(`${folder} did not open within 20 s (${opened.join(', ')})`); });
     got = await settled(tab, READ[page]);
     check(same(got, WANT[page].open), `${where}: with ${folder} open, drawn as ${JSON.stringify(got)}, not ${JSON.stringify(WANT[page].open)}`);
     const layout = await settled(tab, layoutState, { page, desktop: width === SIZES[0][0] });
     if (layout.error) throw new Error(layout.error);
     for (const problem of Object.values(layout.rules)) check(!problem, `${where}: ${problem}`);
-    // Where Unraid alone already scrolls sideways (both tables at tablet and phone widths), FV3 may be wider
+    // Only where Unraid alone fits: where it already scrolls sideways, FV3 may be wider
     const now = await tab.evaluate(widths), was = measured[where];
     if (was) check((!was.page || now.page) && (was.table !== true || now.table), `${where}: FV3 adds sideways scrolling Unraid alone does not have: ${now.sizes} (Unraid alone ${was.sizes})`);
     else if (Object.keys(measured).length) check(false, `${where}: widths not compared, the Unraid-alone pass did not measure this view`);
@@ -329,15 +336,21 @@ async function fv3Setup(request, token) {
         content: JSON.stringify({ name: SPARE, icon: '', regex: '', containers: [], settings: { preview: 1 }, actions: [] }) }, 'the empty folder');
 }
 
-// Each hook's FV3 file still mentions it; each missing hook once, with the views it was missing from. An endpoint is a webGUI file
-function hookChecks(webgui) {
+// Before the views: each hook's FV3 file still mentions it, and each endpoint is a webGUI file, called from Unraid's pages
+// where FV3 intercepts it
+function hookFiles(webgui) {
     for (const h of HOOKS) {
         const text = fs.existsSync(`${plugin}/${h.file}`) ? fs.readFileSync(`${plugin}/${h.file}`, 'utf8') : null;
         const gone = text === null ? [h.file] : tokens(h).filter((t) => !mentions(text, t));
         check(!gone.length, `hooks.js names ${h.file} for ${describe(h)}, but FV3 no longer has ${gone.join(', ')} there`);
     }
-    for (const [h, where] of lacking) check(false, `Unraid ${version} lacks ${describe(h)} on ${h.page} (${where.length} views, first ${where[0]}), which ${h.file} needs: ${h.loses}`);
-    for (const h of HOOKS.filter((x) => x.url)) check(fs.existsSync(path.join(webgui, 'emhttp', h.url)), `Unraid ${version} lacks ${h.url}, which ${h.file} needs: ${h.loses}`);
+    const plugins = `${webgui}/emhttp/plugins`;
+    const pages = fs.readdirSync(plugins, { recursive: true }).filter((f) => /\.(page|php|js)$/.test(f)).map((f) => [`/plugins/${f}`, fs.readFileSync(`${plugins}/${f}`, 'utf8')]);
+    for (const h of HOOKS.filter((x) => x.url)) {
+        const file = h.url.replace(/^\/webGui\//, '/plugins/dynamix/');
+        if (!check(fs.existsSync(`${webgui}/emhttp${file}`), `Unraid ${version} lacks ${h.url}, which ${h.file} needs: ${h.loses}`) || !h.intercepts) continue;
+        check(pages.some(([f, text]) => f !== file && text.includes(h.url)), `Unraid ${version}'s pages no longer call ${h.url}, which ${h.file} intercepts: ${h.loses}`);
+    }
 }
 
 (async () => {
@@ -357,28 +370,31 @@ function hookChecks(webgui) {
         try { Object.assign(measured, JSON.parse(fs.readFileSync(MEASURED, 'utf8'))); } catch (e) { check(false, `the Unraid-alone pass left no measurements, so no widths are compared: ${e.message}`); }
         await fv3Setup(setup.request, token);
     }
+    if (ALONE) hookFiles(webgui);
     let undrawn = 0;
-    for (const [i, theme] of THEMES.entries()) {
-        // As Unraid's Display Settings saves it
-        await post(setup.request, '/update.php', { '#file': 'dynamix/dynamix.cfg', '#section': 'display', theme, csrf_token: token }, `the ${theme} theme`);
-        if (!ALONE) for (const [card, layout] of [['docker', LAYOUTS[i][0]], ['vm', LAYOUTS[i][1]]]) {
-            await post(setup.request, '/plugins/folder.view3/server/update_settings.php', { key: `dashboard_${card}_layout`, value: layout, csrf_token: token }, `the Dashboard's ${layout} ${card} card`);
-        }
-        for (const [kind, browser] of Object.entries(browsers)) {
-            fs.mkdirSync(`${shots}/${kind}`, { recursive: true });
-            for (const size of SIZES) for (const page of ['Docker', 'VMs', 'Dashboard']) {
-                undrawn = (await view(browser, kind, theme, size, page, ALONE ? aloneSteps : fv3Steps)) ? 0 : undrawn + 1;
-                if (undrawn === 3) throw new Error(`3 views in a row ended before ${ALONE ? 'Unraid' : 'FV3'} drew, so the rest were not run`);
+    try {
+        for (const [i, theme] of THEMES.entries()) {
+            // As Unraid's Display Settings saves it
+            await post(setup.request, '/update.php', { '#file': 'dynamix/dynamix.cfg', '#section': 'display', theme, csrf_token: token }, `the ${theme} theme`);
+            if (!ALONE) for (const [card, layout] of [['docker', LAYOUTS[i][0]], ['vm', LAYOUTS[i][1]]]) {
+                await post(setup.request, '/plugins/folder.view3/server/update_settings.php', { key: `dashboard_${card}_layout`, value: layout, csrf_token: token }, `the Dashboard's ${layout} ${card} card`);
+            }
+            for (const [kind, browser] of Object.entries(browsers)) {
+                fs.mkdirSync(`${shots}/${kind}`, { recursive: true });
+                for (const size of SIZES) for (const page of ['Docker', 'VMs', 'Dashboard']) {
+                    undrawn = (await view(browser, kind, theme, size, page, ALONE ? aloneSteps : fv3Steps)) ? 0 : undrawn + 1;
+                    if (undrawn === 3) throw new Error(`3 views in a row ended before ${ALONE ? 'Unraid' : 'FV3'} drew, so the rest were not run`);
+                }
             }
         }
+    } finally {
+        // Each missing hook once, with the views it was missing from, also when the run stops early
+        for (const [h, where] of lacking) check(false, `Unraid ${version} lacks ${describe(h)} on ${h.page} (${where.length} views, first ${where[0]}), which ${h.file} needs: ${h.loses}`);
     }
     await setup.close();
     for (const browser of Object.values(browsers)) await browser.close();
-    if (ALONE) {
-        hookChecks(webgui);
-        fs.writeFileSync(MEASURED, JSON.stringify(measured));
-    }
-    const what = ALONE ? `Unraid alone has the ${HOOKS.length} hooks FV3 relies on, ${THEMES.length} themes at ${SIZES.length} widths in Chromium and Firefox`
+    if (ALONE) fs.writeFileSync(MEASURED, JSON.stringify(measured));
+    const what = ALONE ? `Unraid alone has the ${HOOKS.filter((h) => applies(h, version)).length} hooks FV3 relies on, ${THEMES.length} themes at ${SIZES.length} widths in Chromium and Firefox`
         : `FV3's pages in Chromium and Firefox, ${THEMES.length} themes at ${SIZES.length} widths`;
     if (failures.length) {
         console.log(`FAILED [Unraid ${version}]: ${failures.length} of ${checks} checks (${ALONE ? 'Unraid alone' : "FV3's pages"}), each listed above`);

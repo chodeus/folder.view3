@@ -1,5 +1,5 @@
-// Unraid's own parts FV3 relies on: each names the FV3 file that uses it and what the user loses without it. browser_test.js
-// checks each on Unraid alone, and that the file still mentions it. any: FV3 takes whichever exists; since: FV3 needs it only from there
+// Unraid's own parts FV3 relies on, each with the FV3 file that uses it and what the user loses without it. browser_test.js checks
+// them on Unraid alone (endpoints as webGUI files), each file still naming its hook; any/since only where FV3 itself branches
 'use strict';
 const D = 'Docker', V = 'VMs', B = 'Dashboard', ALL = 'any page';
 const HOOKS = [
@@ -12,7 +12,7 @@ const HOOKS = [
     { page: D, dom: 'td.updatecolumn', file: 'scripts/shared.js', loses: 'incognito leaves version text showing' },
     { page: D, dom: '#docker_list td.advanced', file: 'scripts/docker.js', loses: "the folder autostart switch cannot find its containers' switches" },
     { page: D, dom: '#docker_list input.autostart', file: 'scripts/docker.js', loses: 'the folder autostart switch does nothing' },
-    { page: D, dom: '.switch-button-background', file: 'scripts/docker.js', loses: 'the folder autostart switch is unstyled' },
+    { page: D, dom: '.switch-button-background', file: 'scripts/docker.js', loses: "the folder autostart switch leaves its members' switches unchanged" },
     { page: D, dom: '#docker_containers th.nine', file: 'scripts/shared.js', loses: 'the autostart column is sized wrong' },
     { page: D, dom: '.advancedview', file: 'scripts/docker.js', loses: 'folders are not redrawn on the basic/advanced toggle' },
     { page: D, any: ['.js-actions', 'input[value="Add Container"]'], file: 'folder.view3.Docker.page', loses: 'no Add Folder button' },
@@ -55,16 +55,16 @@ const HOOKS = [
     { page: ALL, js: '$.fn.tooltipster', file: 'scripts/advanced-preview.js', loses: 'no advanced preview' },
     { page: D, js: '$.fn.switchButton', file: 'scripts/docker.js', loses: 'the folder autostart switch never draws' },
     { page: D, js: '$.fn.sortable', file: 'scripts/docker.js', loses: 'folders cannot be dragged' },
-    { page: D, js: '$.cookie', file: 'scripts/docker.js', loses: 'the advanced view is not detected' },
+    { page: D, js: '$.cookie', file: 'scripts/docker.js', loses: 'docker.js stops at load, so folders never draw' },
     { page: D, js: '$.fn.readmore', file: 'scripts/shared.js', loses: "an opened folder's long descriptions are not folded" },
     { page: ALL, js: 'openBox', file: 'scripts/shared.js', loses: "a folder's user script actions do nothing" },
-    // Unraid's endpoints FV3 intercepts or calls, as files in the webGUI
-    { url: '/plugins/dynamix.docker.manager/include/UserPrefs.php', file: 'scripts/docker.js', loses: "Unraid saves an order without FV3's folders" },
-    { url: '/plugins/dynamix.vm.manager/include/UserPrefs.php', file: 'scripts/vm.js', loses: "Unraid saves an order without FV3's folders" },
-    { url: '/plugins/dynamix.vm.manager/include/VMMachines.php', file: 'scripts/vm.js', loses: 'folders are not redrawn when the VM list reloads' },
-    { url: '/webGui/include/DashboardApps.php', file: 'scripts/dashboard.js', loses: 'Dashboard folders are not redrawn when the tiles reload' },
-    { url: '/plugins/dynamix.docker.manager/include/UpdateConfig.php', file: 'scripts/docker.js', loses: 'folder autostart falls out of step' },
-    { url: '/plugins/dynamix.docker.manager/include/DockerUpdate.php', file: 'scripts/docker.js', loses: 'folders are not redrawn after an update' },
+    // Unraid's endpoints FV3 calls, as files in the webGUI; one it intercepts must also still be called from Unraid's pages
+    { url: '/plugins/dynamix.docker.manager/include/UserPrefs.php', intercepts: true, file: 'scripts/docker.js', loses: "Unraid saves an order without FV3's folders" },
+    { url: '/plugins/dynamix.vm.manager/include/UserPrefs.php', intercepts: true, file: 'scripts/vm.js', loses: "Unraid saves an order without FV3's folders" },
+    { url: '/plugins/dynamix.vm.manager/include/VMMachines.php', intercepts: true, file: 'scripts/vm.js', loses: 'folders are not redrawn when the VM list reloads' },
+    { url: '/webGui/include/DashboardApps.php', intercepts: true, file: 'scripts/dashboard.js', loses: 'Dashboard folders are not redrawn when the tiles reload' },
+    { url: '/plugins/dynamix.docker.manager/include/UpdateConfig.php', intercepts: true, file: 'scripts/docker.js', loses: 'folder autostart falls out of step' },
+    { url: '/plugins/dynamix.docker.manager/include/DockerUpdate.php', intercepts: true, file: 'scripts/docker.js', loses: 'folders are not redrawn after an update' },
     { url: '/plugins/dynamix.vm.manager/include/VMajax.php', file: 'scripts/shared.js', loses: 'VM folder actions fail' },
     { url: '/plugins/dynamix.vm.manager/vnc.html', file: 'scripts/vm.js', loses: "a folder member's VNC button does nothing" },
     { url: '/plugins/dynamix.docker.manager/images/question.png', file: 'scripts/docker.js', loses: 'folders without an icon show a broken image' },
@@ -80,6 +80,8 @@ const mentions = (text, t) => new RegExp(`${/^[#.]/.test(t) ? '' : '(?<![\\w-])'
 const describe = (h) => h.dom || (h.any && `any of ${h.any.join(', ')}`) || (h.css && `a stylesheet rule for .${h.css}`) || h.url || `the global ${h.js}`;
 const older = (a, b) => { const [x, y] = [a, b].map((v) => v.split('.').map(Number)); const i = x.findIndex((n, k) => n !== y[k]); return i >= 0 && x[i] < y[i]; };
 const applies = (h, version) => !h.since || !older(version, h.since);
+// The hooks one view checks: its page's and every page's that apply to this version (endpoints are checked as files)
+const forView = (page, version) => HOOKS.filter((h) => !h.url && [page, ALL].includes(h.page) && applies(h, version));
 
 // In the page: the indexes of the hooks it lacks. Rules in @media and @import count; a sheet that cannot be read counts as none
 function missingHooks(hooks) {
@@ -96,4 +98,4 @@ function missingHooks(hooks) {
     return hooks.map((h, i) => (present(h) ? -1 : i)).filter((i) => i >= 0);
 }
 
-module.exports = { HOOKS, tokens, mentions, describe, applies, missingHooks };
+module.exports = { HOOKS, tokens, mentions, describe, applies, forView, missingHooks };
