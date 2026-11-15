@@ -239,6 +239,14 @@ reviews:
           fake_logs.php holds the log checks both tests run. package.json
           pins playwright-core to the image's version, which
           browser_test.sh checks.
+        - browser_test.sh runs an Unraid-alone pass first, FV3's three
+          page hooks moved out of its plugin folder. It checks hooks.js, a
+          hand-written list of Unraid's DOM hooks, functions and endpoints
+          FV3 relies on, each naming the FV3 file that still mentions it and
+          what the user loses; any/since only where FV3 itself branches.
+          layout.js holds the layout rules FV3's pass checks against that
+          pass and a loose container on the same page, each from a fix FV3
+          has shipped.
         - matrix_check.py keeps ci.yml's Unraid rows at one per minor from the
           .plg's min to the newest release; Renovate only moves rows.
         - Each step asserts what the user is left with (live files, the
