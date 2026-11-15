@@ -54,6 +54,15 @@
       "datasourceTemplate": "git-refs",
       "packageNameTemplate": "https://github.com/{{{depName}}}",
       "depTypeTemplate": "bundled"
+    },
+    {
+      "customType": "regex",
+      "description": "The Playwright image browser_test.sh runs the browsers in, by tag and digest.",
+      "managerFilePatterns": ["/^\\.github/unraid-compat/browser_test\\.sh$/"],
+      "matchStrings": [
+        "browsers=(?<depName>mcr\\.microsoft\\.com/playwright):(?<currentValue>v[0-9.]+-noble)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
@@ -102,6 +111,11 @@
       "matchFileNames": [".github/scripts/package.json"],
       "matchPackageNames": ["jquery"],
       "allowedVersions": "<4"
+    },
+    {
+      "description": "playwright-core drives only the browsers of its own release, so it moves with the Playwright image in one PR.",
+      "matchPackageNames": ["playwright-core", "mcr.microsoft.com/playwright"],
+      "groupName": "Playwright"
     }
   ]
 }
