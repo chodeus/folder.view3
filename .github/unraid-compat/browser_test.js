@@ -187,12 +187,15 @@ function popupState(name) {
     const after = boxes();
     blanks.forEach(([node, data]) => { node.data = data; });
     const moved = elements.filter((e, i) => before[i] !== after[i]);
-    const r = base.getBoundingClientRect();
+    // Within the window's width, and nowhere the page cannot scroll to: a clicked popup stays open and in place while the page scrolls
+    const r = base.getBoundingClientRect(), top = r.top + scrollY, bottom = r.bottom + scrollY, page = document.documentElement.scrollHeight;
+    const fits = r.left >= 0 && r.right <= innerWidth + 1 && top >= 0 && bottom <= page + 1;
     return {
+        seen: window.fv3Test.seen(box),
         named: box.innerText.includes(name),
         blanks: blanks.length,
         moved: moved.length ? `${moved.length} elements, first ${moved.slice(0, 3).map((e) => `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}`).join(', ')}` : '',
-        inside: r.left >= 0 && r.right <= window.innerWidth + 1 ? '' : `left ${Math.round(r.left)}, right ${Math.round(r.right)} of ${window.innerWidth}`,
+        inside: fits ? '' : `left ${Math.round(r.left)}, right ${Math.round(r.right)} of the window's ${innerWidth}; top ${Math.round(top)}, bottom ${Math.round(bottom)} of the page's ${page}`,
     };
 }
 
@@ -246,9 +249,11 @@ async function view(browser, kind, theme, [width, height], page) {
             // The popup fades in and draws its graph after it opens
             const popup = await settled(tab, popupState, PREVIEWED);
             if (popup.error) throw new Error(popup.error);
+            // Playwright's visible ignores opacity: a popup tooltipster leaves transparent opens to nothing
+            if (!popup.seen) throw new Error('the advanced preview opened but cannot be seen');
             check(popup.named, `${where}: the advanced preview is not ${PREVIEWED}'s`);
             check(!popup.moved, `${where}: the advanced preview draws its markup's line breaks: ${popup.moved} moved when ${popup.blanks} blank text nodes became one space`);
-            check(!popup.inside, `${where}: the advanced preview leaves the window: ${popup.inside}`);
+            check(!popup.inside, `${where}: the advanced preview is out of reach: ${popup.inside}`);
             await tab.screenshot({ path: `${file}-preview.png` });
         }
         const banners = await tab.evaluate(() => window.fv3Test.banners);
