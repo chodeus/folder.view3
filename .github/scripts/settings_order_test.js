@@ -4,7 +4,7 @@
 const fs = require('fs');
 const vm = require('vm');
 const { JSDOM, VirtualConsole } = require('jsdom');
-const { makePage, drawDocker, fakeXhr, scriptHelpers, check, done, read, phpServer } = require('./preview_pages_harness.js');
+const { drawDocker, drawVms, scriptHelpers, check, done, read, phpServer } = require('./preview_pages_harness.js');
 
 // The settings page's backup panel (the two folder tables) with the shipped code that fills them
 const part = (rel, from, to) => {
@@ -50,22 +50,9 @@ const dockerPage = async ({ folders, names, prefs }) => {
     await page.draw();
     return page.rows().filter((r) => r.startsWith('folder-')).map((r) => folders[r.slice(7)].name.trim());
 };
-// The VMs page's folder order, by name as shown (trimmed), top-down: Unraid's rows (VMMachines.php) for the names as VMs
-const vmRow = (name, i) => `<tr parent-id="${i}" class="sortable"><td class="vm-name"><span class="outer"><span id="vm-u${i}" class="hand"><img class="img" src=""></span>` +
-    `<span class="inner"><a>${name}</a><br><i class="fa fa-square stopped red-text"></i><span class="state">stopped</span></span></span></td><td></td>` +
-    `<td><input class="autostart" type="checkbox" uuid="u${i}"></td></tr><tr child-id="${i}" id="name-${i}" style="display:none"><td colspan="3"></td></tr>`;
+// The VMs page's folder order, by name as shown (trimmed), top-down
 const vmPage = async ({ folders, names, prefs }) => {
-    const info = Object.fromEntries(names.map((n, i) => [n, { uuid: `u${i}`, state: 'shutoff', autostart: false }]));
-    const p = await makePage({ page: 'vm', api: false, answers: {
-        'read.php': () => JSON.stringify(folders), 'read_order.php': () => JSON.stringify(prefs),
-        'read_unraid_order.php': () => JSON.stringify(names), 'read_info.php': () => JSON.stringify(info),
-    } });
-    fakeXhr(p.w, () => ({ status: 200, body: '' }));
-    p.w.loadlist_original = () => p.$('#kvm_list').html(names.map(vmRow).join(''));
-    p.g('loadlist()');
-    p.g('fv3DrawList()');
-    for (let i = 0; i < 50 && !(p.w.fv3DrawLog || []).some((d) => d.outcome === 'drawn') && !p.errors.length; i++) await p.tick(100);
-    if (p.errors.length || !(p.w.fv3DrawLog || []).some((d) => d.outcome === 'drawn')) throw new Error(`VMs page not drawn: ${p.errors.join('; ')}`);
+    const p = await drawVms({ folders, names, prefs });
     return p.$('#kvm_list > tr.folder').toArray().map((tr) => folders[tr.className.match(/folder-id-(\S+)/)[1]].name.trim());
 };
 

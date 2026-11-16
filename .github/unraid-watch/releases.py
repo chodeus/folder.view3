@@ -16,6 +16,12 @@ def stable(version):
     return '-' not in version
 
 
+def os_tag(name):
+    """A stable Unraid OS release tag such as 7.4.0; the webgui's oldest tags are dates such as 2014.11.10."""
+    found = VERSION.fullmatch(name)
+    return bool(found) and stable(name) and int(found.group(1)) < 1000
+
+
 def heading(text):
     """First markdown heading of a release-notes file; '' when it has none."""
     for line in text.splitlines():

@@ -1,8 +1,10 @@
 """What upstream looks like, read through the GitHub client: schema changes, release notes, file differences."""
 import re
 
+import css
 import releases
 import schema
+from github import GitHubError
 
 NOTES = re.compile(r'[\w.-]+\.md\Z')
 
@@ -65,6 +67,59 @@ def validity(gh, src, ops, refs):
         errors, deprecated, _ = schema.check(schema.load(sdl), ops)
         out.append((ref, errors, deprecated))
     return out
+
+
+def release_refs(gh, src, floor):
+    """Stable release tags at or after floor (the plugin's declared minimum), oldest first, then the development branch."""
+    tags = [t for t in gh.tags(src['repo']) if releases.os_tag(t) and releases.order(t) >= releases.order(floor)]
+    # None would leave only the development branch checked, read as every release passing
+    if not tags:
+        raise GitHubError(f'{src["repo"]}: no stable release tag at or after {floor}')
+    return sorted(tags, key=releases.order) + [src['branch']]
+
+
+def text_at(gh, repo, ref, path):
+    """A file's text at a ref; None when the file is not there."""
+    blob = gh.tree(repo, ref).get(path)
+    return None if blob is None else gh.blob(repo, blob)
+
+
+def applies(entry, ref):
+    """A contract with `since` holds only from that release on; the development branch is always held to it."""
+    return 'since' not in entry or not releases.VERSION.fullmatch(ref) or releases.order(ref) >= releases.order(entry['since'])
+
+
+def contracts(gh, src, refs, pinned):
+    """[(contract, {ref: True, False, 'missing' (no such file), or None where it does not apply})]; pinned maps a branch to its sha."""
+    out = []
+    for entry in src.get('contracts', []):
+        found = {}
+        for ref in refs:
+            text = text_at(gh, src['repo'], pinned.get(ref, ref), entry['path']) if applies(entry, ref) else None
+            found[ref] = None if not applies(entry, ref) else 'missing' if text is None else bool(re.search(entry['match'], text))
+        out.append((entry, found))
+    return out
+
+
+def stylesheets(gh, src, refs, ours, pinned):
+    """({theme: css.changes}, [listed file no release has]) for Unraid's stylesheets; a file one release lacks is skipped."""
+    styles = src['styles']
+    out, seen = {}, set()
+    # Each theme's own file is its own input: one theme's themes/{theme}.css does not stand in for another's
+    listed = list(dict.fromkeys(p.format(theme=t) for t in styles['themes'] for p in styles['files']))
+    for theme in styles['themes']:
+        by_ref = {}
+        for ref in refs:
+            texts = []
+            for path in (p.format(theme=theme) for p in styles['files']):
+                text = text_at(gh, src['repo'], pinned.get(ref, ref), path)
+                # An empty file is no input either: a theme of empty files must not read as "no change"
+                if text and text.strip():
+                    texts.append(text)
+                    seen.add(path)
+            by_ref[ref] = css.merged(texts)
+        out[theme] = css.changes(by_ref, refs, ours)
+    return out, [p for p in listed if p not in seen]
 
 
 def differences(gh, repo, paths, start, head):

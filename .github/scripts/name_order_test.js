@@ -1,12 +1,13 @@
 // node .github/scripts/name_order_test.js — the server's fv3_name_cmp() sorts names as the pages do in the browser
 // (localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})): the shipped PHP function against node's ICU on the same names (needs php)
 'use strict';
+const path = require('path');
 const { execFileSync } = require('child_process');
-const { check, done, read } = require('./preview_pages_harness.js');
+const { check, done, plugin } = require('./preview_pages_harness.js');
 
-// The shipped function, taken from lib.php as written
-const fn = read('server/lib.php').match(/^ {4}function fv3_name_cmp\([\s\S]*?\n {4}}\n/m)[0];
-const phpSort = (names) => JSON.parse(execFileSync('php', ['-r', `${fn} $l = json_decode(stream_get_contents(STDIN), true); usort($l, 'fv3_name_cmp'); echo json_encode($l);`],
+// The shipped lib.order.php, required whole: it defines functions only
+const phpSort = (names) => JSON.parse(execFileSync('php', ['-r', `require $argv[1]; $l = json_decode(stream_get_contents(STDIN), true); usort($l, 'fv3_name_cmp'); echo json_encode($l);`,
+    path.join(plugin, 'server/lib.order.php')],
     { input: JSON.stringify(names), encoding: 'utf8' }));
 const browserSort = (names) => names.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 

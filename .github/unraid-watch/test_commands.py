@@ -5,7 +5,7 @@ from unittest import mock
 
 import watch
 from github import GitHubError
-from world import API, CFG, DOCS, ME, NEW, RELEASE, SCRIPT, SDL, USERPREFS, WEB, WITHOUT_STOP, Case, World, sha, url
+from world import API, CFG, DOCS, EVENTS, ME, NEW, RELEASE, SCRIPT, SDL, STYLES, USERPREFS, WEB, WITHOUT_STOP, Case, World, sha, url
 
 
 class ContractTest(Case):
@@ -77,10 +77,59 @@ class ContractTest(Case):
         self.assertEqual(code, 1)
         self.assertIn('::error::a.js:6:', out)
 
+    def test_contracts_are_checked_on_master_and_listed(self):
+        code, out = self.contract()
+        self.assertEqual(code, 0)
+        self.assertIn(f'- contract {EVENTS}: holds on 2 of 2 refs', out)
+
+    def test_a_contract_a_supported_release_breaks_fails_and_names_the_release(self):
+        self.w.release_line()
+        self.w.tree(WEB, '9.0.3', {EVENTS: 'ev0'})
+        self.w.blob(WEB, 'ev0', "$arrResponse = ['ok' => $DockerClient->startContainer($container)];\n")
+        code, out = self.contract()
+        self.assertEqual(code, 1)
+        self.assertIn(f"::error::unraid/webgui: {EVENTS} does not match \"'success' => \" on 9.0.3: answers in `success`", out)
+        self.assertIn(f'- contract {EVENTS}: holds on 1 of 2 refs', out)
+
+    def test_a_contract_file_a_release_does_not_have_is_named_missing_not_mismatched(self):
+        self.w.release_line()
+        self.w.tree(WEB, '9.0.3', {})
+        code, out = self.contract()
+        self.assertEqual(code, 1)
+        self.assertIn(f'::error::unraid/webgui: {EVENTS} is missing on 9.0.3: answers in `success`', out)
+        self.assertNotIn('does not match', out)
+
+    def test_a_release_before_a_contracts_since_is_not_held_to_it(self):
+        self.w.release_line()
+        self.w.tree(WEB, '9.0.3', {})
+        cfg = {**CFG, 'sources': [{**s, 'contracts': [{**s['contracts'][0], 'since': '9.1.0'}]} if 'contracts' in s else s
+                                  for s in CFG['sources']]}
+        code, out = self.captured(watch.cmd_contract, cfg, self.w.client(), self.w.root, None)
+        self.assertEqual(code, 0)
+        self.assertIn(f'- contract {EVENTS}: holds on 1 of 1 refs', out)
+
+    def test_only_stable_releases_from_the_plugins_minimum_are_read(self):
+        self.w.release_line()
+        self.contract()
+        read = {c[1].split('/git/trees/')[1].split('?')[0] for c in self.w.fake.calls if f'/repos/{WEB}/git/trees/' in c[1]}
+        # master is read at the sha the run pinned it to, not by its moving name
+        self.assertEqual(read, {'9.0.3', NEW[WEB]})
+
+    def test_a_manifest_without_a_minimum_stops_the_contract_before_any_request(self):
+        world = World(self, manifest='<PLUGIN name="p">\n')
+        with self.assertRaisesRegex(watch.Problem, 'no min="x.y.z"'):
+            self.contract(world=world)
+        self.assertEqual(world.fake.calls, [])
+
+    def test_no_supported_release_tag_is_an_error_not_a_pass_on_master_alone(self):
+        self.w.tags(WEB, ['8.9.0', '9.1.0-beta.2', '2030.11.10'])
+        with self.assertRaisesRegex(GitHubError, 'no stable release tag at or after 9.0.0'):
+            self.contract()
+
 
 class CheckTest(Case):
-    def check(self, script):
-        world = World(self, script)
+    def check(self, script, **world):
+        world = World(self, script, **world)
         code, out = self.captured(watch.cmd_check, CFG, world.root)
         self.assertEqual(world.fake.calls, [])
         return code, out
@@ -106,6 +155,45 @@ class CheckTest(Case):
         code, out = self.check(SCRIPT.replace('/plugins/dynamix.docker.manager/', '/plugins/other/'))
         self.assertEqual(code, 1)
         self.assertIn('::error::unraid/webgui: the plugin references none of its endpoints', out)
+
+    def test_an_unraid_css_variable_without_a_fallback_fails(self):
+        code, out = self.check(SCRIPT, styles=STYLES + '.tip { margin: var(--gap); }\n')
+        self.assertEqual(code, 1)
+        self.assertIn('::error::a.css:3: var(--gap) has no fallback and FolderView3 does not define --gap', out)
+
+    def test_a_manifest_without_a_minimum_fails(self):
+        code, out = self.check(SCRIPT, manifest='<PLUGIN name="p">\n')
+        self.assertEqual(code, 1)
+        self.assertIn('::error::plugin.plg: no min="x.y.z" on its PLUGIN tag', out)
+
+    def test_a_missing_manifest_says_it_is_missing(self):
+        world = World(self)
+        Path(world.root, 'plugin.plg').unlink()
+        code, out = self.captured(watch.cmd_check, CFG, world.root)
+        self.assertEqual(code, 1)
+        self.assertIn('::error::plugin.plg is missing', out)
+
+    def test_a_plugin_with_no_stylesheets_fails_instead_of_reading_as_nothing_styled(self):
+        world = World(self)
+        Path(world.root, 'plugin/styles/a.css').unlink()
+        code, out = self.captured(watch.cmd_check, CFG, world.root)
+        self.assertEqual(code, 1)
+        self.assertIn('::error::plugin/styles has no stylesheets that style an element', out)
+
+    def test_release_checks_with_nothing_to_check_fail_instead_of_passing(self):
+        web = next(s for s in CFG['sources'] if 'contracts' in s)
+        for broken in ({**web, 'contracts': []}, {**web, 'styles': {**web['styles'], 'themes': []}},
+                       {**web, 'contracts': [{'path': EVENTS, 'match': '(', 'why': 'w'}]}, {**web, 'contracts': [{'path': EVENTS}]}):
+            with self.subTest(broken=broken.get('contracts')):
+                cfg = {**CFG, 'sources': [broken if s is web else s for s in CFG['sources']]}
+                code, out = self.captured(watch.cmd_check, cfg, World(self).root)
+                self.assertEqual(code, 1)
+                self.assertIn('::error::watch.json: ', out)
+
+    def test_an_empty_stylesheet_fails_the_same_way(self):
+        code, out = self.check(SCRIPT, styles='')
+        self.assertEqual(code, 1)
+        self.assertIn('::error::plugin/styles has no stylesheets that style an element', out)
 
 
 class MainTest(Case):
