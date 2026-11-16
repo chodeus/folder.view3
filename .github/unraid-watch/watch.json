@@ -67,7 +67,7 @@
         {"path": "emhttp/plugins/dynamix.vm.manager/include/VMajax.php", "match": "\\['error' => ",
          "why": "answers a refused VM action in `error` (shared.js fv3ActionAnswer)"},
         {"path": "emhttp/plugins/dynamix.docker.manager/include/UserPrefs.php", "match": "\\$save\\[\\] = \\$index\\[\\$i\\+\\+\\]\\.\"=\\\\\"\"\\.\\$name\\.\"\\\\\"\"",
-         "why": "saves the Docker order as N=\"name\" lines, the format the plugin reads and inserts into (lib.php fv3_parse_user_prefs)"}
+         "why": "saves the Docker order as N=\"name\" lines, the format the plugin reads and inserts into (lib.order.php fv3_parse_user_prefs)"}
       ],
       "styles": {
         "themes": ["azure", "black", "gray", "white"],

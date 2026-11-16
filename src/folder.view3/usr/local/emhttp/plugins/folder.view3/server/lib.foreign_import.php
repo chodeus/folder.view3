@@ -398,7 +398,7 @@
                 $regex = is_string($src['regex'] ?? null) && strlen($src['regex']) <= 1024 ? $src['regex'] : '';
                 // A regex present but refused on type or length is left out as much as one that will not compile
                 if ($regex === '' && $suppliedRegex !== null && $suppliedRegex !== '') $r['dropped_regex']++;
-                // Same pattern build as syncContainerOrder in lib.php; a regex it can't compile would match nothing
+                // Same pattern build as fv3_compute_folder_membership in lib.order.php; a regex it can't compile would match nothing
                 if ($regex !== '' && @preg_match('/' . str_replace('/', '\/', $regex) . '/', '') === false) { $regex = ''; $r['dropped_regex']++; }
                 // The renderers hand the stored pattern to JS new RegExp(), so one PHP alone accepts
                 // would place members the page then cannot show — see fv3_foreign_regex_js_safe()
