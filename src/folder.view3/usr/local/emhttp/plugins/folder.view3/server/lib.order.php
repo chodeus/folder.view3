@@ -9,10 +9,8 @@
         elseif($type == 'vm') { $prefsFilePath = "/boot/config/plugins/dynamix.vm.manager/userprefs.cfg"; }
         else { return '[]'; }
         if(!file_exists($prefsFilePath)) { return '[]'; }
-        // Deliberate GET side-effect (self-heal on the page-load read, mirroring the
-        // organizer mirror + rename-backfill pattern): content derives only from
-        // server-side state, is idempotent, and inserts rather than removes — a
-        // cross-site-triggered GET can only cause the same heal the next page load would.
+        // A deliberate GET side effect: the heal derives only from server-side state and only inserts, so a cross-site GET does no
+        // more than the next page load would
         fv3_heal_user_prefs($type, $prefsFilePath);
         $raw = @file_get_contents($prefsFilePath);
         return json_encode(($raw === false ? null : fv3_parse_user_prefs($raw)) ?? []);
@@ -39,10 +37,8 @@
         return "$configDir/order-$type.json";
     }
 
-    // Returns the cleaned list, or null when any non-empty entry breaks the snapshot
-    // rules. Empty entries are delimiter artifacts (every stock names string ends ';')
-    // and are dropped, not treated as invalid. The rules exist because a violating
-    // entry could corrupt an ini line when healed back into userprefs.cfg.
+    // The cleaned list, or null when an entry breaks the rules that keep healed userprefs.cfg lines sound (a string, at most 256
+    // bytes, no quote or control character; at most 4096 entries). Empty ones (every stock names string ends ';') are dropped
     function fv3_sanitize_order_entries(array $entries): ?array {
         $clean = [];
         foreach ($entries as $e) {
@@ -62,15 +58,8 @@
         return fv3_atomic_write(fv3_order_snapshot_file($type), json_encode(['fv3_order_version' => 1, 'entries' => $clean], JSON_PRETTY_PRINT));
     }
 
-    // Snapshot state for export, keeping the tri-state importAll() relies on:
-    // absent file -> [] (present-empty: source authoritatively has no snapshot, import
-    // clears the destination); unreadable/malformed -> null (omit the bundle key, import
-    // leaves the destination untouched); valid -> the wrapped snapshot.
-    // A snapshot wrapper saveOrderSnapshot could actually have written: version 1 and a
-    // non-empty entries list that passes sanitization unchanged. Returns the entries or
-    // null. Shared by export (file contents) and import (bundle contents) so both sides
-    // apply identical validation — anything else is corrupt/tampered and must be ignored,
-    // never treated as empty (that would clear a valid destination snapshot on import).
+    // The entries of a wrapper saveOrderSnapshot could have written (version 1, non-empty entries that sanitize unchanged), else null: export
+    // and import share it, and anything else must be ignored, never read as empty (import would clear a valid snapshot)
     function fv3_validate_order_snapshot(array $data): ?array {
         if (($data['fv3_order_version'] ?? null) !== 1
             || !isset($data['entries']) || !is_array($data['entries'])) return null;
@@ -79,6 +68,8 @@
         return $clean;
     }
 
+    // The tri-state importAll() relies on: no file -> [] (import clears the destination), unreadable or malformed -> null (import
+    // leaves it alone), valid -> the wrapped snapshot
     function fv3_export_order_snapshot(string $type): ?array {
         $path = fv3_order_snapshot_file($type);
         if (!file_exists($path)) return [];
@@ -88,11 +79,8 @@
         return $data;
     }
 
-    // Re-insert folder rows into the stock sort prefs from FV3's own order snapshot.
-    // Fires when prefs has entries but at least one live folder is unpositioned —
-    // the post-reinstall state, or a folder whose entry went missing. Insert-only —
-    // existing prefs entries are never reordered or removed, so container order is
-    // preserved, and already-positioned folders are kept in place and used as anchors.
+    // Puts live folders the saved order lacks (after a reinstall, or a lost entry) back where FV3's snapshot had them. Insert-only:
+    // existing entries keep their place and order
     function fv3_heal_user_prefs(string $type, string $prefsFilePath): void {
         global $configDir;
         $raw = @file_get_contents($prefsFilePath);
@@ -222,9 +210,8 @@
         return ['success' => true, 'mode' => $mode, 'sequence' => $cleanSeq] + ($warnings ? ['warning' => implode('; ', $warnings)] : []);
     }
 
-    // Reorders the existing autostart lines to the saved custom sequence. Waits ride along
-    // verbatim; enabled-but-unsequenced containers keep their current relative order at the end.
-    // Returns why the autostart file could not be put in the saved sequence, or null
+    // The autostart lines in the saved custom sequence, waits kept; enabled containers it does not name keep their order at the end.
+    // Returns why the autostart file could not be put in that sequence, or null
     function fv3_apply_custom_autostart(array $allContainerNames, bool $ctListComplete): ?string {
         $autoStartFile = fv3_autostart_file();
         if (!file_exists($autoStartFile)) return null;
@@ -284,10 +271,8 @@
         return array_values(array_unique(array_merge($saved, $ids)));
     }
 
-    // Effective membership — explicit > label > regex (issues #46/#55). Single source of
-    // truth shared by syncContainerOrder and read_membership.php (issue #61).
-    // $prefs orders each folder's regex and label members as the Docker page lists them (fv3_live_order), and the folders as the
-    // page draws them, so a container two folders' regexes match goes to the one the page shows it in
+    // Membership, explicit > label > regex (#46/#55), for syncContainerOrder and read_membership.php alike (#61). $prefs orders regex
+    // and label members as the page lists them (fv3_live_order), and folders as it draws them: of two regex matches, the first drawn wins
     function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels, array $prefs = []): array {
         $live = fv3_live_order($allContainerNames, $prefs);
         // One malformed entry is dropped or filled in, not allowed to abort every folder's sync
@@ -310,9 +295,8 @@
         foreach (fv3_folder_walk_order($folders, $prefs) as $folderId) {
             $folder = $folders[$folderId];
             $members = $folder['containers'] ?? [];
-            // is_string + trim, not empty(): empty("0") is true in PHP, so a regex of "0" was
-            // silently dropped while docker.js applied it. The type check mirrors docker.js and
-            // keeps a non-string regex from fataling trim() (TypeError on PHP 8).
+            // is_string + trim, not empty(): empty("0") is true, so a regex of "0" was dropped while docker.js applied it; the type
+            // check mirrors docker.js and keeps a non-string regex from fataling trim()
             if (is_string($folder['regex'] ?? null) && trim($folder['regex']) !== '') {
                 $regex = '/' . str_replace('/', '\/', $folder['regex']) . '/';
                 foreach ($live as $name) {
