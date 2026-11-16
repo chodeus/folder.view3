@@ -127,7 +127,7 @@ const folder = (name, containers = [], regex = '') => ({ name, containers, regex
                 .concat(containers.filter((c) => !r.after.includes(c) && !inFolder.has(c)), r.after.filter(shown));
             if (!same(page.rows(), want)) off.push({ folders, containers, after: r.after, rows: page.rows(), want });
         }
-        check('the generated orders are regrouped by the sync, and every sync answers success', changed > 30 && refused.length === 0, { changed, refused: refused.slice(0, 2) });
+        check('the sync regroups over a quarter of the generated orders, and every sync answers success', changed > 30 && refused.length === 0, { changed, refused: refused.slice(0, 2) });
         check('a second sync leaves userprefs.cfg as the first wrote it', unstable.length === 0, unstable.slice(0, 2));
         check('after the sync the page draws its rows in the order userprefs.cfg names them', off.length === 0, { count: off.length, first: off.slice(0, 2) });
     }
