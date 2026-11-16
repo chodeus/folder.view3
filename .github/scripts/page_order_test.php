@@ -75,6 +75,7 @@ $sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?cal
     $GLOBALS['fv3tDown'] = $names === null;
     $setPrefs($cfg);
     @unlink("$configDir/docker.json");
+    @unlink("$configDir/order-docker.json");
     @unlink($fv3tAutostart);
     if ($folders !== null) file_put_contents("$configDir/docker.json", json_encode((object)$folders));
     if ($autostart !== null) file_put_contents($fv3tAutostart, is_array($autostart) ? implode("\n", $autostart) . "\n" : $autostart);
@@ -89,6 +90,12 @@ $sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?cal
         $GLOBALS['fv3tLabelsDown'] = false;
         $GLOBALS['fv3tDown'] = false;
     }
+};
+// $sync's run, answering with userprefs.cfg as the run left it (null = no file) in place of the autostart file
+$syncPrefs = function (?array $folders, array $names, ?string $cfg, ?callable $break = null) use ($sync, $fv3DockerManDir): array {
+    [$answer] = $sync($folders, $names, $cfg, null, $break);
+    $file = "$fv3DockerManDir/userprefs.cfg";
+    return [$answer, file_exists($file) ? file_get_contents($file) : null];
 };
 // updateAutostartConfig() as the Autostart tab calls it, with the folder config as given
 $autostartSave = function (string $mode, string $foldersJson, array $waits = [], bool $readOnly = false) use ($setPrefs, $configDir, $fv3tAutostart): array {
@@ -204,11 +211,18 @@ $cases = [
         ['folder-a', 'folder-b', 'folder-m', 'plex', 'folder-z']],
     ['no userprefs.cfg: a look-alike of a folder member keeps its own A-Z place',
         $order(['f' => $folder('F', ['10'])], ['10', '1e1', '0first'], []), ['0first', '1e1', '10', 'folder-f']],
-    ['read_membership.php: an explicit entry beats a label (s1), a label places a loose container (mid), the first folder whose regex matches wins (r1, y1)',
-        $membership(null), [1, '200', ['alpha' => 'Dup', 'mid' => 'Zulu', 'n1' => 'Numbers', 'o1' => 'Old', 'r1' => 'Rex', 'r2' => 'Rex', 's1' => 'Seven', 'y1' => 'Yankee', 'y2' => 'Yankee', 'z1' => 'Zulu', 'z2' => 'Zulu']]],
-    ['and its answer does not depend on userprefs.cfg: the saved order, a reversed one, a file cut off mid-save',
+    ['two folders\' regexes match a container: the folder userprefs.cfg names first takes it, as the page draws it',
+        $order(['a' => $folder('A', [], '^web'), 'b' => $folder('B', [], '^web')], ['web1', 'loose'], ['folder-b', 'loose', 'folder-a']),
+        ['web1', 'folder-b', 'loose', 'folder-a']],
+    ['folders userprefs.cfg does not name take theirs in JS key order, an index-like id first',
+        $order(['x' => $folder('X', [], '^web'), '7' => $folder('Seven', [], '^web')], ['web1', 'loose'], ['loose']), ['folder-x', 'web1', 'folder-7', 'loose']],
+    ['no userprefs.cfg: the folder first A-Z takes a container two regexes match',
+        $order(['z' => $folder('Zulu', [], '^web'), 'a' => $folder('Alpha', [], '^web')], ['web1'], []), ['web1', 'folder-a', 'folder-z']],
+    ['read_membership.php: an explicit entry beats a label (s1), a label places a loose container (mid); with nothing saved the folder first A-Z whose regex matches wins (Dup: r1, y1)',
+        $membership(null), [1, '200', ['alpha' => 'Dup', 'mid' => 'Zulu', 'n1' => 'Numbers', 'o1' => 'Old', 'r1' => 'Dup', 'r2' => 'Dup', 's1' => 'Seven', 'y1' => 'Dup', 'y2' => 'Dup', 'z1' => 'Zulu', 'z2' => 'Zulu']]],
+    ['with a saved order, the folders it names win first, then the rest (Rex, Yankee before Dup); a file cut off mid-save reads as nothing saved, as on the page',
         [$membership($userprefs($fixture['prefs'])), $membership($userprefs(array_reverse($fixture['containers']))), $membership($cutOff)],
-        array_fill(0, 3, $membership(null))],
+        [...array_fill(0, 2, [1, '200', ['alpha' => 'Dup', 'mid' => 'Zulu', 'n1' => 'Numbers', 'o1' => 'Old', 'r1' => 'Rex', 'r2' => 'Rex', 's1' => 'Seven', 'y1' => 'Yankee', 'y2' => 'Yankee', 'z1' => 'Zulu', 'z2' => 'Zulu']]), $membership(null)]],
     ['autostart lines follow the order and keep their wait value',
         fv3_reorder_autostart(['a 5', 'b', 'c 10'], ['c', 'folder-f', 'a', 'a']), ['c 10', 'a 5', 'b']],
     ['a line the order does not name stays after the others, in file order',
@@ -248,23 +262,68 @@ $cases = [
         $sync([], ['b', 'a', 'c'], $cutOff, ['c', 'ghost', 'b 5', 'a']), ["Unraid's saved Docker order (userprefs.cfg) could not be read", ['c', 'ghost', 'b 5', 'a']]],
     ['an empty userprefs.cfg writes A-Z, as no userprefs.cfg does',
         $sync([], ['b', 'a', 'c'], '', ['c', 'b 5', 'a']), [null, ['a', 'b 5', 'c']]],
+    ['userprefs.cfg: a folder member it lacks is saved right after its folder, in the folder\'s order',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], $userprefs(['a', 'folder-f', 'x', 'b'])), [null, $userprefs(['a', 'folder-f', 'x', 'y', 'b'])]],
+    ['userprefs.cfg: a member saved away from its folder moves to it',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], $userprefs(['y', 'a', 'folder-f', 'x', 'b'])), [null, $userprefs(['a', 'folder-f', 'x', 'y', 'b'])]],
+    ['userprefs.cfg: a member moved to another folder follows it',
+        $syncPrefs(['f' => $folder('F', ['x']), 'g' => $folder('G', ['w', 'y'])], ['w', 'x', 'y'], $userprefs(['folder-f', 'x', 'y', 'folder-g', 'w'])), [null, $userprefs(['folder-f', 'x', 'folder-g', 'w', 'y'])]],
+    ['userprefs.cfg: members saved before their folder, as FV3\'s own writers save them, stay before it',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'x', 'y'], $userprefs(['x', 'folder-f', 'a'])), [null, $userprefs(['x', 'y', 'folder-f', 'a'])]],
+    ['userprefs.cfg: a regex folder\'s members keep the saved order, on their side of its entry',
+        $syncPrefs(['r' => $folder('Rx', [], '^web')], ['web1', 'web2', 'db'], $userprefs(['web2', 'folder-r', 'db', 'web1'])), [null, $userprefs(['web2', 'web1', 'folder-r', 'db'])]],
+    ['userprefs.cfg: a folder with none of its members saved yet, as after an install, gets them after its entry',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['folder-f', 'a'])), [null, $userprefs(['folder-f', 'x', 'a'])]],
+    ['userprefs.cfg: a folder it has no entry for leaves its members where they are',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'x', 'y'], $userprefs(['x', 'a', 'y'])), [null, $userprefs(['x', 'a', 'y'])]],
+    ['userprefs.cfg: an entry Docker does not have keeps its place',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['ghost', 'folder-f', 'a', 'x'])), [null, $userprefs(['ghost', 'folder-f', 'x', 'a'])]],
+    ['userprefs.cfg: none is not created, so Unraid keeps its A-Z order',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], null), [null, null]],
+    ['userprefs.cfg: an empty one stays empty',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], ''), [null, '']],
+    ['userprefs.cfg: one already in place is not written again, its numbering kept',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['x', 'y'], "0=\"folder-f\"\n2=\"x\"\n5=\"y\"\n"), [null, "0=\"folder-f\"\n2=\"x\"\n5=\"y\"\n"]],
+    ['userprefs.cfg: the fixture\'s saved order is already in place',
+        $syncPrefs($fixture['folders'], $fixture['containers'], $userprefs($fixture['prefs'])), [null, $userprefs($fixture['prefs'])]],
+    ['userprefs.cfg: custom and off modes regroup it too, and leave the autostart file to their own rule',
+        array_map(fn($mode) => [...$sync(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['x', 'a', 'folder-f']), ['x', 'a'],
+            fn() => file_put_contents("$configDir/autostart.json", json_encode(['mode' => $mode, 'sequence' => ['a', 'x']]))), file_get_contents("$fv3DockerManDir/userprefs.cfg")], ['custom', 'off']),
+        [[null, ['a', 'x'], $userprefs(['a', 'folder-f', 'x'])], [null, ['x', 'a'], $userprefs(['a', 'folder-f', 'x'])]]],
+    ['userprefs.cfg: a name that cannot be written back (a quote another tool saved) leaves it as it is, and is reported',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['x'], "0=\"x\"\n1=\"a\\\"b\"\n2=\"folder-f\"\n"),
+        ["Unraid's saved Docker order (userprefs.cfg) holds a name that cannot be written back", "0=\"x\"\n1=\"a\\\"b\"\n2=\"folder-f\"\n"]],
+    ['userprefs.cfg: an order saved while the sync worked it out is kept as it is',
+        (function () use ($setPrefs, $userprefs, $folder, $fv3DockerManDir) {
+            $read = ['x', 'b', 'folder-f'];
+            $setPrefs($userprefs(['folder-f', 'x', 'b']));
+            return [fv3_sync_user_prefs($read, fv3_compute_folder_membership(['f' => $folder('F', ['x'])], ['b', 'x'], [], $read)), file_get_contents("$fv3DockerManDir/userprefs.cfg")];
+        })(), [null, $userprefs(['folder-f', 'x', 'b'])]],
+    ['userprefs.cfg: FV3\'s order snapshot, which the heal restores from after a reinstall, is saved with it',
+        [$syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['x', 'a', 'folder-f']))[1], fv3_export_order_snapshot('docker')['entries'] ?? null],
+        [$userprefs(['a', 'folder-f', 'x']), ['a', 'folder-f', 'x']]],
+    ['userprefs.cfg: a cut-off one is left as it is, and reported',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $cutOff), ["Unraid's saved Docker order (userprefs.cfg) could not be read", $cutOff]],
+    ['userprefs.cfg: the start order worked out from it is the same before and after the update (the page: docker_saved_places_test.js)',
+        $order(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], fv3_parse_user_prefs($syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], $userprefs(['y', 'a', 'folder-f', 'b']))[1])),
+        $order(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], ['y', 'a', 'folder-f', 'b'])],
     ['no containers, or Docker not running (Unraid\'s client answers an empty list): nothing is written, nothing is reported',
         $sync([], [], null, ['b', 'a']), [null, ['b', 'a']]],
     ['a container list with an unnamed entry: nothing is written, and it is reported',
         $sync([], ['a', ''], null, ['b', 'a']), ["Docker's container list could not be read", ['b', 'a']]],
     ['a failed label read: nothing is written, and it is reported',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () { $GLOBALS['fv3tLabelsDown'] = true; }), ['the container labels could not be read', ['b', 'a']]],
-    ['custom mode does not read the folder config, so a damaged one does not stop it',
+    ['custom mode still writes its sequence when a damaged folder config stops the userprefs.cfg update, and says so',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir) {
             file_put_contents("$configDir/docker.json", '{');
             file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}');
-        }), [null, ['a', 'b']]],
+        }), ['the folder config could not be read', ['a', 'b']]],
     ['a missing plugin config folder (deleted by hand under an open tab) is "no folders", not a failure: the sync runs and reports nothing',
         [$syncWithoutConfigDir(['b', 'a']), $syncWithoutConfigDir([]), is_dir($configDir)], [[null, ['a', 'b']], [null, ['b', 'a']], true]],
     ['a damaged folder config is reported',
         $sync([], ['a', 'b'], null, ['b', 'a'], fn() => file_put_contents("$configDir/docker.json", '{')), ['the folder config could not be read', ['b', 'a']]],
-    ['autostart mode off reads nothing and reports nothing',
-        $sync([], ['a', 'b'], $cutOff, ['b', 'a'], fn() => file_put_contents("$configDir/autostart.json", '{"mode":"off"}')), [null, ['b', 'a']]],
+    ['autostart mode off leaves the autostart file as it is, and reports a userprefs.cfg it cannot read',
+        $sync([], ['a', 'b'], $cutOff, ['b', 'a'], fn() => file_put_contents("$configDir/autostart.json", '{"mode":"off"}')), ["Unraid's saved Docker order (userprefs.cfg) could not be read", ['b', 'a']]],
     ['custom mode writes its saved sequence, the rest after it in file order',
         $sync([], ['a', 'b', 'c'], null, ['b 5', 'a', 'ghost', 'c'], fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["c","a"]}')), [null, ['c', 'a', 'b 5']]],
     ['custom mode: a file already in its sequence is not written again',
@@ -319,6 +378,16 @@ if (!function_exists('posix_geteuid') || posix_geteuid() !== 0) {
         [['success' => true, 'mode' => 'off', 'sequence' => [], 'warning' => 'the wait edits could not be written to the autostart file'],
          ['success' => true, 'mode' => 'folder', 'sequence' => [], 'warning' => 'the wait edits could not be written to the autostart file; the autostart file could not be written'],
          ['success' => true, 'mode' => 'off', 'sequence' => []], ['b', 'a 30']]];
+    $cases[] = ['userprefs.cfg: a failed write is reported, and the autostart file is still put in order',
+        (function () use ($sync, $folder, $userprefs, $fv3DockerManDir) {
+            try { return $sync(['f' => $folder('F', ['x'])], ['a', 'b', 'x'], $userprefs(['b', 'folder-f', 'a', 'x']), ['a', 'x', 'b'], fn() => chmod($fv3DockerManDir, 0555)); }
+            finally { chmod($fv3DockerManDir, 0755); }
+        })(), ["Unraid's saved Docker order (userprefs.cfg) could not be updated", ['b', 'x', 'a']]];
+    $cases[] = ['userprefs.cfg and the autostart file both not written: both are reported',
+        (function () use ($sync, $folder, $userprefs, $fv3DockerManDir, $fv3tAutostart) {
+            try { return $sync(['f' => $folder('F', ['x'])], ['a', 'b', 'x'], $userprefs(['b', 'folder-f', 'a', 'x']), ['a', 'x', 'b'], function () use ($fv3DockerManDir, $fv3tAutostart) { chmod($fv3DockerManDir, 0555); chmod($fv3tAutostart, 0444); }); }
+            finally { chmod($fv3DockerManDir, 0755); }
+        })(), ["Unraid's saved Docker order (userprefs.cfg) could not be updated; the autostart file could not be written", ['a', 'x', 'b']]];
     $cases[] = ['custom mode reports it too',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir, $fv3tAutostart) { file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}'); chmod($fv3tAutostart, 0444); }), ['the autostart file could not be written', ['b', 'a']]];
 }
@@ -398,10 +467,10 @@ $importOrder = function (?string $cfg, $ids, ?array $names, string $foldersJson 
 };
 $cases[] = ['folder import, no saved order: the new folders first in the file\'s order, each after its members, then the rest A-Z',
     $importOrder(null, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'b', 'folder-n1', 'c', 'a', 'folder-old'])]];
-$cases[] = ['folder import, a saved order: the new folders go on top in the file\'s order, the saved entries after them as they were',
-    $importOrder($keep, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'folder-n1', 'alpha', 'zed'])]];
-$cases[] = ['folder import, a saved order that already places one of them: that one keeps its place, an id with no folder is not written',
-    $importOrder($userprefs(['alpha', 'folder-n1', 'zed']), ['n2', 'n1', 'ghost'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'alpha', 'folder-n1', 'zed'])]];
+$cases[] = ['folder import, a saved order: the new folders go on top in the file\'s order with their members, the saved entries after them as they were',
+    $importOrder($keep, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'folder-n1', 'b', 'alpha', 'zed'])]];
+$cases[] = ['folder import, a saved order that already places one of them: that one keeps its place with its member, an id with no folder is not written',
+    $importOrder($userprefs(['alpha', 'folder-n1', 'zed']), ['n2', 'n1', 'ghost'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'alpha', 'folder-n1', 'b', 'zed'])]];
 $cases[] = ['folder import, a saved order holding a list line: said, and left as it was',
     $importOrder("0=\"a\"\n1[]=\"b\"\n", ['n1'], ['a', 'b']), ['200', true, "Unraid's saved Docker order (userprefs.cfg) could not be read", "Unraid's saved Docker order (userprefs.cfg) could not be read", "0=\"a\"\n1[]=\"b\"\n"]];
 $cases[] = ['folder import, a saved order and a folder config that will not parse: said, and the order left as it was',
