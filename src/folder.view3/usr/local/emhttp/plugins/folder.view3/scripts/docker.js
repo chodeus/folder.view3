@@ -13,6 +13,7 @@ let folderobserverConfig = {
 let folderReq = [];
 const fv3Folders = fv3FolderData();
 let fv3RemeasureWidths = false;
+let fv3OrderSyncAsked = false;
 
 // Folder rendering — orchestrate (createFolders) and per-folder build (createFolder)
 const createFolders = async () => {
@@ -218,6 +219,13 @@ const createFolders = async () => {
 
     globalFolders = foldersDone;
     fv3Debug('createFolders', 'Assigned foldersDone to globalFolders:', {...globalFolders});
+
+    // A container that joined a folder by regex or label stays missing from userprefs.cfg until a sync: one per page load, when a
+    // folder holds a container. With nothing saved there is nothing to regroup: the sync never creates userprefs.cfg
+    if (!fv3OrderSyncAsked && unraidOrder.length && Object.values(globalFolders).some((f) => Object.keys(f.containers ?? {}).length)) {
+        fv3OrderSyncAsked = true;
+        fv3SyncDockerOrder();
+    }
 
     requestAnimationFrame(() => fv3SyncPreviewHeights('docker_listview_mode'));
 
@@ -1336,11 +1344,16 @@ $(document).ajaxComplete((event, jqXHR, settings) => {
         && data.indexOf('names=') !== -1;
     if (isAutostartToggle || isOrderSave) {
         fv3Debug('autostartSync', 'Rebuilding autostart after Unraid event', {url, sample: data.slice(0, 80)});
-        // a refused sync leaves the start order stale: fv3ShowBanner shows the same message once until it is closed
-        $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'})
-            .fail((err) => fv3ShowBanner(fv3I18nOr('autostart-sync-failed', 'The Docker start order could not be updated: $1', fv3FailReason(err))));
+        fv3SyncDockerOrder();
     }
 });
+
+// Runs syncContainerOrder() (sync_order.php). A refused sync leaves the start order stale: fv3ShowBanner shows the same message
+// once until it is closed
+function fv3SyncDockerOrder() {
+    return $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'})
+        .fail((err) => fv3ShowBanner(fv3I18nOr('autostart-sync-failed', 'The Docker start order could not be updated: $1', fv3FailReason(err))));
+}
 
 // checkAll shows "checking..." in every version cell until its loadlist's reply, and a measure before then caps the
 // labels at that text — so the rebuild from that reply drops the cache (not here, while the cells still read it).

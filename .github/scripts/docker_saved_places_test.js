@@ -1,7 +1,9 @@
-// node .github/scripts/docker_saved_places_test.js — a deleted folder or removed container still named in userprefs.cfg no longer
-// moves a saved folder on the Docker page (npm ci in this folder first)
+// node .github/scripts/docker_saved_places_test.js — where the Docker page puts saved folders: stale userprefs.cfg entries do not move
+// them, and the page draws the same after sync_order.php regroups the file, which it asks for once per load (npm ci in this folder first)
 'use strict';
-const { drawDocker, check, done } = require('./preview_pages_harness.js');
+const fs = require('fs');
+const path = require('path');
+const { drawDocker, phpServer, check, done } = require('./preview_pages_harness.js');
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const folder = (name, containers = [], regex = '') => ({ name, containers, regex });
@@ -64,6 +66,47 @@ const folder = (name, containers = [], regex = '') => ({ name, containers, regex
         }
         check('the generated orders do place folders, with and without unsaved rows above them', shapes.folders > 50 && shapes.unsaved > 50 && shapes.both > 20, shapes);
         check('200 generated orders with nothing stale place every folder where they did before', differ.length === 0, differ.slice(0, 2));
+    }
+    // The real sync_order.php regroups userprefs.cfg; the page drawn from the file before and after is the same
+    const drawnFrom = async (folders, containers, prefs) => { const page = await drawDocker({ folders, containers, prefs }); await page.draw(); return page.drawn(); };
+    for (const [what, folders, containers, prefs] of [
+        ['a folder member it lacks', { f: folder('F', ['x', 'y']) }, ['a', 'b', 'x', 'y'], ['a', 'folder-f', 'x', 'b']],
+        ['a member saved away from its folder', { f: folder('F', ['x', 'y']) }, ['a', 'b', 'x', 'y'], ['y', 'a', 'folder-f', 'x', 'b']],
+        ['a member moved to another folder', { f: folder('F', ['x']), g: folder('G', ['w', 'y']) }, ['w', 'x', 'y'], ['folder-f', 'x', 'y', 'folder-g', 'w']],
+        ['members saved before their folder', { f: folder('F', ['x', 'y']) }, ['a', 'x', 'y'], ['x', 'folder-f', 'a']],
+        ['a regex folder', { r: folder('Rx', [], '^web') }, ['web1', 'web2', 'db'], ['web2', 'folder-r', 'db', 'web1']],
+    ]) {
+        const php = phpServer('userprefs-sync', { containers });
+        try {
+            const dockerMan = path.join(path.dirname(php.config), 'dockerMan');
+            fs.writeFileSync(path.join(php.config, 'docker.json'), JSON.stringify(folders));
+            fs.writeFileSync(path.join(dockerMan, 'dockerMan.cfg'), `autostart-file="${path.join(dockerMan, 'unraid-autostart')}"\n`);
+            fs.writeFileSync(path.join(dockerMan, 'userprefs.cfg'), prefs.map((n, i) => `${i}="${n}"\n`).join(''));
+            const answer = php.server('sync_order.php', 'POST', { type: 'docker' });
+            const after = fs.readFileSync(path.join(dockerMan, 'userprefs.cfg'), 'utf8').split('\n').filter(Boolean).map((l) => l.replace(/^\d+="(.*)"$/, '$1'));
+            const [was, now] = [await drawnFrom(folders, containers, prefs), await drawnFrom(folders, containers, after)];
+            check(`${what}: the sync regroups userprefs.cfg, and the page draws the same from it`, answer === '{"success":true}' && !same(after, prefs) && same(was, now), { answer, after, was, now });
+        } finally { php.cleanup(); }
+    }
+    {
+        const syncs = (page) => page.posts.filter((r) => r.url.endsWith('/sync_order.php')).map((r) => r.data);
+        const saved = { folders: { f: folder('F', ['m']) }, containers: ['a', 'm'], prefs: ['folder-f', 'a'] };
+        const page = await drawDocker(saved);
+        await page.draw();
+        await page.draw();
+        check('a page with folders and a saved order asks for one sync, not one per list rebuild', same(syncs(page), [{ type: 'docker' }]), page.posts);
+        for (const [what, setup] of [['nothing saved', { ...saved, prefs: [] }], ['no folders', { ...saved, folders: {} }],
+            ['no folder holds a container', { ...saved, containers: ['a'] }]]) {
+            const quiet = await drawDocker(setup);
+            await quiet.draw();
+            check(`${what}: no sync is asked for`, syncs(quiet).length === 0, quiet.posts);
+        }
+        const refused = await drawDocker(saved);
+        const banners = [];
+        refused.p.w.fv3ShowBanner = (text) => { banners.push(text); };
+        refused.failing.add('sync_order.php');
+        await refused.draw();
+        check('a refused sync shows the start-order banner with the reason', same(banners, ['The Docker start order could not be updated: refused by the test']), banners);
     }
     done();
 })();

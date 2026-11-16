@@ -75,6 +75,7 @@ $sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?cal
     $GLOBALS['fv3tDown'] = $names === null;
     $setPrefs($cfg);
     @unlink("$configDir/docker.json");
+    @unlink("$configDir/order-docker.json");
     @unlink($fv3tAutostart);
     if ($folders !== null) file_put_contents("$configDir/docker.json", json_encode((object)$folders));
     if ($autostart !== null) file_put_contents($fv3tAutostart, is_array($autostart) ? implode("\n", $autostart) . "\n" : $autostart);
@@ -278,18 +279,25 @@ $cases = [
         $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['x', 'y'], "0=\"folder-f\"\n2=\"x\"\n5=\"y\"\n"), [null, "0=\"folder-f\"\n2=\"x\"\n5=\"y\"\n"]],
     ['userprefs.cfg: the fixture\'s saved order is already in place',
         $syncPrefs($fixture['folders'], $fixture['containers'], $userprefs($fixture['prefs'])), [null, $userprefs($fixture['prefs'])]],
-    ['userprefs.cfg: custom and off modes leave it as it is',
-        array_map(fn($mode) => $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['x', 'folder-f', 'a']),
-            fn() => file_put_contents("$configDir/autostart.json", json_encode(['mode' => $mode, 'sequence' => ['a', 'x']]))), ['custom', 'off']),
-        array_fill(0, 2, [null, $userprefs(['x', 'folder-f', 'a'])])],
+    ['userprefs.cfg: custom and off modes regroup it too, and leave the autostart file to their own rule',
+        array_map(fn($mode) => [...$sync(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['x', 'a', 'folder-f']), ['x', 'a'],
+            fn() => file_put_contents("$configDir/autostart.json", json_encode(['mode' => $mode, 'sequence' => ['a', 'x']]))), file_get_contents("$fv3DockerManDir/userprefs.cfg")], ['custom', 'off']),
+        [[null, ['a', 'x'], $userprefs(['a', 'folder-f', 'x'])], [null, ['x', 'a'], $userprefs(['a', 'folder-f', 'x'])]]],
+    ['userprefs.cfg: a name that cannot be written back (a quote another tool saved) leaves it as it is, and is reported',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['x'], "0=\"x\"\n1=\"a\\\"b\"\n2=\"folder-f\"\n"),
+        ["Unraid's saved Docker order (userprefs.cfg) holds a name that cannot be written back", "0=\"x\"\n1=\"a\\\"b\"\n2=\"folder-f\"\n"]],
+    ['userprefs.cfg: an order saved while the sync worked it out is kept as it is',
+        (function () use ($setPrefs, $userprefs, $folder, $fv3DockerManDir) {
+            $read = ['x', 'b', 'folder-f'];
+            $setPrefs($userprefs(['folder-f', 'x', 'b']));
+            return [fv3_sync_user_prefs($read, fv3_compute_folder_membership(['f' => $folder('F', ['x'])], ['b', 'x'], [], $read)), file_get_contents("$fv3DockerManDir/userprefs.cfg")];
+        })(), [null, $userprefs(['folder-f', 'x', 'b'])]],
+    ['userprefs.cfg: FV3\'s order snapshot, which the heal restores from after a reinstall, is saved with it',
+        [$syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['x', 'a', 'folder-f']))[1], fv3_export_order_snapshot('docker')['entries'] ?? null],
+        [$userprefs(['a', 'folder-f', 'x']), ['a', 'folder-f', 'x']]],
     ['userprefs.cfg: a cut-off one is left as it is, and reported',
         $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $cutOff), ["Unraid's saved Docker order (userprefs.cfg) could not be read", $cutOff]],
-    ['userprefs.cfg: a failed write is reported, and the autostart file is still put in order',
-        (function () use ($sync, $folder, $userprefs, $fv3DockerManDir) {
-            try { return $sync(['f' => $folder('F', ['x'])], ['a', 'b', 'x'], $userprefs(['b', 'folder-f', 'a', 'x']), ['a', 'x', 'b'], fn() => chmod($fv3DockerManDir, 0555)); }
-            finally { chmod($fv3DockerManDir, 0755); }
-        })(), ["Unraid's saved Docker order (userprefs.cfg) could not be updated", ['b', 'x', 'a']]],
-    ['userprefs.cfg: the page order is the same before and after the update',
+    ['userprefs.cfg: the start order worked out from it is the same before and after the update (the page: docker_saved_places_test.js)',
         $order(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], fv3_parse_user_prefs($syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], $userprefs(['y', 'a', 'folder-f', 'b']))[1])),
         $order(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], ['y', 'a', 'folder-f', 'b'])],
     ['no containers, or Docker not running (Unraid\'s client answers an empty list): nothing is written, nothing is reported',
@@ -298,17 +306,17 @@ $cases = [
         $sync([], ['a', ''], null, ['b', 'a']), ["Docker's container list could not be read", ['b', 'a']]],
     ['a failed label read: nothing is written, and it is reported',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () { $GLOBALS['fv3tLabelsDown'] = true; }), ['the container labels could not be read', ['b', 'a']]],
-    ['custom mode does not read the folder config, so a damaged one does not stop it',
+    ['custom mode still writes its sequence when a damaged folder config stops the userprefs.cfg update, and says so',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir) {
             file_put_contents("$configDir/docker.json", '{');
             file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}');
-        }), [null, ['a', 'b']]],
+        }), ['the folder config could not be read', ['a', 'b']]],
     ['a missing plugin config folder (deleted by hand under an open tab) is "no folders", not a failure: the sync runs and reports nothing',
         [$syncWithoutConfigDir(['b', 'a']), $syncWithoutConfigDir([]), is_dir($configDir)], [[null, ['a', 'b']], [null, ['b', 'a']], true]],
     ['a damaged folder config is reported',
         $sync([], ['a', 'b'], null, ['b', 'a'], fn() => file_put_contents("$configDir/docker.json", '{')), ['the folder config could not be read', ['b', 'a']]],
-    ['autostart mode off reads nothing and reports nothing',
-        $sync([], ['a', 'b'], $cutOff, ['b', 'a'], fn() => file_put_contents("$configDir/autostart.json", '{"mode":"off"}')), [null, ['b', 'a']]],
+    ['autostart mode off leaves the autostart file as it is, and reports a userprefs.cfg it cannot read',
+        $sync([], ['a', 'b'], $cutOff, ['b', 'a'], fn() => file_put_contents("$configDir/autostart.json", '{"mode":"off"}')), ["Unraid's saved Docker order (userprefs.cfg) could not be read", ['b', 'a']]],
     ['custom mode writes its saved sequence, the rest after it in file order',
         $sync([], ['a', 'b', 'c'], null, ['b 5', 'a', 'ghost', 'c'], fn() => file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["c","a"]}')), [null, ['c', 'a', 'b 5']]],
     ['custom mode: a file already in its sequence is not written again',
@@ -363,6 +371,16 @@ if (!function_exists('posix_geteuid') || posix_geteuid() !== 0) {
         [['success' => true, 'mode' => 'off', 'sequence' => [], 'warning' => 'the wait edits could not be written to the autostart file'],
          ['success' => true, 'mode' => 'folder', 'sequence' => [], 'warning' => 'the wait edits could not be written to the autostart file; the autostart file could not be written'],
          ['success' => true, 'mode' => 'off', 'sequence' => []], ['b', 'a 30']]];
+    $cases[] = ['userprefs.cfg: a failed write is reported, and the autostart file is still put in order',
+        (function () use ($sync, $folder, $userprefs, $fv3DockerManDir) {
+            try { return $sync(['f' => $folder('F', ['x'])], ['a', 'b', 'x'], $userprefs(['b', 'folder-f', 'a', 'x']), ['a', 'x', 'b'], fn() => chmod($fv3DockerManDir, 0555)); }
+            finally { chmod($fv3DockerManDir, 0755); }
+        })(), ["Unraid's saved Docker order (userprefs.cfg) could not be updated", ['b', 'x', 'a']]];
+    $cases[] = ['userprefs.cfg and the autostart file both not written: both are reported',
+        (function () use ($sync, $folder, $userprefs, $fv3DockerManDir, $fv3tAutostart) {
+            try { return $sync(['f' => $folder('F', ['x'])], ['a', 'b', 'x'], $userprefs(['b', 'folder-f', 'a', 'x']), ['a', 'x', 'b'], function () use ($fv3DockerManDir, $fv3tAutostart) { chmod($fv3DockerManDir, 0555); chmod($fv3tAutostart, 0444); }); }
+            finally { chmod($fv3DockerManDir, 0755); }
+        })(), ["Unraid's saved Docker order (userprefs.cfg) could not be updated; the autostart file could not be written", ['a', 'x', 'b']]];
     $cases[] = ['custom mode reports it too',
         $sync([], ['a', 'b'], null, ['b', 'a'], function () use ($configDir, $fv3tAutostart) { file_put_contents("$configDir/autostart.json", '{"mode":"custom","sequence":["a","b"]}'); chmod($fv3tAutostart, 0444); }), ['the autostart file could not be written', ['b', 'a']]];
 }

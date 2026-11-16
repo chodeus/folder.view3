@@ -887,10 +887,18 @@
         if (!$prefs) return null;
         $updated = fv3_prefs_with_folder_members($prefs, $membership);
         if ($updated === $prefs) return null;
+        $updated = fv3_sanitize_order_entries($updated);
+        if ($updated === null) return "Unraid's saved Docker order (userprefs.cfg) holds a name that cannot be written back";
+        // Stock UserPrefs writes take no lock: an order saved since the read above is kept as it is
+        $now = fv3_docker_prefs();
+        if ($now === null) return "Unraid's saved Docker order (userprefs.cfg) could not be read";
+        if ($now !== $prefs) { fv3_debug_log("fv3_sync_user_prefs: userprefs.cfg changed meanwhile, left as it is"); return null; }
         if (!fv3_write_user_prefs("$fv3DockerManDir/userprefs.cfg", $updated)) {
             fv3_debug_log("fv3_sync_user_prefs: userprefs.cfg could not be written");
             return "Unraid's saved Docker order (userprefs.cfg) could not be updated";
         }
+        // FV3's own copy, which the heal restores from after a reinstall
+        if (!saveOrderSnapshot('docker', $updated)) fv3_error_log('fv3_sync_user_prefs', 'the order snapshot could not be written');
         fv3_debug_log("fv3_sync_user_prefs: wrote userprefs.cfg with " . count($updated) . " entries");
         return null;
     }
@@ -906,72 +914,66 @@
         return array_merge($ordered, array_values($byName));
     }
 
-    // Returns why the autostart file or userprefs.cfg could not be put in order (a file or a Docker read it needs failed), else null.
-    // Folder mode only logs an empty container list: a server with no containers, or with Docker off, has nothing to report
+    // Returns why userprefs.cfg or the autostart file could not be put in order (a file or a Docker read it needs failed), else null.
+    // An empty container list is only logged: a server with no containers, or with Docker off, has nothing to report
     function syncContainerOrder(string $type): ?string {
-        // Rewrites the autostart file (and, in folder mode, a saved userprefs.cfg) to match what FV3 renders on screen — top-to-bottom,
-        // folder members left-to-right in their editor-chosen order. Render order comes from
-        // userprefs.cfg when it exists (saved by a drag-reorder or an import), A-Z otherwise.
-        global $configDir;
         fv3_debug_log("syncContainerOrder called for type: $type");
-        $stop = function (string $why): string { fv3_debug_log("syncContainerOrder: $why, aborting before write"); return $why; };
-
         if ($type !== 'docker') { return null; }
 
         $autostartMode = readAutostartConfig()['mode'];
-        // 'off' = FV3 never writes the autostart file — pure stock Unraid behaviour
-        if ($autostartMode === 'off') { fv3_debug_log("syncContainerOrder: autostart mode off, skipping"); return null; }
-
         $dockerClient = new DockerClient();
         $ctNames = fv3_read_container_names($dockerClient);
+        // 'custom' = the Autostart tab's saved sequence orders the autostart file; 'off' = FV3 never writes it
+        $failed = array_filter([
+            $autostartMode === 'custom' ? fv3_apply_custom_autostart($ctNames['names'], $ctNames['complete']) : null,
+            ...fv3_sync_page_order($dockerClient, $ctNames, $autostartMode === 'folder'),
+        ]);
+        return $failed ? implode('; ', $failed) : null;
+    }
+
+    // Puts a saved userprefs.cfg's containers with their folders and, with $autostart, the autostart file in the order FV3 renders:
+    // top to bottom, folder members in their editor order. Returns why each part could not be done, [] when all went through
+    function fv3_sync_page_order(DockerClient $dockerClient, array $ctNames, bool $autostart): array {
+        global $configDir;
+        $stop = function (string $why): array { fv3_debug_log("syncContainerOrder: $why, aborting before write"); return [$why]; };
         $allContainerNames = $ctNames['names'];
-        // Prune below only on a complete, fully-named container list — a degraded Docker read must not wipe autostart entries (#214)
-        $ctListComplete = $ctNames['complete'];
-
-        // 'custom' = the Autostart tab's saved sequence overrides folder-derived order entirely
-        if ($autostartMode === 'custom') {
-            return fv3_apply_custom_autostart($allContainerNames, $ctListComplete);
-        }
-
-
-        // Folder-derived order needs the WHOLE list: containers missing from a partial read are
-        // skipped by the order walk and land appended at the end, silently reordering the file.
-        // Custom mode above is exempt — its order comes from the saved sequence, not this list.
-        if (!$ctListComplete) {
-            if ($ctNames['empty']) { fv3_debug_log("syncContainerOrder: no containers, nothing to sync"); return null; }
+        // The page's order needs the WHOLE list: a container missing from a partial read would be put out of place in either file
+        if (!$ctNames['complete']) {
+            if ($ctNames['empty']) { fv3_debug_log("syncContainerOrder: no containers, nothing to sync"); return []; }
             return $stop("Docker's container list could not be read");
         }
 
         // No docker.json, or no config folder at all (deleted by hand under an open tab), is "no folders": never a stop
         $folders = fv3_read_json_strict("$configDir/docker.json");
-        // Corrupt folder config must not rewrite the autostart file as if no folders exist
+        // Corrupt folder config must not be read as no folders
         if ($folders === null) { return $stop('the folder config could not be read'); }
 
         $ctLabels = fv3_read_container_labels($dockerClient, $allContainerNames);
-        // Fail closed: without label claims the order below would write label-assigned
-        // containers back out as unassigned — the same hazard $ctListComplete guards above.
+        // Fail closed: without label claims, label-assigned containers would be written back out as unassigned
         if ($ctLabels === null) { return $stop('the container labels could not be read'); }
         $prefs = fv3_docker_prefs();
-        // The page's order cannot be worked out then, so the file stays as it is
+        // The page's order cannot be worked out then, so both files stay as they are
         if ($prefs === null) { return $stop("Unraid's saved Docker order (userprefs.cfg) could not be read"); }
         $membership = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, $prefs);
-        // A failed userprefs.cfg write is reported, but the autostart file below is still put in order
-        $prefsFailed = fv3_sync_user_prefs($prefs, $membership);
-        $newOrder = fv3_page_order($membership, $allContainerNames, $prefs);
-        fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($prefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
+        // Each file is put in order on its own: one that fails does not hold the other back
+        return array_values(array_filter([
+            fv3_sync_user_prefs($prefs, $membership),
+            $autostart ? fv3_sync_autostart_order(fv3_page_order($membership, $allContainerNames, $prefs), $allContainerNames) : null,
+        ]));
+    }
 
-        // Rewrite autostart file in $newOrder sequence
+    // The autostart file's lines in $order's sequence, entries for removed containers dropped ($names must be Docker's whole list,
+    // #214). Returns why it could not be put in order, else null
+    function fv3_sync_autostart_order(array $order, array $names): ?string {
         $autoStartFile = fv3_autostart_file();
-        if (file_exists($autoStartFile)) {
-            $rawLines = fv3_read_autostart_lines($autoStartFile);
-            if ($rawLines === null) { return $stop('the autostart file could not be read'); }
-            $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
-            $newAutoStart = fv3_reorder_autostart($autoStartLines, $newOrder);
-            if ($newAutoStart === $rawLines) { fv3_debug_log("syncContainerOrder: autostart file already in order"); return $prefsFailed; }
-            if (@file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX) === false) { return $stop('the autostart file could not be written'); }
-            fv3_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
-        }
-        return $prefsFailed;
+        if (!file_exists($autoStartFile)) return null;
+        $rawLines = fv3_read_autostart_lines($autoStartFile);
+        if ($rawLines === null) return 'the autostart file could not be read';
+        $newAutoStart = fv3_reorder_autostart(fv3_prune_stale_autostart($rawLines, $names, true), $order);
+        if ($newAutoStart === $rawLines) { fv3_debug_log("syncContainerOrder: autostart file already in order"); return null; }
+        if (@file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX) === false) return 'the autostart file could not be written';
+        fv3_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
+        return null;
     }
 
     // Creates Unraid's saved Docker order on a server with none, after an import or a restore: $first's entries (placeholders, names)
