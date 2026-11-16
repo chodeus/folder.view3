@@ -715,9 +715,26 @@
         return array_merge($saved, array_values(array_filter($names, function($n) use ($saved) { return !in_array($n, $saved, true); })));
     }
 
+    // The order docker.js createFolders() draws folders in: the folders userprefs.cfg names, in its order, then the rest in JS key
+    // order; with nothing saved, A-Z by name
+    function fv3_folder_walk_order(array $folders, array $prefs): array {
+        $ids = fv3_js_key_order(array_keys($folders));
+        if (!$prefs) {
+            $name = fn($id) => $folders[$id]['name'] !== '' ? $folders[$id]['name'] : "folder-$id";
+            usort($ids, fn($a, $b) => fv3_name_cmp($name($a), $name($b)));
+            return $ids;
+        }
+        $saved = [];
+        foreach ($prefs as $entry) {
+            if (str_starts_with($entry, 'folder-') && array_key_exists(substr($entry, 7), $folders)) $saved[] = substr($entry, 7);
+        }
+        return array_values(array_unique(array_merge($saved, $ids)));
+    }
+
     // Effective membership — explicit > label > regex (issues #46/#55). Single source of
     // truth shared by syncContainerOrder and read_membership.php (issue #61).
-    // $prefs orders each folder's regex and label members as the Docker page lists them (fv3_live_order)
+    // $prefs orders each folder's regex and label members as the Docker page lists them (fv3_live_order), and the folders as the
+    // page draws them, so a container two folders' regexes match goes to the one the page shows it in
     function fv3_compute_folder_membership(array $folders, array $allContainerNames, array $ctLabels, array $prefs = []): array {
         $live = fv3_live_order($allContainerNames, $prefs);
         // One malformed entry is dropped or filled in, not allowed to abort every folder's sync
@@ -737,7 +754,8 @@
         foreach ($ctLabels as $ctName => $ctLabel) {
             if (isset($folderNameSet[$ctLabel])) { $explicitAssigned[] = (string)$ctName; }
         }
-        foreach ($folders as $folderId => $folder) {
+        foreach (fv3_folder_walk_order($folders, $prefs) as $folderId) {
+            $folder = $folders[$folderId];
             $members = $folder['containers'] ?? [];
             // is_string + trim, not empty(): empty("0") is true in PHP, so a regex of "0" was
             // silently dropped while docker.js applied it. The type check mirrors docker.js and

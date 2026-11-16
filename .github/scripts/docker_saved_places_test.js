@@ -99,13 +99,38 @@ const folder = (name, containers = [], regex = '') => ({ name, containers, regex
         const r = synced({ f: folder('F', [], '^web') }, ['a', 'web1', 'b'], ['a', 'folder-f', 'b']);
         check('a folder with none of its members saved yet gets them after its entry', same(r.after, ['a', 'folder-f', 'web1', 'b']), r);
     }
+    // The real read_membership.php: container => folder name. `json` is docker.json as written, its key order kept
+    const membershipOf = (folders, containers, prefs, json = JSON.stringify(folders)) => {
+        const php = phpServer('membership', { containers });
+        try {
+            fs.writeFileSync(path.join(php.config, 'docker.json'), json);
+            if (prefs.length) fs.writeFileSync(path.join(path.dirname(php.config), 'dockerMan', 'userprefs.cfg'), prefs.map((n, i) => `${i}="${n}"\n`).join(''));
+            return JSON.parse(php.server('read_membership.php', 'GET', { type: 'docker' })).membership;
+        } finally { php.cleanup(); }
+    };
+    {
+        const web = (name) => folder(name, [], '^web');
+        for (const [what, folders, containers, prefs, owner, json] of [
+            ['the folder userprefs.cfg names first', { a: web('A'), b: web('B') }, ['web1', 'loose'], ['folder-b', 'loose', 'folder-a'], 'b'],
+            ['of folders it does not name, an index-like id first', { x: web('X'), 7: web('Seven') }, ['web1', 'loose'], ['loose'], '7',
+                `{"x":${JSON.stringify(web('X'))},"7":${JSON.stringify(web('Seven'))}}`],
+            ['with nothing saved, the folder first A-Z', { z: web('Zulu'), a: web('Alpha') }, ['web1'], [], 'a'],
+        ]) {
+            const page = await drawnFrom(folders, containers, prefs);
+            const map = membershipOf(folders, containers, prefs, json);
+            check(`two folders' regexes match a container: ${what} gets it, on the page and in read_membership.php`,
+                same(page.members(owner), ['web1']) && map?.web1 === folders[owner].name, { members: Object.keys(folders).map((id) => [id, page.members(id)]), map });
+        }
+        const r = synced({ a: web('A'), b: web('B') }, ['web1', 'loose'], ['folder-b', 'loose', 'folder-a', 'web1']);
+        check('and the sync moves it beside the folder the page draws it in', same(r.after, ['folder-b', 'web1', 'loose', 'folder-a']), r);
+    }
     {
         // Generated folders (a container listed in one folder at most) and saved orders, with stale and unsaved entries
         let seed = 20261116;
         const rnd = (n) => { seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff; return (seed >>> 8) % n; };
         const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-        const off = [], unstable = [], refused = [];
-        let changed = 0;
+        const off = [], apart = [], unstable = [], refused = [];
+        let changed = 0, overlaps = 0;
         for (let n = 0; n < 120; n++) {
             const containers = shuffle(['a', 'b', 'c', 'web1', 'web2', 'x', 'y']).slice(0, 3 + rnd(5));
             const nf = 1 + rnd(3);
@@ -115,6 +140,7 @@ const folder = (name, containers = [], regex = '') => ({ name, containers, regex
             if (rnd(4) === 0) entries.push('ghost');
             const prefs = shuffle(entries).filter(() => rnd(5) > 0);
             if (!prefs.length) continue;
+            overlaps += Object.values(folders).filter((f) => f.regex).length > 1 && containers.some((c) => c.startsWith('web'));
             const r = synced(folders, containers, prefs);
             if (r.answers.some((a) => a !== '{"success":true}')) { refused.push({ folders, prefs, r }); continue; }
             changed += !same(r.after, prefs);
@@ -126,10 +152,16 @@ const folder = (name, containers = [], regex = '') => ({ name, containers, regex
             const want = Object.keys(folders).map((id) => `folder-${id}`).filter((e) => !r.after.includes(e)).reverse()
                 .concat(containers.filter((c) => !r.after.includes(c) && !inFolder.has(c)), r.after.filter(shown));
             if (!same(page.rows(), want)) off.push({ folders, containers, after: r.after, rows: page.rows(), want });
+            // Members of a folder the file has no entry for stay where they were saved
+            const unsaved = new Set(Object.keys(folders).filter((id) => !r.after.includes(`folder-${id}`)).flatMap((id) => page.members(id)));
+            const named = r.after.filter((e) => containers.includes(e) && !unsaved.has(e));
+            if (!same(named, page.drawn().filter((e) => named.includes(e)))) apart.push({ folders, containers, after: r.after, drawn: page.drawn() });
         }
         check('the sync regroups over a quarter of the generated orders, and every sync answers success', changed > 30 && refused.length === 0, { changed, refused: refused.slice(0, 2) });
         check('a second sync leaves userprefs.cfg as the first wrote it', unstable.length === 0, unstable.slice(0, 2));
         check('after the sync the page draws its rows in the order userprefs.cfg names them', off.length === 0, { count: off.length, first: off.slice(0, 2) });
+        check('and userprefs.cfg names its containers in the order the page draws them, folders whose regexes match one container among them',
+            apart.length === 0 && overlaps > 10, { overlaps, count: apart.length, first: apart.slice(0, 2) });
     }
     {
         const syncs = (page) => page.posts.filter((r) => r.url.endsWith('/sync_order.php')).map((r) => r.data);
