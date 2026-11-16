@@ -2,6 +2,15 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- fix: a container two folders' regexes match goes to the folder the page draws first
+- fix: Off tooltip says Unraid starts in the autostart file's order
+- fix: save a folder's members when none were saved yet; Off never reorders
+- fix: regroup userprefs.cfg in every autostart mode and on page load
+- fix: keep a saved userprefs.cfg's containers with their folders
+- refactor: move the container order code from lib.php into lib.order.php
+
 ## 2026.11.16.1 (beta)
 
 - The error log no longer lists Unraid's own PHP warnings as FolderView3 errors
