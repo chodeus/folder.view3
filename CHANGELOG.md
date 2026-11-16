@@ -2,6 +2,12 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Unraid's saved Docker order keeps each folder's containers with it, so new members no longer come first
+- A container two folders' regexes match is saved with the folder the Docker page shows it in
+- Autostart mode Off now says FolderView3 never reorders the autostart file
+
 ## 2026.11.16.1 (beta)
 
 - The error log no longer lists Unraid's own PHP warnings as FolderView3 errors
