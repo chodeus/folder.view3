@@ -368,4 +368,4 @@ const phpServer = (label, { containers = [] } = {}) => {
     return { config, server, cleanup: () => fs.rmSync(tmp, { recursive: true, force: true }) };
 };
 
-module.exports = { makePage, drawDocker, drawVms, fakeXhr, scriptHelpers, check, done, flush, read, phpServer, FOLDER_SETTINGS };
+module.exports = { makePage, drawDocker, drawVms, fakeXhr, scriptHelpers, check, done, flush, read, phpServer, plugin, FOLDER_SETTINGS };

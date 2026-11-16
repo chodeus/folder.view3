@@ -1,6 +1,6 @@
 <?php
-    // Container order: Unraid's saved order (userprefs.cfg) and FV3's snapshot of it, the autostart file and mode, folder membership,
-    // and the page order syncContainerOrder() builds from them
+    // Docker and VM order: Unraid's saved order (userprefs.cfg) and FV3's snapshot of it, the Docker autostart file and mode, folder
+    // membership, and the page order syncContainerOrder() builds from them
 
     function readUserPrefs(string $type) : string {
         global $fv3DockerManDir;

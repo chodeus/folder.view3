@@ -625,6 +625,7 @@
     require_once(__DIR__ . '/themes.php');
     require_once(__DIR__ . '/lib.foreign_import.php');
     require_once(__DIR__ . '/lib.folders.php');
+    // Docker and VM order: userprefs.cfg, the autostart file, folder membership and the page order
     require_once(__DIR__ . '/lib.order.php');
 
     function exportAll() : array {
