@@ -4,12 +4,9 @@ After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache
 
 ## Unreleased
 
-- fix: a container two folders' regexes match goes to the folder the page draws first
-- fix: Off tooltip says Unraid starts in the autostart file's order
-- fix: save a folder's members when none were saved yet; Off never reorders
-- fix: regroup userprefs.cfg in every autostart mode and on page load
-- fix: keep a saved userprefs.cfg's containers with their folders
-- refactor: move the container order code from lib.php into lib.order.php
+- Unraid's saved Docker order keeps each folder's containers with it, so new members no longer come first
+- A container two folders' regexes match is saved with the folder the Docker page shows it in
+- Autostart mode Off now says FolderView3 never reorders the autostart file
 
 ## 2026.11.16.1 (beta)
 
