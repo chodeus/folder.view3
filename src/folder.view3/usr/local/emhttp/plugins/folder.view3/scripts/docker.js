@@ -220,12 +220,7 @@ const createFolders = async () => {
     globalFolders = foldersDone;
     fv3Debug('createFolders', 'Assigned foldersDone to globalFolders:', {...globalFolders});
 
-    // A container that joined a folder by regex or label stays missing from userprefs.cfg until a sync: one per page load, when a
-    // folder holds a container. With nothing saved there is nothing to regroup: the sync never creates userprefs.cfg
-    if (!fv3OrderSyncAsked && unraidOrder.length && Object.values(globalFolders).some((f) => Object.keys(f.containers ?? {}).length)) {
-        fv3OrderSyncAsked = true;
-        fv3SyncDockerOrder();
-    }
+    fv3SyncOrderOnce(unraidOrder, globalFolders);
 
     requestAnimationFrame(() => fv3SyncPreviewHeights('docker_listview_mode'));
 
@@ -1353,6 +1348,14 @@ $(document).ajaxComplete((event, jqXHR, settings) => {
 function fv3SyncDockerOrder() {
     return $.post('/plugins/folder.view3/server/sync_order.php', {type: 'docker'})
         .fail((err) => fv3ShowBanner(fv3I18nOr('autostart-sync-failed', 'The Docker start order could not be updated: $1', fv3FailReason(err))));
+}
+
+// A container that joined a folder by regex or label stays missing from userprefs.cfg until a sync: one per page load, when a
+// folder holds a container. With nothing saved there is nothing to regroup: the sync never creates userprefs.cfg
+function fv3SyncOrderOnce(saved, folders) {
+    if (fv3OrderSyncAsked || !saved.length || !Object.values(folders).some((f) => Object.keys(f.containers ?? {}).length)) return;
+    fv3OrderSyncAsked = true;
+    fv3SyncDockerOrder();
 }
 
 // checkAll shows "checking..." in every version cell until its loadlist's reply, and a measure before then caps the

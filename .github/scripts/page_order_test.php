@@ -265,8 +265,8 @@ $cases = [
         $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'x', 'y'], $userprefs(['x', 'folder-f', 'a'])), [null, $userprefs(['x', 'y', 'folder-f', 'a'])]],
     ['userprefs.cfg: a regex folder\'s members keep the saved order, on their side of its entry',
         $syncPrefs(['r' => $folder('Rx', [], '^web')], ['web1', 'web2', 'db'], $userprefs(['web2', 'folder-r', 'db', 'web1'])), [null, $userprefs(['web2', 'web1', 'folder-r', 'db'])]],
-    ['userprefs.cfg: a folder with none of its members saved yet, as after an import, is left as it is',
-        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['folder-f', 'a'])), [null, $userprefs(['folder-f', 'a'])]],
+    ['userprefs.cfg: a folder with none of its members saved yet, as after an install, gets them after its entry',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['folder-f', 'a'])), [null, $userprefs(['folder-f', 'x', 'a'])]],
     ['userprefs.cfg: a folder it has no entry for leaves its members where they are',
         $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'x', 'y'], $userprefs(['x', 'a', 'y'])), [null, $userprefs(['x', 'a', 'y'])]],
     ['userprefs.cfg: an entry Docker does not have keeps its place',
@@ -460,10 +460,10 @@ $importOrder = function (?string $cfg, $ids, ?array $names, string $foldersJson 
 };
 $cases[] = ['folder import, no saved order: the new folders first in the file\'s order, each after its members, then the rest A-Z',
     $importOrder(null, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'b', 'folder-n1', 'c', 'a', 'folder-old'])]];
-$cases[] = ['folder import, a saved order: the new folders go on top in the file\'s order, the saved entries after them as they were',
-    $importOrder($keep, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'folder-n1', 'alpha', 'zed'])]];
-$cases[] = ['folder import, a saved order that already places one of them: that one keeps its place, an id with no folder is not written',
-    $importOrder($userprefs(['alpha', 'folder-n1', 'zed']), ['n2', 'n1', 'ghost'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'alpha', 'folder-n1', 'zed'])]];
+$cases[] = ['folder import, a saved order: the new folders go on top in the file\'s order with their members, the saved entries after them as they were',
+    $importOrder($keep, ['n2', 'n1'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'folder-n1', 'b', 'alpha', 'zed'])]];
+$cases[] = ['folder import, a saved order that already places one of them: that one keeps its place with its member, an id with no folder is not written',
+    $importOrder($userprefs(['alpha', 'folder-n1', 'zed']), ['n2', 'n1', 'ghost'], ['a', 'b', 'c']), ['200', true, null, null, $userprefs(['folder-n2', 'alpha', 'folder-n1', 'b', 'zed'])]];
 $cases[] = ['folder import, a saved order holding a list line: said, and left as it was',
     $importOrder("0=\"a\"\n1[]=\"b\"\n", ['n1'], ['a', 'b']), ['200', true, "Unraid's saved Docker order (userprefs.cfg) could not be read", "Unraid's saved Docker order (userprefs.cfg) could not be read", "0=\"a\"\n1[]=\"b\"\n"]];
 $cases[] = ['folder import, a saved order and a folder config that will not parse: said, and the order left as it was',

@@ -857,12 +857,12 @@
     }
 
     // $prefs with each folder's members together in its order, on the side of its entry a neighbour shows (a drag: after, FV3's writers:
-    // before; after by default). A folder with no entry or no saved member (a new import), and every other entry, stay as they are
+    // before; after by default). A folder with no entry, and every other entry, stay as they are
     function fv3_prefs_with_folder_members(array $prefs, array $membership): array {
         $blocks = [];
         foreach ($membership['containers'] as $placeholder => $members) {
             $at = array_search($placeholder, $prefs, true);
-            if ($at === false || !array_intersect($prefs, $members)) continue;
+            if ($at === false || !$members) continue;
             $after = isset($prefs[$at + 1]) && in_array($prefs[$at + 1], $members, true);
             $before = !$after && $at > 0 && in_array($prefs[$at - 1], $members, true);
             $blocks[$placeholder] = ['members' => $members, 'before' => $before];
@@ -923,7 +923,7 @@
         $autostartMode = readAutostartConfig()['mode'];
         $dockerClient = new DockerClient();
         $ctNames = fv3_read_container_names($dockerClient);
-        // 'custom' = the Autostart tab's saved sequence orders the autostart file; 'off' = FV3 never writes it
+        // 'custom' = the Autostart tab's saved sequence orders the autostart file; 'off' = FV3 never reorders it
         $failed = array_filter([
             $autostartMode === 'custom' ? fv3_apply_custom_autostart($ctNames['names'], $ctNames['complete']) : null,
             ...fv3_sync_page_order($dockerClient, $ctNames, $autostartMode === 'folder'),
