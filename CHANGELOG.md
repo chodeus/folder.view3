@@ -2,7 +2,7 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
-## Unreleased
+## 2026.11.16.2 (beta)
 
 - Unraid's saved Docker order keeps each folder's containers with it, so new members no longer come first
 - A container two folders' regexes match is saved with the folder the Docker page shows it in
