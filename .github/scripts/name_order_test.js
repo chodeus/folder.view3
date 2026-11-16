@@ -4,8 +4,8 @@
 const { execFileSync } = require('child_process');
 const { check, done, read } = require('./preview_pages_harness.js');
 
-// The shipped function, taken from lib.php as written
-const fn = read('server/lib.php').match(/^ {4}function fv3_name_cmp\([\s\S]*?\n {4}}\n/m)[0];
+// The shipped function, taken from lib.order.php as written
+const fn = read('server/lib.order.php').match(/^ {4}function fv3_name_cmp\([\s\S]*?\n {4}}\n/m)[0];
 const phpSort = (names) => JSON.parse(execFileSync('php', ['-r', `${fn} $l = json_decode(stream_get_contents(STDIN), true); usort($l, 'fv3_name_cmp'); echo json_encode($l);`],
     { input: JSON.stringify(names), encoding: 'utf8' }));
 const browserSort = (names) => names.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
