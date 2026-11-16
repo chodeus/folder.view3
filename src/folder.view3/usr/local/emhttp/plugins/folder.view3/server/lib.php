@@ -856,6 +856,45 @@
         return array_merge($new, $loose, $placed);
     }
 
+    // $prefs with each folder's members together in its order, on the side of its entry a neighbour shows (a drag: after, FV3's writers:
+    // before; after by default). A folder with no entry or no saved member (a new import), and every other entry, stay as they are
+    function fv3_prefs_with_folder_members(array $prefs, array $membership): array {
+        $blocks = [];
+        foreach ($membership['containers'] as $placeholder => $members) {
+            $at = array_search($placeholder, $prefs, true);
+            if ($at === false || !array_intersect($prefs, $members)) continue;
+            $after = isset($prefs[$at + 1]) && in_array($prefs[$at + 1], $members, true);
+            $before = !$after && $at > 0 && in_array($prefs[$at - 1], $members, true);
+            $blocks[$placeholder] = ['members' => $members, 'before' => $before];
+        }
+        if (!$blocks) return $prefs;
+        $moved = array_merge(...array_column($blocks, 'members'));
+        $out = [];
+        foreach ($prefs as $entry) {
+            if (in_array($entry, $moved, true)) continue;
+            if (!isset($blocks[$entry])) { $out[] = $entry; continue; }
+            ['members' => $members, 'before' => $before] = $blocks[$entry];
+            unset($blocks[$entry]); // a repeated entry for the same folder keeps its place, its members come once
+            array_push($out, ...($before ? [...$members, $entry] : [$entry, ...$members]));
+        }
+        return $out;
+    }
+
+    // Keeps userprefs.cfg's containers with their folders, so what reads it (Unraid's Start all and autostart sort, other plugins)
+    // follows the page. Only a saved order is changed: creating one switches Unraid off its A-Z order (#112). Returns why it failed
+    function fv3_sync_user_prefs(array $prefs, array $membership): ?string {
+        global $fv3DockerManDir;
+        if (!$prefs) return null;
+        $updated = fv3_prefs_with_folder_members($prefs, $membership);
+        if ($updated === $prefs) return null;
+        if (!fv3_write_user_prefs("$fv3DockerManDir/userprefs.cfg", $updated)) {
+            fv3_debug_log("fv3_sync_user_prefs: userprefs.cfg could not be written");
+            return "Unraid's saved Docker order (userprefs.cfg) could not be updated";
+        }
+        fv3_debug_log("fv3_sync_user_prefs: wrote userprefs.cfg with " . count($updated) . " entries");
+        return null;
+    }
+
     // Autostart lines ("name" or "name delay") in $order's sequence, each once; lines $order does not name follow, in file order
     function fv3_reorder_autostart(array $lines, array $order): array {
         $byName = [];
@@ -867,10 +906,10 @@
         return array_merge($ordered, array_values($byName));
     }
 
-    // Returns why the autostart file could not be put in order (a file or a Docker read it needs failed), else null.
+    // Returns why the autostart file or userprefs.cfg could not be put in order (a file or a Docker read it needs failed), else null.
     // Folder mode only logs an empty container list: a server with no containers, or with Docker off, has nothing to report
     function syncContainerOrder(string $type): ?string {
-        // Rewrites the autostart file to match what FV3 renders on screen — top-to-bottom,
+        // Rewrites the autostart file (and, in folder mode, a saved userprefs.cfg) to match what FV3 renders on screen — top-to-bottom,
         // folder members left-to-right in their editor-chosen order. Render order comes from
         // userprefs.cfg when it exists (saved by a drag-reorder or an import), A-Z otherwise.
         global $configDir;
@@ -915,21 +954,24 @@
         $prefs = fv3_docker_prefs();
         // The page's order cannot be worked out then, so the file stays as it is
         if ($prefs === null) { return $stop("Unraid's saved Docker order (userprefs.cfg) could not be read"); }
-        $newOrder = fv3_page_order(fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, $prefs), $allContainerNames, $prefs);
+        $membership = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, $prefs);
+        // A failed userprefs.cfg write is reported, but the autostart file below is still put in order
+        $prefsFailed = fv3_sync_user_prefs($prefs, $membership);
+        $newOrder = fv3_page_order($membership, $allContainerNames, $prefs);
         fv3_debug_log("syncContainerOrder: computed newOrder with " . count($newOrder) . " entries (" . ($prefs ? 'userprefs.cfg' : 'A-Z, no userprefs.cfg') . ")");
 
-        // Rewrite autostart file in $newOrder sequence; userprefs.cfg is not touched here
+        // Rewrite autostart file in $newOrder sequence
         $autoStartFile = fv3_autostart_file();
         if (file_exists($autoStartFile)) {
             $rawLines = fv3_read_autostart_lines($autoStartFile);
             if ($rawLines === null) { return $stop('the autostart file could not be read'); }
             $autoStartLines = fv3_prune_stale_autostart($rawLines, $allContainerNames, $ctListComplete);
             $newAutoStart = fv3_reorder_autostart($autoStartLines, $newOrder);
-            if ($newAutoStart === $rawLines) { fv3_debug_log("syncContainerOrder: autostart file already in order"); return null; }
+            if ($newAutoStart === $rawLines) { fv3_debug_log("syncContainerOrder: autostart file already in order"); return $prefsFailed; }
             if (@file_put_contents($autoStartFile, implode("\n", $newAutoStart) . "\n", LOCK_EX) === false) { return $stop('the autostart file could not be written'); }
             fv3_debug_log("syncContainerOrder: wrote autostart file with " . count($newAutoStart) . " entries");
         }
-        return null;
+        return $prefsFailed;
     }
 
     // Creates Unraid's saved Docker order on a server with none, after an import or a restore: $first's entries (placeholders, names)

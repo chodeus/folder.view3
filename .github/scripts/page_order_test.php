@@ -90,6 +90,12 @@ $sync = function (?array $folders, ?array $names, ?string $cfg, $autostart, ?cal
         $GLOBALS['fv3tDown'] = false;
     }
 };
+// $sync's run, answering with userprefs.cfg as the run left it (null = no file) in place of the autostart file
+$syncPrefs = function (?array $folders, array $names, ?string $cfg, ?callable $break = null) use ($sync, $fv3DockerManDir): array {
+    [$answer] = $sync($folders, $names, $cfg, null, $break);
+    $file = "$fv3DockerManDir/userprefs.cfg";
+    return [$answer, file_exists($file) ? file_get_contents($file) : null];
+};
 // updateAutostartConfig() as the Autostart tab calls it, with the folder config as given
 $autostartSave = function (string $mode, string $foldersJson, array $waits = [], bool $readOnly = false) use ($setPrefs, $configDir, $fv3tAutostart): array {
     $GLOBALS['fv3tNames'] = ['a', 'b'];
@@ -248,6 +254,44 @@ $cases = [
         $sync([], ['b', 'a', 'c'], $cutOff, ['c', 'ghost', 'b 5', 'a']), ["Unraid's saved Docker order (userprefs.cfg) could not be read", ['c', 'ghost', 'b 5', 'a']]],
     ['an empty userprefs.cfg writes A-Z, as no userprefs.cfg does',
         $sync([], ['b', 'a', 'c'], '', ['c', 'b 5', 'a']), [null, ['a', 'b 5', 'c']]],
+    ['userprefs.cfg: a folder member it lacks is saved right after its folder, in the folder\'s order',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], $userprefs(['a', 'folder-f', 'x', 'b'])), [null, $userprefs(['a', 'folder-f', 'x', 'y', 'b'])]],
+    ['userprefs.cfg: a member saved away from its folder moves to it',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], $userprefs(['y', 'a', 'folder-f', 'x', 'b'])), [null, $userprefs(['a', 'folder-f', 'x', 'y', 'b'])]],
+    ['userprefs.cfg: a member moved to another folder follows it',
+        $syncPrefs(['f' => $folder('F', ['x']), 'g' => $folder('G', ['w', 'y'])], ['w', 'x', 'y'], $userprefs(['folder-f', 'x', 'y', 'folder-g', 'w'])), [null, $userprefs(['folder-f', 'x', 'folder-g', 'w', 'y'])]],
+    ['userprefs.cfg: members saved before their folder, as FV3\'s own writers save them, stay before it',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'x', 'y'], $userprefs(['x', 'folder-f', 'a'])), [null, $userprefs(['x', 'y', 'folder-f', 'a'])]],
+    ['userprefs.cfg: a regex folder\'s members keep the saved order, on their side of its entry',
+        $syncPrefs(['r' => $folder('Rx', [], '^web')], ['web1', 'web2', 'db'], $userprefs(['web2', 'folder-r', 'db', 'web1'])), [null, $userprefs(['web2', 'web1', 'folder-r', 'db'])]],
+    ['userprefs.cfg: a folder with none of its members saved yet, as after an import, is left as it is',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['folder-f', 'a'])), [null, $userprefs(['folder-f', 'a'])]],
+    ['userprefs.cfg: a folder it has no entry for leaves its members where they are',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'x', 'y'], $userprefs(['x', 'a', 'y'])), [null, $userprefs(['x', 'a', 'y'])]],
+    ['userprefs.cfg: an entry Docker does not have keeps its place',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['ghost', 'folder-f', 'a', 'x'])), [null, $userprefs(['ghost', 'folder-f', 'x', 'a'])]],
+    ['userprefs.cfg: none is not created, so Unraid keeps its A-Z order',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], null), [null, null]],
+    ['userprefs.cfg: an empty one stays empty',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], ''), [null, '']],
+    ['userprefs.cfg: one already in place is not written again, its numbering kept',
+        $syncPrefs(['f' => $folder('F', ['x', 'y'])], ['x', 'y'], "0=\"folder-f\"\n2=\"x\"\n5=\"y\"\n"), [null, "0=\"folder-f\"\n2=\"x\"\n5=\"y\"\n"]],
+    ['userprefs.cfg: the fixture\'s saved order is already in place',
+        $syncPrefs($fixture['folders'], $fixture['containers'], $userprefs($fixture['prefs'])), [null, $userprefs($fixture['prefs'])]],
+    ['userprefs.cfg: custom and off modes leave it as it is',
+        array_map(fn($mode) => $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $userprefs(['x', 'folder-f', 'a']),
+            fn() => file_put_contents("$configDir/autostart.json", json_encode(['mode' => $mode, 'sequence' => ['a', 'x']]))), ['custom', 'off']),
+        array_fill(0, 2, [null, $userprefs(['x', 'folder-f', 'a'])])],
+    ['userprefs.cfg: a cut-off one is left as it is, and reported',
+        $syncPrefs(['f' => $folder('F', ['x'])], ['a', 'x'], $cutOff), ["Unraid's saved Docker order (userprefs.cfg) could not be read", $cutOff]],
+    ['userprefs.cfg: a failed write is reported, and the autostart file is still put in order',
+        (function () use ($sync, $folder, $userprefs, $fv3DockerManDir) {
+            try { return $sync(['f' => $folder('F', ['x'])], ['a', 'b', 'x'], $userprefs(['b', 'folder-f', 'a', 'x']), ['a', 'x', 'b'], fn() => chmod($fv3DockerManDir, 0555)); }
+            finally { chmod($fv3DockerManDir, 0755); }
+        })(), ["Unraid's saved Docker order (userprefs.cfg) could not be updated", ['b', 'x', 'a']]],
+    ['userprefs.cfg: the page order is the same before and after the update',
+        $order(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], fv3_parse_user_prefs($syncPrefs(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], $userprefs(['y', 'a', 'folder-f', 'b']))[1])),
+        $order(['f' => $folder('F', ['x', 'y'])], ['a', 'b', 'x', 'y'], ['y', 'a', 'folder-f', 'b'])],
     ['no containers, or Docker not running (Unraid\'s client answers an empty list): nothing is written, nothing is reported',
         $sync([], [], null, ['b', 'a']), [null, ['b', 'a']]],
     ['a container list with an unnamed entry: nothing is written, and it is reported',
