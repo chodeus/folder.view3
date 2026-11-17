@@ -2,6 +2,33 @@
 
 After updating, hard-refresh your browser (Ctrl/Cmd+Shift+R) and clear its cache if the page doesn't display correctly — before submitting a debug .json.
 
+## Unreleased
+
+- Folder actions that Unraid refuses now show its reason instead of raw JSON
+- A failed update no longer deletes the package the installed version reinstalls from at boot
+- The error log no longer lists Unraid's own PHP warnings as FolderView3 errors
+- Unraid's saved Docker order keeps folder members together in every start order mode, Off included
+- A container two folders' regexes match is saved with the folder the Docker page shows it in
+- Autostart mode Off now says FolderView3 never reorders the autostart file
+
+## 2026.11.16.2 (beta)
+
+- Unraid's saved Docker order keeps each folder's containers with it, so new members no longer come first
+- A container two folders' regexes match is saved with the folder the Docker page shows it in
+- Autostart mode Off now says FolderView3 never reorders the autostart file
+
+## 2026.11.16.1 (beta)
+
+- The error log no longer lists Unraid's own PHP warnings as FolderView3 errors
+
+## 2026.11.14.3 (beta)
+
+- A failed update no longer deletes the package the installed version reinstalls from at boot
+
+## 2026.11.14.2 (beta)
+
+- Folder actions that Unraid refuses now show its reason instead of raw JSON
+
 ## 2026.11.14
 
 - Folders no longer vanish when the Docker, VMs or Dashboard lists reload

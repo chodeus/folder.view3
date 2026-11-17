@@ -599,7 +599,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
                 <select id="fv3-autostart-mode">
                     <option value="folder" data-i18n="autostart-mode-folder">Folder-based (default)</option>
                     <option value="custom" data-i18n="autostart-mode-custom">Custom sequence</option>
-                    <option value="off" data-i18n="autostart-mode-off">Off (FolderView3 never writes the start order)</option>
+                    <option value="off" data-i18n="autostart-mode-off">Off (FolderView3 never reorders the autostart file)</option>
                 </select>
             </dd>
         </dl>
@@ -608,7 +608,7 @@ require_once('/usr/local/emhttp/plugins/folder.view3/langs/script.php');
             <button onclick="fv3CancelAutostart()" data-i18n="reset">Reset</button>
         </div>
         <blockquote class="inline_help">
-            <p data-i18n="autostart-mode-tooltip">Folder-based keeps today's behaviour: the container start order follows your folder layout on the Docker page. Custom sequence uses the order below instead — it cuts across folders and overrides the Docker page order, and survives reboots. Off hands the start order fully back to Unraid; FolderView3 stops writing it entirely.</p>
+            <p data-i18n="autostart-mode-tooltip">Folder-based keeps today's behaviour: the container start order follows your folder layout on the Docker page. Custom sequence uses the order below instead — it cuts across folders and overrides the Docker page order, and survives reboots. Off hands the start order back to Unraid: containers start in the autostart file's order, which Unraid re-sorts to the Docker page's order when you reorder containers or switch one's autostart there; FolderView3 stops reordering that file.</p>
         </blockquote>
     </div>
 

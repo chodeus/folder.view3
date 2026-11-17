@@ -19,6 +19,9 @@ ME = 'me/plugin'
 BOT = {'login': 'github-actions[bot]'}
 API, WEB, DOCS = 'unraid/api', 'unraid/webgui', 'unraid/docs'
 USERPREFS = 'emhttp/plugins/dynamix.docker.manager/include/UserPrefs.php'
+EVENTS = 'emhttp/plugins/dynamix.docker.manager/include/Events.php'
+# The plugin colours .tip and sets .row's white-space itself
+STYLES = '.tip { color: var(--c, red); }\n.row { white-space: nowrap; }\n'
 SDL = '''
 type Query { docker: Docker! }
 type Mutation { docker: DockerMutations! }
@@ -36,12 +39,15 @@ $.post('/plugins/dynamix.docker.manager/include/UserPrefs.php');
 CFG = {
     'issue': 52,
     'plugin': 'plugin',
+    'manifest': 'plugin.plg',
     'expand': [{'match': 'docker { ${act}', 'map': 'dockerMap'}],
     'sources': [
         {'repo': API, 'branch': 'main', 'schema': 'api/schema.graphql', 'surface': '(?i)docker',
          'namespaces': ['Docker', 'DockerMutations'], 'paths': {'api/switch.ts': 'page switch'}},
         {'repo': WEB, 'branch': 'master', 'paths': {'emhttp/page/': 'markup'},
-         'endpoints': {'/plugins/dynamix.docker.manager/': 'emhttp/plugins/dynamix.docker.manager/'}},
+         'endpoints': {'/plugins/dynamix.docker.manager/': 'emhttp/plugins/dynamix.docker.manager/'},
+         'contracts': [{'path': EVENTS, 'match': "'success' => ", 'why': 'answers in `success`'}],
+         'styles': {'themes': ['azure', 'black'], 'files': ['css/old-{theme}.css', 'css/{theme}.css']}},
         {'repo': DOCS, 'branch': 'main', 'releases': 'notes/', 'since': '9.0.0', 'tags': WEB},
     ],
 }
@@ -94,13 +100,16 @@ class Fake:
 class World:
     """A plugin, its issue, and three upstream repos that moved from OLD to NEW without touching anything watched."""
 
-    def __init__(self, case, script=SCRIPT):
+    def __init__(self, case, script=SCRIPT, styles=STYLES, manifest='<PLUGIN name="p" min="9.0.0">\n'):
         tmp = tempfile.TemporaryDirectory()
         case.addCleanup(tmp.cleanup)
         self.root = tmp.name
         scripts = Path(tmp.name, 'plugin/scripts')
         scripts.mkdir(parents=True)
         (scripts / 'a.js').write_text(script, encoding='utf-8')
+        Path(tmp.name, 'plugin/styles').mkdir()
+        Path(tmp.name, 'plugin/styles/a.css').write_text(styles, encoding='utf-8')
+        Path(tmp.name, 'plugin.plg').write_text(manifest, encoding='utf-8')
         self.fake, self.comments = Fake(), []
         routes = self.fake.routes
         routes['GET', url(f'/repos/{ME}/issues/52/comments', page=1, per_page=100)] = self.comments
@@ -120,6 +129,18 @@ class World:
             self.tree(API, ref, {'api/schema.graphql': 's1', 'api/switch.ts': 'w1'})
         self.notes(OLD[DOCS], {})
         self.notes(NEW[DOCS], {})
+        # One supported release that matches master: contracts hold and no stylesheet differs; master is read at its pinned sha
+        self.tags(WEB, ['9.0.3'])
+        for ref in ('9.0.3', NEW[WEB]):
+            self.tree(WEB, ref, {EVENTS: 'ev1', 'css/azure.css': 'st1', 'css/black.css': 'st1'})
+        self.blob(WEB, 'ev1', "$arrResponse = ['success' => $DockerClient->startContainer($container)];\n")
+        self.blob(WEB, 'st1', '.tip { white-space: pre-line; color: red; }\n.row { white-space: normal; }\n')
+
+    def tags(self, repo, names):
+        self.fake.routes['GET', url(f'/repos/{repo}/tags', page=1, per_page=100)] = [{'name': n} for n in names]
+
+    def blob(self, repo, sha, text):
+        self.fake.routes['GET', f'/repos/{repo}/git/blobs/{sha}'] = text
 
     def between(self, repo, numbers, status='ahead', span=None):
         start, head = span or (OLD[repo], NEW[repo])
@@ -159,9 +180,15 @@ class World:
         self.tree(API, NEW[API], {'api/schema.graphql': 's2', 'api/switch.ts': 'w1'})
         self.tree(WEB, STABLE_WEB, {'emhttp/page': 't0', USERPREFS: 'u0'})
         self.tree(WEB, BETA_WEB, {'emhttp/page': 't1', USERPREFS: 'u0'})
-        self.tree(WEB, NEW[WEB], {'emhttp/page': 't1', USERPREFS: 'u0'})
+        self.tree(WEB, NEW[WEB], {'emhttp/page': 't1', USERPREFS: 'u0', EVENTS: 'ev1', 'css/azure.css': 'st1', 'css/black.css': 'st1'})
         self.between(API, [50], span=(LATEST_API, NEW[API]))
         self.between(WEB, [60, 61], status='diverged', span=(STABLE_WEB, BETA_WEB))
+        # Only 9.0.3 is a stable OS release at or after the plugin's floor (9.0.0); 9.0.3's azure theme sets .tip's display,
+        # master's does not but sets its white-space
+        self.tags(WEB, ['9.1.0-beta.2', '9.0.3', '8.9.0', '2030.11.10'])
+        self.tree(WEB, '9.0.3', {EVENTS: 'ev1', 'css/old-azure.css': 'old1', 'css/old-black.css': 'old0'})
+        self.blob(WEB, 'old1', '.tip { display: block; color: blue; }\n')
+        self.blob(WEB, 'old0', '.other { top: 0; }\n')
         self.fake.routes['GET', url(f'/repos/{API}/commits', page=1, path='api/switch.ts', per_page=100,
                                     sha=NEW[API])] = [commit(50, 'feat: enable the new page', '2030-01-03T00:00:00Z')]
 
@@ -227,6 +254,9 @@ class Case(unittest.TestCase):
 
     def saved(self, body):
         return report.read_state([bot(body)])[0]
+
+    def local(self):
+        return watch.local(CFG, self.w.root)
 
     def outputs(self):
         """Point the job outputs at a file and return its path."""

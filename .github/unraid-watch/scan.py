@@ -65,6 +65,21 @@ def operations(plugin, rules):
     return ops, problems
 
 
+def stylesheets(plugin):
+    return _files(plugin, ('styles/*.css',))
+
+
+def code(plugin):
+    """The scripts and server code, which name the plugin's own CSS variables (the CSS tool, the generated theme CSS)."""
+    return _files(plugin, ('scripts/*.js', 'server/*.php'))
+
+
+def minimum(manifest):
+    """The oldest Unraid release the plugin declares it runs on: the PLUGIN tag's min attribute; None when it has none."""
+    found = re.search(r'<PLUGIN\b[^>]*\bmin="(\d+\.\d+\.\d+)"', manifest.read_text(encoding='utf-8'))
+    return found and found.group(1)
+
+
 def endpoints(plugin, prefixes):
     """{upstream path: file:line} for every webgui PHP file the plugin references by URL or include."""
     found = {}

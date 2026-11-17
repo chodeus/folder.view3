@@ -181,5 +181,11 @@ class AnnounceTest(Case):
                 report.announce(data, link)
 
 
+class RunsTest(unittest.TestCase):
+    def test_releases_with_the_same_value_read_as_one_span(self):
+        values = [('9.0.0', None), ('9.1.0', None), ('9.2.0', '4px'), ('9.3.0', None), ('master', None)]
+        self.assertEqual(report._runs(values), 'not set in `9.0.0`–`9.1.0`, `4px` in `9.2.0`, not set in `9.3.0`–`master`')
+
+
 if __name__ == '__main__':
     unittest.main()

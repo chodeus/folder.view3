@@ -41,8 +41,8 @@
         echo json_encode(['error' => 'container label read unavailable']);
         exit;
     }
-    // The map does not depend on the saved order (page_order_test.php), so userprefs.cfg is not read here
-    $m = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels);
+    // The saved order as the page reads it (readUserPrefs: unreadable = nothing saved) decides who gets a container two folders' regexes match
+    $m = fv3_compute_folder_membership($folders, $allContainerNames, $ctLabels, fv3_docker_prefs() ?? []);
     $out = [];
     foreach ($m['containers'] as $placeholder => $members) {
         foreach ($members as $ct) { $out[$ct] = $m['names'][$placeholder]; }

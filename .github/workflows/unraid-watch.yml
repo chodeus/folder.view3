@@ -19,6 +19,8 @@ on:
   pull_request:
     paths:
       - 'src/**'
+      # its min attribute is the oldest Unraid release the contracts are checked on
+      - 'folder.view3.plg'
       - '.github/unraid-watch/**'
       - '.github/workflows/unraid-watch.yml'
   push:

@@ -91,6 +91,59 @@ def _changed(commits):
     return f'{len(commits)} commit{"" if len(commits) == 1 else "s"}, newest {code(f"{date} {subject}")}'
 
 
+def _runs(values):
+    """`a` in `7.0.0`–`7.3.5`, not set in `7.4.0`–`master`: consecutive refs with the same value as one span."""
+    runs = []
+    for ref, value in values:
+        if runs and runs[-1][0] == value:
+            runs[-1][2] = ref
+        else:
+            runs.append([value, ref, ref])
+    return ', '.join(f'{"not set" if value is None else code(value)} in {code(a)}' + ('' if a == b else f'–{code(b)}')
+                     for value, a, b in runs)
+
+
+def _contracts(view):
+    if 'unread' in view:
+        return ['', f'**Contracts and Unraid CSS by OS release**: could not be read ({code(view["unread"], 300)}).']
+    *tags, branch = view['refs']
+    span = f'{code(tags[0])} to {code(tags[-1])}' if len(tags) > 1 else code(tags[0])
+    out = ['', '**Contracts by OS release**', '',
+           f'What FolderView3 relies on in the webgui, checked on its release tags {span} and on {code(branch)}.', '']
+    for entry, found in view['contracts']:
+        held = [ref for ref, ok in found.items() if ok is not None]
+        broken = [f'{"missing" if ok == "missing" else "fails"} on {code(ref)}' for ref, ok in found.items() if ok not in (True, None)]
+        since = f' (from {code(entry["since"])})' if 'since' in entry else ''
+        out.append(f'- {code(entry["path"].rsplit("/", 1)[-1])} {entry["why"]}: '
+                   + (', '.join(broken) if broken else f'holds on all {len(held)}') + since)
+    return out
+
+
+def _styles(view):
+    if 'unread' in view:
+        return []
+    themes, changed, gone = list(view['styles']), {}, {}
+    for theme, rows in view['styles'].items():
+        for context, selector, name, values in rows:
+            # Not set on the development branch any more: often a rule that moved to a stylesheet this does not read
+            (gone if values[-1][1] is None else changed).setdefault((context, selector, name, tuple(values)), []).append(theme)
+
+    def row(key, who):
+        context, selector, name, values = key
+        where = '' if len(who) == len(themes) else f' ({", ".join(who)})'
+        return f'- {code((context + " " if context else "") + selector, 200)} {code(name)}: {_runs(values)}{where}'
+    out = ['', '**Unraid CSS by OS release**', '',
+           'Layout properties Unraid sets on elements FolderView3 styles, that differ between releases, and that FolderView3 '
+           'does not set itself.', '']
+    out += capped([row(k, w) for k, w in changed.items()], 40) or ['- none']
+    if view['unmatched']:
+        out += ['', 'Listed in watch.json but on no release: ' + ', '.join(code(p, 200) for p in view['unmatched']) + '.']
+    if gone:
+        out += ['', f'<details><summary>No longer set in the stylesheets read here ({len(gone)}; may have moved elsewhere)</summary>', '']
+        out += capped([row(k, w) for k, w in gone.items()], 40) + ['', '</details>']
+    return out
+
+
 def render_status(view):
     newest, stable, latest = view['releases']
     facts = [f'Newest OS release {code(newest[0])} (API {code(newest[1] or "not stated")})'] if newest else []
@@ -124,6 +177,8 @@ def render_status(view):
                 + ', '.join(f'{code(name)} {read}/{total}' for name, read, total in view['types']) + '.']
     out += ['', '</details>', '', f'<details><summary>Still on legacy ({len(view["legacy"])} webgui files)</summary>', '']
     out += [f'- {code(path, 200)}: {why}' for path, why in view['legacy']] + ['', '</details>']
+    # Last: the longest sections, so a body cut for length loses these before anything above
+    out += _contracts(view) + _styles(view)
     return fit('\n'.join(out)) + '\n\n' + STATUS
 
 

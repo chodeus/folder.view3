@@ -4,7 +4,7 @@ import report
 import status
 import upstream
 import watch
-from world import (API, BETA_API, BETA_WEB, CFG, DOCS, LATEST_API, ME, NEW, RELEASE, SCRIPT, STABLE_WEB, USERPREFS, WEB,
+from world import (API, BETA_API, BETA_WEB, CFG, DOCS, EVENTS, LATEST_API, ME, NEW, RELEASE, SCRIPT, STABLE_WEB, USERPREFS, WEB,
                    Case, World, commit, sha, url)
 
 OPS = [('{ docker { statuses { name } } }', ['a.js:3']),
@@ -42,7 +42,7 @@ class StatusTest(Case):
         self.w.release_line()
         return status.gather(self.w.client(), CFG, OPS, {API: {'api/switch.ts': 'page switch'},
                                                          WEB: {'emhttp/page/': 'markup', USERPREFS: 'called from a.js:5'},
-                                                         DOCS: {}}, NEW)
+                                                         DOCS: {}}, NEW, self.local())
 
     def test_stages_cover_merged_released_and_the_prerelease(self):
         titles = [title for title, _ in self.view()['stages']]
@@ -98,6 +98,25 @@ class StatusTest(Case):
             '',
             '</details>',
             '',
+            '**Contracts by OS release**',
+            '',
+            'What FolderView3 relies on in the webgui, checked on its release tags `9.0.3` and on `master`.',
+            '',
+            '- `Events.php` answers in `success`: holds on all 2',
+            '',
+            '**Unraid CSS by OS release**',
+            '',
+            'Layout properties Unraid sets on elements FolderView3 styles, that differ between releases, and that FolderView3 '
+            'does not set itself.',
+            '',
+            '- `.tip` `white-space`: not set in `9.0.3`, `pre-line` in `master`',
+            '',
+            '<details><summary>No longer set in the stylesheets read here (1; may have moved elsewhere)</summary>',
+            '',
+            '- `.tip` `display`: `block` in `9.0.3`, not set in `master` (azure)',
+            '',
+            '</details>',
+            '',
             report.STATUS,
         ]))
 
@@ -108,7 +127,7 @@ class StatusTest(Case):
             url(f'/repos/{API}/contents/api/schema.graphql', ref=ref) for ref in (RELEASE, BETA_API, LATEST_API, NEW[API])))
 
     def test_with_no_release_notes_the_stages_that_need_them_say_so(self):
-        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW))
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
         self.assertIn('Latest API release `v4.0.0`.', body)
         self.assertIn('**Coming: merged, in no release**\n\n- unraid/api `v4.0.0`...`main`: nothing\n'
                       '- unraid/webgui `not stated`...`master`: not available\n', body)
@@ -121,7 +140,7 @@ class StatusTest(Case):
     def test_release_whose_notes_do_not_state_the_api_says_so(self):
         self.w.release_line()
         self.w.notes(NEW[DOCS], {'9.1.0.md': '# Version 9.1.0-beta.2 2030-01-02\n\nNothing about the API.\n'})
-        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW))
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
         self.assertIn('Newest OS release `9.1.0-beta.2` (API `not stated`), latest API release `v4.2.0`.', body)
         self.assertIn('**Coming: released API, not in an OS build**\n\n- unraid/api `not stated`...`v4.2.0`: not available\n', body)
         self.assertIn('- API version not stated in the notes: `9.1.0-beta.2`', body)
@@ -129,10 +148,41 @@ class StatusTest(Case):
     def test_release_documented_before_its_tag_exists_is_shown_as_not_available(self):
         self.w.release_line()
         del self.w.fake.routes['GET', f'/repos/{WEB}/commits/9.1.0-beta.2']
-        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW))
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
         self.assertIn('- unraid/webgui `9.1.0-beta.2`...`master`: not available\n', body)
         self.assertIn('- unraid/webgui `9.0.3`...`9.1.0-beta.2`: not available\n', body)
         self.assertIn('- unraid/api `v4.0.0`...`v4.1.0`:\n  - removed', body)
+
+    def test_a_failed_read_leaves_the_release_checks_out_and_says_so(self):
+        self.w.fake.routes['GET', url(f'/repos/{WEB}/tags', page=1, per_page=100)] = (500, 'boom')
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
+        self.assertIn('**Operations by OS release**', body)
+        self.assertIn('**Contracts and Unraid CSS by OS release**: could not be read (`GET /repos/unraid/webgui/tags: HTTP 500', body)
+        self.assertNotIn('**Unraid CSS by OS release**', body)
+
+    def test_a_listed_stylesheet_no_release_has_is_named(self):
+        cfg = {**CFG, 'sources': [{**s, 'styles': {**s['styles'], 'files': s['styles']['files'] + ['css/typo-{theme}.css']}}
+                                  if 'styles' in s else s for s in CFG['sources']]}
+        self.w.release_line()
+        body = report.render_status(status.gather(self.w.client(), cfg, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
+        self.assertIn('Listed in watch.json but on no release: `css/typo-azure.css`, `css/typo-black.css`.', body)
+
+    def test_an_empty_stylesheet_counts_as_missing_not_as_no_change(self):
+        self.w.release_line()
+        self.w.blob(WEB, 'old0', '  \n')
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
+        self.assertIn('Listed in watch.json but on no release: `css/old-black.css`.', body)
+
+    def test_one_themes_file_missing_on_every_release_is_named_though_another_theme_has_it(self):
+        self.w.release_line()
+        self.w.tree(WEB, '9.0.3', {EVENTS: 'ev1', 'css/old-azure.css': 'old1'})
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
+        self.assertIn('Listed in watch.json but on no release: `css/old-black.css`.', body)
+
+    def test_watched_stylesheets_are_not_listed_as_legacy_pages(self):
+        view = status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {'css/azure.css': 'theme', USERPREFS: 'prefs'}, DOCS: {}},
+                             NEW, self.local())
+        self.assertEqual(view['legacy'], [(USERPREFS, 'prefs')])
 
     def test_file_that_differs_with_no_commit_to_show_just_says_differs(self):
         view = self.view()
@@ -143,7 +193,7 @@ class StatusTest(Case):
         self.w.release_line()
         self.w.notes(NEW[DOCS], {'9.0.3.md': '# Version 9.0.3 2030-01-01\n\n* The Unraid API version remains 4.0.0.\n'})
         self.w.tree(WEB, STABLE_WEB, {'emhttp/page': 't1', USERPREFS: 'u0'})
-        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW))
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
         self.assertIn('Newest OS release `9.0.3` (API `4.0.0`), latest API release `v4.2.0`.', body)
         self.assertNotIn('Coming with', body)
         self.assertIn('- unraid/webgui `9.0.3`...`master`: nothing', body)
@@ -152,7 +202,7 @@ class StatusTest(Case):
     def test_latest_release_that_an_os_build_already_ships_is_one_row(self):
         self.w.release_line()
         self.w.fake.routes['GET', f'/repos/{API}/releases/latest'] = {'tag_name': 'v4.1.0'}
-        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW))
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {}, WEB: {}, DOCS: {}}, NEW, self.local()))
         self.assertIn('`v4.1.0` (latest API release, Unraid 9.1.0-beta.2)', body)
         self.assertIn('- unraid/api `v4.1.0`...`v4.1.0`: nothing', body)
 
@@ -161,7 +211,7 @@ class StatusTest(Case):
         self.w.between(API, [50, 51], span=(LATEST_API, NEW[API]))
         self.w.fake.routes['GET', url(f'/repos/{API}/commits', page=1, path='api/switch.ts', per_page=100, sha=NEW[API])] = [
             commit(51, 'x `y` @someone <!-- unraid-watch-status -->'), commit(50, 'older')]
-        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {'api/switch.ts': 'w'}, WEB: {}, DOCS: {}}, NEW))
+        body = report.render_status(status.gather(self.w.client(), CFG, OPS, {API: {'api/switch.ts': 'w'}, WEB: {}, DOCS: {}}, NEW, self.local()))
         self.assertIn("`api/switch.ts`: 2 commits, newest `2026-10-01 x 'y' @someone <!-- unraid-watch-status -->`", body)
         self.assertTrue(body.endswith('\n\n' + report.STATUS))
 
@@ -212,6 +262,14 @@ class StatusCommentTest(Case):
         self.w.hit()
         self.w.run()
         self.assertEqual((len(self.w.posted), len(self.w.status)), (1, 1))
+
+    def test_news_still_goes_out_when_the_release_checks_cannot_be_read(self):
+        self.w.state()
+        self.w.hit()
+        self.w.fake.routes['GET', f'/repos/{WEB}/git/blobs/ev1'] = (500, 'boom')
+        code, _ = self.w.run()
+        self.assertEqual((code, len(self.w.posted), len(self.w.status)), (0, 1, 1))
+        self.assertIn('could not be read', self.w.status[0][1])
 
     def test_status_command_prints_and_writes_nothing(self):
         code, out = self.captured(watch.cmd_status, CFG, self.w.client(), self.w.root)

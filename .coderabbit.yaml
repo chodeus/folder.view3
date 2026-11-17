@@ -206,6 +206,54 @@ reviews:
           GraphQL checks in schema.py; flag a second copy of either.
         - TESTS use synthetic versions, shas and handles only; a value captured
           from a live system in a fixture is a finding.
+    - path: ".github/unraid-compat/**"
+      instructions: |
+        The Unraid compatibility matrix; CI only, nothing here ships.
+        - install_test.sh puts the .plg through each Unraid version's own
+          plugin installer, hooks included, in a fresh Docker container with
+          no network; it must refuse to run anywhere else (lib.sh's guard).
+          Only Slackware's upgradepkg and removepkg are stubbed, keeping their
+          file-list records: flag any other stand-in for Unraid's code.
+        - fake_unraid.sh serves one Unraid version's real webGUI with php -S
+          and pages_test.php drives FV3 through it. Stand-ins are what the OS
+          image adds around the webGUI, nothing of the webGUI itself:
+          router.php (nginx's locations), prepend.php (php.ini's prepend),
+          docker.php (dockerd's socket and the docker CLI), libvirt.php (the
+          php-libvirt extension), rc_service.sh (rc.docker and rc.libvirt),
+          dmidecode.sh and ip.sh (those commands), connect_state.php (the
+          Connect plugin), the dockerd and libvirtd
+          processes, and emhttp's state files (var.ini, network.ini, the
+          docker and domain cfg). A call a stand-in does not answer fails
+          the run: flag an answer that hides one, and any stand-in for code
+          the webGUI repo has.
+        - browser_test.sh starts fake_unraid.sh in a container with no network
+          and runs the Playwright image in a second container that joins its
+          network. browser_test.js drives FV3's Docker, VMs and Dashboard
+          pages in Chromium and Firefox and checks what the user sees (rows,
+          tiles, an opened folder, the advanced preview's layout) against
+          values written by hand. A failed request or console error passes
+          only for a service the fake does not run (ABSENT) or for Unraid's
+          own unload handler. Clicks are a user's; only where an element of
+          Unraid's page frame named in FRAME covers the target is the click
+          dispatched instead.
+          fake_logs.php holds the log checks both tests run. package.json
+          pins playwright-core to the image's version, which
+          browser_test.sh checks.
+        - browser_test.sh runs an Unraid-alone pass first, FV3's three
+          page hooks moved out of its plugin folder. It checks hooks.js, a
+          hand-written list of Unraid's DOM hooks, functions, stylesheet
+          classes and endpoints FV3 relies on, each naming the FV3 file that
+          still mentions it and what the user loses; any/since only where
+          FV3 itself branches.
+          layout.js holds the layout rules FV3's pass checks against that
+          pass and a loose container on the same page, each from a fix FV3
+          has shipped.
+        - matrix_check.py keeps ci.yml's Unraid rows at one per minor from the
+          .plg's min to the newest release; Renovate only moves rows.
+        - Each step asserts what the user is left with (live files, the
+          registered manifest, saved folders, Unraid's orders) right after it,
+          against values written by hand. A failed step fails the job.
+        - Fixtures hold synthetic names and ids only.
     - path: ".github/scripts/**"
       instructions: |
         CI tests and helpers; nothing here ships in the plugin.
@@ -224,6 +272,9 @@ reviews:
           failed read or download as "nothing to report".
         - package.json here is test-only (jquery, jsdom), pinned to exact
           versions.
+        - php_tests.sh is the one list of PHP checks for Lint + build and the
+          PHP matrix: php -l on every .php and .page file, then every
+          *_test.php here; a deprecation fails like an error.
     - path: "**"
       instructions: |-
         Applies to every file, whatever the language:
