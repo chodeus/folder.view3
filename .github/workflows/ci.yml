@@ -168,10 +168,10 @@ jobs:
           - {unraid: '7.0.1', php: '8.3'}
           - {unraid: '7.1.4', php: '8.3'}
           - {unraid: '7.2.9', php: '8.4'}
-          - {unraid: '7.3.5', php: '8.4'}
-          - {unraid: '7.4.0', php: '8.4'}
+          - {unraid: '7.3.6', php: '8.4'}
+          - {unraid: '7.4.1', php: '8.4'}
           # Runs only while it names a beta or release candidate; one on a newer PHP needs its php raised by hand
-          - {unraid: '7.4.0', php: '8.4', row: 'newest tag'}
+          - {unraid: '7.4.1', php: '8.4', row: 'newest tag'}
     env:
       RUNS: ${{ !matrix.row || contains(matrix.unraid, '-') }}
     steps:
